@@ -1,7 +1,9 @@
-# 向量读取地址加法验证
+# 完整读取地址运算验证
 
-`run_formal.py` 比较实际 `vector_read_address_add` 的完整 34 位结果，并从 `vector_engine.sv` 提取读取译码，比较五组配置下的全部组合输出。DSP 和 LUT 均使用官方功能模型。
+32 位基地址、32 位偏移和 16 位通道按无符号数相加，保留完整 34 位结果。所有输入编码均由 SAT 证明。实际读取状态译码和四态行为由 test/vector_dma_address 检查。
 
-`inspect_paths.py` 从完整向量网表中提取读取地址的组合路径，并检查新增 DSP 的输入是否经过其他 DSP。它读取同目录的 `pre_lut.il` 恢复寄存器名称。
+```bash
+python3 test/vector_address_dsp/run_formal.py --out build/vector_address
+```
 
-实现说明、完整模块资源和数值结果见 `test/vector_round_prefix/README.md` 与 `test/vector_round_prefix/measurement.json`。
+统一综合输入可由 `test/conv_portable/prepare_measurement.py` 生成。源文件、验证日志与结果摘要保存在指定输出目录。

@@ -19,7 +19,7 @@ module ws_systolic_cell #(
     reg signed  [ WEIGHT_WIDTH-1:0] weight_reg;
     reg signed  [    ACC_WIDTH-1:0] sum_reg;
 
-    (* use_dsp = "yes" *) wire signed [ACC_WIDTH-1:0] mult_result;
+    wire signed [ACC_WIDTH-1:0] mult_result;
     wire signed [      ACC_WIDTH:0] sum_ext;
 
     assign mult_result = data_reg * weight_reg;
@@ -45,7 +45,7 @@ module ws_systolic_cell #(
     assign data_out = data_reg;
     assign weight_out = weight_reg;
 
-    // NMSIS-NN 的 int32 accumulator 语义不是逐 PE 饱和；去掉比较器也能缩短 DSP->LUT 临界路径。
+    // INT32 累加器保留定宽模加结果。
     assign sum_out = sum_ext[ACC_WIDTH-1:0];
 
 endmodule

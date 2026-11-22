@@ -1,0 +1,108 @@
+{
+  "passed": true,
+  "source_sha256": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758",
+  "inputs_constrained": false,
+  "runs": [
+    {
+      "width": 1,
+      "passed": true
+    },
+    {
+      "width": 8,
+      "passed": true
+    },
+    {
+      "width": 16,
+      "passed": true
+    },
+    {
+      "width": 17,
+      "passed": true
+    },
+    {
+      "width": 24,
+      "passed": true
+    },
+    {
+      "width": 29,
+      "passed": true
+    },
+    {
+      "width": 32,
+      "passed": true
+    },
+    {
+      "width": 33,
+      "passed": true
+    },
+    {
+      "width": 47,
+      "passed": true
+    },
+    {
+      "width": 48,
+      "passed": true
+    },
+    {
+      "width": 64,
+      "passed": true
+    }
+  ],
+  "four_state": [
+    {
+      "width": 1,
+      "checks": 640,
+      "passed": true
+    },
+    {
+      "width": 8,
+      "checks": 4224,
+      "passed": true
+    },
+    {
+      "width": 16,
+      "checks": 8320,
+      "passed": true
+    },
+    {
+      "width": 17,
+      "checks": 8832,
+      "passed": true
+    },
+    {
+      "width": 24,
+      "checks": 12416,
+      "passed": true
+    },
+    {
+      "width": 29,
+      "checks": 14976,
+      "passed": true
+    },
+    {
+      "width": 32,
+      "checks": 16512,
+      "passed": true
+    },
+    {
+      "width": 33,
+      "checks": 17024,
+      "passed": true
+    },
+    {
+      "width": 47,
+      "checks": 24192,
+      "passed": true
+    },
+    {
+      "width": 48,
+      "checks": 24704,
+      "passed": true
+    },
+    {
+      "width": 64,
+      "checks": 32896,
+      "passed": true
+    }
+  ]
+}

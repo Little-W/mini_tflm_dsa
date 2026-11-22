@@ -1,5 +1,7 @@
 # FIFO 组大小与行范围运算
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 ## 实现
 
 `vec_s8_to_fifo_full` 的组大小使用 `coalesce_rows[4:0]` 和 `coalesce_cols[4:0]` 的截断乘积。
@@ -87,5 +89,5 @@ python test/fifo_write_blocked/run_four_state.py --reference 24f5d6cd --cycles 2
 运行局部映射：
 
 ```sh
-python scripts/fpga/open_fpga_synth.py --case-config test/fifo_tile_arithmetic/cases.json --cases current --wide-alu-dsp-budget 740 --rtl-dsp-attributes --lock-file ../soc_small_synth.lock --out build/fifo_tile_arithmetic/mapped
+python scripts/fpga/open_fpga_synth.py --case-config test/fifo_tile_arithmetic/cases.json --cases current --lock-file ../soc_small_synth.lock --out build/fifo_tile_arithmetic/mapped
 ```

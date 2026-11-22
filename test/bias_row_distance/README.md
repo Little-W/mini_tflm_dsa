@@ -1,5 +1,7 @@
 # 偏置行边界计算
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 `npu_top.sv` 使用扩展一位的完整差值 `有效行数 - 当前行号 - 1` 形成偏置行回绕条件。差值符号位或全零表示当前行递增后达到有效行数；有效行数不大于一时直接回绕。行读取索引和行索引寄存器共用这个结果。
 
 差值采用普通 RTL 算术表达式，并以 `use_dsp` 属性指导综合。行索引的保持、递增、组首清零和异步低有效复位保持原有采样边沿，接口没有增加周期。
@@ -37,8 +39,7 @@ python3 test/bias_group_index/run_formal.py \
   --reference-rev cfcc1a95 --out build/bias_row_distance/buffer
 python3 scripts/fpga/open_fpga_synth.py \
   --case-config build/bias_row_distance/formal/cases.json \
-  --cases reference current --out build/bias_row_distance/synthesis \
-  --rtl-dsp-attributes --wide-alu-dsp-budget 740 --wide-alu-minimum-width 8
+  --cases reference current --out build/bias_row_distance/synthesis
 ```
 
 `validation.json` 保存源码校验值、参数、状态比较数量与综合结果。

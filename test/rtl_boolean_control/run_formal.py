@@ -107,24 +107,27 @@ def main():
             run(f"{kind}_fpga{int(fpga)}", commands, {"fpga": fpga})
 
     scheduler = out / "scheduler_logic.sv"
-    text = re.search(r"^module ps_scheduler_any\b.*?^endmodule", (ROOT / SCHEDULER).read_text(), re.M | re.S)[0]
+    scheduler_source = ROOT / SCHEDULER.with_name('ps_scheduler_any.sv')
+    if not scheduler_source.is_file():
+        scheduler_source = ROOT / SCHEDULER
+    text = re.search(r"^module ps_scheduler_any\b.*?^endmodule", scheduler_source.read_text(), re.M | re.S)[0]
     scheduler.write_text(text + "\n")
     wrapper = out / "scheduler_proof.sv"
-    wrapper.write_text("""module scheduler_proof #(parameter p_width=16, parameter p_use_lut=0)(
+    wrapper.write_text("""module scheduler_proof #(parameter p_width=16)(
     input logic [p_width-1:0] i_value, output logic o_equivalent);
     logic any_set;
-    ps_scheduler_any #(.p_width(p_width), .p_use_lut(p_use_lut)) u_any(
+    ps_scheduler_any #(.p_width(p_width)) u_any(
         .i_value(i_value), .o_any(any_set));
     assign o_equivalent = any_set == (|i_value);
 endmodule
 """)
     for width in (1, 6, 7, 16, 33, 64, 128):
-        for mode in (0, 1):
-            run(f"scheduler_w{width}_p{mode}", [
-                f"read_slang --top scheduler_proof -Gp_width={width} -Gp_use_lut={mode} {scheduler} {wrapper}",
+        for configuration in ('ASIC_SYNTHESIS', 'XILINX_FPGA'):
+            run(f"scheduler_w{width}_{configuration}", [
+                f"read_slang -D{configuration}=1 --top scheduler_proof -Gp_width={width} {scheduler} {wrapper}",
                 "prep -top scheduler_proof -flatten", "check -assert",
                 "sat -verify -prove o_equivalent 1 -show-inputs -show-outputs",
-            ], {"width": width, "parameter_value": mode})
+            ], {"width": width, "configuration": configuration})
     report["passed"] = True
     (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
 

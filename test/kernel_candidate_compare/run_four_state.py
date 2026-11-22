@@ -9,26 +9,28 @@ def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 
 def helper(text):
  start=text.index('module kernel_candidate_equal #(')
- return text[start:text.index('// 输出 AXI 突发长度',start)]
+ return text[start:text.index('endmodule',start)+len('endmodule')]
+
+def module_path(root):
+ path=root.resolve()/RTL.with_name('kernel_candidate_equal.sv')
+ return path if path.is_file()else root.resolve()/RTL
 
 def main():
  p=argparse.ArgumentParser(description=__doc__)
  p.add_argument('--source-root',type=Path,default=ROOT);p.add_argument('--reference-root',type=Path,required=True)
  p.add_argument('--out',type=Path,required=True);p.add_argument('--widths',nargs='+',type=int,default=[1,2,3,5,31,32,33,99,160])
- a=p.parse_args();out=a.out.resolve();out.mkdir(parents=True,exist_ok=True);sources={label:folder.resolve()/RTL for label,folder in [('reference',a.reference_root),('current',a.source_root)]};hashes={str(f):digest(f)for f in [*sources.values(),Path(__file__).resolve()]};models='\n'.join(helper(f.read_text()).replace('kernel_candidate_equal',label+'_equal')for label,f in sources.items());rows=[]
+ a=p.parse_args();out=a.out.resolve();out.mkdir(parents=True,exist_ok=True);sources={label:module_path(folder) for label,folder in [('reference',a.reference_root),('current',a.source_root)]};hashes={str(f):digest(f)for f in [*sources.values(),Path(__file__).resolve()]};models='\n'.join(helper(f.read_text()).replace('kernel_candidate_equal',label+'_equal')for label,f in sources.items());rows=[]
  for width in a.widths:
   folder=out/str(width);folder.mkdir(exist_ok=True)
   bench=f'''module tb;
  logic[{width-1}:0] a,b,saved_a,saved_b;
- wire[1:0] reference_equal,current_equal;
+ wire reference_equal,current_equal;
  integer checks=0;
- for(genvar mode=0;mode<2;mode++)begin:g_mode
-  reference_equal #(.p_width({width}),.p_use_lut(mode!=0)) r(a,b,reference_equal[mode]);
-  current_equal #(.p_width({width}),.p_use_lut(mode!=0)) c(a,b,current_equal[mode]);
- end
+ reference_equal #(.p_width({width})) r(a,b,reference_equal);
+ current_equal #(.p_width({width})) c(a,b,current_equal);
  task compare;
   #1;if(reference_equal!==current_equal)$fatal(1,"描述符比较不同 width={width} a=%h b=%h",a,b);
-  checks+=2;
+  checks++;
  endtask
  initial begin
   a='0;b='0;compare();a='1;b='1;compare();a='x;b='x;compare();a='z;b='z;compare();
@@ -50,7 +52,7 @@ endmodule
 '''
   source=folder/'tb.sv';source.write_text(models+'\n'+bench);binary=folder/'sim.vvp'
   with (folder/'compile.log').open('w')as f:subprocess.run(['iverilog','-g2012','-s','tb','-o',str(binary),str(source)],stdout=f,stderr=subprocess.STDOUT,check=True)
-  result=subprocess.run(['vvp',str(binary)],text=True,capture_output=True,check=True);log=folder/'run.log';log.write_text(result.stdout+result.stderr);row=json.loads(next(line for line in result.stdout.splitlines()if line.startswith('{')));row.update(width=width,modes=[False,True],log_sha256=digest(log));rows.append(row);print(json.dumps(row),flush=True)
+  result=subprocess.run(['vvp',str(binary)],text=True,capture_output=True,check=True);log=folder/'run.log';log.write_text(result.stdout+result.stderr);row=json.loads(next(line for line in result.stdout.splitlines()if line.startswith('{')));row.update(width=width,log_sha256=digest(log));rows.append(row);print(json.dumps(row),flush=True)
  if any(digest(Path(f))!=h for f,h in hashes.items()):raise RuntimeError('验证期间源码发生变化')
  (out/'summary.json').write_text(json.dumps(dict(passed=True,source_sha256=hashes,profiles=rows,checks=sum(r['checks']for r in rows)),indent=2)+'\n')
 if __name__=='__main__':main()

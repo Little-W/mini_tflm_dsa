@@ -9,13 +9,16 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source, read_current_source as read_rtl_text
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/writeback/vec_s8_to_fifo.sv")
 PARAMETERS = """parameter int VLEN=16, BUS_WIDTH=64,
+    parameter bit p_use_cyclic_storage=0,
     localparam int BYTE_PER_BEAT=BUS_WIDTH/8,
     localparam int BYTE_SHIFT=$clog2(BYTE_PER_BEAT),
+    localparam int ROW_BANKS=BYTE_PER_BEAT,
+    localparam int p_mem_data_width=p_use_cyclic_storage ? ((VLEN+BYTE_PER_BEAT-1)/BYTE_PER_BEAT)*8 : VLEN*8,
     localparam int PTR_WIDTH=(VLEN<=1)?1:$clog2(VLEN),
     localparam int COUNT_WIDTH=$clog2(VLEN+1),
     localparam int ROW_BEATS=(VLEN+BYTE_PER_BEAT-1)/BYTE_PER_BEAT,
@@ -44,12 +47,12 @@ def selector(source, name):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=ROOT / "build/fifo_selection_formal")
-    parser.add_argument("--reference", default="aa2ef9a3")
+    parser.add_argument("--reference", default="ef0dc75342997721bdc4110b2841445df962018e")
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     original = read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT, text=True)
-    current = (ROOT / SOURCE).read_text()
+    current = read_rtl_text(ROOT / SOURCE)
     source_hash = hashlib.sha256(current.encode()).hexdigest()
     generated = out / "selection.sv"
     body = selector(original, "selection_reference") + selector(current, "selection_current")
@@ -57,21 +60,24 @@ def main():
     body += "logic [BUS_WIDTH-1:0] reference_data, current_data;\n"
     body += "logic [BYTE_PER_BEAT-1:0] reference_mask, current_mask;\n"
     for name in ("reference", "current"):
-        body += f"selection_{name} #(.VLEN(VLEN), .BUS_WIDTH(BUS_WIDTH)) u_{name} (\n"
+        body += f"selection_{name} #(.VLEN(VLEN), .BUS_WIDTH(BUS_WIDTH), .p_use_cyclic_storage(p_use_cyclic_storage)) u_{name} (\n"
         body += ",\n".join(f".{port}({port})" for port in PORT_NAMES)
         body += f",\n.output_data({name}_data), .output_mask({name}_mask));\n"
     body += "assign equivalent = (reference_data === current_data) && (reference_mask === current_mask);\nendmodule\n"
     generated.write_text(body)
     profiles = []
-    for size, bus in ((4, 32), (8, 32), (8, 64), (16, 32), (16, 64), (16, 128), (32, 64), (32, 256)):
-        script = out / f"n{size}_b{bus}.ys"
-        script.write_text(f"read_slang --top fifo_output_selection_formal -GVLEN={size} -GBUS_WIDTH={bus} " +
+    parameter_sets = ((4, 32), (8, 32), (8, 64), (16, 32),
+                      (16, 64), (16, 128), (32, 64), (32, 256))
+    for size, bus, cyclic in ((size, bus, cyclic)
+                              for size, bus in parameter_sets for cyclic in (0, 1)):
+        script = out / f"n{size}_b{bus}_c{cyclic}.ys"
+        script.write_text(f"read_slang --top fifo_output_selection_formal -GVLEN={size} -GBUS_WIDTH={bus} -Gp_use_cyclic_storage={cyclic} " +
             shlex.quote(str(generated)) + "\nprep -top fifo_output_selection_formal -flatten\n" +
             "sat -verify -enable_undef -set-def-inputs -prove equivalent 1 -show-inputs\n")
         with script.with_suffix(".log").open("w") as log:
             subprocess.run([sys.executable, str(ROOT / "scripts/fpga/open_fpga_synth.py"),
                             "--worker", str(script)], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, check=True)
-        profiles.append(dict(vlen=size, bus_width=bus, passed=True))
+        profiles.append(dict(vlen=size, bus_width=bus, cyclic_storage=cyclic, passed=True))
         print(json.dumps(profiles[-1]), flush=True)
     if source_hash != hashlib.sha256((ROOT / SOURCE).read_bytes()).hexdigest():
         raise RuntimeError("Source changed during verification")

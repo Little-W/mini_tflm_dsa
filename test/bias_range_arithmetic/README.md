@@ -1,5 +1,7 @@
 # 偏置驻留范围的完整算术
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 `bias_loader_buffer` 为每个请求计算扩展一位的末端位置，再与两个银行各自保存的末端位置并行相减。差值最高位直接表示无符号借位，因此范围判定保留起点、请求长度和银行末端的全部有效位。起点范围检查、银行加载状态、活动银行选择和 WS 缓存资格共同确定偏置数据是否可用。
 
 加法与减法使用普通 RTL 运算和 `use_dsp` 综合属性。寄存器、存储端口和接口周期保持不变。事件仿真采用完整的进位表达式，保留原有四态结果。
@@ -31,6 +33,6 @@ python test/bias_loader_reuse/run.py --fpga --jobs 1 \
 python test/bias_range_arithmetic/prepare_measurement.py --out build/bias_range_inputs
 python scripts/fpga/open_fpga_synth.py \
   --case-config build/bias_range_inputs/cases.json --cases reference current \
-  --out build/bias_range_synthesis --rtl-dsp-attributes --wide-alu-dsp-budget 740 \
+  --out build/bias_range_synthesis \
   --max-register-path-cells 10 --require-register-path-limit
 ```

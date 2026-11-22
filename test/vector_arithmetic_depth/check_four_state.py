@@ -19,7 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source-root', type=Path, default=ROOT)
     parser.add_argument('--reference-root', type=Path)
-    parser.add_argument('--reference-ref', default='aa0a169c')
+    parser.add_argument('--reference-ref', default='ef0dc75')
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
     out = args.out.resolve()

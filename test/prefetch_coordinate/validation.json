@@ -1,0 +1,372 @@
+{
+  "schema_version": 1,
+  "rtl_sha256": "56c074a1ca260ad32beeceda769e44cd90c8c643e1aba38ddff482aa97b90d08",
+  "functional_verification_passed": true,
+  "verification_entrypoints_sha256": {
+    "test/prefetch_coordinate/run.py": "ade2e3e7fb63338d3e4c5f55c4f148713cc1c2b1dcda9b12c2eff4cc6c035b87",
+    "test/prefetch_coordinate/measure.py": "f752e362c5f2faa19b3cb8c18ec41a6f090dab869eefb2a064a50e8f0808da02",
+    "test/prefetch_coordinate/prefetch_coordinate_reference.sv": "b6ccd3a8aa21c6af985f89d08f92314c1b07875fa1309cf09624ba71e4d17769"
+  },
+  "formal_and_four_state": {
+    "passed": true,
+    "source_sha256": {
+      "rtl/npu/conv/conv_im2col_prefetch.sv": "56c074a1ca260ad32beeceda769e44cd90c8c643e1aba38ddff482aa97b90d08",
+      "test/prefetch_coordinate/prefetch_coordinate_reference.sv": "b6ccd3a8aa21c6af985f89d08f92314c1b07875fa1309cf09624ba71e4d17769",
+      "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+      "rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758",
+      "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+      "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac"
+    },
+    "formal": [
+      {
+        "name": "identity8",
+        "passed": true,
+        "log_sha256": "c040c88e2bec9a7fe7956ae1150cf1ab17029fcc8e5f295f7a5d3e61d2cbbb59"
+      },
+      {
+        "name": "identity32",
+        "passed": true,
+        "log_sha256": "b09caa6f18f368cb0c8326d3e07696823c093eaa4367b98db57be04d50944ff0"
+      },
+      {
+        "name": "sign35",
+        "passed": true,
+        "log_sha256": "b981b54db60abfc1ec4cca2b880a504b5086ab98f96430ada2f6431bfa464db8"
+      },
+      {
+        "name": "selection",
+        "passed": true,
+        "log_sha256": "11fc68002821f9afbfcac4b6c510728894a3aac525fb01699ec6948a7c243c48"
+      },
+      {
+        "name": "phase",
+        "passed": true,
+        "log_sha256": "ee56ec7f4270cc16de77c23d715034cb36315a2b2f55c51ff4d57c253f9872b6"
+      }
+    ],
+    "four_state": {
+      "passed": true,
+      "vectors": 40000,
+      "unknown_vectors": 20000,
+      "comparisons": 160000,
+      "log_sha256": "3ba87614d2db10853de6989d2f292a603b1fb71ec3d18e599ea2be9eb7ebff1b"
+    },
+    "scope": "任意 32 位模加法关系、完整 35 位分段求和、实际坐标选择表达式，以及配置取消与复位的阶段保持关系",
+    "result_directory": "/workspace/scratch/e1a5fa683a84/conv_prefetch_carry/proof_adopted"
+  },
+  "numerical_profiles": [
+    {
+      "name": "numeric8",
+      "passed": true,
+      "parameters": {
+        "target": "asic",
+        "register_descriptor": 1,
+        "size": 16,
+        "lanes": 8,
+        "bus_width": 64,
+        "cache_sets": 16,
+        "cache_ways": 2,
+        "line_bytes": 128,
+        "narrow_mode": 2,
+        "windowed": true,
+        "prefetch": true
+      },
+      "tasks": 42,
+      "cycles": 176795,
+      "configuration_checks": 1024,
+      "configuration_cycles": 7100,
+      "minimum_accept_gap_cycles": 1,
+      "accepted": 2160,
+      "completed": 2159,
+      "overlap": 2118,
+      "output_beats": 26728,
+      "consecutive_beats": 6268,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend_pkg.sv": "0734e80146bd85e376ddf8c3dd306e668ceb7920321099d23da5c74be5cc9053",
+        "rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "e433deb2121741c26cca45d13b8bd34d772f6883a6e57042236ea061dfb01903",
+        "rtl/npu/conv/conv_axi_span_reader.sv": "c4da511ad0622b432de89bc214d25c7e51d438ccf480e915980530ef474f4bc1",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "7245549f9b7babddb589bb649c048dfd5216b3c82748ead8ae0020259c024a7a",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "7fca294a30d6f57214d8476575f36ff539729010b2b8c458cdc4e51b849ee4bf",
+        "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+        "rtl/npu/conv/conv_ia_tile_path.sv": "f41af594a0daa40d42681d7878a1266dfcc3d07a9c6271e482d1e9e689d0bab3",
+        "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+        "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+        "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+        "rtl/npu/dma/cache/conv_read_cache_reference.sv": "d07f8634bf7e850b5a93cf129b9b5c01a1d396610b0e7350e020adb8aa9b567a",
+        "rtl/npu/dma/cache/conv_windowed_cache.sv": "97a4611f10526d244bda6b8a54748501d65291eeef2f38b9650d0084c3765337",
+        "rtl/npu/conv/conv_im2col_descriptor.sv": "fba7def2294ce86fc0ca3cd943496318341f8bcf8675bbf2b49c747dddcb8a3b",
+        "rtl/npu/conv/conv_im2col_geometry.sv": "36311e914a5fd8e1edb8ed3d23e3261906fb32b445cca891a19a2280d7cccd17",
+        "rtl/npu/conv/conv_im2col_prefetch.sv": "56c074a1ca260ad32beeceda769e44cd90c8c643e1aba38ddff482aa97b90d08",
+        "rtl/npu/conv/conv_im2col_stream.sv": "84087dd0616b518f39070a9c8994e747597f9c92f3e723af704f1f706970120a",
+        "rtl/npu/dma/cache/conv_cache_metadata_way.sv": "37b47f7fc390314f3c41380929ca441ea5a5a6192722629e3d2f9e9fceb4af34",
+        "rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758",
+        "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+        "rtl/npu/conv/conv_coordinate_step.sv": "3ea31b8f9df59d2fd062efd40adfea351c6dbbefc7849e59a2644d41fae538f1",
+        "rtl/npu/dma/cache/conv_cache_rank_table.sv": "532af7e2a7c76f5e1cee9715e04611244a4f55d487462c932c14d10980f50d5b"
+      },
+      "status_report": "/workspace/scratch/e1a5fa683a84/conv_prefetch_carry/numeric_halfword_range/numeric8/rtl_status.json",
+      "status_sha256": "6a5693ef7723423ce503bac9d3ba20dcf38607c250eb753646b7911cadb6ea6b",
+      "log": "/workspace/scratch/e1a5fa683a84/conv_prefetch_carry/numeric_halfword_range/numeric8/rtl_s16_sets16_ways2_line128_bus64_lanes8_policy3_pf1_win1_narrow2.log",
+      "log_sha256": "bf10ae4f659bccc4125b1ac507c3fb79ce7323c32a0e9933a730855b388f42a9"
+    },
+    {
+      "name": "numeric16",
+      "passed": true,
+      "parameters": {
+        "target": "asic",
+        "register_descriptor": 1,
+        "size": 16,
+        "lanes": 16,
+        "bus_width": 64,
+        "cache_sets": 16,
+        "cache_ways": 2,
+        "line_bytes": 128,
+        "narrow_mode": 2,
+        "windowed": true,
+        "prefetch": true
+      },
+      "tasks": 42,
+      "cycles": 153734,
+      "configuration_checks": 1024,
+      "configuration_cycles": 7100,
+      "minimum_accept_gap_cycles": 1,
+      "accepted": 2160,
+      "completed": 2159,
+      "overlap": 2118,
+      "output_beats": 21838,
+      "consecutive_beats": 7502,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend_pkg.sv": "0734e80146bd85e376ddf8c3dd306e668ceb7920321099d23da5c74be5cc9053",
+        "rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "e433deb2121741c26cca45d13b8bd34d772f6883a6e57042236ea061dfb01903",
+        "rtl/npu/conv/conv_axi_span_reader.sv": "c4da511ad0622b432de89bc214d25c7e51d438ccf480e915980530ef474f4bc1",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "7245549f9b7babddb589bb649c048dfd5216b3c82748ead8ae0020259c024a7a",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "7fca294a30d6f57214d8476575f36ff539729010b2b8c458cdc4e51b849ee4bf",
+        "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+        "rtl/npu/conv/conv_ia_tile_path.sv": "f41af594a0daa40d42681d7878a1266dfcc3d07a9c6271e482d1e9e689d0bab3",
+        "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+        "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+        "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+        "rtl/npu/dma/cache/conv_read_cache_reference.sv": "d07f8634bf7e850b5a93cf129b9b5c01a1d396610b0e7350e020adb8aa9b567a",
+        "rtl/npu/dma/cache/conv_windowed_cache.sv": "97a4611f10526d244bda6b8a54748501d65291eeef2f38b9650d0084c3765337",
+        "rtl/npu/conv/conv_im2col_descriptor.sv": "fba7def2294ce86fc0ca3cd943496318341f8bcf8675bbf2b49c747dddcb8a3b",
+        "rtl/npu/conv/conv_im2col_geometry.sv": "36311e914a5fd8e1edb8ed3d23e3261906fb32b445cca891a19a2280d7cccd17",
+        "rtl/npu/conv/conv_im2col_prefetch.sv": "56c074a1ca260ad32beeceda769e44cd90c8c643e1aba38ddff482aa97b90d08",
+        "rtl/npu/conv/conv_im2col_stream.sv": "84087dd0616b518f39070a9c8994e747597f9c92f3e723af704f1f706970120a",
+        "rtl/npu/dma/cache/conv_cache_metadata_way.sv": "37b47f7fc390314f3c41380929ca441ea5a5a6192722629e3d2f9e9fceb4af34",
+        "rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758",
+        "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+        "rtl/npu/conv/conv_coordinate_step.sv": "3ea31b8f9df59d2fd062efd40adfea351c6dbbefc7849e59a2644d41fae538f1",
+        "rtl/npu/dma/cache/conv_cache_rank_table.sv": "532af7e2a7c76f5e1cee9715e04611244a4f55d487462c932c14d10980f50d5b"
+      },
+      "status_report": "/workspace/scratch/e1a5fa683a84/conv_prefetch_carry/numeric_halfword_range/numeric16/rtl_status.json",
+      "status_sha256": "36b477bb3a0c6c0269fb9d66d0a03fa31631972201999d2a5c6291216cba3614",
+      "log": "/workspace/scratch/e1a5fa683a84/conv_prefetch_carry/numeric_halfword_range/numeric16/rtl_s16_sets16_ways2_line128_bus64_lanes16_policy3_pf1_win1_narrow2.log",
+      "log_sha256": "2915a00d7e18f5c6c838cbe3ae0b55b8cd2e481691f3011c6cea7777e769ddf0"
+    },
+    {
+      "name": "numeric_direct4",
+      "passed": true,
+      "parameters": {
+        "target": "fpga",
+        "register_descriptor": 0,
+        "size": 4,
+        "lanes": 2,
+        "bus_width": 32,
+        "cache_sets": 4,
+        "cache_ways": 2,
+        "line_bytes": 16,
+        "narrow_mode": 2,
+        "windowed": false,
+        "prefetch": true
+      },
+      "tasks": 42,
+      "cycles": 1215387,
+      "configuration_checks": 1024,
+      "configuration_cycles": 5516,
+      "minimum_accept_gap_cycles": 9,
+      "accepted": 11573,
+      "completed": 11572,
+      "overlap": 11573,
+      "output_beats": 59128,
+      "consecutive_beats": 15117,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend_pkg.sv": "0734e80146bd85e376ddf8c3dd306e668ceb7920321099d23da5c74be5cc9053",
+        "rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "e433deb2121741c26cca45d13b8bd34d772f6883a6e57042236ea061dfb01903",
+        "rtl/npu/conv/conv_axi_span_reader.sv": "c4da511ad0622b432de89bc214d25c7e51d438ccf480e915980530ef474f4bc1",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "7245549f9b7babddb589bb649c048dfd5216b3c82748ead8ae0020259c024a7a",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "7fca294a30d6f57214d8476575f36ff539729010b2b8c458cdc4e51b849ee4bf",
+        "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+        "rtl/npu/conv/conv_ia_tile_path.sv": "f41af594a0daa40d42681d7878a1266dfcc3d07a9c6271e482d1e9e689d0bab3",
+        "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+        "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+        "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+        "rtl/npu/dma/cache/conv_read_cache_reference.sv": "d07f8634bf7e850b5a93cf129b9b5c01a1d396610b0e7350e020adb8aa9b567a",
+        "rtl/npu/dma/cache/conv_windowed_cache.sv": "97a4611f10526d244bda6b8a54748501d65291eeef2f38b9650d0084c3765337",
+        "rtl/npu/conv/conv_im2col_descriptor.sv": "fba7def2294ce86fc0ca3cd943496318341f8bcf8675bbf2b49c747dddcb8a3b",
+        "rtl/npu/conv/conv_im2col_geometry.sv": "36311e914a5fd8e1edb8ed3d23e3261906fb32b445cca891a19a2280d7cccd17",
+        "rtl/npu/conv/conv_im2col_prefetch.sv": "56c074a1ca260ad32beeceda769e44cd90c8c643e1aba38ddff482aa97b90d08",
+        "rtl/npu/conv/conv_im2col_stream.sv": "84087dd0616b518f39070a9c8994e747597f9c92f3e723af704f1f706970120a",
+        "rtl/npu/dma/cache/conv_cache_metadata_way.sv": "37b47f7fc390314f3c41380929ca441ea5a5a6192722629e3d2f9e9fceb4af34",
+        "rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758",
+        "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+        "rtl/npu/conv/conv_coordinate_step.sv": "3ea31b8f9df59d2fd062efd40adfea351c6dbbefc7849e59a2644d41fae538f1",
+        "rtl/npu/dma/cache/conv_cache_rank_table.sv": "532af7e2a7c76f5e1cee9715e04611244a4f55d487462c932c14d10980f50d5b"
+      },
+      "status_report": "/workspace/scratch/e1a5fa683a84/conv_prefetch_carry/numeric_halfword_range/numeric_direct4/rtl_status.json",
+      "status_sha256": "8a025545ba0a269bc71f40baee364d532958280b7e73850149ac7c25ed0a143f",
+      "log": "/workspace/scratch/e1a5fa683a84/conv_prefetch_carry/numeric_halfword_range/numeric_direct4/rtl_s4_sets4_ways2_line16_bus32_lanes2_policy3_pf1_win0_narrow2.log",
+      "log_sha256": "3f7be701d893e77a5e5b01573b7a41994c2a8c9940cc5061c9a2e9a0ef951abe"
+    }
+  ],
+  "numerical_totals": {
+    "tasks": 126,
+    "cycles": 1545916,
+    "configuration_checks": 3072,
+    "accepted": 15893,
+    "completed": 15890,
+    "overlap": 15809,
+    "output_beats": 107694,
+    "consecutive_beats": 28887
+  },
+  "module_mapping": {
+    "source_sha256": {
+      "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+      "rtl/npu/conv/conv_im2col_frontend_pkg.sv": "0734e80146bd85e376ddf8c3dd306e668ceb7920321099d23da5c74be5cc9053",
+      "rtl/npu/conv/conv_im2col_prefetch.sv": "56c074a1ca260ad32beeceda769e44cd90c8c643e1aba38ddff482aa97b90d08",
+      "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+      "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+      "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+      "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+      "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+      "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+      "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+      "rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758"
+    },
+    "parameters": {
+      "p_size": 16,
+      "p_line_bytes": 128,
+      "p_register_cache_request": 1
+    },
+    "resources": {
+      "logic_lut_cells": 1238,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 1238,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 1187,
+      "dsp48e1": 3,
+      "ramb36e1": 0,
+      "ramb18e1": 0,
+      "carry4": 131,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 131,
+        "DSP48E1": 3,
+        "FDCE": 5,
+        "FDRE": 1181,
+        "FDSE": 1,
+        "INV": 36,
+        "LUT2": 357,
+        "LUT3": 216,
+        "LUT4": 163,
+        "LUT5": 274,
+        "LUT6": 228
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "whole_module_longest_cells": 12,
+    "whole_module_report": "/workspace/scratch/e1a5fa683a84/conv_prefetch_carry/measurement/prefetch_halfword_range/metrics.json",
+    "paths": {
+      "accepted_to_projected": {
+        "maximum_cells": 10,
+        "ports": {
+          "D": 10
+        },
+        "report": "/workspace/scratch/e1a5fa683a84/conv_prefetch_carry/adopted_measurement/accepted_to_projected.json",
+        "report_sha256": "c7e8be74a4740f1921dfbde4bfbed316444e0461d002fca2686f89c0f8b29112",
+        "endpoint_histogram": {
+          "9": 44,
+          "10": 20
+        }
+      },
+      "all_to_projected": {
+        "maximum_cells": 11,
+        "ports": {
+          "D": 11,
+          "CE": 4
+        },
+        "report": "/workspace/scratch/e1a5fa683a84/conv_prefetch_carry/adopted_measurement/all_to_projected.json",
+        "report_sha256": "ab0acb6c4640f316230ad3933bb890ef3ef1ed400acfe04bd30e709bd7c33fc2",
+        "endpoint_histogram": {
+          "4": 64,
+          "9": 28,
+          "10": 32,
+          "11": 4
+        }
+      },
+      "step_to_projected": {
+        "maximum_cells": 11,
+        "ports": {
+          "D": 11
+        },
+        "report": "/workspace/scratch/e1a5fa683a84/conv_prefetch_carry/adopted_measurement/step_to_projected.json",
+        "report_sha256": "71c52ec142648d68e038d7d025dae41a1cc49aff5b1eab065bb0496f5033bce4",
+        "endpoint_histogram": {
+          "9": 40,
+          "10": 20,
+          "11": 4
+        }
+      },
+      "base_to_projected": {
+        "maximum_cells": 11,
+        "ports": {
+          "D": 11
+        },
+        "report": "/workspace/scratch/e1a5fa683a84/conv_prefetch_carry/adopted_measurement/base_to_projected.json",
+        "report_sha256": "a39e59acb2efc5fa579dd1a3508ca98f4d014b88b74e22465bc5eb5cd6981bfb",
+        "endpoint_histogram": {
+          "9": 40,
+          "10": 20,
+          "11": 4
+        }
+      },
+      "horizontal_carry_input": {
+        "maximum_cells": 12,
+        "ports": {
+          "D": 12,
+          "CE": 4
+        },
+        "report": "/workspace/scratch/e1a5fa683a84/conv_prefetch_carry/adopted_measurement/horizontal_carry_input.json",
+        "report_sha256": "8e9dcdd365e2838afa1927731ac3de8d03110d38b03fd2cde1f03a8401d35af8",
+        "endpoint_histogram": {
+          "4": 1,
+          "12": 1
+        }
+      },
+      "no_borrow_input": {
+        "maximum_cells": 7,
+        "ports": {
+          "D": 7,
+          "CE": 4
+        },
+        "report": "/workspace/scratch/e1a5fa683a84/conv_prefetch_carry/adopted_measurement/no_borrow_input.json",
+        "report_sha256": "8de2daf6816c3a142a98d7bf8391cc85bed9ac8af25f614418e40cd68f2cbd93",
+        "endpoint_histogram": {
+          "4": 1,
+          "7": 1
+        }
+      }
+    },
+    "scope": "完整 conv_im2col_prefetch 模块的独立普通 RTL 映射；包含实际寄存边界、选择器、D 端和 CE 端。"
+  },
+  "whole_soc_mapping": {
+    "reported_by": "完整 SoC 综合流程",
+    "included_in_this_module_report": false
+  }
+}

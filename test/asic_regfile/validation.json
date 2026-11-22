@@ -2,13 +2,16 @@
   "passed": true,
   "source_sha256": {
     "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
-    "rtl/npu/writeback/vec_requant.sv": "682709b3df7f7c0df3ae95d86f317b70fca8287a2c2a3125961031b661cdf3e4",
+    "rtl/npu/writeback/vec_requant.sv": "d71b24d1e4b57b6bf9ebbbb1811401c5019e50c497af117fd25945347a52f90c",
     "asic/rtl/smic40_sram_1r1w.sv": "841b5894b63e0a67eb8484034a1aed92ae9dfdc5f96095012900521440694b0b",
     "test/asic_regfile/sram_model.sv": "4fc274be34a817c4ffb5c660aa8cfc93fe9e474dd01a1b2af701cf293f50fd55",
     "test/asic_regfile/tb_regfile_asic.sv": "4de1cda7d388d1346ee9ed380b3ecc83bd11e7c1f4f6e8f86149a8ce93e84cb3",
     "test/asic_regfile/run.py": "e3558992826a911a1f1f239dfd489ae2d4fd442e0c28a0f9821ecd00ecbcc936",
     "test/asic_regfile/run_formal.py": "05a2954dca3a5e9d842b4ee15315229e561fe5cb8eb31a729cf38679dc6f2386",
-    "test/asic_regfile/run_parameter_outputs.py": "3399a38e0ba957faa19bb5f6eda66c02b59814deaee44600086c54638f28cb19"
+    "test/asic_regfile/run_parameter_outputs.py": "013233716e69cc2eb85104544035347cc5a8e06dc9119f8fcba6dd76ba93ecc7",
+    "rtl/npu/writeback/requant_pkg.sv": "869759e4bb58908d6996648f13160e0201e1463d609519fab004e24dc15bb59d",
+    "rtl/npu/writeback/requant_compute_lane.sv": "d5714793420dfcaf650151ef7cd2f123e044f0f20ef366698721d2ce1219e9c3",
+    "rtl/npu/writeback/requant_shift_pipeline.sv": "a0ee4970b137156b57ca770cb302aba0bf290a354ce42c48ab989cbc55be0df0"
   },
   "public_read_latency_cycles": 1,
   "read_during_write": "read_before_write",
@@ -360,67 +363,46 @@
   },
   "requant_interface_equivalence": {
     "passed": true,
-    "profile_count": 8,
-    "equivalent_bits": 97938,
+    "profile_count": 4,
+    "equivalent_bits": 41896,
     "profiles": [
       {
         "vlen": 16,
         "bus_width": 64,
         "compute_lanes": 2,
         "reuse": 32,
-        "parameter_output": false,
+        "compared_parameter_output": [
+          true,
+          false
+        ],
         "passed": true,
-        "equivalent_bits": 8571,
+        "equivalent_bits": 8264,
         "memories": 5
-      },
-      {
-        "vlen": 16,
-        "bus_width": 64,
-        "compute_lanes": 2,
-        "reuse": 32,
-        "parameter_output": true,
-        "passed": true,
-        "equivalent_bits": 11083,
-        "memories": 9
       },
       {
         "vlen": 16,
         "bus_width": 64,
         "compute_lanes": 16,
         "reuse": 32,
-        "parameter_output": false,
+        "compared_parameter_output": [
+          true,
+          false
+        ],
         "passed": true,
-        "equivalent_bits": 23875,
+        "equivalent_bits": 21789,
         "memories": 4
       },
       {
-        "vlen": 16,
-        "bus_width": 64,
-        "compute_lanes": 16,
-        "reuse": 32,
-        "parameter_output": true,
-        "passed": true,
-        "equivalent_bits": 26387,
-        "memories": 8
-      },
-      {
         "vlen": 8,
         "bus_width": 32,
         "compute_lanes": 1,
         "reuse": 8,
-        "parameter_output": false,
+        "compared_parameter_output": [
+          true,
+          false
+        ],
         "passed": true,
-        "equivalent_bits": 4365,
-        "memories": 5
-      },
-      {
-        "vlen": 8,
-        "bus_width": 32,
-        "compute_lanes": 1,
-        "reuse": 8,
-        "parameter_output": true,
-        "passed": true,
-        "equivalent_bits": 6389,
+        "equivalent_bits": 4199,
         "memories": 5
       },
       {
@@ -428,29 +410,16 @@
         "bus_width": 128,
         "compute_lanes": 4,
         "reuse": 2,
-        "parameter_output": false,
+        "compared_parameter_output": [
+          true,
+          false
+        ],
         "passed": true,
-        "equivalent_bits": 8162,
+        "equivalent_bits": 7644,
         "memories": 16
-      },
-      {
-        "vlen": 4,
-        "bus_width": 128,
-        "compute_lanes": 4,
-        "reuse": 2,
-        "parameter_output": true,
-        "passed": true,
-        "equivalent_bits": 9106,
-        "memories": 24
       }
     ],
-    "reference_commit": "ef0dc75342997721bdc4110b2841445df962018e",
-    "reference_file": "rtl/npu/writeback/vec_requant.sv",
-    "reference_sha256": "47ea9af7976df50795560364e516baafcd80a21465fc954e38a41315b9e03013",
-    "comparison": "全部运算输出、控制状态及存储器读写端口",
-    "inputs_constrained": false,
-    "memory_read_data_constrained": false,
-    "summary_sha256": "f1c569d8ab28fb504c3da37793dfb5e54712e1e383729765ecee7b640a33a8ea"
+    "observation_values_check": "test/requant_parameter_read/run_formal.py"
   },
   "fpga_regfile_preprocessing": {
     "same_normalized_text": true,

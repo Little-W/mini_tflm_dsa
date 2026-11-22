@@ -1,5 +1,7 @@
 # 部分和帧容量计算
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 `ps_frame_store_capacity` 分别检查实际行数和预留行数。起始行、请求行数和容量补码先生成并行和值及进位，FPGA 综合分支使用完整加法的最高进位判断范围。该加法通过 `use_dsp` 属性推断算术资源，保持当前周期完成容量检查。
 
 高于物理容量宽度的请求位继续独立检查。大于等于 32 位的容量参数使用完整 64 位表达式，较小参数和事件仿真保留分组进位表达式。配置编码、空请求、定宽运算和未初始化输入的事件语义保持。
@@ -14,7 +16,6 @@
 python test/ps_capacity_arithmetic/run.py --out build/ps_capacity_arithmetic
 python scripts/fpga/open_fpga_synth.py \
   --case-config test/ps_capacity_arithmetic/cases.json --cases capacity \
-  --rtl-dsp-attributes --wide-alu-dsp-budget 740 \
   --out build/ps_capacity_arithmetic/measure
 ```
 

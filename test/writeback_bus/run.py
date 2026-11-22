@@ -33,6 +33,10 @@ def main() -> None:
                      'rtl/common/parallel_prefix_add.sv', 'rtl/npu/writeback/vec_s16_to_fifo.sv')}
     source_paths['test/writeback_bus/tb_writeback_bus.sv'] = Path(__file__).with_name('tb_writeback_bus.sv')
     sources = list(source_paths.values())
+    import runpy
+    dependency_reader = runpy.run_path(str(ROOT / "scripts/rtl/source_files.py"))
+    sources = dependency_reader["with_dependencies"](sources, source_root)
+    source_paths = {str(path.relative_to(source_root)) if path.is_relative_to(source_root) else str(path): path for path in sources}
     hashes = {name: hashlib.sha256(path.read_bytes()).hexdigest()
               for name, path in source_paths.items()}
     reference_hashes = {}

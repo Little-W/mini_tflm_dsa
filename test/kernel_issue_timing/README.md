@@ -1,5 +1,7 @@
 # 权重请求与调度器算术
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 ## 设计
 
 `kernel_loader.sv` 在请求接收前并行准备缓存命中、普通加载和预取加载的资格，并保存组合选择边界。`init_cfg`、`cache_flush` 与 DMA 授予信号参与最终接收条件。预取和普通加载使用同一传输类型选择结果，保持请求顺序、缓存命中、清除排空及所有公开输出的逐周期行为。
@@ -85,5 +87,5 @@ python3 scripts/fpga/open_fpga_synth.py --source-root . \
   --case-config build/kernel_issue_scheduler_measure/cases.json \
   --cases scheduler_reference scheduler_current \
   --out build/kernel_issue_scheduler_measure/synthesis \
-  --wide-alu-dsp-budget 740 --rtl-dsp-attributes --max-register-path-cells 10
+    --max-register-path-cells 10
 ```

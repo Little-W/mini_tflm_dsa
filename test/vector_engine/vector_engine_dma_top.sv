@@ -202,7 +202,7 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
   logic previous_quant_issue,previous_quant_more,write16;
   logic [31:0] previous_quant_index,write16_beats;
   assign mac_active=engine.depthwise && engine.tb_observer.is_EXECUTE;
-  assign quant_active=engine.depthwise && (SHARED_QUANT_ENABLE ? engine.dw_shared_inflight!=0 : engine.q_active) &&
+  assign quant_active=engine.depthwise && (SHARED_QUANT_ENABLE ? engine.dw_shared_inflight!=0 : engine.u_control.q_active) &&
     !engine.tb_observer.is_FAILED;
   assign quant_issue=(SHARED_QUANT_ENABLE ? engine.dw_shared_fire : engine.dw_quant_input_active) &&
     !engine.tb_observer.is_FAILED;

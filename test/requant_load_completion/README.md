@@ -1,37 +1,98 @@
-# 量化参数装载完成条件
+# 量化参数装载命令资格
 
-参数 DMA 的最后一拍根据装载后的偏移与总数决定是否继续读取。原始加法进位与三操作数压缩后的进位并行计算，乘数和移位参数两个阶段共用此条件。
+`vec_requant` 在现有 DMA 命令准备周期保存 `cmd_has_more_r`。该字段与命令地址、突发长度和参数字数同时生成，等待 DMA 许可及接收响应期间保持不变。最后一个响应字到达时，状态机直接使用该字段决定推进偏移、切换参数类型或结束装载。
 
-设总数、当前偏移和步长分别为 32 位无符号数 `N`、`O`、`B`。令 `C` 为 `O+B` 的第 32 位，`G` 为 `O+B+2^32-N` 的第 32 位，则继续读取的条件为 `C==G`，与 `((O+B) mod 2^32)<N` 完全一致。
+配置接收和复位清除命令资格。命令的发送周期、响应字计数、乘数与移位参数顺序、参数有效周期及量化输出周期保持一致。
 
-第二个表达式采用三操作数压缩：逐位异或给出 `compressed_sum`，多数函数给出 `compressed_carry`。低 32 位加法只需输出进位，`G` 等于该进位与 `compressed_carry[31]` 的异或。两个进位网络均按三位分组，并保留平衡归并层次。
+## 算式与位宽
 
-表达式保留 32 位加法回绕行为。其他 `REG_WIDTH` 配置使用相应宽度的偏移加法与总数比较。
+对于三十二位无符号总量 `need` 和偏移 `offset`，实际突发字数为：
 
-## 算术证明
-
-`run_formal.py` 编译实际完成判断，对总共 96 个输入位执行无约束 SAT 证明，检查完整输入范围下是否等于原始无符号比较。
-
-在具有相同输入、输出寄存器的生产宽度片段中，最长组合路径为 6 个单元，使用 179 个逻辑 LUT、70 个触发器和零个 CARRY4。整机结果另行统计。
-
-## 完整功能检查
-
-使用 64 位总线、16 个通道和 32 组 IA 复用，参考提交为 `dde5e7c9`。完整接口测试比较全部 22 个公开输出，覆盖有效周期和无效周期，共 256 个场景、528,662 个周期、209,001 组输出、958 条 DMA 命令和 6,496 个返回拍。
-
-生产分时配置 `p_compute_lanes=4` 另完成 44,689 个周期、18,011 组输出和 576,352 个元素检查，覆盖 186 个组、7 次清空、6 次复位及 13 个满容量组。测试启用缓冲区观察断言。
-
-上述检查使用 Yosys 提供的 Xilinx 七系列功能模型。实际 RTL 通过算术和存储描述进行资源推断。完整 SoC 的资源与路径结果由整机综合报告给出。
-
-## 复现
-
-```bash
-python3 test/requant_load_completion/run_formal.py --out /tmp/npu_requant_load_completion
-python3 test/requant_pipeline/run_interface.py \
-  --reference-rev dde5e7c9 --bus-width 64 --xilinx \
-  --verilator verilator --jobs 1 --out /tmp/npu_requant_interface
-python3 test/requant_time_share/run.py \
-  --xilinx --vlen 16 --lanes 4 --reuse 32 --bus 64 \
-  --verilator verilator --out /tmp/npu_requant_serial
+```text
+remaining = max(need - offset, 0)
+chunk = min(remaining, VLEN)
 ```
 
-`measurement.json` 保存实际源码 SHA-256、形式证明和功能检查摘要。
+当 `offset < need` 时，`offset + chunk <= need`，相加结果不会超出三十二位范围，因此 `(offset + chunk) < need` 与 `remaining > VLEN` 等价。当 `offset >= need` 时，`chunk` 为零，两个条件均为假。
+
+生产 RTL 的三十三位差值同时提供借位和剩余量。`REG_WIDTH == 32` 时，命令准备资格由以下表达式得到：
+
+```systemverilog
+!remaining_words[32] && remaining_words[31:0] > 32'(VLEN)
+```
+
+其他 `REG_WIDTH` 使用带有原始类型转换的完整比较，在准备周期保存结果。这样可以保留较窄寄存器参数对突发字数的截断规则。
+
+未知输入通过位级进位函数保持分组进位网络的四态传播结果。该选择使用普通 `case` 语义。确定输入覆盖 `0` 和 `1` 两个分支，综合后的组合输出连接与仅保留确定输入表达式的模型一致。
+
+## 运行方法
+
+所有命令从仓库根目录执行。算术、完整控制和四态测试默认使用本目录保存的参考控制器与参考加法器；其余依赖从当前源码读取。也可以用 `--reference-root` 指定完整参考源码目录，用 `--source-root` 指定待检查源码。
+
+```bash
+python3 test/requant_load_completion/run_formal.py \
+  --out build/requant_load_completion/formal
+
+python3 test/requant_load_completion/check_four_state.py \
+  --out build/requant_load_completion/four_state
+
+python3 test/requant_load_completion/run_control.py \
+  --out build/requant_load_completion/control
+
+python3 test/requant_load_completion/check_control_four_state.py \
+  --out build/requant_load_completion/control_four_state
+
+python3 test/requant_load_completion/check_function_elimination.py \
+  --out build/requant_load_completion/function_elimination
+
+python3 test/requant_time_share/run.py \
+  --out build/requant_load_completion/numeric_production \
+  --vlen 16 --lanes 2 --reuse 32 --bus 64 --xilinx
+
+python3 test/requant_load_completion/measure.py \
+  --out build/requant_load_completion/measurement
+```
+
+完整控制证明包含实际配置过程、DMA 状态机、WS 参数存储内容及 IS 存储的完整驱动端口。IS 存储使用相同的任意读值，两份模型的地址、写数据、使能和存储参数均参与比较。外部输入和存储读值均未施加范围约束。
+
+归纳证明同时检查命令有效与接收忙互斥、活动命令具有有效装载范围、忙期间接收字数与保存命令一致，以及保存资格与该命令完整末拍比较结果相等。
+
+## 当前结果
+
+当前 `vec_requant.sv` 的 SHA256 为
+`ee49ad76b8e4571d3a146cca4885a3ea191449ff584c499d7755dc93cdc19511`。
+
+| 检查 | 覆盖范围 | 结果 |
+|---|---|---|
+| 算术形式证明 | 12 组参数，64 位完整输入空间 | 通过 |
+| 算术四态比较 | 32,768 组输入，393,216 次比较 | 通过 |
+| 完整控制等价 | 4 组参数，16,572 位状态及输出 | 通过 |
+| 控制四态比较 | 16,384 周期，98,304 次向量比较 | 通过 |
+| 四态函数综合检查 | 输出连接图相同，函数对应单元数为零 | 通过 |
+| 生产参数数值测试 | 75,534 周期，542,528 个 INT8/INT16 数值，608 条 DMA 命令 | 通过 |
+
+数值测试使用 `VLEN=16`、`BUS_WIDTH=64`、`p_compute_lanes=2` 和
+`MAX_IA_REUSE=32`，覆盖等待、连续参数装载、7 次配置清除和 6 次复位。
+控制四态测试另外覆盖 37 次接收忙期间的复位、7 次接收忙期间的重新配置，
+以及 8,899 个含未知输入的周期。
+
+同一组依赖源码和综合选项下，完整量化模块的资源统计如下。LUT 数为布局前统计值。
+
+| 项目 | 参考控制器 | 保存命令资格的控制器 |
+|---|---:|---:|
+| 逻辑 LUT | 2,830 | 2,822 |
+| LUTRAM 占用 | 64 | 64 |
+| SRL 占用 | 14 | 14 |
+| 名义 LUT 总数 | 2,908 | 2,900 |
+| FF | 1,372 | 1,373 |
+| DSP | 8 | 8 |
+| RAMB18 | 19 | 19 |
+
+参考控制器的 `quant_need_load_r` 到 `state` 路径为 10 级。当前控制器在现有
+命令准备边沿保存资格，`quant_need_load_r` 到 `cmd_has_more_r` 为 10 级，
+`cmd_has_more_r` 到 `state` 为 3 级。完整模块的最长路径为 11 级，位于
+`registered_multiplier_s32` 内部乘积归约过程；逐单元连接保存在测量目录的
+`candidate/metrics.json`。
+
+源码摘要和验证数量记录在 `validation.json`，资源与路径统计记录在
+`measurement.json`。每个运行目录分别保存工具脚本、日志、输入摘要与结果摘要。

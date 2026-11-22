@@ -11,6 +11,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/writeback/vec_s16_to_fifo.sv")
 COMMON = Path("rtl/npu/writeback/vec_s8_to_fifo.sv")
@@ -159,10 +162,10 @@ def main():
     source_root = args.source_root.resolve()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    current = (source_root / SOURCE).read_text()
+    current = read_rtl_text(source_root / SOURCE)
     reference = subprocess.check_output(
         ["git", "show", f"{args.reference}:{SOURCE.as_posix()}"], cwd=ROOT, text=True)
-    helpers = (source_root / COMMON).read_text()
+    helpers = read_rtl_text(source_root / COMMON)
     watermark = re.search(r"module fifo_bank_watermark\b.*?endmodule", helpers, re.S)[0]
     common = out / "watermark.sv"
     common.write_text(watermark + "\n")
@@ -196,7 +199,7 @@ def main():
                                stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=60)
                 subprocess.run(["vvp", str(binary)], stdout=stream, stderr=subprocess.STDOUT,
                                check=True, timeout=120)
-            result = log.read_text()
+            result = read_rtl_text(log)
             if "PASS S16 four-state cycles=20000 checks=40001" not in result or re.search(r"ERROR:|FATAL:", result):
                 raise RuntimeError("四态接口检查未完成")
             row.update(cycles=20000, four_state_checks=40001)
@@ -223,7 +226,7 @@ def main():
                 subprocess.run([sys.executable, str(ROOT / "scripts/fpga/open_fpga_synth.py"),
                                 "--worker", str(script)], stdout=stream, stderr=subprocess.STDOUT,
                                cwd=ROOT, check=True, timeout=300)
-            result = log.read_text()
+            result = read_rtl_text(log)
             if ("SAT proof finished - no model found: SUCCESS!" not in result or
                     "Induction step proven: SUCCESS!" not in result):
                 raise RuntimeError("完整接口与状态证明未完成")

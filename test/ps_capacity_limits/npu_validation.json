@@ -1,0 +1,65 @@
+{
+  "passed": true,
+  "numeric": {
+    "cases": 21,
+    "completed_cases": 21,
+    "int32_checks": 173642,
+    "bus_width": 64,
+    "shared_bank_bytes": 8192,
+    "shared_bank_count": 7,
+    "force_raw": true,
+    "validation_scope": "capacity_rtl",
+    "embedded_capacity_assertions": false,
+    "source_sha256": {
+      "rtl/npu/top/npu_top.sv": "3858d86240eb699ce768fea492fa0692cf9190986f904c9b20f12fbcde5fec62",
+      "rtl/npu/top/npu_task_configuration.sv": "a5f0901a8c4709a1276554087a617c1f51a7821f45faf2ab9fca964535f91d85",
+      "rtl/npu/control/ps_capacity_limits.sv": "d12894a7a56d725dd4149646868ac5a8c8e52bd92c51b2cfa0946238979b2d98"
+    },
+    "simulator_manifest": "/workspace/scratch/e1a5fa683a84/validation_fpga_partitioned/npu/s16/build.json"
+  },
+  "observer_phase": {
+    "passed": true,
+    "cycles": 645,
+    "configurations": 64,
+    "reset_edges": 4,
+    "initial_unknown_checks": 1,
+    "consecutive_entries": 62,
+    "raw_checks": 432,
+    "long_checks": 432,
+    "admission_checks": 288,
+    "waits": 128,
+    "enabled_assertion_checks": [
+      "raw",
+      "long",
+      "admission"
+    ],
+    "first_valid_phase": {
+      "raw": 1,
+      "long": 1,
+      "admission": 4
+    },
+    "source_sha256": {
+      "rtl/npu/top/npu_task_configuration.sv": "a5f0901a8c4709a1276554087a617c1f51a7821f45faf2ab9fca964535f91d85",
+      "rtl/npu/control/ps_capacity_limits.sv": "d12894a7a56d725dd4149646868ac5a8c8e52bd92c51b2cfa0946238979b2d98",
+      "test/ps_capacity_limits/npu_capacity_observer.sv": "bf72e0f59a2145f5bb24ce911e169061404a76a0a8bbfafd0a3ee02c13ae6b84",
+      "test/ps_capacity_limits/check_observer_phase.py": "7e93e768045494e5a34352ba3822668d48fa33a27a9ad117c1be8e7b4a7de00b"
+    },
+    "generated_sha256": {
+      "observer_module.sv": "6f815f5f65dd8545dc90e6e1fece9cdefb406f33cb4289eb1b3878eaccd35e64",
+      "capacity_phase_tb.sv": "477544c0283fd9579ea8de2a8e4199c00aa2e5da76531bc905104378daa86b49"
+    }
+  },
+  "runner_unit_tests": {
+    "passed": true,
+    "cases": 6,
+    "log_sha256": "c1de396add63b60b7739446ae754c9af4d1c4c8af85083ffc8071726ef9e4e98"
+  },
+  "bind_elaboration": {
+    "passed": true,
+    "observer_sha256": "bf72e0f59a2145f5bb24ce911e169061404a76a0a8bbfafd0a3ee02c13ae6b84"
+  },
+  "scripts_sha256": {
+    "test/ps_capacity_limits/run_npu.py": "6aaffc9629b1f6841d57b0c7fd6700cc26679a26aec922b7b9645c6eabfc4cd4",
+    "test/ps_capacity_limits/test_runner.py": "7ebfe1a315ef253239b1d60a0e62f5e18dc126f6cb27e6d473ebaf03da7b64f5"
+  }
+}

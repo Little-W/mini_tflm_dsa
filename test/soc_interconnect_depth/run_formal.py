@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/soc/soc_axi_interconnect.sv')
 REFERENCE = '2297cb12deac56b476f9a2a656da4038a9d8a75c'
@@ -80,14 +83,14 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    current_source = (args.source_root / SOURCE).read_bytes()
+    current_source = read_rtl_text(args.source_root / SOURCE).encode()
     snapshots = {}
     for label in ('reference', 'current'):
         path = out / label / SOURCE.name
         path.parent.mkdir(exist_ok=True)
         content = (((args.reference_root / SOURCE).read_bytes() if args.reference_root else
                     subprocess.check_output(['git', 'show', f'{args.reference_ref}:{SOURCE}'], cwd=ROOT))
-                   if label == 'reference' else (args.source_root / SOURCE).read_bytes())
+                   if label == 'reference' else read_rtl_text(args.source_root / SOURCE).encode())
         path.write_bytes(content)
         snapshots[label] = path
     report = dict(reference_ref=str(args.reference_root.resolve()) if args.reference_root else args.reference_ref,
@@ -115,7 +118,7 @@ def main():
                 subprocess.run([sys.executable, str(ROOT / 'scripts/fpga/open_fpga_synth.py'),
                                 '--worker', str(invariant_script)], cwd=ROOT, stdout=stream,
                                stderr=subprocess.STDOUT, check=True, timeout=180)
-            if 'Induction step proven: SUCCESS!' not in invariant_log.read_text():
+            if 'Induction step proven: SUCCESS!' not in read_rtl_text(invariant_log):
                 raise RuntimeError('容量状态关系未完成归纳证明')
             report['invariant_runs'].append(dict(case=name, passed=True,
                 source_sha256=digest(invariant), log_sha256=digest(invariant_log)))
@@ -123,7 +126,7 @@ def main():
         for label, path in snapshots.items():
             observed = path
             if label == 'current' and has_flags:
-                text = path.read_text()
+                text = read_rtl_text(path)
                 pattern = r'    // 容量标志[^\n]*\n    always_ff.*?(?=    always_ff)'
                 replacement = """    assign cpu_arq_valid_q = cpu_arq_count_q != 2'd0;
     assign ram_read_full_q = ram_rd_outs_q == RD_OUTS_W'(RD_OUTS_DEPTH);
@@ -153,7 +156,7 @@ def main():
             subprocess.run([sys.executable, str(ROOT / 'scripts/fpga/open_fpga_synth.py'),
                             '--worker', str(script)], cwd=ROOT, stdout=stream,
                            stderr=subprocess.STDOUT, check=True, timeout=180)
-        text = log.read_text()
+        text = read_rtl_text(log)
         match = re.search(r'Of those cells (\d+) are proven and (\d+) are unproven', text)
         if not match or int(match[2]) or 'Equivalence successfully proven' not in text:
             raise RuntimeError('Complete interconnect equivalence not established')
@@ -161,7 +164,7 @@ def main():
                    equivalent_bits=int(match[1]), log_sha256=digest(log))
         report['runs'].append(row)
         print(json.dumps(row), flush=True)
-    if (args.source_root / SOURCE).read_bytes() != current_source:
+    if read_rtl_text(args.source_root / SOURCE).encode() != current_source:
         raise RuntimeError('Source changed during verification')
     report['passed'] = True
     report['equivalent_bits'] = sum(row['equivalent_bits'] for row in report['runs'])

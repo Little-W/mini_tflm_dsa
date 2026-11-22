@@ -24,7 +24,11 @@ def main():
     parser.add_argument("--source-root", type=Path, help="加载器与公共 RTL 所在的固定源码目录")
     parser.add_argument("--reuse-build", action="store_true")
     parser.add_argument("--fpga", action="store_true")
+    parser.add_argument("--asic", action="store_true")
+    parser.add_argument("--extra-source", type=Path, action="append", default=[])
     args = parser.parse_args()
+    if args.fpga and args.asic:
+        raise ValueError("单次验证需要选择一种实现模式")
     root = Path(__file__).resolve().parents[2]
     source_root = args.source_root.resolve() if args.source_root else root
     test = root / "test/kernel_prefetch"
@@ -41,6 +45,7 @@ def main():
         source_root / "rtl/common/add3_equal.sv",
         source_root / "rtl/common/parallel_prefix_add.sv",
         source_root / "rtl/common/unsigned_compare.sv",
+        *(path.resolve() for path in args.extra_source),
     ]
     def source_key(path):
         return str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
@@ -57,6 +62,8 @@ def main():
                          for name in ('LUT1', 'LUT6', 'LUT6_2', 'MUXF7', 'MUXF8', 'DSP48E1')) + '\n')
         primitive_sources = ['-DSYNTHESIS', '-DXILINX_FPGA', str(model)]
         primitive_library_sha256 = digest(library)
+    elif args.asic:
+        primitive_sources = ['-DSYNTHESIS', '-DASIC_SYNTHESIS', '-DASIC_SRAM']
     rules = out / "compile_rules.mk"
     rules.write_text("""%.o: %.cpp
 	$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_FAST) -c -o $@ $<
@@ -84,6 +91,7 @@ $(VK_GLOBAL_OBJS): %.o: %.cpp
                 previous["parameters"]["BUS_WIDTH"] != args.bus_width or
                 previous["parameters"].get("COUNT_WIDTH") != args.count_width or
                 previous.get('fpga', False) != args.fpga or
+                previous.get('asic', False) != args.asic or
                 previous.get('primitive_library_sha256') != primitive_library_sha256):
             raise RuntimeError("Stored build differs from the current sources")
         if digest(binary) != previous["binary_sha256"]:
@@ -110,7 +118,7 @@ $(VK_GLOBAL_OBJS): %.o: %.cpp
         source_sha256=before, binary_sha256=digest(binary), compile_command=command,
         run_command=[str(binary)], undefined_behavior_sanitizer=True,
         sanitized_translation_units=len(units),
-        fpga=args.fpga, primitive_library_sha256=primitive_library_sha256,
+        fpga=args.fpga, asic=args.asic, primitive_library_sha256=primitive_library_sha256,
         parameters=dict(SIZE=16, DATA_WIDTH=16, BUS_WIDTH=args.bus_width, COUNT_WIDTH=args.count_width),
         compiler_version=subprocess.check_output([args.compiler, "--version"], text=True).splitlines()[0],
         verilator_version=subprocess.check_output([args.verilator, "--version"], text=True).strip(),

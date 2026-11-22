@@ -1,0 +1,72 @@
+{
+  "passed": true,
+  "files": [
+    {
+      "source": "rtl/npu/top/npu_matrix_engine.sv",
+      "before_sha256": "0cbcee8865b08f330c5be64d5051b623b0eb767289c27a6c2456fb6555c65cb9",
+      "after_sha256": "5d387cf91611964cb919cf19f5d400eacf5565807d67d49b23b0bcdfd7d7d95a",
+      "identifiers": {
+        "offset_s0": "offset_q[0]",
+        "offset_s1": "offset_q[1]",
+        "base_s0": "base_q[0]",
+        "base_s1": "base_q[1]",
+        "base_s2": "base_q[2]",
+        "packed_s0": "packed_q[0]",
+        "packed_s1": "packed_q[1]",
+        "wide_s0": "wide_q[0]",
+        "wide_s1": "wide_q[1]"
+      },
+      "declarations": {
+        "before": [
+          "            logic [31:0] offset_s0, offset_s1, base_s0, base_s1, base_s2, relative_address;\n",
+          "            logic packed_s0, packed_s1, wide_s0, wide_s1;\n"
+        ],
+        "after": [
+          "            logic [31:0] relative_address;\n            // 同一字段按流水阶段保存，阶段使能控制各数组元素的更新。\n            logic [31:0] offset_q [2];\n            logic [31:0] base_q [3];\n",
+          "            logic packed_q [2];\n            logic wide_q [2];\n"
+        ]
+      },
+      "inverse_text_identical": true
+    },
+    {
+      "source": "rtl/npu/control/ps_window_scheduler.sv",
+      "before_sha256": "1c084490ac7c4091dbec3fb763fa0fe6a0260c7bffd6e750e25e8a887727a521",
+      "after_sha256": "e1cbd4eb9f8961b0b109213a24d7fe96e21b165c26e4099e9955cc60c41a8399",
+      "identifiers": {
+        "prediction_q_s0": "prediction_depth_q[0]",
+        "prediction_q_direct_s1": "prediction_depth_q[1]",
+        "prediction_q_s1": "prediction_depth_q[2]",
+        "prediction_column_s0": "prediction_column_q[0]",
+        "prediction_column_direct_s1": "prediction_column_q[1]",
+        "prediction_column_s1": "prediction_column_q[2]",
+        "prediction_reads_frame_s0": "prediction_reads_frame_q[0]",
+        "prediction_reads_frame_q": "prediction_reads_frame_q[1]"
+      },
+      "declarations": {
+        "before": [
+          "    logic [31:0] prediction_q_s0, prediction_column_s0, prediction_q_direct_s1, prediction_column_direct_s1;\n    logic [31:0] prediction_q_s1, prediction_column_s1;\n",
+          "    logic prediction_reads_frame_s0;\n",
+          "    logic prediction_reads_frame_q, prediction_is_active_q;\n"
+        ],
+        "after": [
+          "    // 直接位置、选择准备和帧位置分别保存在三个已有流水阶段。\n    logic [31:0] prediction_depth_q [3];\n    logic [31:0] prediction_column_q [3];\n",
+          "    // 帧元数据读取条件分别随请求接收和帧选择阶段保存。\n    logic prediction_reads_frame_q [2];\n",
+          "    logic prediction_is_active_q;\n"
+        ]
+      },
+      "inverse_text_identical": true,
+      "stage_meaning": {
+        "prediction_depth_q[0:2]": "直接位置、直接位置选择准备、帧位置三个阶段的深度位置",
+        "prediction_column_q[0:2]": "相同三个阶段的列位置",
+        "prediction_reads_frame_q[0:1]": "请求接收和帧选择两个阶段的元数据读取条件"
+      }
+    }
+  ],
+  "integration_checks": [
+    "test/fpga_integration/run.py",
+    "test/asic_integration/run.py"
+  ],
+  "scheduler_formal": "test/scheduler_column_depth/array_validation.json",
+  "scheduler_formal_sha256": "d03a70241600343fa5e9693bf1cf9b2f6cc57662c3c93a5e97be613c442e15a5",
+  "scope": "阶段数组与原寄存器之间的名称及声明映射；after_sha256 标识当前生产源码。调度器完整逐周期关系由 scheduler_formal 指定的结果验证。"
+}

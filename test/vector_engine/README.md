@@ -13,6 +13,32 @@ documentation:
 python3 test/vector_engine/run.py --pes 1 8 --jobs 2 --out build/vector_engine
 ```
 
+## 模块职责与阶段数组
+
+`vector_engine` 保留公开任务、DMA、窗口、共享量化及共享存储接口，并组装 PE、标量算术、量化结果与写回模块。
+
+| 文件 | 职责 |
+|---|---|
+| `vector_engine_control.sv` | 保存任务描述符、状态、循环位置和运算阶段，处理完成、错误和排空 |
+| `vector_engine_address.sv` | 准备 DMA 地址、窗口请求、坐标边界和长度条件 |
+| `vector_engine_operand_store.sv` | 保存输入、权重、偏置、量化参数与累加值，提供分组读写选择 |
+| `vector_engine_control_pkg.sv` | 定义状态编码及同拍保存的状态资格 |
+
+本地量化的右移量使用 `q_right[3]`，通道下标使用 `q_index[7]`。
+每一级沿用对应 `q_valid` 的原有使能条件；任务清空、错误排空及异步复位同时处理阶段有效位。
+`test/monitors/vector_engine_observer.sv` 绑定任务、存储和写回不变量检查，覆盖全部状态资格、窗口槽位、量化标签及暂停期间的数据保持。
+
+`--reference-engine` 可加载独立保存的完整参考引擎。两个引擎接收相同的公开输入，每个周期比较全部 55 个公开输出端口；独立整数模型同时检查最终数值和存储范围。
+
+```sh
+python3 test/vector_engine/run.py --pes 8 --bus-width 64 --window-lanes 8 \
+  --shared-quant --shared-storage --rtl-assertions --stable-stimulus --jobs 1 \
+  --reference-engine /absolute/path/to/reference/vector_engine.sv \
+  --out build/vector_engine_comparison
+```
+
+阶段数组的形式验证、四态检查和存储结构比较见 [vector_engine_partition](../vector_engine_partition/README.md)。
+
 ## 深度卷积流水与并行度
 
 深度卷积每周期向 `PE_COUNT` 个乘加单元发送一组通道。相邻卷积核位置使用
@@ -21,7 +47,7 @@ python3 test/vector_engine/run.py --pes 1 8 --jobs 2 --out build/vector_engine
 写入模块保存已接收数据并等待 AXI 写入响应。成功响应到达时，待写数据可在同一周期
 进入下一次写事务。
 
-`SHARED_QUANT_ENABLE=1` 时，DW 与 GEMM 共用矩阵的十六路量化流水。
+`SHARED_QUANT_ENABLE=1` 时，DW 与 GEMM 共用矩阵量化运算单元。
 完整通道参数从原存储并行读取，累加值、通道掩码与返回标签一起提交。
 本地标量配置每周期量化一个通道。窗口返回宽度由 `WINDOW_LANES` 单独设置。
 以下两种配置都使用 64 位外部 AXI。
@@ -37,7 +63,7 @@ python3 test/vector_engine/run.py --bus-width 64 --window-lanes 16 --pes 16 --sh
 | `PE_COUNT=16`、共享量化 | 16 | GEMM 的矩阵量化流水 | 16 |
 
 每个 32 位量化乘法器采用四个 16/17 位部分积。共享配置中，DW 共用 GEMM
-现有的乘法、移位、最近偶数舍入与饱和运算，延迟为十二周期。
+现有的乘法、移位、最近偶数舍入与饱和运算；统一 per-lane 算术流水为七个使能周期。
 每个结果槽保存所属通道组的有效通道数；最后一个像素提交共享量化后，
 即可开始下一组权重读取。前一组量化返回和写入响应可在此期间继续完成。向量侧的标量运算单元
 继续处理 Add 和 Softmax。参数存储增加固定地址读取端口，容量保持不变。
@@ -57,12 +83,11 @@ stride 2、dilation、量化舍入边界、AXI 随机等待和后续任务恢复
 总线错误。参数测试覆盖等距、非等距、逆序地址，以及各参数行的总线错误和
 数值范围检查。错误任务之后立即使用同一地址执行正确任务，并比较全部输出。
 
-32 位和 64 位 AXI 配置分别运行以下命令。`--xilinx` 使用 Yosys 安装目录中
-的官方 `DSP48E1` 功能模型，覆盖 Softmax 指数累加器的实际原语配置。
+32 位和 64 位 AXI 配置分别运行以下命令，算术和存储使用普通 RTL。
 
 ```sh
-python3 test/vector_engine/run.py --bus-width 32 --pes 8 --jobs 2 --xilinx --out build/vector_engine_bus32
-python3 test/vector_engine/run.py --bus-width 64 --pes 8 --jobs 2 --xilinx --out build/vector_engine_bus64
+python3 test/vector_engine/run.py --bus-width 32 --pes 8 --jobs 2 --out build/vector_engine_bus32
+python3 test/vector_engine/run.py --bus-width 64 --pes 8 --jobs 2 --out build/vector_engine_bus64
 ```
 
 内存服务按总线字节数处理窄读、写字节使能和总线背压，逐字节检查输出范围。

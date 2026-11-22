@@ -57,21 +57,13 @@ def main():
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     source_root=args.source_root.resolve()
     rtl_sources=[source_root/'rtl/npu/conv/vector_softmax.sv',
+                 source_root/'rtl/npu/conv/vector_softmax_accumulator.sv',
                  source_root/'rtl/common/parallel_prefix_add.sv']
     source_sha256={str(p):hashlib.sha256(p.read_bytes()).hexdigest()
                    for p in [*rtl_sources,HERE/'vector_softmax_test.sv',HERE/'main.cpp',Path(__file__)]}
     replay=out/'model_cases.txt';models=prepare_replay(args.prepared,replay);records=[]
     includes=[TF,TF/'tensorflow/lite/micro/tools/make/downloads/gemmlowp']
-    primitive_options=[]
-    primitive_library_sha256=None
-    if args.xilinx:
-        import pyosys
-        library=Path(pyosys.__file__).parent/'share/xilinx/cells_sim.v'
-        model=re.search(r'^module DSP48E1\b.*?^endmodule',library.read_text(),re.MULTILINE|re.DOTALL).group(0)
-        model_file=out/'xilinx_dsp48e1.sv'
-        model_file.write_text(model+'\n')
-        primitive_options=['-DXILINX_FPGA',model_file]
-        primitive_library_sha256=hashlib.sha256(library.read_bytes()).hexdigest()
+    compile_options=['-DXILINX_FPGA'] if args.xilinx else []
     for depth in args.depths:
         folder=out/f'depth_{depth}';folder.mkdir(exist_ok=True)
         flags=['-std=c++17','-O2','-fsanitize=undefined','-fno-sanitize-recover=all',
@@ -80,7 +72,7 @@ def main():
              '--top-module','vector_softmax_test','--Mdir',folder/'obj',f'-GMAX_DEPTH={depth}',
              f'-GINPUT_REGISTERED={int(args.input_registered)}',
              '-CFLAGS',' '.join(flags),'-LDFLAGS','-fsanitize=undefined',
-             *rtl_sources,HERE/'vector_softmax_test.sv',*primitive_options,HERE/'main.cpp',
+             *rtl_sources,HERE/'vector_softmax_test.sv',*compile_options,HERE/'main.cpp',
              TF/'tensorflow/lite/kernels/internal/common.cc',
              TF/'tensorflow/lite/kernels/internal/runtime_shape.cc',
              TF/'tensorflow/lite/kernels/internal/quantization_util.cc']
@@ -92,8 +84,7 @@ def main():
     result={'passed':True,'rounding_mode':'nearest_even','ubsan':True,'seed':20261115,
             'model_cases_per_configuration':models,'configurations':records,
             'input_registered':args.input_registered,
-            'implementation':'official DSP48E1 functional model' if args.xilinx else 'generic',
-            'primitive_library_sha256':primitive_library_sha256,
+            'implementation':'Ordinary synthesizable RTL',
             'source_sha256':source_sha256}
     if any(hashlib.sha256(Path(name).read_bytes()).hexdigest()!=sha for name,sha in source_sha256.items()):
         raise RuntimeError('检查期间输入源码发生变化')

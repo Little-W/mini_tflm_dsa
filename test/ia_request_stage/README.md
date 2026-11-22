@@ -1,5 +1,7 @@
 # IA 仲裁请求寄存与加载边界
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 `ia_loader` 的 `p_register_dma_request` 参数控制 DMA 仲裁请求的保存方式。参数为 `1` 时，`load_ia_req` 在时钟边沿保存当前请求资格，控制器使用 `load_ia_granted && load_ia_req` 接收外部授予。复位、`init_cfg` 和 `cache_flush` 清除尚未提交的预留。参数默认值为 `0`，独立模块可以继续使用直接请求接口；生产 `npu_top` 启用寄存请求。
 
 `load_ia_req` 表示 DMA 资源预留。实际命令由 `ext_dma_start` 标记，需求读取与预取分别在接受边沿保存自己的完整描述符。已有缓存命中继续在模块内部完成，预取保持需求优先级。新增寄存级可以使每次外部读取的准备增加一个周期，数据返回、缓存写入以及阵列连续输出保持原有接口。
@@ -45,6 +47,6 @@ python3 test/ia_request_stage/prepare_measurement.py \
   --out build/ia_request_cases.json
 python3 scripts/fpga/open_fpga_synth.py --source-root . \
   --case-config build/ia_request_cases.json --cases ia_request_stage \
-  --out build/ia_request_synthesis --rtl-dsp-attributes \
-  --wide-alu-dsp-budget 740 --require-register-path-limit
+  --out build/ia_request_synthesis \
+   --require-register-path-limit
 ```

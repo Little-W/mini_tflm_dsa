@@ -1,54 +1,13 @@
-# 定宽选择加法验证
+# 选择加法器验证
 
-`select_add` 从两个有符号右操作数中选择一个，并根据 `i_add_enable` 决定
-执行加法或输出左操作数。结果按 `2^p_width` 取模。模块不保存状态，输入到
-输出为组合逻辑；原有接收边沿、有效标志和复位处理由调用模块保持。
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
 
-模块使用普通条件表达式选择右操作数，通过定宽算术描述求和。`p_use_dsp=1` 且位宽为 17 至 48 时，对完整加法结果使用 `use_dsp` 属性，由综合工具推断 DSP。通用实现将低位求和与高位的两种进位结果并行计算，再选择高位结果。
+`select_add` 根据 `i_rhs_select` 选择操作数，在 `i_add_enable` 有效时执行定宽模加，关闭时保留输入。较宽加法将低位加法与高位的两种进位结果并行计算。48 位接口可通过 `p_split_12bit` 配置为四个独立的 12 位通道，各通道独立截断进位。
 
-`p_width=48` 且 `p_split_12bit=1` 时，四个 12 位通道分别执行模加；其他配置使用一个完整位宽的运算通道。两种实现保持相同的算术和使能旁路行为。
-
-## 形式验证
+运行完整输入空间的组合证明：
 
 ```sh
-python3 test/select_add/run_formal.py --out build/select_add_formal
+python test/select_add/run_formal.py --out build/select_add
 ```
 
-验证使用 Yosys SAT，覆盖 1、8、16、17、32 和 48 位配置的全部输入组合。
-每个配置检查扩展一位后再截断
-的数学结果、通用实现与 FPGA 实现的一致性，以及 NPU 的 WS/IS 偏置选择
-表达式。测试同时覆盖带符号数、模加溢出、使能旁路和奇数位宽的末位选择。
-
-## 完整 NPU 验证
-
-```sh
-python3 test/select_add/run_npu.py --out build/select_add_npu --verilator verilator --sizes 4 --jobs 2
-```
-
-该命令使用 FPGA 配置运行完整 NPU 的六个用例，包括 WS、IS、INT8、
-INT16、逐通道量化、尾块和 INT16 输出。内存比较检查输出值与完整存储范围。
-源码、编译参数、功能模型摘要和周期统计保存在输出目录中。
-
-## 资源和组合路径
-
-```sh
-python3 scripts/fpga/open_fpga_synth.py --case-config test/select_add/cases.json \
-  --cases select_add_reference select_add_candidate --out build/select_add_resources \
-  --rtl-dsp-attributes --wide-alu-dsp-budget 740
-```
-
-测量文件在两种表达式两端加入相同的寄存器，形成可以统计的寄存器间路径。
-每个配置包含 130 个测量边界寄存器，`select_add` 本身含零个寄存器。
-每次测量分别记录参考表达式与当前实现的 LUT、进位单元、DSP 和组合路径，
-并保存实际源码与工具库的 SHA-256。
-
-在相同的七系列映射设置下，32 位 WS/IS 偏置选择结果如下。两种实现均使用
-130 个边界寄存器；表中的 LUT 数量为布局前映射单元数量。
-
-| 实现 | 逻辑 LUT | CARRY4 | DSP | 最长寄存器间组合单元数 |
-|---|---:|---:|---:|---:|
-| 两个候选加法及结果选择 | 96 | 16 | 0 | 10 |
-| 选择操作数后推断加法 | 64 | 0 | 1 | 3 |
-
-完整 SoC 可以共享各通道的控制逻辑，其资源总数由全设计综合统计。
-组合单元数描述逻辑结构，150 MHz 时钟要求使用器件布局布线后的延迟分析。
+证明覆盖 1、8、12、16、17、24、32、48、64、128 位，使用扩展一位的有符号算术参考检查模加结果，并检查偏置选择和使能条件。分通道加法及有符号输入恢复由 `test/ia_packed_add/run.py` 检查。

@@ -12,22 +12,22 @@ class ParameterCapacityTests(unittest.TestCase):
     def test_ws_regfile_is_register_state(self):
         for bank in range(2):
             for instance in ('u_multiplier', 'u_shift'):
-                path = f'npu_top.u_requant.g_full.u_full.g_ws_bank_write.g_bank[{bank}].{instance}'
-                ancestors = ('npu_top', 'vec_requant', 'vec_requant_full')
+                path = f'npu_top.u_requant.g_ws_bank_write.g_bank[{bank}].{instance}'
+                ancestors = ('npu_top', 'vec_requant')
                 self.assertIsNone(elaboration.array_category('regfile', 'mem', ancestors, path))
                 self.assertEqual(elaboration.register_array_category('regfile', 'mem', ancestors, path),
                                  'requant_ws_parameters')
 
     def test_is_regfile_keeps_independent_capacity(self):
-        path = 'npu_top.u_requant.g_full.u_full.gen_is_parameter_bank[0].u_multiplier'
-        ancestors = ('npu_top', 'vec_requant', 'vec_requant_full')
+        path = 'npu_top.u_requant.gen_is_parameter_bank[0].u_multiplier'
+        ancestors = ('npu_top', 'vec_requant')
         self.assertEqual(elaboration.array_category('regfile', 'mem', ancestors, path), 'requant_is_cache')
         self.assertIsNone(elaboration.register_array_category('regfile', 'mem', ancestors, path))
 
     def test_direct_parameter_arrays_have_same_category(self):
         for name in ('ch_multiplier_lane_r', 'ch_shift_lane_r', 'ch_product_multiplier_lane_r',
                      'ch_product_amount_lane_r'):
-            self.assertEqual(elaboration.register_array_category('vec_requant_full', name),
+            self.assertEqual(elaboration.register_array_category('vec_requant', name),
                              'requant_ws_parameters')
 
     def test_production_capacity(self):

@@ -17,9 +17,9 @@ def main():
     p.add_argument('--xilinx',action='store_true');a=p.parse_args()
     out=a.out.resolve();out.mkdir(parents=True,exist_ok=True)
     source_root=a.source_root.resolve()
-    relative_sources=['test/requant_time_share/tb.sv','test/requant_time_share/main.cpp',
+    relative_sources=['rtl/npu/writeback/requant_pkg.sv','rtl/npu/writeback/requant_shift_pipeline.sv','test/requant_time_share/tb.sv','test/requant_time_share/main.cpp',
         'rtl/npu/writeback/vec_requant.sv','rtl/npu/writeback/requant_compute_lane.sv',
-        'rtl/npu/writeback/requant_group_buffer.sv','rtl/npu/conv/vector_scalar_multiplier.sv','rtl/common/regfile.v',
+        'rtl/npu/writeback/requant_group_buffer.sv','rtl/npu/conv/registered_multiplier_s32.sv','rtl/common/regfile.v',
         'rtl/common/parallel_prefix_add.sv','test/monitors/requant_group_buffer_observer.sv']
     source_paths={name:(source_root if name.startswith('rtl/') else ROOT)/name for name in relative_sources}
     sources=list(source_paths.values())

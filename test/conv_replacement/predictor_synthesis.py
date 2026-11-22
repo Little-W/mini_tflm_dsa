@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import re
 import resource
+import runpy
 import shlex
 import subprocess
 import sys
@@ -38,7 +39,11 @@ def main():
         sources.append(path)
     helper = ROOT / 'rtl/common/onehot_check.sv'
     sources.append(helper)
-    hashes[str(helper.relative_to(ROOT))] = hashlib.sha256(helper.read_bytes()).hexdigest()
+    with_dependencies = runpy.run_path(str(ROOT / 'scripts/rtl/source_files.py'))['with_dependencies']
+    sources = with_dependencies(sources, ROOT)
+    for dependency in sources:
+        hashes[str(dependency.relative_to(ROOT)) if dependency.is_relative_to(ROOT) else str(dependency)] = \
+            hashlib.sha256(dependency.read_bytes()).hexdigest()
     sys.path.insert(0, str(ROOT / 'scripts/fpga'))
     import open_fpga_synth as module
     import pyosys
@@ -69,7 +74,8 @@ def main():
     coordinate_paths = connected_paths(design, limit=20, group_limit=20,
         root_filter=lambda name, cell, port: cell['type'] == 'DSP48E1',
         sink_filter=lambda name, cell, port:
-            cell.get('attributes', {}).get('fpga_register_origin') == 'coordinate_good_s1')
+            re.fullmatch(r'coordinate_good(?:_s1|\s*\[1\])(?:\s+\[0\])?',
+                         cell.get('attributes', {}).get('fpga_register_origin', '')) is not None)
     if not metrics['paths']['graph_complete'] or not coordinate_paths['graph_complete']:
         raise RuntimeError('Incomplete predictor register path graph')
     counts = collections.Counter(cell['type'] for cell in cells.values())

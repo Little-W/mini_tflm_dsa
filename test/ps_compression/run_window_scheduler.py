@@ -5,10 +5,13 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
 import time
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
+sys.path.insert(0, str(ROOT / 'scripts/rtl'))
+from source_files import with_dependencies
 
 
 def digest(path):
@@ -40,21 +43,25 @@ def main():
         storage = source_root / 'rtl/common/regfile.v'
         prefix_adder = source_root / 'rtl/common/parallel_prefix_add.sv'
         comparator = source_root / 'rtl/common/unsigned_compare.sv'
-        sources = [rtl, helper, storage, prefix_adder, comparator, test_dir / cpp,
-                   test_dir / 'window_scheduler_ref.hpp', Path(__file__).resolve()]
-        sources += [HERE / 'window_scheduler_tb.sv', ROOT / 'test/monitors/ps_window_scheduler_observer.sv']
+        # 编译文件与源码摘要共用完整依赖列表，独立参考文件中的模块定义优先保留。
+        rtl_sources = with_dependencies([
+            rtl, helper, storage, prefix_adder, comparator,
+            HERE / 'window_scheduler_tb.sv', ROOT / 'test/monitors/ps_window_scheduler_observer.sv',
+        ], source_root)
+        sources = rtl_sources + [test_dir / cpp, test_dir / 'window_scheduler_ref.hpp',
+                                 Path(__file__).resolve(), ROOT / 'scripts/rtl/source_files.py']
         hashes = {str(path): digest(path) for path in sources}
         binary = target / 'obj/Vps_window_scheduler'
         command = [args.verilator, '--cc', '--exe', '--build', '--assert', '-j', '1',
                    '--top-module', 'window_scheduler_tb', '--prefix', 'Vps_window_scheduler', '--Mdir', str(target / 'obj'),
                    '-Wno-fatal', '--output-groups', '0',
                    '-CFLAGS', '-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all',
-                   '-LDFLAGS', '-fsanitize=undefined', '-MAKEFLAGS', '-B']
+                   '-LDFLAGS', '-fsanitize=undefined', '-MAKEFLAGS',
+                   '-B OPT_FAST=-O1 OPT_SLOW=-O1 OPT_GLOBAL=-O1 '
+                   'VK_PCH_I_FAST= VK_PCH_I_SLOW= CFG_CXXFLAGS_PCH=-E']
         if args.fpga:
             command += ['-DXILINX_FPGA=1']
-        command += [str(rtl), str(helper), str(storage), str(prefix_adder), str(comparator),
-                    str(HERE / 'window_scheduler_tb.sv'),
-                    str(ROOT / 'test/monitors/ps_window_scheduler_observer.sv'), str(test_dir / cpp)]
+        command += [str(path) for path in rtl_sources] + [str(test_dir / cpp)]
         started = time.monotonic()
         if args.reuse_build:
             previous = json.loads((target / 'summary.json').read_text())
@@ -80,6 +87,7 @@ def main():
         if not commands or any('-fsanitize=undefined' not in line for line in commands):
             raise RuntimeError(f'{name}: a translation unit lacks UBSan')
         report.update(source_sha256=hashes, binary_sha256=digest(binary),
+                      rtl_source_files=[str(path) for path in rtl_sources],
                       compile_command=command, run_command=[str(binary)],
                       undefined_behavior_sanitizer=True, sanitized_translation_units=len(commands),
                       elapsed_seconds=time.monotonic() - started, verilator=version, fpga=args.fpga,

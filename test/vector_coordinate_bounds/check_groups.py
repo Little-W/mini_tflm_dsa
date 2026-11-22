@@ -23,7 +23,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repository', type=Path, default=ROOT)
     parser.add_argument('--source-root', type=Path, default=ROOT)
-    parser.add_argument('--reference-rev', default='0097b66ed57e1b8ef00e402e89dc5b274f1626be')
+    parser.add_argument('--reference-rev', default='ef0dc75')
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--iverilog', default='iverilog')
     parser.add_argument('--vvp', default='vvp')
@@ -34,7 +34,7 @@ def main() -> None:
     from rtl_reference import read_rtl_source
 
     reference = read_rtl_source(args.reference_rev + ':' + SOURCE.as_posix(), cwd=repository, text=True)
-    source_path = source_root / SOURCE
+    source_path = source_root / 'rtl/npu/conv/vector_coordinate_bound.sv'
     source = source_path.read_text()
     source_hash = digest(source_path)
     helper_hashes = {}

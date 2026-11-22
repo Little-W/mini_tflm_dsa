@@ -1,56 +1,51 @@
-# 向量算术寄存器路径检查
+# 向量算术接口与组合路径检查
 
-本目录验证 `vector_reduce_alu`、`vector_round_shift` 和 `registered_multiplier_s32` 的完整公开接口，并测量独立模块的寄存器间组合路径。参考提交为 `dde5e7c9836a71f0292d7c69040f8635840e6bad`，结果和源码 SHA-256 保存在 [measurement.json](measurement.json)。
+本目录验证三个独立模块的完整公开接口：`vector_reduce_alu.sv`、
+`vector_round_shift.sv` 和 `registered_multiplier_s32.sv`。
+测试保存当前源码、参考源码、模型、日志及 SHA-256，可选择生成局部综合结果。
 
-## 当前设计
+## 算术结构
 
-`vector_reduce_alu` 使用四位分组的 `parallel_prefix_add` 完成 INT32 求和。大小比较按八位字节并行计算，各字节的结果由更高字节是否全部相等来选择，符号位决定异号操作数的顺序。当 `i_max` 和 `i_min` 同时有效时，极小值操作优先。
+`vector_reduce_alu` 计算完整 INT32 模加法以及有符号极值。
+大小比较先检查符号位，再根据高字节是否相等选择较低字节的比较结果。
+`i_max` 和 `i_min` 同时有效时，极小值操作优先。
 
-`vector_round_shift` 将保护位和低字节的全一条件通过平衡前缀树组合，保留各层节点和字节进位边界。最低字节并行准备不递增与递增两个结果，由舍入条件选择；其他字节根据各自进位独立递增。中间移位寄存器、保护位、舍弃位和最近偶数舍入规则保持不变，原生定宽运算保留输入含 X、Z 时的四态行为。
+`vector_round_shift` 保存保护位和所有低于保护位的数据位是否非零，
+按最近偶数规则形成结果，同时输出算术右移的向下取整结果。
+`REGISTER_INPUT` 和 `REGISTER_MIDDLE` 控制输入与移位结果的寄存位置。
+各字节分别生成递增结果和进位条件，使用普通定宽 RTL。
 
-`registered_multiplier_s32` 的四个部分积仍在原来的使能边沿写入寄存器。部分积经过压缩后，最后的 48 位求和使用八位分组的 `parallel_prefix_add`，并启用 `p_preserve_groups` 使用保存节点的平衡前缀树。输入寄存选项、使能暂停和完整 64 位结果的输出周期均保持不变。
+`registered_multiplier_s32` 使用四个完整部分积计算有符号 INT64 结果。
+部分积寄存器之后先压缩三个加数，再执行完整 48 位加法。
+`p_input_register`、`p_b_input_register` 独立选择两个输入寄存器，
+所有寄存级受 `i_en` 控制。两个计算边沿的延迟和每个使能边沿接收一项运算的能力保持一致。
 
-## 验证结果
+INT8、INT16 量化通过同一 `requant_compute_lane` 完成，算术流水为 7 个使能边沿。
+量化的完整数值测试见 [`test/requant_compute_lane`](../requant_compute_lane/README.md)，
+生产通道与参数读取测试见 [`test/requant_time_share`](../requant_time_share/README.md)。
 
-- 14 个完整模块形式等价配置全部通过。FPGA 与 ASIC 两种条件分别覆盖归约运算、舍入中间寄存器的启用和关闭，以及乘法器的四种输入寄存组合。检查全部公开输出，不限制操作数、使能或操作控制输入。
-- 舍入模块完成 52,352 组严格四态刺激，分别比较中间寄存器启用和关闭时的 `result`、`floor_value`，覆盖全部 64 种移位量及 X、Z 数据。
-- 标量乘法器完成 1,396,934 次数据比较，覆盖四种输入寄存组合、输入边界、连续输入和使能暂停。
-- 实际量化通道在通用与 FPGA 两种条件下分别完成 1,057,997 个周期和 838,131 个输出检查，覆盖暂停、清空、复位、尾列屏蔽及保持期间清空。使能边沿延迟保持 12 拍。
+## 验证范围
 
-## 局部映射结果
-
-使用默认 `synth_xilinx -family xc7 -noiopad -noclkbuf -flatten`。归约模块在输入和输出两端加入测试寄存器；舍入模块使用生产配置的中间寄存器，并在公开输入、输出两端加入测试寄存器。标量乘法器保留实际寄存器结构。两份实现使用相同测试结构。
-
-| 模块 | 逻辑 LUT：参考→当前 | 触发器：参考→当前 | CARRY4：参考→当前 | DSP：参考→当前 | 最长寄存器间组合路径：参考→当前 |
-|---|---:|---:|---:|---:|---:|
-| `vector_reduce_alu` | 122→187 | 98→98 | 14→15 | 0→0 | 10→7 |
-| `vector_round_shift` | 342→368 | 267→267 | 16→16 | 0→0 | 9→8 |
-| `registered_multiplier_s32` | 95→209 | 64→64 | 12→12 | 4→4 | 14→9 |
-
-所有映射结果的组合图均完整。完整 SoC 的跨模块路径需要由整机映射重新检查；150 MHz 需要布局布线后的器件时序报告确认。
-
-## 复现命令
-
-从仓库根目录执行，需要 `pyosys`、Icarus Verilog 和 Verilator。
+`run.py` 比较归约模块、两种舍入中间寄存配置和四种乘法输入寄存配置。
+ASIC 与 FPGA 编译宏分别覆盖相同的公开接口，所有操作数和控制输入均不增加取值限制。
+`check_four_state.py` 检查两个舍入中间寄存配置的 `result` 和 `floor_value`，
+覆盖全部 64 种移位量、边界数值以及 X、Z 数据。
+乘法器独立检查覆盖四种输入寄存组合、使能暂停、未知使能和完整 64 位乘积。
 
 ```bash
 python3 test/vector_arithmetic_depth/run.py \
-  --baseline-ref dde5e7c9 --synthesis \
-  --out /tmp/npu_vector_arithmetic
+  --baseline-ref ef0dc75 --out build/vector_arithmetic/formal
 python3 test/vector_arithmetic_depth/check_four_state.py \
-  --reference-ref aa0a169c --out /tmp/npu_vector_arithmetic/four_state
-python3 test/requant_four_dsp/run.py \
-  --reference-rev dde5e7c9 --verilator verilator --jobs 1 \
-  --out /tmp/npu_vector_arithmetic/scalar_function
+  --reference-ref ef0dc75 --out build/vector_arithmetic/four_state
+python3 test/vector_scalar/run.py --simulate \
+  --out build/vector_arithmetic/scalar
 python3 test/requant_compute_lane/run.py \
   --verilator verilator --jobs 1 --variants generic fpga \
-  --out /tmp/npu_vector_arithmetic/requant_lane
-python3 test/vector_arithmetic_depth/collect_report.py \
-  --validation /tmp/npu_vector_arithmetic \
-  --scalar /tmp/npu_vector_arithmetic/scalar_function \
-  --requant /tmp/npu_vector_arithmetic/requant_lane \
-  --four-state /tmp/npu_vector_arithmetic/four_state \
-  --out /tmp/npu_vector_arithmetic/measurement.json
+  --out build/vector_arithmetic/requant_lane
+python3 test/requant_time_share/run.py --help
 ```
 
-入口先保存实际 RTL 和公共加法器，再运行形式比较和综合。结果同时记录参考源码、当前源码、测试入口和映射文件的 SHA-256。
+在 `run.py` 命令中加入 `--synthesis` 可测量当前工具映射得到的资源数量和组合路径。
+归约模块在输入和输出两端加入普通测试寄存器；舍入模块使用中间寄存器并保存公开输入和输出；
+乘法器使用实际寄存结构。完整 SoC 的资源与跨模块时序由整机综合报告检查，
+150 MHz 的结果由对应器件或标准单元库的实际时序报告确定。

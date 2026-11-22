@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source, read_current_source as read_rtl_text
 
 ROOT=Path(__file__).resolve().parents[2]
 SOURCE='rtl/npu/ps_compact/ps_frame_store.sv'
@@ -51,7 +51,7 @@ def main():
             with log.open('w') as stream:
                 result=subprocess.run([sys.executable,str(ROOT/'scripts/fpga/open_fpga_synth.py'),'--worker',str(script)],
                                       stdout=stream,stderr=subprocess.STDOUT,cwd=ROOT)
-            text=log.read_text();match=re.search(r'Of those cells (\d+) are proven and (\d+) are unproven',text)
+            text=read_rtl_text(log);match=re.search(r'Of those cells (\d+) are proven and (\d+) are unproven',text)
             report={'bank_bytes':bank_bytes,'banks':banks,'max_frame_rows':max_rows,'fixed_channels':fixed,
                     'passed':result.returncode==0 and 'Equivalence successfully proven' in text,
                     'equivalent_bits':int(match[1]) if match else None,

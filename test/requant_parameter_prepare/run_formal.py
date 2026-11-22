@@ -17,36 +17,43 @@ sys.path.insert(0, str(ROOT / 'scripts/fpga'))
 sys.path.insert(0, str(ROOT / 'test'))
 from open_fpga_synth import run_stage
 from rtl_reference import read_rtl_source
+from requant_test_utils import controller_module
 
 
 def full_module(source):
-    return source.split('module vec_requant_full #(', 1)[1].split('\nendmodule', 1)[0]
+    return controller_module(source)
 
 
 def functions(source):
+    if 'function automatic' not in source:
+        return ''
     return '\n'.join(re.search(r'  function automatic [^\n]*\b' + name +
                                r'\(.*?  endfunction', source, re.S).group()
                      for name in ('prepare_multiplier', 'prepare_amount'))
 
 
 def function_unit(source, name):
-    return f'''module {name} #(parameter bit ENABLE_S16 = 1) (
+    multiplier = 'prepare_multiplier(multiplier_in, cfg_s16)'
+    amount = 'prepare_amount(shift_in, cfg_s16)'
+    if 'function automatic' not in source:
+        multiplier = 'requant_pkg::requant_prepare_multiplier(multiplier_in, ENABLE_S16 && cfg_s16)'
+        amount = 'requant_pkg::requant_prepare_amount(shift_in, ENABLE_S16 && cfg_s16)'
+    return f"""module {name} #(parameter bit ENABLE_S16 = 1) (
     input logic signed [31:0] multiplier_in, shift_in,
     input logic cfg_s16,
     output logic [38:0] result
 );
-''' + functions(source) + '''
-    assign result = {prepare_multiplier(multiplier_in, cfg_s16),
-                     prepare_amount(shift_in, cfg_s16)};
+""" + functions(source) + f"""
+    assign result = {{{multiplier}, {amount}}};
 endmodule
-'''
+"""
 
 
 def configuration_unit(source, name):
     first = source.index('  logic s16_mode;')
     mode = source[first:source.index('  localparam int BYTES_PER_WORD', first)]
     first = source.index('  always_ff @(posedge clk)', source.index('  logic signed [31:0] pt_multiplier_r;'))
-    block = source[first:source.index('  // compute number of tiles', first)]
+    block = source[first:source.index('  assign num_row_tiles_next', first)]
     kept = []
     for line in block.splitlines():
         text = line.strip()
@@ -79,6 +86,7 @@ def main():
     units = {'reference': full_module(original), 'current': full_module(current)}
     report = {'passed': True, 'reference': args.reference,
               'source_sha256': hashlib.sha256(current.encode()).hexdigest(),
+              'package_sha256': hashlib.sha256((ROOT/'rtl/npu/writeback/requant_pkg.sv').read_bytes()).hexdigest(),
               'reference_sha256': hashlib.sha256(original.encode()).hexdigest(),
               'input_value_constraints': None, 'runs': []}
     for check, builder in (('functions', function_unit), ('configuration', configuration_unit)):
@@ -92,7 +100,7 @@ def main():
             commands = []
             for name in units:
                 commands += [f'read_slang --top {name} -GENABLE_S16={enabled} '
-                             + shlex.quote(str(sources[name])),
+                             + shlex.join([str(ROOT/'rtl/npu/writeback/requant_pkg.sv'),str(sources[name])]),
                              f'prep -top {name} -flatten', 'opt -full',
                              f'design -stash {name}']
             commands += ['design -copy-from reference -as reference reference',

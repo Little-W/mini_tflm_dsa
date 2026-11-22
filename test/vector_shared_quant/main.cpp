@@ -74,7 +74,7 @@ int main(int argc,char **argv) {
     }
     tick();tick();dut.rst_n=1;tick();
     const std::array<int32_t,10> edges={INT32_MIN,INT32_MAX,0,1,-1,32768,-32768,0x40000000,-0x40000000,3};
-    // 每轮执行 GEMM、DW、GEMM，连续输入和随机空拍同时覆盖全部十二级流水。
+    // 每轮执行 GEMM、DW、GEMM，连续输入和随机空拍同时覆盖全部七级流水。
     for (unsigned task=0;task<240;task++) {
       const bool dw=task%3==1;
       dut.dw_enable=dw;
@@ -88,7 +88,7 @@ int main(int argc,char **argv) {
       for (unsigned idle=0;idle<3;idle++) tick();
       for (unsigned row=0;row<32;row++) {
         for (unsigned idle=0;idle<random()%4;idle++) tick();
-        Expected expected{cycle+12,dw,bool(random()&1),{}};
+        Expected expected{cycle+7,dw,bool(random()&1),{}};
         dut.dw_tag=expected.tag;
         dut.dw_mask=uint16_t(random());
         if (row%8==0) dut.dw_mask=0xffff;

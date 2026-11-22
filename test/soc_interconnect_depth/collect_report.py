@@ -6,6 +6,9 @@ import json
 from pathlib import Path
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/soc/soc_axi_interconnect.sv')
 sys.path.insert(0, str(ROOT / 'scripts/fpga'))
@@ -17,7 +20,7 @@ def digest(path):
 
 
 def read(path):
-    return json.loads(path.read_text())
+    return json.loads(read_rtl_text(path))
 
 
 def measure(folder, expected):

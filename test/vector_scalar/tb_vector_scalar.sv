@@ -2,15 +2,14 @@
 module tb_vector_scalar;
     logic clk=0;
     logic signed [31:0] a, b;
-    logic signed [63:0] reference_product, candidate_product, generic_product;
+    logic signed [63:0] reference_product, candidate_product;
     logic signed [63:0] expected_previous;
     bit expected_valid=0;
     int checks=0;
     logic signed [31:0] directed [0:13];
     vector_scalar_multiplier_reference u_reference (.clk(clk), .a(a), .b(b), .product(reference_product));
-    vector_scalar_multiplier #(.p_use_dsp(1'b1)) u_candidate (.clk(clk), .a(a), .b(b), .product(candidate_product));
+    vector_scalar_multiplier u_candidate (.clk(clk), .a(a), .b(b), .product(candidate_product));
 
-    vector_scalar_multiplier #(.p_use_dsp(1'b0)) u_generic (.clk(clk), .a(a), .b(b), .product(generic_product));
 
     task automatic sample(input logic signed [31:0] value_a, value_b);
         logic signed [63:0] extended_a, extended_b;
@@ -25,8 +24,6 @@ module tb_vector_scalar;
         if (expected_valid) begin
             if (reference_product !== expected_previous)
                 $fatal(1,"reference result cycle=%0d actual=%h expected=%h",checks,reference_product,expected_previous);
-            if (generic_product !== expected_previous)
-                $fatal(1,"generic result cycle=%0d actual=%h expected=%h",checks,generic_product,expected_previous);
             if (candidate_product !== expected_previous)
                 $fatal(1,"candidate result cycle=%0d actual=%h expected=%h",checks,candidate_product,expected_previous);
             if (candidate_product[15:0] !== expected_previous[15:0] ||
@@ -44,9 +41,20 @@ module tb_vector_scalar;
         int seed;
         seed=32'h25d17a9c;
         seed=$urandom(seed);
-        directed='{32'sh80000000,32'sh7fffffff,-32'sd1,32'sd0,32'sd1,
-                   32'sh0000ffff,32'shffff0000,32'sh00010000,32'sh8000ffff,
-                   32'sh7fff0001,32'sh5555aaaa,32'shaaaa5555,32'sh00008000,32'shffff8000};
+        directed[0]=32'sh80000000;
+        directed[1]=32'sh7fffffff;
+        directed[2]=-32'sd1;
+        directed[3]=32'sd0;
+        directed[4]=32'sd1;
+        directed[5]=32'sh0000ffff;
+        directed[6]=32'shffff0000;
+        directed[7]=32'sh00010000;
+        directed[8]=32'sh8000ffff;
+        directed[9]=32'sh7fff0001;
+        directed[10]=32'sh5555aaaa;
+        directed[11]=32'shaaaa5555;
+        directed[12]=32'sh00008000;
+        directed[13]=32'shffff8000;
         for (int lhs=0;lhs<14;lhs++)
             for (int rhs=0;rhs<14;rhs++) sample(directed[lhs],directed[rhs]);
         for (int bit_index=0;bit_index<32;bit_index++) begin

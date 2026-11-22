@@ -1,0 +1,55 @@
+{
+  "passed": true,
+  "cpp_build_executed": false,
+  "source_sha256": {
+    "test/matrix_layout/run.py": "29f836697fb4186586e920feeb0752ba5b40ac8bccb85de11dd2cd219a264cf9",
+    "test/matrix_layout/tb_matrix_layout.sv": "aa26172d945c217f8bb7b868def0dd93c488652f9d5767f92ef6c61ee15554e1",
+    "scripts/rtl/source_files.py": "5a368bf00f1675ec1d16c0c4b0804ae0550aaac2fc8de6e53e1865bad2351c06"
+  },
+  "profiles": [
+    {
+      "ia_cache_blocks": 8,
+      "ps_storage_rows": 799,
+      "s16_fifo_banks": 4,
+      "enable_is_mode": 1,
+      "lint_only": true,
+      "passed": true,
+      "source_count": 123,
+      "path": "build/partitioned_test_entries/matrix_lint/ia8/lint.json",
+      "sha256": "96b732c7691714e6a43dfc4eb2f9354eb61c293767748a93a730a011299824ce"
+    },
+    {
+      "ia_cache_blocks": 4,
+      "ps_storage_rows": 799,
+      "s16_fifo_banks": 4,
+      "enable_is_mode": 1,
+      "lint_only": true,
+      "passed": true,
+      "source_count": 123,
+      "path": "build/partitioned_test_entries/matrix_lint/ia4/lint.json",
+      "sha256": "7624908a7315b274daf1a799f400b66c6e80d2af42565eb39d4b8b5440bf3845"
+    },
+    {
+      "ia_cache_blocks": 16,
+      "ps_storage_rows": 799,
+      "s16_fifo_banks": 4,
+      "enable_is_mode": 1,
+      "lint_only": true,
+      "passed": true,
+      "source_count": 123,
+      "path": "build/partitioned_test_entries/matrix_lint/ia16/lint.json",
+      "sha256": "4e278c57833c4ab73511d5e98f83248d8ea9b2946db6ef355568848a2c11941f"
+    },
+    {
+      "ia_cache_blocks": 8,
+      "ps_storage_rows": 799,
+      "s16_fifo_banks": 4,
+      "enable_is_mode": 0,
+      "lint_only": true,
+      "passed": true,
+      "source_count": 123,
+      "path": "build/partitioned_test_entries/matrix_ws_lint/ia8/lint.json",
+      "sha256": "c78dc7861f85e12b152f8f70b22dce9064cd57f5efd229c837a70f3490fb6ddd"
+    }
+  ]
+}

@@ -28,17 +28,21 @@ def main():
     check_sources(measurement["inputs"])
     expected = measurement["inputs"]["source_sha256"]
     source_name = Path(measurement["inputs"].get("source_path", measurement["inputs"]["source"])).name
+    expected_dependencies = {
+        **measurement["inputs"]["helper_sha256"],
+        **measurement["inputs"].get("dependency_sha256", {}).get("current", {}),
+    }
     tests = {}
     for name, test in functional["tests"].items():
         hashes = [value for path, value in test["source_sha256"].items()
                   if Path(path).name == source_name]
         if hashes != [expected] or not test["passed"]:
             raise RuntimeError(f"独立功能测试的调度器源码不同：{name}")
-        for helper, expected_helper in measurement["inputs"]["helper_sha256"].items():
+        for helper, expected_helper in expected_dependencies.items():
             helper_hashes = [value for path, value in test["source_sha256"].items()
                              if Path(path).name == Path(helper).name]
             if helper_hashes != [expected_helper]:
-                raise RuntimeError(f"独立功能测试的公共依赖不同：{name} {helper}")
+                raise RuntimeError(f"独立功能测试的模块依赖不同：{name} {helper}")
         tests[name] = {key: value for key, value in test.items()
                        if key not in ("compile_command", "run_command", "source_sha256", "elapsed_seconds")}
         tests[name]["source_sha256"] = {Path(path).name: value

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""执行完整生产 NPU 回归，并验证每个帧地址及十一周期准备间隔。"""
+"""执行完整生产 NPU 回归，并验证每个帧地址及十二周期准备间隔。"""
 from __future__ import annotations
 
 import argparse
@@ -118,9 +118,9 @@ def main() -> None:
     if hashes != {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in tracked}:
         raise RuntimeError('Sources changed during production validation')
     summary = {'passed':True,'source_sha256':hashes,'simulator_manifest':str(sim/'build.json'),
-               'frame_start_delay_cycles':11,'coverage':coverage,'runs':results}
+               'frame_start_delay_cycles':12,'coverage':coverage,'runs':results}
     (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
-    print(json.dumps({'passed':True,'frame_start_delay_cycles':11,'coverage':coverage},indent=2))
+    print(json.dumps({'passed':True,'frame_start_delay_cycles':12,'coverage':coverage},indent=2))
 
 
 if __name__ == '__main__':

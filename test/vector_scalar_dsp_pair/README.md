@@ -1,25 +1,19 @@
-# 标量乘法器验证
+# 有符号乘法器验证
 
-`run.py` 检查 `registered_multiplier_s32` 的完整 64 位有符号乘积、输入寄存选项和统一时钟使能。参考实现通过 `--reference` 指定，待测实现默认使用仓库中的 `vector_scalar_multiplier.sv`。
+`registered_multiplier_s32` 使用四个半字部分积、进位保存压缩和分组前缀加法形成完整 64 位有符号乘积。两个输入的寄存选项分别控制，所有阶段共用 `i_en`。默认配置经过两个使能边沿输出结果，两个输入均寄存时经过三个使能边沿；持续使能时每周期接收一组操作数。
 
 ## 检查内容
 
-- 对 `p_input_register`、`p_b_input_register` 和 `p_use_dsp` 的八种组合执行时序等价证明，允许输入操作数和 `i_en` 在任意周期变化。
-- 使用四态仿真逐周期比较完整输出，覆盖操作数中的 `X`、`Z`、使能暂停和未知使能。
-- 在 `summary.json` 中保存实现、参考文件、公共加法器和测试代码的 SHA256，以及各项检查结果。
+`run.py` 对两个输入寄存参数的四种组合进行完整顺序等价证明，操作数和使能允许在任意周期变化。参考文件 `reference_multiplier.sv` 使用独立的分组进位表达式，比较范围包括完整输出及可对应的寄存状态。
 
-默认输入寄存配置下，乘法器经过两个有效时钟边沿输出结果；持续使能时每个周期可接收一组操作数。暂停期间，部分积与结果同时保持。
+四态测试覆盖操作数中的 X、Z、使能暂停和未知使能。数值测试使用独立有符号整数乘法计算参考结果，覆盖边界数值、逐位组合、低半字遍历和随机操作数；每个输出周期均检查完整 64 位结果，暂停期间检查输出保持。
 
-## 运行方法
+当前保存结果为：四种输入寄存组合的顺序证明通过，92,364 次四态比较通过，1,134,343 个数值测试周期中的 2,268,683 次完整输出比较通过。两个数值配置各包含 200,000 次暂停保持检查。结果及源码 SHA-256 保存在 `validation.json`。
 
-在仓库根目录执行以下命令。环境需要 Python、Pyosys、Icarus Verilog 和 `vvp`。
+## 执行
 
 ```bash
-mkdir -p build/vector_scalar_reference
-git show 6617626d:rtl/npu/conv/vector_scalar_multiplier.sv > build/vector_scalar_reference/vector_scalar_multiplier.sv
-python test/vector_scalar_dsp_pair/run.py \
-  --reference build/vector_scalar_reference/vector_scalar_multiplier.sv \
-  --out build/vector_scalar_dsp_pair_check
+python3 test/vector_scalar_dsp_pair/run.py --out build/vector_scalar_multiplier
 ```
 
-工具路径可使用 `--iverilog` 和 `--vvp` 指定。待测候选文件可使用 `--source` 指定。
+环境需要 Python、Pyosys、Icarus Verilog 和 `vvp`。`--source` 与 `--reference` 可以指定独立实现，`--iverilog` 和 `--vvp` 可以指定工具路径。每次运行保存四组证明脚本、四态与数值日志及源文件摘要。

@@ -379,19 +379,19 @@ module tb_npu_top;
             ia_calc_done_count     <= 0;
             ia_row_valid_q         <= 1'b0;
         end else begin
-            ia_row_valid_q <= u_dut.ia_row_valid;
-            if (u_dut.acc_data_valid) acc_valid_count <= acc_valid_count + 1;
-            if (u_dut.requant_out_valid) requant_valid_count <= requant_valid_count + 1;
-            if (u_dut.fifo_output_req) fifo_req_count <= fifo_req_count + 1;
-            if (u_dut.write_done) write_done_count <= write_done_count + 1;
-            if (u_dut.tile_calc_over) tile_calc_over_count <= tile_calc_over_count + 1;
-            if (u_dut.ia_row_valid && !ia_row_valid_q) ia_row_valid_rise_count <= ia_row_valid_rise_count + 1;
-            if (u_dut.ia_row_valid && u_dut.ia_calc_done) ia_calc_done_count <= ia_calc_done_count + 1;
-            if (debug_stream && u_dut.store_weight_req) begin
+            ia_row_valid_q <= u_dut.u_matrix_engine.ia_row_valid;
+            if (u_dut.u_matrix_engine.acc_data_valid) acc_valid_count <= acc_valid_count + 1;
+            if (u_dut.u_matrix_engine.u_output_pipeline.requant_out_valid) requant_valid_count <= requant_valid_count + 1;
+            if (u_dut.u_matrix_engine.u_output_pipeline.fifo_output_req) fifo_req_count <= fifo_req_count + 1;
+            if (u_dut.u_matrix_engine.u_output_pipeline.write_done) write_done_count <= write_done_count + 1;
+            if (u_dut.u_matrix_engine.tile_calc_over) tile_calc_over_count <= tile_calc_over_count + 1;
+            if (u_dut.u_matrix_engine.ia_row_valid && !ia_row_valid_q) ia_row_valid_rise_count <= ia_row_valid_rise_count + 1;
+            if (u_dut.u_matrix_engine.ia_row_valid && u_dut.u_matrix_engine.ia_calc_done) ia_calc_done_count <= ia_calc_done_count + 1;
+            if (debug_stream && u_dut.u_matrix_engine.store_weight_req) begin
                 $display("[DBG][WGT] t=%0t store=%0b w=%0d,%0d,%0d,%0d",
-                         $time, u_dut.store_weight_req,
-                         u_dut.weight_out[0], u_dut.weight_out[1],
-                         u_dut.weight_out[2], u_dut.weight_out[3]);
+                         $time, u_dut.u_matrix_engine.store_weight_req,
+                         u_dut.u_matrix_engine.weight_out[0], u_dut.u_matrix_engine.weight_out[1],
+                         u_dut.u_matrix_engine.weight_out[2], u_dut.u_matrix_engine.weight_out[3]);
             end
             if (debug_stream && (u_dut.ia_dma_wr_valid[0] || u_dut.ia_dma_done)) begin
                 $display("[DBG][IADMA] t=%0t done=%0b slot=%0d row=%0d col=%0d v=%b data=%0d,%0d,%0d,%0d",
@@ -402,102 +402,102 @@ module tb_npu_top;
                          u_dut.ia_dma_wr_data[0], u_dut.ia_dma_wr_data[1],
                          u_dut.ia_dma_wr_data[2], u_dut.ia_dma_wr_data[3]);
             end
-            if (debug_stream && u_dut.u_ia_loader.u_ctrl.cache_l1_start) begin
+            if (debug_stream && u_dut.u_matrix_engine.u_ia_loader.u_ctrl.cache_l1_start) begin
                 $display("[DBG][IASTART] t=%0t slot_start=%0d slot_end=%0d l2=%0d l1=%0d wg=%0d w=%0d ia=%0d valid=%b bias_valid=%0b group_valid=%0b bias=%0d,%0d latched=%0d,%0d",
                          $time,
-                         u_dut.u_ia_loader.u_ctrl.cache_l1_slot_start,
-                         u_dut.u_ia_loader.u_ctrl.cache_l1_slot_end,
-                         u_dut.u_ia_loader.u_ctrl.l2_idx,
-                         u_dut.u_ia_loader.u_ctrl.l1_idx,
-                         u_dut.u_ia_loader.u_ctrl.w_group_idx,
-                         u_dut.u_ia_loader.u_ctrl.w_cnt,
-                         u_dut.u_ia_loader.u_ctrl.ia_idx,
-                         u_dut.u_ia_loader.u_ctrl.tb_observer.cache_blk_valid,
-                         u_dut.bias_valid,
-                         u_dut.bias_group_valid,
-                         u_dut.bias_data_out[0],
-                         u_dut.bias_data_out[1],
-                         u_dut.compute_bias_latched[0],
-                         u_dut.compute_bias_latched[1]);
+                         u_dut.u_matrix_engine.u_ia_loader.u_ctrl.cache_l1_slot_start,
+                         u_dut.u_matrix_engine.u_ia_loader.u_ctrl.cache_l1_slot_end,
+                         u_dut.u_matrix_engine.u_ia_loader.u_ctrl.l2_idx,
+                         u_dut.u_matrix_engine.u_ia_loader.u_ctrl.l1_idx,
+                         u_dut.u_matrix_engine.u_ia_loader.u_ctrl.w_group_idx,
+                         u_dut.u_matrix_engine.u_ia_loader.u_ctrl.w_cnt,
+                         u_dut.u_matrix_engine.u_ia_loader.u_ctrl.ia_idx,
+                         u_dut.u_matrix_engine.u_ia_loader.u_ctrl.tb_observer.cache_blk_valid,
+                         u_dut.u_matrix_engine.bias_valid,
+                         u_dut.u_matrix_engine.bias_group_valid,
+                         u_dut.u_matrix_engine.bias_data_out[0],
+                         u_dut.u_matrix_engine.bias_data_out[1],
+                         u_dut.u_matrix_engine.compute_bias_latched[0],
+                         u_dut.u_matrix_engine.compute_bias_latched[1]);
             end
-            if (debug_stream && (u_dut.bias_switch || u_dut.load_bias_granted ||
-                                 u_dut.load_bias_done || u_dut.u_bias_loader.u_ctrl.switch_pending)) begin
+            if (debug_stream && (u_dut.u_matrix_engine.bias_switch || u_dut.load_bias_granted ||
+                                 u_dut.u_matrix_engine.load_bias_done || u_dut.u_matrix_engine.u_bias_loader.u_ctrl.switch_pending)) begin
                 $display("[DBG][BIAS] t=%0t state=%0d sw=%0b sleep=%0b last=%0b req=%0b grant=%0b done=%0b pending=%0b cur=%0d load=%0d act_bank=%0b load_bank=%0b valid=%0b group=%0b data=%0d,%0d",
                          $time,
-                         u_dut.u_bias_loader.u_ctrl.state,
-                         u_dut.bias_switch,
-                         u_dut.bias_sleep,
-                         u_dut.bias_last_loop,
+                         u_dut.u_matrix_engine.u_bias_loader.u_ctrl.state,
+                         u_dut.u_matrix_engine.bias_switch,
+                         u_dut.u_matrix_engine.bias_sleep,
+                         u_dut.u_matrix_engine.bias_last_loop,
                          u_dut.load_bias_req,
                          u_dut.load_bias_granted,
-                         u_dut.load_bias_done,
-                         u_dut.u_bias_loader.u_ctrl.switch_pending,
-                         u_dut.u_bias_loader.u_ctrl.current_block_idx,
-                         u_dut.u_bias_loader.u_ctrl.load_block_idx,
-                         u_dut.u_bias_loader.u_ctrl.active_bank,
-                         u_dut.u_bias_loader.u_ctrl.load_bank,
-                         u_dut.bias_valid,
-                         u_dut.bias_group_valid,
-                         u_dut.bias_data_out[0],
-                         u_dut.bias_data_out[1]);
+                         u_dut.u_matrix_engine.load_bias_done,
+                         u_dut.u_matrix_engine.u_bias_loader.u_ctrl.switch_pending,
+                         u_dut.u_matrix_engine.u_bias_loader.u_ctrl.current_block_idx,
+                         u_dut.u_matrix_engine.u_bias_loader.u_ctrl.load_block_idx,
+                         u_dut.u_matrix_engine.u_bias_loader.u_ctrl.active_bank,
+                         u_dut.u_matrix_engine.u_bias_loader.u_ctrl.load_bank,
+                         u_dut.u_matrix_engine.bias_valid,
+                         u_dut.u_matrix_engine.bias_group_valid,
+                         u_dut.u_matrix_engine.bias_data_out[0],
+                         u_dut.u_matrix_engine.bias_data_out[1]);
             end
-            if (debug_stream && u_dut.ia_row_valid) begin
+            if (debug_stream && u_dut.u_matrix_engine.ia_row_valid) begin
                 $display("[DBG][IA]  t=%0t done=%0b init=%0b tile_start=%0b bias_valid=%0b bias=%0d,%0d ia=%0d,%0d,%0d,%0d",
-                         $time, u_dut.ia_calc_done, u_dut.ia_is_init_data, u_dut.ia_tile_start,
-                         u_dut.bias_valid, u_dut.bias_data_out[0], u_dut.bias_data_out[1],
-                         u_dut.ia_out[0], u_dut.ia_out[1],
-                         u_dut.ia_out[2], u_dut.ia_out[3]);
+                         $time, u_dut.u_matrix_engine.ia_calc_done, u_dut.u_matrix_engine.ia_is_init_data, u_dut.u_matrix_engine.ia_tile_start,
+                         u_dut.u_matrix_engine.bias_valid, u_dut.u_matrix_engine.bias_data_out[0], u_dut.u_matrix_engine.bias_data_out[1],
+                         u_dut.u_matrix_engine.ia_out[0], u_dut.u_matrix_engine.ia_out[1],
+                         u_dut.u_matrix_engine.ia_out[2], u_dut.u_matrix_engine.ia_out[3]);
             end
-            if (debug_stream && (u_dut.ia_row_valid || u_dut.send_ia_trigger ||
-                                 u_dut.partial_sum_calc_over)) begin
+            if (debug_stream && (u_dut.u_matrix_engine.ia_row_valid || u_dut.u_matrix_engine.send_ia_trigger ||
+                                 u_dut.u_matrix_engine.partial_sum_calc_over)) begin
                 $write("[DBG][PS]  t=%0t trig=%0b ia_valid=%0b init=%0b final=%0b complete=%0b ps=",
                          $time,
-                         u_dut.send_ia_trigger,
-                         u_dut.ia_row_valid,
-                         u_dut.ia_is_init_data,
-                         u_dut.ia_calc_done,
-                         u_dut.partial_sum_calc_over);
+                         u_dut.u_matrix_engine.send_ia_trigger,
+                         u_dut.u_matrix_engine.ia_row_valid,
+                         u_dut.u_matrix_engine.ia_is_init_data,
+                         u_dut.u_matrix_engine.ia_calc_done,
+                         u_dut.u_matrix_engine.partial_sum_calc_over);
                 for (int dbg_i = 0; dbg_i < SIZE; dbg_i++) begin
-                    $write("%0d%s", u_dut.u_compute_core.ps_data_out[dbg_i],
+                    $write("%0d%s", u_dut.u_matrix_engine.u_compute_core.ps_data_out[dbg_i],
                            (dbg_i == SIZE - 1) ? "" : ",");
                 end
                 $write(" sum=");
                 for (int dbg_i = 0; dbg_i < SIZE; dbg_i++) begin
-                    $write("%0d%s", u_dut.u_compute_core.systolic_sum[dbg_i],
+                    $write("%0d%s", u_dut.u_matrix_engine.u_compute_core.systolic_sum[dbg_i],
                            (dbg_i == SIZE - 1) ? "" : ",");
                 end
                 $write("\n");
             end
-            if (debug_stream && u_dut.acc_data_valid) begin
+            if (debug_stream && u_dut.u_matrix_engine.acc_data_valid) begin
                 $write("[DBG][ACC] t=%0t done=%0b row_idx=%0d bias=%0d acc=",
-                       $time, u_dut.tile_calc_over, u_dut.is_bias_row_idx,
-                       u_dut.is_bias_scalar);
+                       $time, u_dut.u_matrix_engine.tile_calc_over, u_dut.u_matrix_engine.u_output_pipeline.is_bias_row_idx,
+                       u_dut.u_matrix_engine.u_output_pipeline.is_bias_scalar);
                 for (int dbg_i = 0; dbg_i < SIZE; dbg_i++) begin
-                    $write("%0d%s", u_dut.acc_data_out[dbg_i],
+                    $write("%0d%s", u_dut.u_matrix_engine.acc_data_out[dbg_i],
                            (dbg_i == SIZE - 1) ? "" : ",");
                 end
                 $write(" sys=");
                 for (int dbg_i = 0; dbg_i < SIZE; dbg_i++) begin
-                    $write("%0d%s", u_dut.u_compute_core.systolic_sum[dbg_i],
+                    $write("%0d%s", u_dut.u_matrix_engine.u_compute_core.systolic_sum[dbg_i],
                            (dbg_i == SIZE - 1) ? "" : ",");
                 end
                 $write("\n");
             end
-            if (debug_stream && u_dut.requant_out_valid) begin
+            if (debug_stream && u_dut.u_matrix_engine.u_output_pipeline.requant_out_valid) begin
                 $write("[DBG][RQ]  t=%0t done=%0b out=",
-                       $time, u_dut.requant_out_tile_done);
+                       $time, u_dut.u_matrix_engine.u_output_pipeline.requant_out_tile_done);
                 for (int dbg_i = 0; dbg_i < SIZE; dbg_i++) begin
                     $write("%0d%s", u_dut.requant_out[dbg_i],
                            (dbg_i == SIZE - 1) ? "" : ",");
                 end
                 $write("\n");
             end
-            if (debug_stream && u_dut.fifo_output_valid && u_dut.fifo_output_ready) begin
+            if (debug_stream && u_dut.u_matrix_engine.u_output_pipeline.fifo_output_valid && u_dut.u_matrix_engine.u_output_pipeline.fifo_output_ready) begin
                 $display("[DBG][WR]  t=%0t tile=(%0d,%0d) row=%0d data=%h mask=%b sw=%0b",
-                         $time, u_dut.u_oa_writer.tile_row_idx, u_dut.u_oa_writer.tile_col_idx,
-                         u_dut.u_oa_writer.row_in_tile,
-                         u_dut.fifo_output_data, u_dut.fifo_output_mask,
-                         u_dut.fifo_output_switch_row);
+                         $time, u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.tile_row_idx, u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.tile_col_idx,
+                         u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.row_in_tile,
+                         u_dut.u_matrix_engine.u_output_pipeline.fifo_output_data, u_dut.u_matrix_engine.u_output_pipeline.fifo_output_mask,
+                         u_dut.u_matrix_engine.u_output_pipeline.fifo_output_switch_row);
             end
         end
     end
@@ -651,61 +651,61 @@ module tb_npu_top;
         $display("[TB] FATAL: timeout, sa_ready=%0b done_valid=%0b err_code=%0b",
                  sa_ready, done_valid, err_code);
         $display("[TB][DBG] ctrl_state=%0d ia_valid=%0b ia_done=%0b w_valid=%0b w_done=%0b bias_valid=%0b bias_sleep=%0b quant_valid=%0b tile_calc_over=%0b oa_calc_over=%0b",
-                 u_dut.u_npu_controller.current_state,
-                 u_dut.ia_data_valid,
-                 u_dut.ia_sending_done,
-                 u_dut.weight_data_valid,
-                 u_dut.weight_sending_done,
-                 u_dut.bias_valid,
-                 u_dut.bias_sleep,
-                 u_dut.quant_params_valid,
-                 u_dut.tile_calc_over,
-                 u_dut.oa_calc_over);
+                 u_dut.u_matrix_engine.u_npu_controller.current_state,
+                 u_dut.u_matrix_engine.ia_data_valid,
+                 u_dut.u_matrix_engine.ia_sending_done,
+                 u_dut.u_matrix_engine.weight_data_valid,
+                 u_dut.u_matrix_engine.weight_sending_done,
+                 u_dut.u_matrix_engine.bias_valid,
+                 u_dut.u_matrix_engine.bias_sleep,
+                 u_dut.u_matrix_engine.quant_params_valid,
+                 u_dut.u_matrix_engine.tile_calc_over,
+                 u_dut.u_matrix_engine.oa_calc_over);
         $display("[TB][DBG] ia_ctrl_state=%0d ia_l2=%0d ia_l1=%0d ia_w=%0d ia_idx=%0d ia_all_done=%0b",
-                 u_dut.u_ia_loader.u_ctrl.state,
-                 u_dut.u_ia_loader.u_ctrl.l2_idx,
-                 u_dut.u_ia_loader.u_ctrl.l1_idx,
-                 u_dut.u_ia_loader.u_ctrl.w_cnt,
-                 u_dut.u_ia_loader.u_ctrl.ia_idx,
-                 u_dut.u_ia_loader.ctrl_all_done);
+                 u_dut.u_matrix_engine.u_ia_loader.u_ctrl.state,
+                 u_dut.u_matrix_engine.u_ia_loader.u_ctrl.l2_idx,
+                 u_dut.u_matrix_engine.u_ia_loader.u_ctrl.l1_idx,
+                 u_dut.u_matrix_engine.u_ia_loader.u_ctrl.w_cnt,
+                 u_dut.u_matrix_engine.u_ia_loader.u_ctrl.ia_idx,
+                 u_dut.u_matrix_engine.u_ia_loader.ctrl_all_done);
         $display("[TB][DBG] w_ctrl_state=%0d w_tile_row=%0d w_tile_col=%0d w_rep=%0d w_all_done=%0b",
-                 u_dut.u_kernel_loader.u_ctrl.state,
-                 u_dut.u_kernel_loader.u_ctrl.tile_row_dbg,
-                 u_dut.u_kernel_loader.u_ctrl.tile_col_dbg,
-                 u_dut.u_kernel_loader.u_ctrl.repeat_dbg,
-                 u_dut.u_kernel_loader.ctrl_all_done);
+                 u_dut.u_matrix_engine.u_kernel_loader.u_ctrl.state,
+                 u_dut.u_matrix_engine.u_kernel_loader.u_ctrl.tile_row_dbg,
+                 u_dut.u_matrix_engine.u_kernel_loader.u_ctrl.tile_col_dbg,
+                 u_dut.u_matrix_engine.u_kernel_loader.u_ctrl.repeat_dbg,
+                 u_dut.u_matrix_engine.u_kernel_loader.ctrl_all_done);
         $display("[TB][DBG] oa_state=%0d tiles_done=%0d tile_row=%0d tile_col=%0d write_req=%0b write_done=%0b",
-                 u_dut.u_oa_writer.state,
-                 u_dut.u_oa_writer.tiles_done,
-                 u_dut.u_oa_writer.tile_row_idx,
-                 u_dut.u_oa_writer.tile_col_idx,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.state,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.tiles_done,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.tile_row_idx,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.tile_col_idx,
                  u_dut.write_oa_req,
-                 u_dut.write_done);
+                 u_dut.u_matrix_engine.u_output_pipeline.write_done);
         $display("[TB][DBG] oa has_grant=%0b cmd_pending=%0b cmd_inflight=%0b rsp_inflight=%0b tile_done_pending=%0b beats_in_row=%0d beats_per_row=%0d row_in_tile=%0d out_ready_cond=%0b cmd_fire=%0b beat_fire=%0b rsp_fire=%0b",
-                 u_dut.u_oa_writer.has_grant,
-                 u_dut.u_oa_writer.cmd_pending,
-                 u_dut.u_oa_writer.cmd_inflight,
-                 u_dut.u_oa_writer.rsp_inflight,
-                 u_dut.u_oa_writer.tile_done_pending,
-                 u_dut.u_oa_writer.beats_in_row,
-                 u_dut.u_oa_writer.beats_per_row,
-                 u_dut.u_oa_writer.row_in_tile,
-                 u_dut.u_oa_writer.writer_ready_cond,
-                 u_dut.u_oa_writer.cmd_fire,
-                 u_dut.u_oa_writer.beat_fire,
-                 u_dut.u_oa_writer.rsp_fire);
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.has_grant,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.cmd_pending,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.cmd_inflight,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.rsp_inflight,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.tile_done_pending,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.beats_in_row,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.beats_per_row,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.row_in_tile,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.writer_ready_cond,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.cmd_fire,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.beat_fire,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_oa_writer.rsp_fire);
         $display("[TB][DBG] fifo req=%0b full=%0b stream=%0b ready0=%0b ready1=%0b read_sel=%0b write_sel=%0b out_v=%0b out_r=%0b bank_count0=%0d bank_count1=%0d",
-                 u_dut.fifo_output_req,
-                 u_dut.fifo_full_flag,
-                 u_dut.u_vec_s8_to_fifo.stream_active,
-                 u_dut.u_vec_s8_to_fifo.tb_observer.bank_ready0,
-                 u_dut.u_vec_s8_to_fifo.tb_observer.bank_ready1,
-                 u_dut.u_vec_s8_to_fifo.tb_observer.read_sel,
-                 u_dut.u_vec_s8_to_fifo.tb_observer.write_sel,
-                 u_dut.fifo_output_valid,
-                 u_dut.fifo_output_ready,
-                 u_dut.u_vec_s8_to_fifo.tb_observer.bank_count0,
-                 u_dut.u_vec_s8_to_fifo.tb_observer.bank_count1);
+                 u_dut.u_matrix_engine.u_output_pipeline.fifo_output_req,
+                 u_dut.u_matrix_engine.fifo_full_flag,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_vec_s8_to_fifo.stream_active,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_vec_s8_to_fifo.tb_observer.bank_ready0,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_vec_s8_to_fifo.tb_observer.bank_ready1,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_vec_s8_to_fifo.tb_observer.read_sel,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_vec_s8_to_fifo.tb_observer.write_sel,
+                 u_dut.u_matrix_engine.u_output_pipeline.fifo_output_valid,
+                 u_dut.u_matrix_engine.u_output_pipeline.fifo_output_ready,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_vec_s8_to_fifo.tb_observer.bank_count0,
+                 u_dut.u_matrix_engine.u_output_pipeline.u_vec_s8_to_fifo.tb_observer.bank_count1);
         $display("[TB][DBG] dma_arb rd_active=%0b command_client=%0d pending=%0d rd_busy=%0b rd_done=%0b wr_active=%0b wr_started=%0b wr_busy=%0b wr_done=%0b",
                  u_dut.u_block_dma_arbiter.rd_active,
                  u_dut.u_block_dma_arbiter.rd_command_client,

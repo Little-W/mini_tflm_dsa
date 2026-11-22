@@ -58,9 +58,11 @@ endmodule
 
 bind vector_engine vector_weight_issue_observer #(.p_channels(TILE), .p_depth(MAX_TAPS)) weight_rows_observer (
     .clk(clk), .rst_n(rst_n), .i_execute(dw_issue_fire), .i_depthwise(depthwise),
-    .i_active(32'(active)), .i_read_en(weights_i_rd_en),
-    .i_wr_en(weights_i_wr_en), .i_wr_tap(weights_i_wr_tap),
-    .i_wr_mask(weights_i_wr_mask), .i_wr_data(weights_i_wr_data),
-    .i_rd_tap(weights_i_rd_tap), .i_current_tap(32'(tap)), .i_weight_data(weights_o_rd_data)
+    .i_active(32'(active)), .i_read_en(u_operand_store.weights_i_rd_en),
+    .i_wr_en(u_operand_store.weights_i_wr_en), .i_wr_tap(u_operand_store.weights_i_wr_tap),
+    .i_wr_mask(u_operand_store.weights_i_wr_mask), .i_wr_data(u_operand_store.weights_i_wr_data),
+    .i_rd_tap(state_weight_zero_address ? 32'd0 :
+        u_operand_store.weight_tap_advance ? 32'(weight_tap_nxt) : 32'(tap)),
+    .i_current_tap(32'(tap)), .i_weight_data(u_operand_store.weights_o_rd_data)
 );
 `endif

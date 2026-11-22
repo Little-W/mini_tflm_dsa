@@ -8,6 +8,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source
+
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -31,8 +34,14 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     path = Path('rtl/npu/conv/vector_engine.sv')
-    current = (args.source_root / path).read_text()
-    reference = (args.reference_root / path).read_text()
+    current = read_current_source(args.source_root / path)
+    reference = read_current_source(args.reference_root / path)
+    source_digest = hashlib.sha256(current.encode()).hexdigest()
+    reference_digest = hashlib.sha256(reference.encode()).hexdigest()
+    # 局部模型使用自己的形参名，实际宽度表达式和条件保持不变。
+    for old, new in (('p_window_lanes', 'WINDOW_LANES'), ('p_window_bank_w', 'WINDOW_BANK_W')):
+        current = re.sub(r'\b' + old + r'\b', new, current)
+        reference = re.sub(r'\b' + old + r'\b', new, reference)
     marker = '  for (genvar bank=0;bank<WINDOW_LANES;bank++) begin : g_window_bank'
     finish = '    if (p_input_bank_storage) begin : g_registered_write'
     selected_bank = current.split(marker, 1)[1].split(finish, 1)[0]
@@ -67,7 +76,7 @@ endmodule
  assign formal_equal=({old_valid,old_pending} === {new_valid,new_pending});
 endmodule
 '''
-    bound = re.search(r'module vector_interval_bound\s*\(.*?endmodule', current, re.S)[0]
+    bound = (args.source_root / 'rtl/npu/conv/vector_interval_bound.sv').read_text()
     model_text += bound + '''
 module interval_property(
  input wire signed [16:0] coordinate,minimum,maximum,
@@ -140,7 +149,7 @@ endmodule
     executable = out / 'four_state.vvp'
     run(['/home/agent/.local/bin/iverilog', '-g2012', '-s', 'tb', '-o', executable, model, bench], out/'compile.log')
     run(['/home/agent/.local/bin/vvp', executable], out/'four_state.log')
-    report = dict(passed=True, source_sha256=sha(args.source_root/path), reference_sha256=sha(args.reference_root/path),
+    report = dict(passed=True, source_sha256=source_digest, reference_sha256=reference_digest,
                   formal=profiles, four_state_comparisons=400000, model_sha256=sha(model),
                   test_sha256=sha(Path(__file__)), simulation_log_sha256=sha(out/'four_state.log'))
     (out/'summary.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')

@@ -12,6 +12,10 @@ import runpy
 import subprocess
 
 HERE = Path(__file__).resolve().parent
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = HERE.parents[2]
 COMMON_PATH = ROOT / 'test/model_benchmark/build_sim.py'
 spec = importlib.util.spec_from_file_location('model_sim_common', COMMON_PATH)
@@ -25,7 +29,7 @@ def build_sim(out, generated, verilator='verilator', jobs=2, *, skip=False, idle
     out.mkdir(parents=True, exist_ok=True)
     if first_read_latency<1:raise ValueError('First read latency must be positive')
     gem_manifest_path = generated / 'build_manifest.json'
-    gem_manifest = json.loads(gem_manifest_path.read_text())
+    gem_manifest = json.loads(read_rtl_text(gem_manifest_path))
     cfg = gem_manifest['configuration']
     required = {'array_rows':16, 'array_columns':16, 'scratchpad_bytes':32768,
                 'accumulator_bytes':32768, 'dma_bus_bits':64, 'dma_max_bytes':2048,
@@ -43,7 +47,7 @@ def build_sim(out, generated, verilator='verilator', jobs=2, *, skip=False, idle
     # Share the production SoC source. Only the accelerator instance and the
     # enclosing module name change; CPU, timing buffers, arbitration and RAM
     # remain the same implementation and parameter values.
-    soc = (ROOT/'rtl/soc_top.sv').read_text()
+    soc = read_rtl_text(ROOT/'rtl/soc_top.sv')
     soc = soc.replace('module soc_top #(', 'module gemmini_soc_top #(', 1)
     pattern = r'    npu_axil_top #\(.*?\n    \) u_npu_axil_top \('
     replacement = ('    gemmini_mmio #(\n'
@@ -56,7 +60,7 @@ def build_sim(out, generated, verilator='verilator', jobs=2, *, skip=False, idle
     soc_path = out/'gemmini_soc_top.sv'
     if not skip:
         soc_path.write_text(soc)
-    elif soc_path.read_text() != soc:
+    elif read_rtl_text(soc_path) != soc:
         raise ValueError('Shared SoC source differs from the saved build')
     sources = [picorv32/'picorv32.v',picorv32/'picosoc/simpleuart.v',
                *[ROOT/'rtl/soc'/name for name in
@@ -82,7 +86,7 @@ def build_sim(out, generated, verilator='verilator', jobs=2, *, skip=False, idle
                    **common.CPU_PROFILES['performance'])
     binary, manifest_path = out/'obj/Vtb_model_benchmark', out/'build.json'
     if skip:
-        manifest = json.loads(manifest_path.read_text())
+        manifest = json.loads(read_rtl_text(manifest_path))
         if (manifest['source_sha256'] != hashes or manifest['profile'] != profile or
             manifest.get('returncode') != 0 or common.digest(binary) != manifest['binary_sha256']):
             raise ValueError('Simulator or build inputs differ from the saved build')
@@ -110,7 +114,7 @@ def build_sim(out, generated, verilator='verilator', jobs=2, *, skip=False, idle
     common.write_json(manifest_path,manifest)
     if rc or not manifest['sources_unchanged_during_build']:
         log = out/('compile.log' if (out/'compile.log').exists() else 'elaborate.log')
-        raise RuntimeError(str(log)+'\n'+log.read_text()[-5000:])
+        raise RuntimeError(str(log)+'\n'+read_rtl_text(log)[-5000:])
     return binary
 
 

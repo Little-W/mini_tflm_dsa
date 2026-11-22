@@ -10,8 +10,6 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / 'test/ia_write_output_depth'))
-from primitives import prepare_models
 
 
 def digest(path):
@@ -26,24 +24,23 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    model, model_info = prepare_models(out, names=('DSP48E1',))
     sources = [ROOT / 'rtl/npu/compute/select_add.sv',
                Path(__file__).with_name('packed_add_formal.sv')]
     hashes = {str(p.relative_to(ROOT)): digest(p) for p in sources}
-    summary = dict(passed=False, source_sha256=hashes, primitive_models=model_info,
+    summary = dict(passed=False, source_sha256=hashes,
                    inputs_constrained=False, formal=[])
-    profiles = [('packed', width, dsp) for width in (8, 12) for dsp in (0, 1)]
-    profiles += [('restore', width, dsp) for width in (1, 8, 9, 11) for dsp in (0, 1)]
-    for kind, width, dsp in profiles:
-        name = f'{kind}_width{width}_dsp{dsp}'
+    profiles = [('packed', width) for width in (8, 12)]
+    profiles += [('restore', width) for width in (1, 8, 9, 11)]
+    for kind, width in profiles:
+        name = f'{kind}_width{width}'
         top = 'packed_add_formal' if kind == 'packed' else 'restore_add_formal'
         width_name = 'p_lane_width' if kind == 'packed' else 'p_offset_width'
         properties = '-prove o_equivalent 1'
         if kind == 'packed':
             properties += ' -prove o_padding_zero 1'
         commands = [f'read_slang --top {top} -DYOSYS=1 -DVERIFIC=1 '
-                    f'-G{width_name}={width} -Gp_use_dsp={dsp} ' +
-                    ' '.join(shlex.quote(str(p)) for p in [*sources, model]),
+                    f'-G{width_name}={width} ' +
+                    ' '.join(shlex.quote(str(p)) for p in sources),
                     f'prep -top {top} -flatten',
                     f'sat -verify {properties} -show-inputs -show-outputs']
         script = out / (name + '.ys')
@@ -53,7 +50,7 @@ def main():
             result = subprocess.run([sys.executable, str(ROOT / 'scripts/fpga/open_fpga_synth.py'),
                                      '--worker', str(script)], cwd=ROOT,
                                     stdout=stream, stderr=subprocess.STDOUT, timeout=120)
-        row = dict(kind=kind, width=width, use_dsp=bool(dsp),
+        row = dict(kind=kind, width=width,
                    input_bits=12*width+2 if kind == 'packed' else 32+width,
                    passed=result.returncode == 0 and 'no model found: SUCCESS!' in log.read_text(),
                    script_sha256=digest(script), log_sha256=digest(log))
@@ -64,7 +61,7 @@ def main():
     binary = out / 'four_state.vvp'
     testbench = Path(__file__).with_name('tb_four_state.sv')
     command = [args.iverilog, '-g2012', '-s', 'tb_four_state', '-o', str(binary),
-               *map(str, sources), str(model), str(testbench)]
+               *map(str, sources), str(testbench)]
     with (out / 'compile.log').open('w') as stream:
         subprocess.run(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, check=True)
     result = subprocess.run([args.vvp, str(binary)], cwd=ROOT, capture_output=True, text=True, check=True)

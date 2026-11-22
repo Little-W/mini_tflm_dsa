@@ -28,7 +28,7 @@ def main():
     sv.write_text('''module proof #(parameter int CACHE_SLOT_W=6)(
  input logic [CACHE_SLOT_W-1:0] request_slot,cache_slot_base_q,cache_slot_mask,
  output logic equivalent);
- (* use_dsp="yes" *) logic [CACHE_SLOT_W-1:0] request_slot_sum;
+ logic [CACHE_SLOT_W-1:0] request_slot_sum;
  logic [CACHE_SLOT_W-1:0] slot_current,slot_reference;
 ''' + f'assign request_slot_sum={sum_expression};\n' +
                   f'assign slot_current={slot_expression};\n' + '''

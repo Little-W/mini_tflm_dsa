@@ -27,7 +27,7 @@ def span(source):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference-rev', default='dde5e7c9')
+    parser.add_argument('--reference-rev', default='ef0dc75')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -78,10 +78,16 @@ def main():
               assign o_origin_row_valid = next_origin_row_valid;
             '''
         if 'vector_coordinate_bound u_input_column_bound' in source:
-            current_first = source.index('  vector_coordinate_bound u_input_column_bound')
-            current_end = source.index('  always_ff', current_first)
-            current_logic = 'logic input_column_in_bounds, input_row_in_bounds;\n' + source[current_first:current_end]
-            helper = re.search(r'^module vector_coordinate_bound\b.*?^endmodule', source, re.M | re.S)[0]
+            current_logic = 'logic input_column_in_bounds, input_row_in_bounds;\n'
+            for instance in ('u_input_column_bound', 'u_input_row_bound',
+                             'u_origin_column_bound', 'u_origin_row_bound'):
+                current_logic += re.search(r'  vector_coordinate_bound ' + instance +
+                                           r' \(.*?\);', source, re.S)[0] + '\n'
+            current_logic += 'assign in_bounds = input_column_in_bounds && input_row_in_bounds;\n'
+            helper = ''
+            for module in ('vector_coordinate_bound', 'vector_interval_bound'):
+                block = re.search(r'^module ' + module + r'\b.*?^endmodule', source, re.M | re.S)
+                helper += (block[0] if block else (ROOT/'rtl/npu/conv'/f'{module}.sv').read_text()) + '\n'
         else:
             current_logic = re.search(r'  assign in_bounds\s*=.*?;', source, re.S)[0]
             helper = ''

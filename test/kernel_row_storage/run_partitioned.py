@@ -16,14 +16,17 @@ def prepare(config):
     for label in ('reference','current'):
         src=out/'inputs'/label
         files=[src/RTL,src/'rtl/common/regfile.v']
-        run(f'read_slang -D SYNTHESIS=1 --top kernel_loader_buffer -GSIZE={size} -GDATA_WIDTH={width} '+shlex.join(map(str,files)))
+        definitions=' '.join('-D'+value for value in config.get('defines',[]))
+        run(f'read_slang -D SYNTHESIS=1 {definitions} --top kernel_loader_buffer -GSIZE={size} -GDATA_WIDTH={width} '+shlex.join(map(str,files)))
         run('prep -top kernel_loader_buffer -flatten; memory_map; async2sync; opt_clean')
         module=design.module('\\kernel_loader_buffer')
         for slot in range(3):
             for row in range(size):
                 for column in range(size):
-                    if label=='reference':old=f'g_column_ram[{column}].u_column.mem[{slot*size+row}]'
-                    elif size>1 and size&(size-1)==0:old=f'g_row_storage.g_row[{row}].mem[{slot*size+column}]'
+                    layout=config.get(label+'_layout','legacy_column' if label=='reference' else 'parameter')
+                    if layout=='legacy_column':old=f'g_column_ram[{column}].u_column.mem[{slot*size+row}]'
+                    elif layout=='row' or (layout=='parameter' and size>1 and size&(size-1)==0):
+                        old=f'g_row_storage.g_row[{row}].mem[{slot*size+column}]'
                     else:old=f'g_column_storage.g_column_ram[{column}].u_column.mem[{slot*size+row}]'
                     name=f'storage_slot_{slot}_row_{row}_column_{column}'
                     wire=module.wire('\\'+old)
@@ -58,6 +61,9 @@ def main():
     p.add_argument('--worker-prepare',type=Path)
     p.add_argument('--source-root',type=Path);p.add_argument('--reference-root',type=Path)
     p.add_argument('--size',type=int,default=32);p.add_argument('--width',type=int,default=16)
+    p.add_argument('--define',action='append',default=[])
+    p.add_argument('--reference-layout',choices=['legacy_column','parameter','column','row'],default='legacy_column')
+    p.add_argument('--source-layout',choices=['parameter','column','row'],default='parameter')
     p.add_argument('--out',type=Path);p.add_argument('--lock-file',type=Path,default=ROOT/'build/kernel_row_storage/formal.lock')
     p.add_argument('--prepare-timeout',type=int,default=420);p.add_argument('--group-timeout',type=int,default=90)
     p.add_argument('--seq',type=int,default=4);p.add_argument('--prepare-only',action='store_true');p.add_argument('--groups',nargs='+',type=int)
@@ -65,7 +71,8 @@ def main():
     a=p.parse_args()
     if a.worker_prepare:prepare(json.loads(a.worker_prepare.read_text()));return
     out=a.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    config={'SIZE':a.size,'DATA_WIDTH':a.width,'out':str(out)};cfg=out/'config.json'
+    config={'SIZE':a.size,'DATA_WIDTH':a.width,'out':str(out),'defines':a.define,
+            'reference_layout':a.reference_layout,'current_layout':a.source_layout};cfg=out/'config.json'
     if not cfg.exists():
         manifest={}
         for label,source_root in [('reference',a.reference_root.resolve()),('current',a.source_root.resolve())]:
@@ -76,6 +83,8 @@ def main():
     else:
         config=json.loads(cfg.read_text())
         if config['SIZE']!=a.size or config['DATA_WIDTH']!=a.width:raise RuntimeError('参数与保存点不符')
+        if config.get('defines',[])!=a.define or config.get('reference_layout','legacy_column')!=a.reference_layout or config.get('current_layout','parameter')!=a.source_layout:
+            raise RuntimeError('综合定义或存储布局与保存点不符')
         for label,source_root in [('reference',a.reference_root.resolve()),('current',a.source_root.resolve())]:
             for relative in [RTL,Path('rtl/common/regfile.v')]:
                 source=source_root/relative;copied=out/'inputs'/label/relative

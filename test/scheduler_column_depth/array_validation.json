@@ -1,0 +1,77 @@
+{
+  "passed": true,
+  "inputs": {
+    "source": "rtl/npu/control/ps_window_scheduler.sv",
+    "reference_commit": null,
+    "reference_file": "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/scheduler_column_depth/reference_stage_arrays.sv",
+    "source_path": "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_window_scheduler.sv",
+    "reference_sha256": "1c084490ac7c4091dbec3fb763fa0fe6a0260c7bffd6e750e25e8a887727a521",
+    "source_sha256": "e1cbd4eb9f8961b0b109213a24d7fe96e21b165c26e4099e9955cc60c41a8399",
+    "helper_sha256": {
+      "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+      "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+      "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+      "rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758"
+    },
+    "dependency_sha256": {
+      "reference": {
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_scheduler_priority.sv": "4731215f8de56b9efb55047aae70c9fda1ff9af24c3229cfb5fd95264d807537"
+      },
+      "current": {
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_scheduler_priority.sv": "4731215f8de56b9efb55047aae70c9fda1ff9af24c3229cfb5fd95264d807537"
+      }
+    },
+    "prepared_source_sha256": {
+      "reference": "83cfe8f090893be9bdccd82434bbfd77200cc70fde09d5ef3061a0e197c31ace",
+      "current": "67a7f90217be5fb862ed0fd4fa8b7240156f2430c83a6a9277292b16dd1c7ca3"
+    },
+    "module_sha256": {
+      "reference": {
+        "ps_window_scheduler": "047c0a50b264d1774f3b836015efa2ad68352d8e0d24663108d5bbf4549b851a",
+        "ps_scheduler_priority": "0ddf1ac930fd00da9343d2d2fbf5682bca4592ca317bbfe1f40b649818f81798"
+      },
+      "current": {
+        "ps_window_scheduler": "c1ba4d127b82e1d84af051bc61ee4a2f0d0885fde6119e3d810d8331c0a84f23",
+        "ps_scheduler_priority": "0ddf1ac930fd00da9343d2d2fbf5682bca4592ca317bbfe1f40b649818f81798"
+      }
+    }
+  },
+  "input_assumptions": [],
+  "state_relation": "Every public output and every shared clocked state is compared; equal register states remain equal for every input sequence.",
+  "memory_relation": "Both complete metadata memories and frame K memories are expanded and compared.",
+  "additional_relation_outputs": [
+    "frame_open"
+  ],
+  "proof_state_aliases": {
+    "reference": {},
+    "current": {
+      "prediction_depth_q[0]": "prediction_q_s0",
+      "prediction_depth_q[1]": "prediction_q_direct_s1",
+      "prediction_depth_q[2]": "prediction_q_s1",
+      "prediction_column_q[0]": "prediction_column_s0",
+      "prediction_column_q[1]": "prediction_column_direct_s1",
+      "prediction_column_q[2]": "prediction_column_s1",
+      "prediction_reads_frame_q[0]": "prediction_reads_frame_s0",
+      "prediction_reads_frame_q[1]": "prediction_reads_frame_q"
+    }
+  },
+  "increment_profiles": [
+    {
+      "width": 29,
+      "passed": true,
+      "script_sha256": "3efab647c9bbe360ceec48d4a5e5bc260173471361b5171af010dbd0e389faaf",
+      "log_sha256": "7f548093087dc09afafc216cab2d896b50e57f89cd795a723f9382dd4fe251ee"
+    }
+  ],
+  "scheduler_profiles": [
+    {
+      "SIZE": 16,
+      "FRAME_COUNT": 16,
+      "MAX_REUSE_TILES": 32,
+      "equivalent_bits": 2523,
+      "passed": true,
+      "script_sha256": "785e7d278e6118971897671c681c2af33ea12e9999ae6432f0e694326b8ac60f",
+      "log_sha256": "2f7aac6759c8c72517559e94a5336298723786b0febc51b02bc8b2a1bf04288f"
+    }
+  ]
+}

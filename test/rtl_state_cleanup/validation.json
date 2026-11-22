@@ -1,0 +1,263 @@
+{
+  "reference": "ef0dc75342997721bdc4110b2841445df962018e",
+  "input_value_constraints": null,
+  "all_public_outputs_compared_each_cycle": true,
+  "runs": [
+    {
+      "case": "oa_n4_b32",
+      "top": "oa_writer",
+      "parameters": {
+        "VLEN": 4,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 8
+      },
+      "passed": true,
+      "equivalent_bits": 1416,
+      "source_sha256": {
+        "rtl/npu/writeback/oa_writer.sv": "6e8b20a9b246de0f2bf97498ecb7631eadee6bbb2f78f3588e83481812e96067",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+        "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+      },
+      "reference_sha256": "48d50049fb7636e7b86fde3342206a3dbfd3f3572a514ed6a74143ba8e11f553",
+      "script_sha256": "b1b3f093d287c5f8edfef879bb159a5a258240fc04ebb566184b3e911c1884f4",
+      "log_sha256": "5b55ffb0239f56fb1b6649ac42fd3e971ce0e70a7c03d0232f9832169459b6ce"
+    },
+    {
+      "case": "oa_n16_b32",
+      "top": "oa_writer",
+      "parameters": {
+        "VLEN": 16,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 29
+      },
+      "passed": true,
+      "equivalent_bits": 1935,
+      "source_sha256": {
+        "rtl/npu/writeback/oa_writer.sv": "6e8b20a9b246de0f2bf97498ecb7631eadee6bbb2f78f3588e83481812e96067",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+        "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+      },
+      "reference_sha256": "48d50049fb7636e7b86fde3342206a3dbfd3f3572a514ed6a74143ba8e11f553",
+      "script_sha256": "91930f81bf08c2dbd64fd14a3cde4fb8c6e2a0f5a9ffbaaaf5d96282152e5596",
+      "log_sha256": "6b019ab032c082fa9362a700f3a97b2c53f6e4712294144c89a5d83ce3b84fca"
+    },
+    {
+      "case": "oa_n16_b64",
+      "top": "oa_writer",
+      "parameters": {
+        "VLEN": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 29
+      },
+      "passed": true,
+      "equivalent_bits": 1971,
+      "source_sha256": {
+        "rtl/npu/writeback/oa_writer.sv": "6e8b20a9b246de0f2bf97498ecb7631eadee6bbb2f78f3588e83481812e96067",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+        "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+      },
+      "reference_sha256": "48d50049fb7636e7b86fde3342206a3dbfd3f3572a514ed6a74143ba8e11f553",
+      "script_sha256": "d2678fcab5f2738329c2799a719053dbef60c387bebfe2def7512013cbdd5939",
+      "log_sha256": "0a8094b3b22c504ba877305e3e6aea06600dfe38b2381816fd7ec8a139fe2f52"
+    },
+    {
+      "case": "oa_n32_b128",
+      "top": "oa_writer",
+      "parameters": {
+        "VLEN": 32,
+        "BUS_WIDTH": 128,
+        "COUNT_WIDTH": 32
+      },
+      "passed": true,
+      "equivalent_bits": 2111,
+      "source_sha256": {
+        "rtl/npu/writeback/oa_writer.sv": "6e8b20a9b246de0f2bf97498ecb7631eadee6bbb2f78f3588e83481812e96067",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+        "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+      },
+      "reference_sha256": "48d50049fb7636e7b86fde3342206a3dbfd3f3572a514ed6a74143ba8e11f553",
+      "script_sha256": "fd3a77b5ad0cff7e5099cc6f4a879905304d0af3db3d03de7c93a6e3f18647b4",
+      "log_sha256": "2eedea01d0d4aece30c0d5ef066cb4b402f40fff49487c3a1c4e32ad3eef5c6e"
+    },
+    {
+      "case": "frame_n1",
+      "top": "frame_address_prepare",
+      "parameters": {
+        "p_size": 1,
+        "p_use_dsp": 0
+      },
+      "passed": true,
+      "equivalent_bits": 1266,
+      "source_sha256": {
+        "rtl/npu/top/frame_address_prepare.sv": "5a7a53f62ef86afd11cf9fb1fedccfa736596142cb83aeb301e870ac4f0fc0b9",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+        "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+      },
+      "reference_sha256": "b284c26d4cd901f36c5e95e6b600d1f9897a6e49863676e89aa53a8616932fce",
+      "script_sha256": "b5ba8774d87370f00801fd9ea8ba92d4320f699f8690c9b7d81b8ac1d487277a",
+      "log_sha256": "0e28b70bcbfcd57e0193fa0a72dcfe938c3eb68f5d24f595718e99a9c618a4b9"
+    },
+    {
+      "case": "frame_n16",
+      "top": "frame_address_prepare",
+      "parameters": {
+        "p_size": 16,
+        "p_use_dsp": 1
+      },
+      "passed": true,
+      "equivalent_bits": 1335,
+      "source_sha256": {
+        "rtl/npu/top/frame_address_prepare.sv": "5a7a53f62ef86afd11cf9fb1fedccfa736596142cb83aeb301e870ac4f0fc0b9",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+        "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+      },
+      "reference_sha256": "b284c26d4cd901f36c5e95e6b600d1f9897a6e49863676e89aa53a8616932fce",
+      "script_sha256": "daf3b516cf45ffe5a40da3a82f810071fea9d3c46c1fd8ea658d30c72f8a6f27",
+      "log_sha256": "33ce4066b331bce8030ead36e3c64057833ae3799a16cec464bb002b2af777ec"
+    },
+    {
+      "case": "frame_n32",
+      "top": "frame_address_prepare",
+      "parameters": {
+        "p_size": 32,
+        "p_use_dsp": 0
+      },
+      "passed": true,
+      "equivalent_bits": 1335,
+      "source_sha256": {
+        "rtl/npu/top/frame_address_prepare.sv": "5a7a53f62ef86afd11cf9fb1fedccfa736596142cb83aeb301e870ac4f0fc0b9",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+        "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+      },
+      "reference_sha256": "b284c26d4cd901f36c5e95e6b600d1f9897a6e49863676e89aa53a8616932fce",
+      "script_sha256": "16903352d7dd6d43861576cab04ccb73d0c59eaa04e58ea3c8c594871cd421ed",
+      "log_sha256": "77b2c56da2605374b9975963458f6150e2160cd23f5a373c82834e719bc148e9"
+    },
+    {
+      "case": "ps_internal",
+      "top": "ps_frame_store",
+      "parameters": {
+        "MAX_FRAME_ROWS": 47,
+        "FRAME_COUNT": 16,
+        "POOL_BYTES": 4096,
+        "BANK_BYTES": 2048,
+        "EXTERNAL_RAM": 0
+      },
+      "passed": true,
+      "equivalent_bits": 4159,
+      "source_sha256": {
+        "rtl/npu/ps_compact/ps_frame_store.sv": "79e4f23cf068780622fd148eac7a89779d375e4d777ec4f129c613b0b9d333de",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+        "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+      },
+      "reference_sha256": "cde65703e3bdc845764cad92ef1c6a52bd88574c41d0fbcd6f71a99ca5a483b1",
+      "script_sha256": "0c6d3ffee0b9f2cef74e1a0ecd3ef1da0984340da3637d8bd9d24d74ac857b10",
+      "log_sha256": "c1787448d2fcb8510d34d3edf4d348c935d3234506d2734adcfa13050a7b8b35"
+    },
+    {
+      "case": "ps_external",
+      "top": "ps_frame_store",
+      "parameters": {
+        "MAX_FRAME_ROWS": 512,
+        "FRAME_COUNT": 16,
+        "POOL_BYTES": 57344,
+        "BANK_BYTES": 8192,
+        "EXTERNAL_RAM": 1,
+        "p_fixed_ps_channels": 1
+      },
+      "passed": true,
+      "equivalent_bits": 3251,
+      "source_sha256": {
+        "rtl/npu/ps_compact/ps_frame_store.sv": "79e4f23cf068780622fd148eac7a89779d375e4d777ec4f129c613b0b9d333de",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+        "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+      },
+      "reference_sha256": "cde65703e3bdc845764cad92ef1c6a52bd88574c41d0fbcd6f71a99ca5a483b1",
+      "script_sha256": "bf39ff29430a81b3801105bfe39f796b8b1da6606906fe914c45cc0c08572aa4",
+      "log_sha256": "b62c12cb159fbb47068593148ed1c7ef8ebb3e3d616d68b34fe24c4d9e4d8752"
+    },
+    {
+      "case": "ps_rotating",
+      "top": "ps_frame_store",
+      "parameters": {
+        "MAX_FRAME_ROWS": 16,
+        "FRAME_COUNT": 4,
+        "POOL_BYTES": 14336,
+        "BANK_BYTES": 2048,
+        "EXTERNAL_RAM": 1,
+        "p_fixed_ps_channels": 0
+      },
+      "passed": true,
+      "equivalent_bits": 3082,
+      "source_sha256": {
+        "rtl/npu/ps_compact/ps_frame_store.sv": "79e4f23cf068780622fd148eac7a89779d375e4d777ec4f129c613b0b9d333de",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+        "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+      },
+      "reference_sha256": "cde65703e3bdc845764cad92ef1c6a52bd88574c41d0fbcd6f71a99ca5a483b1",
+      "script_sha256": "02774f4475d8ca66fa9cb491d7f25c1d5ff7b0e983bebab3badf181f371cca86",
+      "log_sha256": "56ea3fcef70b9179fe1741c6b75ffdfad2265f306064d4d97651e020c4028396"
+    }
+  ],
+  "passed": true
+}

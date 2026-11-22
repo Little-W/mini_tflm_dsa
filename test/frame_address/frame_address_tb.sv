@@ -1,34 +1,34 @@
 `timescale 1ns/1ps
 module frame_address_tb #(
-    parameter bit p_ready_mask_abort = 1'b1
+    parameter bit p_ready_mask_abort = 1'b1,
+    parameter bit p_pipeline_products = 1'b1
 );
+    localparam int p_latency = p_pipeline_products ? 11 : 10;
     logic clk = 0;
     logic rst_n = 0;
     logic start = 0, abort_job = 0, result_rdy = 0;
     logic [31:0] p0, q0, column, total_depth;
     logic [31:0] ia_base, ia_stride, weight_base, weight_stride, dst_base, dst_stride;
     logic ia_packed, ia_s16, weight_packed, weight_s16, is_mode, output_s16;
-    logic [1:0] start_rdy, result_vld;
-    logic [31:0] ia_result [0:1], weight_result [0:1], dst_result [0:1];
+    logic start_rdy, result_vld;
+    logic [31:0] ia_result, weight_result, dst_result;
     integer cycles = 0, completed = 0, cancelled = 0, reset_cases = 0, wait_checks = 0;
     integer abort_ready_checks = 0, idle_abort_checks = 0;
-    integer abort_phase_checks [1:11] = '{default:0};
-    integer reset_phase_checks [1:11] = '{default:0};
+    integer abort_phase_checks [1:p_latency+1] = '{default:0};
+    integer reset_phase_checks [1:p_latency+1] = '{default:0};
     logic [31:0] corners [0:13];
 
-    for (genvar impl = 0; impl < 2; impl++) begin : g_impl
-        frame_address_prepare #(.p_size(16),.p_use_dsp(impl != 0),
-            .p_ready_mask_abort(p_ready_mask_abort)) u_prepare (
+        frame_address_prepare #(.p_size(16),
+            .p_ready_mask_abort(p_ready_mask_abort), .p_pipeline_products(p_pipeline_products)) u_prepare (
             .clk(clk),.rst_n(rst_n),.i_start(start),.i_abort(abort_job),
-            .o_start_rdy(start_rdy[impl]),.i_result_rdy(result_rdy),.o_result_vld(result_vld[impl]),
+            .o_start_rdy(start_rdy),.i_result_rdy(result_rdy),.o_result_vld(result_vld),
             .i_p0(p0),.i_q0(q0),.i_column(column),.i_total_depth(total_depth),
             .i_ia_base(ia_base),.i_ia_stride(ia_stride),.i_ia_packed(ia_packed),.i_ia_s16(ia_s16),
             .i_weight_base(weight_base),.i_weight_stride(weight_stride),
             .i_weight_packed(weight_packed),.i_weight_s16(weight_s16),
             .i_dst_base(dst_base),.i_dst_stride(dst_stride),.i_is_mode(is_mode),.i_output_s16(output_s16),
-            .o_ia_base(ia_result[impl]),.o_weight_base(weight_result[impl]),.o_dst_base(dst_result[impl])
+            .o_ia_base(ia_result),.o_weight_base(weight_result),.o_dst_base(dst_result)
         );
-    end
 
     function automatic logic [31:0] operand_reference(
         input logic [31:0] base, row0, depth0, stride, total,
@@ -52,13 +52,9 @@ module frame_address_tb #(
         clk = 0; #1;
         clk = 1; #1;
         cycles++;
-        if (start_rdy[0] !== start_rdy[1] || result_vld[0] !== result_vld[1])
-            $fatal(1,"Control differs cycle=%0d",cycles);
-        if (result_vld[0] && (ia_result[0] !== ia_result[1] || weight_result[0] !== weight_result[1] || dst_result[0] !== dst_result[1]))
-            $fatal(1,"Primitive result differs cycle=%0d",cycles);
         // 中止后的控制状态为空闲，两种参数分别检查内部空闲与外部接受许可。
         if (abort_job) begin
-            if (start_rdy !== (p_ready_mask_abort ? 2'b00 : 2'b11) || result_vld !== 2'b00)
+            if (start_rdy !== (p_ready_mask_abort ? 1'b0 : 1'b1) || result_vld !== 1'b0)
                 $fatal(1,"Abort readiness differs mask=%0d cycle=%0d",p_ready_mask_abort,cycles);
             abort_ready_checks++;
         end
@@ -72,7 +68,7 @@ module frame_address_tb #(
         start = 1; abort_job = 0; result_rdy = 0;
         cycle();
         if (start_rdy != 0 || result_vld != 0) $fatal(1,"Acceptance state differs");
-        for (int age = 1; age <= 10; age++) begin
+        for (int age = 1; age <= p_latency; age++) begin
             random_context();
             start = 1'($urandom);
             if (age == abort_at || age == reset_at) begin
@@ -83,7 +79,7 @@ module frame_address_tb #(
                 if (result_vld != 0) $fatal(1,"Cancellation produced a result");
                 abort_job = 0; rst_n = 1; start = 0;
                 cycle();
-                if (start_rdy != 3 || result_vld != 0) $fatal(1,"Cancellation recovery differs");
+                if (start_rdy != 1 || result_vld != 0) $fatal(1,"Cancellation recovery differs");
                 if (age == abort_at) begin
                     cancelled++;
                     abort_phase_checks[age]++;
@@ -94,41 +90,41 @@ module frame_address_tb #(
                 return;
             end
             cycle();
-            if (age < 10 && result_vld != 0) $fatal(1,"Early result age=%0d",age);
-            if (age == 10 && result_vld != 3) $fatal(1,"Result latency differs");
+            if (age < p_latency && result_vld != 0) $fatal(1,"Early result age=%0d",age);
+            if (age == p_latency && result_vld != 1) $fatal(1,"Result latency differs");
             if (start_rdy != 0) $fatal(1,"Preparation accepted a second context");
         end
-        if (ia_result[0] !== expected_ia || weight_result[0] !== expected_weight || dst_result[0] !== expected_dst)
+        if (ia_result !== expected_ia || weight_result !== expected_weight || dst_result !== expected_dst)
             $fatal(1,"Address differs ia=%08x/%08x weight=%08x/%08x dst=%08x/%08x",
-                ia_result[0],expected_ia,weight_result[0],expected_weight,dst_result[0],expected_dst);
+                ia_result,expected_ia,weight_result,expected_weight,dst_result,expected_dst);
         for (int wait_cycle = 0; wait_cycle < hold_cycles; wait_cycle++) begin
             random_context(); start = 1'($urandom);
             cycle();
-            if (result_vld != 3 || start_rdy != 0 || ia_result[0] !== expected_ia ||
-                weight_result[0] !== expected_weight || dst_result[0] !== expected_dst)
+            if (result_vld != 1 || start_rdy != 0 || ia_result !== expected_ia ||
+                weight_result !== expected_weight || dst_result !== expected_dst)
                 $fatal(1,"Waiting result changed");
             wait_checks++;
         end
         start = 0;
-        if (abort_at == 11 || reset_at == 11) begin
-            abort_job = abort_at == 11; rst_n = reset_at != 11;
+        if (abort_at == p_latency+1 || reset_at == p_latency+1) begin
+            abort_job = abort_at == p_latency+1; rst_n = reset_at != p_latency+1;
             start = 1'b1;
             cycle();
             if (result_vld != 0) $fatal(1,"Waiting cancellation produced a result");
             abort_job = 0; rst_n = 1; start = 0;
             cycle();
-            if (start_rdy != 3 || result_vld != 0) $fatal(1,"Waiting cancellation recovery differs");
-            if (abort_at == 11) begin
+            if (start_rdy != 1 || result_vld != 0) $fatal(1,"Waiting cancellation recovery differs");
+            if (abort_at == p_latency+1) begin
                 cancelled++;
-                abort_phase_checks[11]++;
+                abort_phase_checks[p_latency+1]++;
             end else begin
                 reset_cases++;
-                reset_phase_checks[11]++;
+                reset_phase_checks[p_latency+1]++;
             end
         end else begin
             result_rdy = 1;
             cycle();
-            if (start_rdy != 3 || result_vld != 0) $fatal(1,"Result acceptance differs");
+            if (start_rdy != 1 || result_vld != 0) $fatal(1,"Result acceptance differs");
             completed++;
         end
         result_rdy = 0;
@@ -154,17 +150,17 @@ module frame_address_tb #(
         end
         for (int sample = 0; sample < 30000; sample++) begin
             random_context();
-            if (sample % 7 == 0) run_case(1+(sample%11),0,int'($urandom_range(0,15)));
-            else if (sample % 17 == 0) run_case(0,1+(sample%11),int'($urandom_range(0,15)));
+            if (sample % 7 == 0) run_case(1+(sample%(p_latency+1)),0,int'($urandom_range(0,15)));
+            else if (sample % 17 == 0) run_case(0,1+(sample%(p_latency+1)),int'($urandom_range(0,15)));
             else run_case(0,0,int'($urandom_range(0,15)));
         end
         abort_job = 1; start = 1; cycle();
-        if (start_rdy !== (p_ready_mask_abort ? 2'b00 : 2'b11) || result_vld != 0)
+        if (start_rdy !== (p_ready_mask_abort ? 1'b0 : 1'b1) || result_vld != 0)
             $fatal(1,"Abort priority differs");
         idle_abort_checks++;
         abort_job = 0; start = 0; cycle();
-        if (start_rdy != 3 || result_vld != 0) $fatal(1,"Idle abort recovery differs");
-        for (int age = 1; age <= 11; age++) begin
+        if (start_rdy != 1 || result_vld != 0) $fatal(1,"Idle abort recovery differs");
+        for (int age = 1; age <= p_latency+1; age++) begin
             if (abort_phase_checks[age] == 0 || reset_phase_checks[age] == 0)
                 $fatal(1,"Cancellation phase was not exercised age=%0d",age);
             $display("FRAME_ADDRESS_PHASE age=%0d abort=%0d reset=%0d",

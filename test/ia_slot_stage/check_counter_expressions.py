@@ -26,8 +26,10 @@ def main():
     paths=[r/'rtl/npu/loaders/ia_loader_ctrl.sv'for r in(args.source_root,args.reference_root)]
     current,reference=[p.read_text()for p in paths]
     hashes=[hashlib.sha256(p.read_bytes()).hexdigest()for p in paths]
-    declarations='\n'.join(re.findall(r'  \(\* use_dsp = "yes" \*\) (?:count_t|logic \[REG_WIDTH-1:0\])[^;]+;',current))
+    declarations='\n'.join(re.findall(r'^[ \t]*(?:\(\*[^\n]*\*\)[ \t]*)?(?:count_t|logic[ \t]+\[REG_WIDTH-1:0\])[^;\n]*;',current,re.M))
     declarations='\n'.join(line for line in declarations.splitlines()if any(name in line for name in ALIASES))
+    if any(re.search(r'\b'+name+r'\b',declarations)is None for name in ALIASES):
+        raise RuntimeError('计数结果声明未完整提取')
     assignments='\n'.join(re.search(r'  assign '+name+r'\s*=.*?;',current,re.S).group()for name in ALIASES)
     compare=[]
     for index,(target,alias)in enumerate(zip(OUTPUTS,ALIASES)):
@@ -39,7 +41,7 @@ def main():
             f'assign current_{index}={cand[0]};',f'assign reference_{index}={ref[0]};',
             f'assign equal_bits[{index}]=current_{index}===reference_{index};'])
     ports=','.join(['input logic[REG_WIDTH-1:0]'+','.join(REG_INPUTS),'input logic[CNT_W-1:0]'+','.join(COUNT_INPUTS),'output logic equivalent'])
-    module='module arithmetic #(parameter REG_WIDTH=32,CNT_W=29,SIZE=16)('+ports+');\ntypedef logic[CNT_W-1:0]count_t;\nlogic[6:0]equal_bits;\n'+declarations+'\n'+assignments+'\n'+'\n'.join(compare)+'\nassign equivalent=&equal_bits;\nendmodule\n'
+    module='`default_nettype none\nmodule arithmetic #(parameter REG_WIDTH=32,CNT_W=29,SIZE=16)('+ports+');\ntypedef logic[CNT_W-1:0]count_t;\nlogic[6:0]equal_bits;\n'+declarations+'\n'+assignments+'\n'+'\n'.join(compare)+'\nassign equivalent=&equal_bits;\nendmodule\n`default_nettype wire\n'
     sv=args.out/'arithmetic.sv';sv.write_text(module)
     proofs=[]
     for rw,cw in PROFILES:

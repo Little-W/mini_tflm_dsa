@@ -1,5 +1,7 @@
 # 向量结果存储与 AVG 流水
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 ## 当前结构
 
 极值池化通过 `PE_COUNT` 个八位限幅器处理当前通道组，读取端口与计算通道共用。`POOL_STORE` 按通道组写入完整输出，最后一组完成后准备写回请求。生产配置为 `TILE=16`、`PE_COUNT=8`，最多分两组提交。
@@ -74,7 +76,7 @@ Add、AVG 和 Softmax 的串行输出共同保存字节数据、下标和有效�
 以下命令在仓库根目录执行，所需工具应位于 `PATH`。大型综合使用统一锁文件。
 
 ```bash
-python scripts/fpga/open_fpga_synth.py --out /tmp/vector_serial_measurement --case-config test/vector_engine/production_synthesis_cases.json --cases vector --wide-alu-dsp-budget 740 --rtl-dsp-attributes --max-register-path-cells 10 --require-register-path-limit --lock-file ../soc_synth.lock
+python scripts/fpga/open_fpga_synth.py --out /tmp/vector_serial_measurement --case-config test/vector_engine/production_synthesis_cases.json --cases vector --max-register-path-cells 10 --require-register-path-limit --lock-file ../soc_synth.lock
 python test/vector_engine/run.py --out /tmp/vector_serial_production --pes 8 --tile 16 --jobs 1 --cache-sets 16 --cache-policy 3 --cache-line-bytes 128 --bus-width 64 --window-lanes 8 --shared-storage --shared-bank-bytes 8192 --shared-bank-count 7 --shared-ia-banks 2 --check-weight-prefetch --rtl-assertions --stable-stimulus --xilinx
 python test/vector_engine/run.py --out /tmp/vector_serial_production --pes 8 --tile 16 --jobs 1 --cache-sets 16 --cache-policy 3 --cache-line-bytes 128 --bus-width 64 --window-lanes 8 --shared-storage --shared-bank-bytes 8192 --shared-bank-count 7 --shared-ia-banks 2 --check-weight-prefetch --rtl-assertions --stable-stimulus --xilinx --skip-build --perf
 python test/vector_engine/run.py --out /tmp/vector_serial_generic --pes 16 --tile 16 --jobs 1 --cache-sets 16 --cache-policy 3 --cache-line-bytes 128 --bus-width 32 --window-lanes 4 --shared-quant --rtl-assertions --stable-stimulus

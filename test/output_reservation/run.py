@@ -13,7 +13,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "test"))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source, read_current_source as read_rtl_text
 
 TOP = Path("rtl/npu/top/npu_top.sv")
 
@@ -126,13 +126,16 @@ def main() -> None:
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    source = (ROOT / TOP).read_text()
+    source = read_rtl_text(ROOT / TOP)
     reference = read_rtl_source(f"{args.reference}:{TOP}", cwd=ROOT, text=True)
     harness = out / "formal.sv"
     harness.write_text(make_harness(source, reference, args.precomputed_threshold))
     sources = [harness, ROOT / "rtl/npu/writeback/vec_s8_to_fifo.sv",
                ROOT / "rtl/common/parallel_prefix_add.sv", ROOT / "rtl/common/regfile.v"]
     digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+    import runpy
+    dependency_reader = runpy.run_path(str(ROOT / "scripts/rtl/source_files.py"))
+    sources = dependency_reader["with_dependencies"](sources, ROOT)
     before = {str(p): digest(p) for p in sources}
     report = dict(reference=args.reference, source_sha256=digest(ROOT / TOP),
                   precomputed_threshold=args.precomputed_threshold,
@@ -156,13 +159,13 @@ def main() -> None:
             subprocess.run([sys.executable, str(ROOT / "scripts/fpga/open_fpga_synth.py"),
                             "--worker", str(script)], stdout=stream, stderr=subprocess.STDOUT,
                            check=True, timeout=120)
-        if "Induction step proven: SUCCESS!" not in log.read_text():
+        if "Induction step proven: SUCCESS!" not in read_rtl_text(log):
             raise RuntimeError(f"预留数量归纳证明未完成：{log}")
         item = dict(register_width=width, s8_banks=s8, s16_banks=s16,
                     passed=True, log_sha256=digest(log))
         report["runs"].append(item)
         print(json.dumps(item), flush=True)
-    if source != (ROOT / TOP).read_text() or before != {str(p): digest(p) for p in sources}:
+    if source != read_rtl_text(ROOT / TOP) or before != {str(p): digest(p) for p in sources}:
         raise RuntimeError("验证期间源文件发生变化")
     report["passed"] = True
     (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")

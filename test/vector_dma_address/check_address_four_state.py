@@ -18,7 +18,7 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def address_model(source):
+def address_model(source, helper_source):
     state = re.search(r'typedef enum logic \[5:0\].*?state_t;', source, re.S)[0]
     load = re.search(r'typedef enum logic \[2:0\].*?load_t;', source, re.S)[0]
     start = source.index('  logic [31:0] ordinary_read_address,')
@@ -30,7 +30,7 @@ def address_model(source):
         'logic [31:0] write_address_offset, write_origin_next;',
         'logic [31:0] write_address_offset;')
     helper = re.search(r'^module vector_read_address_add\b.*?^endmodule',
-                       source, re.M | re.S)[0]
+                       helper_source, re.M | re.S)[0]
     body = body.replace('vector_read_address_add', 'vector_read_address_add_candidate')
     helper = helper.replace('vector_read_address_add', 'vector_read_address_add_candidate')
     return f'''module candidate (
@@ -67,10 +67,11 @@ def main():
     dependencies = [source_root / name for name in (
         'rtl/npu/conv/conv_im2col_pkg.sv', 'rtl/npu/conv/vector_engine_pkg.sv',
         'rtl/common/parallel_prefix_add.sv')]
-    tracked = [source, reference, bench, Path(__file__).resolve()] + dependencies
+    helper_source = source_root / 'rtl/npu/conv/vector_read_address_add.sv'
+    tracked = [source, helper_source, reference, bench, Path(__file__).resolve()] + dependencies
     hashes = {str(path): digest(path) for path in tracked}
     candidate = out / 'candidate.sv'
-    candidate.write_text(address_model(source.read_text()))
+    candidate.write_text(address_model(source.read_text(), helper_source.read_text()))
     models = []
     for name, text in [('reference', reference.read_text()), ('candidate', candidate.read_text())]:
         # 两侧的纯组合过程使用相同事件调度形式，表达式与分支保持原样。

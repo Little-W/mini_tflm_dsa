@@ -32,14 +32,12 @@ def main():
     input [p_width-1:0] i_a, i_b,
     output o_equal
 );
-    wire [1:0] less_result, equal_result;
-    for (genvar mode=0; mode<2; mode++) begin : g_mode
-        unsigned_compare #(.p_width(p_width), .p_use_dsp(mode)) u_compare (
-            .i_a(i_a), .i_b(i_b), .o_less(less_result[mode]), .o_equal(equal_result[mode])
-        );
-    end
-    assign o_equal = (less_result == {2{i_a < i_b}}) &&
-                     (equal_result == {2{i_a == i_b}});
+    wire less_result, equal_result;
+    unsigned_compare #(.p_width(p_width)) u_compare (
+        .i_a(i_a), .i_b(i_b), .o_less(less_result), .o_equal(equal_result)
+    );
+    assign o_equal = (less_result == (i_a < i_b)) &&
+                     (equal_result == (i_a == i_b));
 endmodule
 ''')
     summary = {'passed': False, 'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
@@ -55,7 +53,7 @@ endmodule
             result = subprocess.run([sys.executable, __file__, '--out', str(out),
                                      '--worker', str(script)], stdout=stream, stderr=subprocess.STDOUT)
         passed = result.returncode == 0 and 'SAT proof finished - no model found: SUCCESS' in log.read_text()
-        summary['runs'].append({'width': width, 'arithmetic_modes': [0, 1], 'passed': passed})
+        summary['runs'].append({'width': width, 'passed': passed})
         if not passed:
             raise RuntimeError(f'无符号比较证明未通过：{log}')
 
@@ -64,18 +62,16 @@ endmodule
     testbench.write_text('''module tb_four_state;
     parameter p_width=32;
     reg [p_width-1:0] i_a, i_b;
-    wire [1:0] less_result, equal_result;
+    wire less_result, equal_result;
     integer count=0;
     reg [31:0] random_state=32'h2963a71b;
-    for (genvar mode=0; mode<2; mode++) begin : g_mode
-        unsigned_compare #(.p_width(p_width), .p_use_dsp(mode)) u_compare (
-            .i_a(i_a), .i_b(i_b), .o_less(less_result[mode]), .o_equal(equal_result[mode])
-        );
-    end
+    unsigned_compare #(.p_width(p_width)) u_compare (
+        .i_a(i_a), .i_b(i_b), .o_less(less_result), .o_equal(equal_result)
+    );
     task check;
         begin
             #1;
-            if (less_result !== {2{i_a < i_b}} || equal_result !== {2{i_a == i_b}})
+            if (less_result !== (i_a < i_b) || equal_result !== (i_a == i_b))
                 $fatal(1, "comparison mismatch width=%0d a=%h b=%h", p_width, i_a, i_b);
             count=count+1;
         end

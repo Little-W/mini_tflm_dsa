@@ -1,10 +1,12 @@
 # 向量窗口与配置资格的组合路径
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 ## 设计
 
 窗口返回的有效位先按通道归并，再选择循环起点对应的非空结果。二的整数次幂银行数使用这一结构；其他银行数保持直接归并。八路窗口的银行有效位采用两组四路选择。索引继续参与 RTL 选择表达式，因此未知索引的四态行为与原表达式相同。数据、地址和有效位仍在原有时钟边沿保存。
 
-输入扫描的四组区间分别用十八位有符号差值检查上下端点。十七位有符号操作数的完整差值可以由十八位表示，最高位直接表示大小关系。八个差值并行计算，使用普通减法表达式及 `use_dsp` 属性推断算术资源；区间端点、坐标位宽和有效范围保持完整。
+输入扫描的四组区间分别用十八位有符号差值检查上下端点。十七位有符号操作数的完整差值可以由十八位表示，最高位直接表示大小关系。八个差值并行计算，使用普通的定宽减法表达式；区间端点、坐标位宽和有效范围保持完整。
 
 配置检查器在 `CALCULATE` 的第一项后续乘积阶段保存 `kernel_limit_ok_q`，后面的 `FIELDS` 状态使用该结果。核尺寸已经在此前的 `CAPTURE` 阶段保存，配置检查的状态顺序和总周期保持相同。
 
@@ -72,4 +74,4 @@ python test/vector_window_control/run_config_four_state.py --source-root . --ref
 python test/vector_request_boundary/run_formal.py --out /tmp/vector_control_request
 ```
 
-生产参数回归沿用 `test/vector_request_boundary/README.md` 中的命令。独立综合使用 `test/vector_engine/production_synthesis_cases.json` 的 `vector` 项、`--rtl-dsp-attributes` 和 `--wide-alu-dsp-budget 740`。`report_paths.py` 对综合目录进行连接检查，`validation.json` 保存源码、依赖、证明、周期和综合结果的 SHA256 校验值。
+生产参数回归沿用 `test/vector_request_boundary/README.md` 中的命令。独立综合使用 `test/vector_engine/production_synthesis_cases.json` 的 `vector` 项，采用默认综合流程。`report_paths.py` 对综合目录进行连接检查，`validation.json` 保存源码、依赖、证明、周期和综合结果的 SHA256 校验值。

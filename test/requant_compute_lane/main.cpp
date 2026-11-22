@@ -58,7 +58,7 @@ static Result reference(const Vrequant_compute_lane &dut) {
 int main(int argc, char **argv) {
     Verilated::commandArgs(argc, argv);
     Vrequant_compute_lane dut;
-    std::array<Result, 12> pipeline{};
+    std::array<Result, 7> pipeline{};
     std::mt19937_64 rng(0x74917531ce205699ULL);
     uint64_t cycles = 0, outputs = 0, holds = 0, clears = 0, resets = 0, disabled_lanes = 0;
     uint64_t directed = 0, random = 0, clear_during_hold = 0;
@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
                 if (!dut.i_en) ++clear_during_hold;
             }
         } else if (dut.i_en) {
-            for (int stage = 11; stage > 0; --stage) pipeline[stage] = pipeline[stage - 1];
+            for (int stage = 6; stage > 0; --stage) pipeline[stage] = pipeline[stage - 1];
             pipeline[0] = reference(dut);
             if (dut.i_valid && !dut.i_lane_enable) ++disabled_lanes;
         } else {
@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
         dut.clk = 1;
         dut.eval();
         ++cycles;
-        const Result expected = pipeline[11];
+        const Result expected = pipeline[6];
         if (bool(dut.o_valid) != expected.valid || dut.o_s8 != expected.s8 || dut.o_s16 != expected.s16) {
             std::cerr << "Output comparison failed at cycle " << cycles
                       << " actual=" << unsigned(dut.o_valid) << "," << unsigned(dut.o_s8)
@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
         dut.i_clear = 0;
         dut.i_en = 1;
         dut.i_valid = 0;
-        for (int count = 0; count < 12; ++count) step();
+        for (int count = 0; count < 7; ++count) step();
     };
     const std::array<uint32_t, 16> values = {
         0, 1, 2, 3, 0xffffffffU, 0xfffffffeU, 0x80000000U, 0x7fffffffU,
@@ -174,7 +174,7 @@ int main(int argc, char **argv) {
     std::cout << "REQUANT_LANE_PASS cycles=" << cycles << " outputs=" << outputs
               << " directed=" << directed << " random=" << random << " holds=" << holds
               << " clears=" << clears << " resets=" << resets << " disabled_lanes=" << disabled_lanes
-              << " clear_during_hold=" << clear_during_hold << " latency=12\n";
+              << " clear_during_hold=" << clear_during_hold << " latency=7\n";
     dut.final();
     return 0;
 }

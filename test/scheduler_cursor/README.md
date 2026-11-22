@@ -1,5 +1,7 @@
 # 调度器游标范围保存
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 `ps_window_scheduler` 将可扫描的帧范围保存在 `cursor_mask`。复位、配置接收、压力处理和命令完成均在原有状态更新边沿更新该掩码。候选帧资格直接合并 `live`、`frame_open` 与保存的范围；命令接收、错误通知和预测输出的周期保持一致。
 
 ## 验证
@@ -30,7 +32,7 @@ mkdir -p build/scheduler_cursor_reference
 git archive cedf4ed3 rtl/common rtl/npu/control/ps_window_scheduler.sv | tar -x -C build/scheduler_cursor_reference
 python3 test/scheduler_cursor/run_formal.py --source-root . --reference-root build/scheduler_cursor_reference --module ps_window_scheduler --profiles 4:1:1 4:3:5 4:4:0 16:16:32 16:16:0 16:33:64 --fpga --out build/scheduler_cursor/formal
 python3 test/scheduler_command_outputs/run_four_state.py --source-root . --reference-root build/scheduler_cursor_reference --profiles 4:2:0 8:4:1 16:8:16 16:16:32 --out build/scheduler_cursor/four_state
-python3 scripts/fpga/open_fpga_synth.py --source-root . --case-config test/scheduler_cursor/synthesis_cases.json --cases scheduler --out build/scheduler_cursor/synthesis --wide-alu-dsp-budget 740 --rtl-dsp-attributes --max-register-path-cells 10
+python3 scripts/fpga/open_fpga_synth.py --source-root . --case-config test/scheduler_cursor/synthesis_cases.json --cases scheduler --out build/scheduler_cursor/synthesis --max-register-path-cells 10
 ```
 
 `validation.json` 保存源代码散列、参数、通过数量、原报告路径和报告散列。

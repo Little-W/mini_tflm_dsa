@@ -1,5 +1,7 @@
 # 向量量化控制与组合逻辑级数
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 ## 当前结构
 
 深度卷积的计算、量化和写回分别保存自己的有效状态。计算完成的像素进入快照存储，量化流水按通道连续接收快照数据，两个结果槽分别保存正在生成和等待写出的像素。池化使用主状态机中的平均值计算与限幅阶段。
@@ -80,10 +82,9 @@ python test/vector_engine/run.py --out /tmp/vector_generic \
   --pes 16 --tile 16 --jobs 1 --cache-sets 16 --cache-policy 3 \
   --cache-line-bytes 128 --bus-width 32 --window-lanes 4 \
   --shared-quant --rtl-assertions --stable-stimulus
-
 python scripts/fpga/open_fpga_synth.py --out /tmp/vector_synthesis \
   --case-config test/vector_engine/production_synthesis_cases.json --cases vector \
-  --wide-alu-dsp-budget 740 --rtl-dsp-attributes --max-register-path-cells 10
+    --max-register-path-cells 10
 ```
 
 `--source-root` 可指定固定源码目录。形式检查需要 Yosys Slang，四态检查需要 Icarus Verilog，完整引擎回归需要 Verilator；对应工具路径可以通过脚本参数设置。

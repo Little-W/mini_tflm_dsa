@@ -1,5 +1,7 @@
 # 线性 DMA 的突发准备与数据选择
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 ## 当前结构
 
 `axi_linear_block_dma` 使用同一组寄存器和算术处理首个读取突发、同一行的后续突发以及下一行。
@@ -59,27 +61,20 @@
 python3 scripts/fpga/open_fpga_synth.py \
   --case-config test/linear_dma_pipeline/synthesis_cases.json \
   --cases linear_dma --out build/linear_dma_measure \
-  --wide-alu-dsp-budget 740 --rtl-dsp-attributes \
   --max-register-path-cells 10 --require-register-path-limit
-
 python3 test/linear_dma_pipeline/run_formal.py \
   --out build/linear_dma_formal
-
 python3 test/linear_dma_pipeline/run_four_state.py \
   --out build/linear_dma_four_state
-
 python3 test/linear_dma_context/run.py \
   --out build/linear_dma_read64 --size 64 --cache-blocks 64 \
   --bus-width 64 --outstanding 4 --contexts 4 --fpga
-
 python3 test/linear_dma_context/run.py \
   --out build/linear_dma_read32 --bus-width 32 \
   --outstanding 1 --contexts 1 --fpga
-
 python3 test/linear_dma_write_4k/run.py \
   --out build/linear_dma_write64 --size 64 --cache-blocks 64 \
   --bus-width 64 --outstanding 1 4 --fpga --jobs 1
-
 python3 test/dma_abort_boundary/run.py \
   --out build/linear_dma_abort64 --bus-width 64 --size 16 --dma-size 64 \
   --cache-blocks 64 --data-width 16 --outstanding 4 \

@@ -10,16 +10,16 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from requant_test_utils import controller_module
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def write_block(source):
-    full = source.split('module vec_requant_full #(', 1)[1]
+    full = controller_module(source)
     end = full.index('  // 主状态机')
     if 'begin : g_ws_bank_write' in full:
-        start = full.index('  // 连续 DMA 字按低位分入不同 bank')
+        start = full.index('  if (((PARAM_BANKS & (PARAM_BANKS - 1)) == 0)')
     else:
         start = full.rindex('  always @(posedge clk)', 0, end)
     return full[start:end].rsplit('  // ----------------------------', 1)[0]
@@ -37,6 +37,12 @@ def wrapper(block, bus_width, lanes, reuse):
 );
     localparam int BUS_WIDTH={bus_width}, VLEN={lanes}, MAX_IA_REUSE={reuse};
     localparam int PARAM_BANKS=BUS_WIDTH/32;
+    localparam int p_compute_lanes=VLEN, p_serial_read_ports=0;
+    wire [$clog2(VLEN+1)-1:0] serial_element_index[p_compute_lanes];
+    wire signed [31:0] serial_product_multiplier[p_compute_lanes];
+    wire [6:0] serial_product_amount[p_compute_lanes];
+    wire signed [31:0] serial_bank_multiplier[PARAM_BANKS][p_compute_lanes];
+    wire [6:0] serial_bank_amount[PARAM_BANKS][p_compute_lanes];
     localparam int VLEN_IDX_W=(VLEN<=1)?1:$clog2(VLEN);
     localparam int QBUF_IDX_W=(VLEN*MAX_IA_REUSE<=1)?1:$clog2(VLEN*MAX_IA_REUSE);
     localparam logic PH_MUL=1'b0;
@@ -64,7 +70,6 @@ def wrapper(block, bus_width, lanes, reuse):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference-rev', default='369a3ab')
     parser.add_argument('--worker', type=Path)
     args = parser.parse_args()
     if args.worker:
@@ -75,9 +80,23 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     relative = 'rtl/npu/writeback/vec_requant.sv'
     candidate = (ROOT / relative).read_text()
-    reference = read_rtl_source(args.reference_rev + ':' + relative, cwd=ROOT, text=True)
-    summary = {'reference_rev': args.reference_rev,
-               'reference_sha256': hashlib.sha256(reference.encode()).hexdigest(),
+    reference = r"""
+    always_ff @(posedge clk)begin
+        for(int word=0;word<PARAM_BANKS;word++)begin
+            if(rsp_hskd && !is_mode_r &&
+               (32'(rd_beats_cnt)+32'(word)) < 32'(beats_expect))begin
+                if(load_phase==PH_MUL)begin
+                    ch_multiplier_lane_r[VLEN_IDX_W'(parameter_index[word])] <= parameter_value[word];
+                    ch_product_multiplier_lane_r[VLEN_IDX_W'(parameter_index[word])] <= parameter_product_multiplier[word];
+                end else begin
+                    ch_shift_lane_r[VLEN_IDX_W'(parameter_index[word])] <= parameter_value[word];
+                    ch_product_amount_lane_r[VLEN_IDX_W'(parameter_index[word])] <= parameter_product_amount[word];
+                end
+            end
+        end
+    end
+"""
+    summary = {'reference_model_sha256': hashlib.sha256(reference.encode()).hexdigest(),
                'source_sha256': hashlib.sha256(candidate.encode()).hexdigest(),
                'inputs': 'All write data, addresses, beat counts, phase and response enables are unconstrained.',
                'compared_state': 'Every raw and preprocessed WS parameter bit after each clock edge.',
@@ -89,7 +108,7 @@ def main():
         commands = []
         for name, source in [('reference', reference), ('candidate', candidate)]:
             path = folder / (name + '.sv')
-            content = wrapper(write_block(source), bus, lanes, reuse)
+            content = wrapper(write_block(source) if name == 'candidate' else source, bus, lanes, reuse)
             # 未消费的地址高位可被独立优化；只比较完整存储状态和实际输出。
             content = re.sub(r'\bparameter_index\b', name + '_parameter_index', content)
             path.write_text(content)

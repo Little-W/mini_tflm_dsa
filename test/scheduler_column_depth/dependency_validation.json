@@ -1,0 +1,174 @@
+{
+  "passed": true,
+  "scope": "调度器形式验证、局部映射与独立模型入口的实际源文件依赖",
+  "checks": [
+    {
+      "scope": "formal",
+      "source_and_dependencies_unchanged": true,
+      "inputs": {
+        "source": "rtl/npu/control/ps_window_scheduler.sv",
+        "reference_commit": null,
+        "reference_file": "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/scheduler_column_depth/reference_stage_arrays.sv",
+        "source_path": "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_window_scheduler.sv",
+        "reference_sha256": "1c084490ac7c4091dbec3fb763fa0fe6a0260c7bffd6e750e25e8a887727a521",
+        "source_sha256": "b2576300a71f270a644681de6bec571f4333634cdd9aef7d62c0e6e352701dde",
+        "helper_sha256": {
+          "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+          "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+          "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+          "rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758"
+        },
+        "dependency_sha256": {
+          "reference": {
+            "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_scheduler_priority.sv": "4731215f8de56b9efb55047aae70c9fda1ff9af24c3229cfb5fd95264d807537"
+          },
+          "current": {
+            "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_scheduler_priority.sv": "4731215f8de56b9efb55047aae70c9fda1ff9af24c3229cfb5fd95264d807537"
+          }
+        },
+        "prepared_source_sha256": {
+          "reference": "83cfe8f090893be9bdccd82434bbfd77200cc70fde09d5ef3061a0e197c31ace",
+          "current": "685e3776683001a862b78d4ca14513cfd52faf3447f063fc6dc281bb8e029c89"
+        },
+        "module_sha256": {
+          "reference": {
+            "ps_window_scheduler": "047c0a50b264d1774f3b836015efa2ad68352d8e0d24663108d5bbf4549b851a",
+            "ps_scheduler_priority": "0ddf1ac930fd00da9343d2d2fbf5682bca4592ca317bbfe1f40b649818f81798"
+          },
+          "current": {
+            "ps_window_scheduler": "6b59f337093ff893d36ffef27f249c47fa001341742e1ba53e9156a8e1ae63cd",
+            "ps_scheduler_priority": "0ddf1ac930fd00da9343d2d2fbf5682bca4592ca317bbfe1f40b649818f81798"
+          }
+        }
+      }
+    },
+    {
+      "scope": "measurement",
+      "source_and_dependencies_unchanged": true,
+      "inputs": {
+        "source": "rtl/npu/control/ps_window_scheduler.sv",
+        "reference_commit": null,
+        "reference_file": "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/scheduler_column_depth/reference_scheduler.sv",
+        "source_path": "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_window_scheduler.sv",
+        "reference_sha256": "34c943d79b79ab67f49a920e875592ba2f6bf64218e83fc06aa78767d56a68cb",
+        "source_sha256": "b2576300a71f270a644681de6bec571f4333634cdd9aef7d62c0e6e352701dde",
+        "helper_sha256": {
+          "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+          "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+          "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+          "rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758"
+        },
+        "dependency_sha256": {
+          "reference": {},
+          "current": {
+            "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_scheduler_priority.sv": "4731215f8de56b9efb55047aae70c9fda1ff9af24c3229cfb5fd95264d807537"
+          }
+        },
+        "prepared_source_sha256": {
+          "reference": "34c943d79b79ab67f49a920e875592ba2f6bf64218e83fc06aa78767d56a68cb",
+          "current": "685e3776683001a862b78d4ca14513cfd52faf3447f063fc6dc281bb8e029c89"
+        },
+        "module_sha256": {
+          "reference": {
+            "ps_window_scheduler": "2977a5ad1f07c2d63733e0eebc4b6a25b3bffc3a68d3e3ef9b3b846496946253",
+            "ps_scheduler_any": "253ac99b3bd86c1f91d9210cdd85014667866e4246cf904a12110f8a6e35b155"
+          },
+          "current": {
+            "ps_window_scheduler": "6b59f337093ff893d36ffef27f249c47fa001341742e1ba53e9156a8e1ae63cd",
+            "ps_scheduler_priority": "0ddf1ac930fd00da9343d2d2fbf5682bca4592ca317bbfe1f40b649818f81798"
+          }
+        }
+      }
+    },
+    {
+      "scope": "numeric_unsliced",
+      "compiled_sources_equal_hashed_sources": true,
+      "module_definitions": [
+        "ps_window_scheduler",
+        "onehot_check",
+        "regfile",
+        "parallel_prefix_add",
+        "unsigned_compare",
+        "window_scheduler_tb",
+        "ps_window_scheduler_observer",
+        "ps_scheduler_priority"
+      ],
+      "rtl_source_files": [
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_window_scheduler.sv",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/onehot_check.sv",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/regfile.v",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/unsigned_compare.sv",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ps_compression/window_scheduler_tb.sv",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/monitors/ps_window_scheduler_observer.sv",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_scheduler_priority.sv"
+      ],
+      "source_sha256": {
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_window_scheduler.sv": "b2576300a71f270a644681de6bec571f4333634cdd9aef7d62c0e6e352701dde",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ps_compression/window_scheduler_tb.sv": "90b8aecf83fb8e41be6ee3b3caf1fa5e788a875d6976c1893c4cacd8744c2e90",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/monitors/ps_window_scheduler_observer.sv": "7ec792a39f50173c36840bdf65c7ed36cf12ea142ce6f75843325ca853ac67fa",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_scheduler_priority.sv": "4731215f8de56b9efb55047aae70c9fda1ff9af24c3229cfb5fd95264d807537",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ps_compression/window_scheduler_test.cpp": "fd91e071e5120fca7fcfda592e23636b479563c3d582918714adee01c2dc280c",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ps_compression/window_scheduler_ref.hpp": "e45053218655ce44e8ddaaf677a468dce99378f9e3a381307dd0313fa2e9350b",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ps_compression/run_window_scheduler.py": "d2541ee83260b70b57cb5b0b4bf3db78731f7bd6cd4186da4c278d7bd1f9c00f",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/scripts/rtl/source_files.py": "5a368bf00f1675ec1d16c0c4b0804ae0550aaac2fc8de6e53e1865bad2351c06"
+      },
+      "cases": 321,
+      "commands": 52104,
+      "passed": true
+    },
+    {
+      "scope": "numeric_sliced",
+      "compiled_sources_equal_hashed_sources": true,
+      "module_definitions": [
+        "ps_window_scheduler",
+        "onehot_check",
+        "regfile",
+        "parallel_prefix_add",
+        "unsigned_compare",
+        "window_scheduler_tb",
+        "ps_window_scheduler_observer",
+        "ps_scheduler_priority"
+      ],
+      "rtl_source_files": [
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_window_scheduler.sv",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/onehot_check.sv",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/regfile.v",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/unsigned_compare.sv",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ps_compression/window_scheduler_tb.sv",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/monitors/ps_window_scheduler_observer.sv",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_scheduler_priority.sv"
+      ],
+      "source_sha256": {
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_window_scheduler.sv": "b2576300a71f270a644681de6bec571f4333634cdd9aef7d62c0e6e352701dde",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ps_compression/window_scheduler_tb.sv": "90b8aecf83fb8e41be6ee3b3caf1fa5e788a875d6976c1893c4cacd8744c2e90",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/monitors/ps_window_scheduler_observer.sv": "7ec792a39f50173c36840bdf65c7ed36cf12ea142ce6f75843325ca853ac67fa",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_scheduler_priority.sv": "4731215f8de56b9efb55047aae70c9fda1ff9af24c3229cfb5fd95264d807537",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ps_compression/window_scheduler_fragment_test.cpp": "71cf1149ffd5ab2301aa612393c36cae0a6040cb29b9e608e5745c641c1c9c44",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ps_compression/window_scheduler_ref.hpp": "e45053218655ce44e8ddaaf677a468dce99378f9e3a381307dd0313fa2e9350b",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ps_compression/run_window_scheduler.py": "d2541ee83260b70b57cb5b0b4bf3db78731f7bd6cd4186da4c278d7bd1f9c00f",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/scripts/rtl/source_files.py": "5a368bf00f1675ec1d16c0c4b0804ae0550aaac2fc8de6e53e1865bad2351c06"
+      },
+      "cases": 654,
+      "commands": 130322,
+      "passed": true
+    }
+  ],
+  "entry_sha256": {
+    "test/scheduler_column_depth/support.py": "47926966eedd92348282280079e81d2c712b923261f9b3bfe63093d6a537cc94",
+    "test/scheduler_column_depth/run.py": "5c2cafc52194b822195b1b8e4bde653180533f51dbccdfd803dce5d201cec56f",
+    "test/scheduler_column_depth/measure.py": "edc4d2593012abcadab46ece34dda580abd0cbd86f0412eceed151c4dc778ceb",
+    "test/scheduler_column_depth/collect_report.py": "777b507d022735aae8d91b860d8017d3f8dd4ebf5f6275a7a3eb8005ec56090e",
+    "test/ps_compression/run_window_scheduler.py": "d2541ee83260b70b57cb5b0b4bf3db78731f7bd6cd4186da4c278d7bd1f9c00f",
+    "scripts/rtl/source_files.py": "5a368bf00f1675ec1d16c0c4b0804ae0550aaac2fc8de6e53e1865bad2351c06"
+  }
+}

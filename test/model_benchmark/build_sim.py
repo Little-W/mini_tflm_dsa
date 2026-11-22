@@ -13,6 +13,9 @@ import subprocess
 import sys
 
 HERE=Path(__file__).resolve().parent
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT=HERE.parents[1]
 sys.path.insert(0,str(ROOT))
 from scripts.capacity.config import axi_data_width, selected_config
@@ -48,7 +51,7 @@ def command(args, log, *, cwd=ROOT, timeout=1800):
 
 
 def filelist_sources(path,cwd,picorv32):
-    sources=[path];arguments=[];tokens=shlex.split(path.read_text(),comments=True);index=0
+    sources=[path];arguments=[];tokens=shlex.split(read_rtl_text(path),comments=True);index=0
     while index<len(tokens):
         token=tokens[index]
         if token=='-f':
@@ -96,7 +99,7 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
         raise ValueError('Invalid simulator configuration')
     if ps_pool_bytes and (ps_pool_bytes < 64 or ps_pool_bytes % 64):
         raise ValueError('PS pool must contain complete 64-byte bank groups')
-    direct_store='ps_adaptive_encoder' not in (ROOT/'rtl/npu/ps_compact/ps_frame_store.sv').read_text()
+    direct_store='ps_adaptive_encoder' not in read_rtl_text(ROOT/'rtl/npu/ps_compact/ps_frame_store.sv')
     if ps_pool_bytes and direct_store != hardware_raw:
         raise ValueError('Partial-sum implementation selection differs from the RTL source')
     if picorv32 is None:
@@ -168,7 +171,7 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
         ps_directory_storage_rows=1024 if shared_enabled and not hardware_raw else 0,
         ps_storage_implementation='raw32' if hardware_raw else 'compressed',force_raw=hardware_raw)
     if skip:
-        manifest=json.loads(manifest_path.read_text())
+        manifest=json.loads(read_rtl_text(manifest_path))
         if (manifest.get('returncode')!=0 or manifest.get('source_sha256')!=before or
             manifest.get('external_dependency_sha256')!=external_before or
             manifest.get('profile')!=profile or digest(binary)!=manifest.get('binary_sha256')):
@@ -209,12 +212,12 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
     write_json(manifest_path,manifest)
     if rc or not manifest['sources_unchanged_during_build']:
         log=out/('compile.log' if (out/'compile.log').is_file() else 'elaborate.log')
-        raise RuntimeError('SoC build did not complete successfully: '+str(log)+'\n'+log.read_text()[-4000:])
+        raise RuntimeError('SoC build did not complete successfully: '+str(log)+'\n'+read_rtl_text(log)[-4000:])
     return binary
 
 
 def parse_log(path):
-    text=Path(path).read_text();counters=[];window_jobs=[];cpu_profiles=[];dma_profiles=[]
+    text=read_rtl_text(Path(path));counters=[];window_jobs=[];cpu_profiles=[];dma_profiles=[]
     for line in text.splitlines():
         if line.startswith('SOC_NETWORK_CPU_PROFILE '):
             cpu_profiles.append({key:int(value) for key,value in re.findall(r'(\w+)=([^\s]+)',line)})
@@ -237,7 +240,7 @@ def pack_memory_images(firmware, data, output, *, ram_words, data_base_word=0):
     words={}
     for path,start in ((firmware,0),(data,data_base_word)):
         if path is None:continue
-        content=re.sub(r'/\*.*?\*/|//[^\n]*','',Path(path).read_text(),flags=re.S)
+        content=re.sub(r'/\*.*?\*/|//[^\n]*','',read_rtl_text(Path(path)),flags=re.S)
         address=start
         for token in content.split():
             if token.startswith('@'):
@@ -266,7 +269,7 @@ def run_sim(binary,out,mem,*,data_mem=None,result_addr=0,result_words=26,
             ram_fixed_lat=0,network_begin=0xc0f10001,network_end=0xc0f10002,
             tensor_marker=0xc0f20000,expected_status=0,extra_plusargs=()):
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=True)
-    manifest=json.loads((Path(binary).resolve().parents[1]/'build.json').read_text())
+    manifest=json.loads(read_rtl_text(Path(binary).resolve().parents[1]/'build.json'))
     profile=manifest['profile']
     memory_path=Path(mem).resolve()
     packed_memory=None

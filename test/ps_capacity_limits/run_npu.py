@@ -5,12 +5,61 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
-import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "test/ps_compression"))
 from run_shared_npu import configure, npu
+
+CAPACITY_SOURCES = (
+    "rtl/npu/top/npu_top.sv",
+    "rtl/npu/top/npu_task_configuration.sv",
+    "rtl/npu/control/ps_capacity_limits.sv",
+)
+OBSERVER = Path(__file__).resolve().parent / "npu_capacity_observer.sv"
+
+
+def digest(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def validated_simulator(sim, bus_width, require_current_sources):
+    manifest = json.loads((sim / "build.json").read_text())
+    expected = {"returncode": 0, "size": 16, "bus_width": bus_width,
+                "shared_bank_bytes": 8192, "shared_bank_count": 7,
+                "ps_compress": True, "force_raw": True, "pool_bytes": 49152}
+    for key, value in expected.items():
+        if manifest.get(key) != value:
+            raise RuntimeError(f"Simulator {key} differs from {value}")
+    binary = sim / "obj/Vtb_conv_npu"
+    if digest(binary) != manifest["binary_sha256"]:
+        raise RuntimeError("Simulator executable differs from its manifest")
+    if require_current_sources:
+        for relative in CAPACITY_SOURCES:
+            if manifest["source_sha256"].get(relative) != digest(ROOT / relative):
+                raise RuntimeError("Simulator capacity RTL differs: " + relative)
+    return binary, manifest
+
+
+def build_simulator(sim, verilator_name, jobs, bus_width):
+    verilator = shutil.which(verilator_name)
+    if not verilator:
+        raise RuntimeError("Cannot locate Verilator: " + verilator_name)
+    source_files = npu.source_files
+
+    def observed_sources(source_root):
+        sources, includes, tracked = source_files(source_root)
+        return [*sources, OBSERVER], includes, [*tracked, OBSERVER]
+
+    # 观察器与生产模块分别编译，构建清单同时记录观察器的文件摘要。
+    npu.source_files = observed_sources
+    try:
+        binary = npu.build(sim, 16, verilator, jobs, ps_compress=True,
+                           force_raw=True, pool_bytes=49152, bus_width=bus_width,
+                           shared_bank_bytes=8192, shared_bank_count=7)
+    finally:
+        npu.source_files = source_files
+    return binary, json.loads((sim / "build.json").read_text())
 
 
 def main():
@@ -28,44 +77,6 @@ def main():
         parser.error("--suite-timeout must be positive")
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    verilator = shutil.which(args.verilator)
-    if not verilator:
-        raise RuntimeError("Cannot locate Verilator: " + args.verilator)
-    top_path = ROOT / "rtl/npu/top/npu_top.sv"
-    source = top_path.read_text()
-    comparison = """
-        // 测试中保留原始容量表达式，检查实例连接与阶段输入。
-        always_ff @(posedge clk) begin
-            if (core_rst_n && cfg_stage2_valid && SHARED_RAM_ENABLED &&
-                active_ps_bank_count < 32'(SHARED_PHYSICAL_BANKS)) begin
-                assert(ps_raw_bank_capacity_fits == (ps_frames_bounded == '0 ||
-                    (ps_raw_frame_bank_words <= 64'(4 * IA_REUSE_NUM_MAX * SIZE) &&
-                     64'(ps_raw_bank_total) <= 64'(active_ps_bank_depth))))
-                    else $fatal(1, "Raw bank capacity differs");
-                assert(ps_long_bank_capacity_fits == (ps_frames_bounded == '0 ||
-                    (ps_long_frame_bank_words <= 64'(4 * IA_REUSE_NUM_MAX * SIZE) &&
-                     64'(ps_long_bank_total) <= 64'(active_ps_bank_depth))))
-                    else $fatal(1, "Long bank capacity differs");
-                if (cfg_capacity_phase >= 4) begin
-                    assert(ps_admission_bank_capacity_fits ==
-                        (ps_admission_bank_words <= 64'(active_ps_bank_depth)))
-                        else $fatal(1, "Admission bank capacity differs");
-                end
-            end
-        end
-"""
-    marker = "        wire ps_capacity_config_invalid_calc = (SIZE == 16) &&"
-    if source.count(marker) != 1:
-        raise RuntimeError("Cannot locate capacity comparison insertion point")
-    checked_top = out / "npu_top_checked.sv"
-    checked_top.write_text(source.replace(marker, comparison + marker))
-    wrapper = out / "verilator_capacity"
-    wrapper.write_text("#!" + sys.executable + "\nimport os, sys\n" +
-                       "arguments = [" + repr(str(checked_top)) + " if argument == " +
-                       repr(str(top_path)) + " else argument for argument in sys.argv[1:]]\n" +
-                       "os.execv(" + repr(verilator) + ", [" + repr(verilator) + "] + arguments)\n")
-    wrapper.chmod(0o755)
-
     case_root = out / "cases"
     case_root.mkdir(exist_ok=True)
     cases = []
@@ -100,24 +111,9 @@ def main():
         gemm("invalid_" + name, 0, banks, r, w, control, 17, error=error)
     sim = (args.sim or args.reference_sim or (out / "sim")).resolve()
     if args.sim or args.reference_sim:
-        manifest = json.loads((sim / "build.json").read_text())
-        expected = {"returncode": 0, "size": 16, "bus_width": args.bus_width,
-                    "shared_bank_bytes": 8192, "shared_bank_count": 7,
-                    "ps_compress": True, "force_raw": True, "pool_bytes": 49152}
-        for key, value in expected.items():
-            if manifest.get(key) != value:
-                raise RuntimeError(f"Simulator {key} differs from {value}")
-        binary = sim / "obj/Vtb_conv_npu"
-        if hashlib.sha256(binary.read_bytes()).hexdigest() != manifest["binary_sha256"]:
-            raise RuntimeError("Simulator executable differs from its manifest")
-        if args.sim:
-            for path in (top_path, ROOT / "rtl/npu/control/ps_capacity_limits.sv"):
-                if manifest["source_sha256"].get(str(path.relative_to(ROOT))) != hashlib.sha256(path.read_bytes()).hexdigest():
-                    raise RuntimeError("Simulator capacity RTL differs: " + str(path))
+        binary, manifest = validated_simulator(sim, args.bus_width, bool(args.sim))
     else:
-        binary = npu.build(sim, 16, str(wrapper), args.jobs,
-                           ps_compress=True, force_raw=True, pool_bytes=49152, bus_width=args.bus_width,
-                           shared_bank_bytes=8192, shared_bank_count=7)
+        binary, manifest = build_simulator(sim, args.verilator, args.jobs, args.bus_width)
     result = npu.run_suite(binary, out, "capacity", cases, no_random=False,
                            timeout=args.suite_timeout)
     measurements = result["measurements"]
@@ -126,11 +122,11 @@ def main():
                "force_raw": True,
                "cases": len(cases), "completed_cases": len(measurements),
                "int32_checks": sum(row["int32_checks"] for row in measurements),
-               "source_sha256": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
-                                 for path in (top_path, ROOT / "rtl/npu/control/ps_capacity_limits.sv")},
-               "checked_top_sha256": hashlib.sha256(checked_top.read_bytes()).hexdigest(),
+               "source_sha256": {relative: manifest["source_sha256"][relative]
+                                 for relative in CAPACITY_SOURCES if relative in manifest["source_sha256"]},
+               "capacity_observer_sha256": manifest["source_sha256"].get(str(OBSERVER.relative_to(ROOT))),
                "validation_scope": "case_expectations" if args.reference_sim else "capacity_rtl",
-               "embedded_capacity_assertions": not (args.sim or args.reference_sim),
+               "embedded_capacity_assertions": str(OBSERVER.relative_to(ROOT)) in manifest["source_sha256"],
                "suite_timeout_seconds": args.suite_timeout,
                "simulator_manifest": str(sim / "build.json"), "suite": result}
     (out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")

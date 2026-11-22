@@ -39,7 +39,7 @@ def main():
                ROOT / 'rtl/common/parallel_prefix_add.sv',
                ROOT / 'rtl/npu/compute/ws_systolic_array.sv',
                ROOT / 'rtl/npu/compute/ws_systolic_cell.sv',
-               ROOT / 'rtl/npu/ps_compact/ps_adaptive_codec.sv',
+               ROOT / 'rtl/npu/ps_compact/ps_adaptive_encoder.sv', ROOT / 'rtl/npu/ps_compact/ps_adaptive_decoder.sv',
                ROOT / 'rtl/npu/ps_compact/ps_frame_store.sv']
     recorded = [Path(__file__).resolve(), HERE / 'gen_mats.py', ROOT / 'Makefile', *sources]
     hashes = {str(path.relative_to(ROOT)): digest(path) for path in recorded}

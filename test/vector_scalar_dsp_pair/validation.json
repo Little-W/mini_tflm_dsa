@@ -1,0 +1,70 @@
+{
+  "source_sha256": {
+    "rtl/npu/conv/registered_multiplier_s32.sv": "1835ca96b6b03f93c28c10fd7389f06443843e83493935909a1cb4e15f9ad0ad",
+    "test/vector_scalar_dsp_pair/reference_multiplier.sv": "4e60f8caa3647d049f126b799a79fd4483dad731b220e3695185327fcb6e9c33",
+    "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+    "test/vector_scalar_dsp_pair/tb_four_state.sv": "1ceed8c2376131f8b5d148f3144123b31c3e8402d79ff57c01fd3a29edc8a06d",
+    "test/vector_scalar_dsp_pair/tb_numeric.sv": "bdd3049f05462707f4b9aacbb3dadc6cf5549e77f57ea11ac75c5b0ee8c3e072",
+    "test/vector_scalar_dsp_pair/run.py": "230932af26398b70e8bc26c41ed347ede0428c6f625305c9de3ba66f9a91d921"
+  },
+  "formal": [
+    {
+      "input_a_registered": 0,
+      "input_b_registered": 0,
+      "passed": true,
+      "elapsed_seconds": 0.4,
+      "peak_process_tree_rss_bytes": 48644096,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "a0_b0.ys",
+      "log": "a0_b0.log"
+    },
+    {
+      "input_a_registered": 0,
+      "input_b_registered": 1,
+      "passed": true,
+      "elapsed_seconds": 0.4,
+      "peak_process_tree_rss_bytes": 48709632,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "a0_b1.ys",
+      "log": "a0_b1.log"
+    },
+    {
+      "input_a_registered": 1,
+      "input_b_registered": 0,
+      "passed": true,
+      "elapsed_seconds": 0.4,
+      "peak_process_tree_rss_bytes": 48640000,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "a1_b0.ys",
+      "log": "a1_b0.log"
+    },
+    {
+      "input_a_registered": 1,
+      "input_b_registered": 1,
+      "passed": true,
+      "elapsed_seconds": 0.4,
+      "peak_process_tree_rss_bytes": 48705536,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "a1_b1.ys",
+      "log": "a1_b1.log"
+    }
+  ],
+  "four_state": {
+    "samples": 23091,
+    "checks": 92364,
+    "passed": true
+  },
+  "numeric": {
+    "samples": 1134343,
+    "accepted": 934343,
+    "checks_0": 1134342,
+    "checks_1": 1134341,
+    "holds_0": 200000,
+    "holds_1": 200000,
+    "latency_0": 2,
+    "latency_1": 3,
+    "initiation_interval": 1,
+    "passed": true
+  },
+  "passed": true
+}

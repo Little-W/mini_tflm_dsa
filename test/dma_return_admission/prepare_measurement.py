@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source, read_current_source as read_rtl_text
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -142,7 +142,7 @@ def main():
         ROOT / 'test/dma_read_permission/prepare_measurement.py')
     prepare = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(prepare)
-    template = (ROOT / 'test/dma_read_ready/read_pair.sv.inc').read_text()
+    template = read_rtl_text(ROOT / 'test/dma_read_ready/read_pair.sv.inc')
     manifest = {'reference_revision': args.reference, 'source_sha256': {}, 'excerpt_sha256': {},
         'scope': 'Actual guard, mux, R/B buffers, extracted arbiter grant/error and top fault expressions, '
                  'and actual kernel_request_idle; unmodified context/grant state and completion flags are analysis inputs.'}

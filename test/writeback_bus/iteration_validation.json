@@ -1,0 +1,150 @@
+{
+  "passed": true,
+  "profiles": [
+    {
+      "vlen": 4,
+      "bus_width": 32,
+      "cyclic_storage": 0,
+      "passed": true
+    },
+    {
+      "vlen": 4,
+      "bus_width": 32,
+      "cyclic_storage": 1,
+      "passed": true
+    },
+    {
+      "vlen": 8,
+      "bus_width": 32,
+      "cyclic_storage": 0,
+      "passed": true
+    },
+    {
+      "vlen": 8,
+      "bus_width": 32,
+      "cyclic_storage": 1,
+      "passed": true
+    },
+    {
+      "vlen": 8,
+      "bus_width": 64,
+      "cyclic_storage": 0,
+      "passed": true
+    },
+    {
+      "vlen": 8,
+      "bus_width": 64,
+      "cyclic_storage": 1,
+      "passed": true
+    },
+    {
+      "vlen": 16,
+      "bus_width": 32,
+      "cyclic_storage": 0,
+      "passed": true
+    },
+    {
+      "vlen": 16,
+      "bus_width": 32,
+      "cyclic_storage": 1,
+      "passed": true
+    },
+    {
+      "vlen": 16,
+      "bus_width": 64,
+      "cyclic_storage": 0,
+      "passed": true
+    },
+    {
+      "vlen": 16,
+      "bus_width": 64,
+      "cyclic_storage": 1,
+      "passed": true
+    },
+    {
+      "vlen": 16,
+      "bus_width": 128,
+      "cyclic_storage": 0,
+      "passed": true
+    },
+    {
+      "vlen": 16,
+      "bus_width": 128,
+      "cyclic_storage": 1,
+      "passed": true
+    },
+    {
+      "vlen": 32,
+      "bus_width": 64,
+      "cyclic_storage": 0,
+      "passed": true
+    },
+    {
+      "vlen": 32,
+      "bus_width": 64,
+      "cyclic_storage": 1,
+      "passed": true
+    },
+    {
+      "vlen": 32,
+      "bus_width": 256,
+      "cyclic_storage": 0,
+      "passed": true
+    },
+    {
+      "vlen": 32,
+      "bus_width": 256,
+      "cyclic_storage": 1,
+      "passed": true
+    }
+  ],
+  "source_sha256": "cc61c5a5686e3d38ad432ec1b58bab6026da038abbc38df1802b6ade01cab5a2",
+  "reference": "ef0dc75342997721bdc4110b2841445df962018e",
+  "reference_sha256": "e19544d68e85f5f1f3934c8509b5213f60b373623de402b5bff808466d40b063",
+  "extracted_logic_sha256": "7574f65d0a49077ab160b0c1088eb17daa4f8bf21595d2403baa2dba254ffb11",
+  "numeric_runs": [
+    {
+      "passed": true,
+      "bus_width": 32,
+      "reference": "ef0dc75342997721bdc4110b2841445df962018e",
+      "cases": 81,
+      "checked_bytes": 12392,
+      "source_sha256": {
+        "rtl/npu/writeback/vec_s8_to_fifo.sv": "cc61c5a5686e3d38ad432ec1b58bab6026da038abbc38df1802b6ade01cab5a2",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+        "rtl/npu/writeback/vec_s16_to_fifo.sv": "2f17154307a112d4f1f69decc9eaeedfe323bf58d14889b90c6b50756156159e",
+        "test/writeback_bus/tb_writeback_bus.sv": "ce0ba669a948508845b54511c921a959bb5ac2e292e8a8e928e8b48929ba5b47"
+      },
+      "reference_sha256": {
+        "vec_s8_to_fifo.sv": "e19544d68e85f5f1f3934c8509b5213f60b373623de402b5bff808466d40b063",
+        "vec_s16_to_fifo.sv": "2f17154307a112d4f1f69decc9eaeedfe323bf58d14889b90c6b50756156159e"
+      },
+      "sources_unchanged": true
+    },
+    {
+      "passed": true,
+      "bus_width": 64,
+      "reference": "ef0dc75342997721bdc4110b2841445df962018e",
+      "cases": 81,
+      "checked_bytes": 12392,
+      "source_sha256": {
+        "rtl/npu/writeback/vec_s8_to_fifo.sv": "cc61c5a5686e3d38ad432ec1b58bab6026da038abbc38df1802b6ade01cab5a2",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+        "rtl/npu/writeback/vec_s16_to_fifo.sv": "2f17154307a112d4f1f69decc9eaeedfe323bf58d14889b90c6b50756156159e",
+        "test/writeback_bus/tb_writeback_bus.sv": "ce0ba669a948508845b54511c921a959bb5ac2e292e8a8e928e8b48929ba5b47"
+      },
+      "reference_sha256": {
+        "vec_s8_to_fifo.sv": "e19544d68e85f5f1f3934c8509b5213f60b373623de402b5bff808466d40b063",
+        "vec_s16_to_fifo.sv": "2f17154307a112d4f1f69decc9eaeedfe323bf58d14889b90c6b50756156159e"
+      },
+      "sources_unchanged": true
+    }
+  ],
+  "elaboration_and_pre_lut": {
+    "passed": true,
+    "logic_loop_warnings": 0,
+    "warning_count": 0
+  }
+}

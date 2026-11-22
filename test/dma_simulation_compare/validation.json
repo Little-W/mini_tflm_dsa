@@ -1,0 +1,58 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "reference": "98f3243b3d89a430d161bb038aad6165fe0303ec3a979c74cfbf231ccd137a52",
+    "current": "39cc592d23c832d57d4b698a306ed1130c2fa067bcbda6e7a4479089216b3b1d"
+  },
+  "preprocess": [
+    {
+      "mode": "generic",
+      "passed": true,
+      "identical_tokens": 8462,
+      "preprocessed_sha256": {
+        "reference": "6edf1510ead9fd1a022aa3f22f8440793501a27c4899b75ea09070a4e63daafb",
+        "current": "3defd66ba27b9ddbd3367efb66452a4dd9fb3fc2db23822d49e8b02a862b7da2"
+      }
+    },
+    {
+      "mode": "fpga",
+      "passed": true,
+      "identical_tokens": 8462,
+      "preprocessed_sha256": {
+        "reference": "6edf1510ead9fd1a022aa3f22f8440793501a27c4899b75ea09070a4e63daafb",
+        "current": "3defd66ba27b9ddbd3367efb66452a4dd9fb3fc2db23822d49e8b02a862b7da2"
+      }
+    },
+    {
+      "mode": "asic",
+      "passed": true,
+      "identical_tokens": 8462,
+      "preprocessed_sha256": {
+        "reference": "6edf1510ead9fd1a022aa3f22f8440793501a27c4899b75ea09070a4e63daafb",
+        "current": "3defd66ba27b9ddbd3367efb66452a4dd9fb3fc2db23822d49e8b02a862b7da2"
+      }
+    }
+  ],
+  "formal": [
+    {
+      "mode": "asic",
+      "passed": true,
+      "profiles": 7,
+      "equivalent_bits": 21211,
+      "summary_sha256": "4c30f07b9550761e96f2365d3b2a990a382b6e7dd7133cad9bdb9a35260fc338"
+    },
+    {
+      "mode": "fpga",
+      "passed": true,
+      "profiles": 7,
+      "equivalent_bits": 21211,
+      "summary_sha256": "6fc95279d5e2b9bcb71431f33745af0f167f3f7efb4ddc6a320177f112721646"
+    }
+  ],
+  "external_inputs_constrained": false,
+  "four_state_scope": "Complete non-SYNTHESIS module statements are identical",
+  "synthesized_comparator_removed": true,
+  "checker_sha256": "f756bd9423b146238b21936c3a02ce38c6531926ecae65aa754d16c06d2945ce",
+  "current_source_sha256": "d890d892c52eefb03e84c4e1d1b4606126b3ee075a379a6658c5206ba157accb",
+  "current_module_and_arithmetic_validation": "test/resource_neutral_arithmetic/validation.json"
+}

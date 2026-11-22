@@ -3,10 +3,12 @@
     "top": "requant_compute_lane",
     "options": [],
     "sources": [
+      "rtl/npu/writeback/requant_pkg.sv",
+      "rtl/npu/writeback/requant_shift_pipeline.sv",
       "rtl/npu/writeback/requant_compute_lane.sv",
-      "rtl/npu/conv/vector_scalar_multiplier.sv",
-      "rtl/npu/writeback/vec_requant.sv"
+      "rtl/npu/conv/registered_multiplier_s32.sv",
+      "rtl/common/parallel_prefix_add.sv"
     ],
-    "configuration": "Complete signed32 lane, both input operands registered, S8 and S16 outputs"
+    "configuration": "INT32 累加值、INT8/INT16 输出、两种输入寄存模式与暂停控制"
   }
 }

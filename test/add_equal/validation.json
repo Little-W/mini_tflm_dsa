@@ -1,336 +1,201 @@
 {
-  "source_sha256": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+  "passed": true,
+  "source_sha256": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
   "formal": {
-    "source_sha256": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
-    "miter_sha256": "7b4b6d03988ac703b43a87b17e011d5151a05089f88b4b9e94b1ea37095c5512",
+    "source_sha256": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+    "miter_sha256": "c02e60cc8c6a52987382c8e5b26ee434b73889f02d167164a86c9d5f089b6852",
     "method": "Combinational SAT comparison against native unsigned addition",
     "inputs_constrained": false,
     "runs": [
       {
         "width": 1,
         "xilinx_fpga": false,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 4,
         "passed": true,
-        "log_sha256": "c6ead1e33f2151d8e414b71e43c6806b490c6dfa98ccbed21947a47992d2a15e"
+        "log_sha256": "ed48080c4ecd7868f9e3c765ceea94fced346068209b12b9d0235571fe036e96"
       },
       {
         "width": 1,
         "xilinx_fpga": true,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 4,
         "passed": true,
-        "log_sha256": "e016c49d4ec8dbf2222cd10b53f806917b321be9d46ddf07d6e4598b6bae121f"
+        "log_sha256": "5471ced0b0f8dd53efeb00f904a3cc2266ed5cdb3ea7f222515197ebcca6de1b"
       },
       {
         "width": 2,
         "xilinx_fpga": false,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 7,
         "passed": true,
-        "log_sha256": "1914a37a056fad439090a55e661e2ef2096d143b2d4df72eac914ee0a4297d6c"
+        "log_sha256": "377e7416b4c63ca389573a58aa6f3f2d6b0bb71f159f13e640d0de4f763b4b8e"
       },
       {
         "width": 2,
         "xilinx_fpga": true,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 7,
         "passed": true,
-        "log_sha256": "dbbe47096c587cc51565621953b7cb0f039f301bbc6b25be0952fb888f788171"
+        "log_sha256": "1c4174dc831d947e6475c73457577d9ddaa1e69d62c12b68326970cf4e31ca28"
       },
       {
         "width": 4,
         "xilinx_fpga": false,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 13,
         "passed": true,
-        "log_sha256": "e82c74408b0aadfd3d47e64d690950c01e2eaa40eda3f43122e70751f8fe4cc4"
+        "log_sha256": "31e569838cdef36c1cc4fb86034f7fbd34def80d5f65e6095f7de066ac692d18"
       },
       {
         "width": 4,
         "xilinx_fpga": true,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 13,
         "passed": true,
-        "log_sha256": "647aa3853d4ffc52d3b1378d105c0841ecb49feffcd5b694429e2f7a5c76e886"
+        "log_sha256": "ecf9dc157abdfb4469e9dcd7e63bfa56f6ce19f3e21460d3c8d6bb2d6f51409b"
       },
       {
         "width": 8,
         "xilinx_fpga": false,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 25,
         "passed": true,
-        "log_sha256": "825ba81123006a081e69d7b5f6f02e518c67342b889003f04d853834ec7afe3f"
+        "log_sha256": "3be17b46c48d0327763bf4b464893c8f29c9ed18802e835a77881b0fd00a8c7e"
       },
       {
         "width": 8,
         "xilinx_fpga": true,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 25,
         "passed": true,
-        "log_sha256": "7b61f5fb7cdc9407158b34e94c7381933541d01ad09041b43d539b76f86ba856"
+        "log_sha256": "08fe27d16d23770ffbcaf57c2e43278d7657600bed780d2b730a3c7e7add5e4c"
       },
       {
         "width": 16,
         "xilinx_fpga": false,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 49,
         "passed": true,
-        "log_sha256": "c9c8ad38e6773f4f52c4df6ddf468116e3c9ecdc372d9333dbce0762926ffe66"
+        "log_sha256": "ee5719722caa64fc244f1e64c8ef9e2ded3eddbefb36f1e91ff428c7d5b99fe4"
       },
       {
         "width": 16,
         "xilinx_fpga": true,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 49,
         "passed": true,
-        "log_sha256": "405e5271827e9ad04e02252f87efe5c084afdf0014637bf89ba2cda5fed7b54d"
+        "log_sha256": "0de04afb2b10e191e62083ba3752dcc0447962d3482ba068a84610a2e204f883"
       },
       {
         "width": 28,
         "xilinx_fpga": false,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 85,
         "passed": true,
-        "log_sha256": "1c7bde9af092bf5df05109ceb63a7c73c16bd2fa75b1959a5c8546e583268d81"
+        "log_sha256": "98ba138ebd60d940723974869e85c8a6fbf17a77005f6e1bfab2e3f503fe0612"
       },
       {
         "width": 28,
         "xilinx_fpga": true,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 85,
         "passed": true,
-        "log_sha256": "f60dfe87ef31380ea6bef088a2dd800d046f3a8a75df5f1d7e771c23d8c19d0c"
+        "log_sha256": "0dda7d075c325cd1657cca5e4af2c1f9b77055870e37d2686573785dd8a0c1a8"
       },
       {
         "width": 32,
         "xilinx_fpga": false,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 97,
         "passed": true,
-        "log_sha256": "c809c7850856dc3100efb4b1ef656cda824435c8eefec71c815904eca1930fd4"
+        "log_sha256": "117669cc5f11ca19f39a837d8e5b78494c052ee79eae6fa5dae808a38c0438c7"
       },
       {
         "width": 32,
         "xilinx_fpga": true,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 97,
         "passed": true,
-        "log_sha256": "5086431ba29d619543e1aff900e33d289ec6ed8d37b4cd3bcea1837cda2b77cd"
+        "log_sha256": "02aa153658fd16238e87067d05624cd562b9bc57dd7f1b9d3f0a2ad5c166e6ab"
       },
       {
         "width": 33,
         "xilinx_fpga": false,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 100,
         "passed": true,
-        "log_sha256": "cd6c7bd10d1e6b6b5aa9ae83f692a6f34453225c6c131ad55dfcece0cba1465f"
+        "log_sha256": "abbaf864c59a89725429abb8d85d7d38158088e82b29f3e447bdac05c2eb5848"
       },
       {
         "width": 33,
         "xilinx_fpga": true,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 100,
         "passed": true,
-        "log_sha256": "48bf4400deb5496c2072393bb2ec9b9bee77538fdc0ab601df8b439939607f69"
+        "log_sha256": "ae84e2802abe73c5ba6216fbc8201b7385c7c98b53dc59868ca14e93b5bd7135"
       },
       {
         "width": 64,
         "xilinx_fpga": false,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 193,
         "passed": true,
-        "log_sha256": "6aaf5a29cb8eb93d1affb51f1d9ca8aa092f45de11c35a946105dd787c5eb0b5"
+        "log_sha256": "e5a8f18467d3e4e3cfe0c843fc473828fc9013ce24158845ddfa02460f523836"
       },
       {
         "width": 64,
         "xilinx_fpga": true,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
         "unconstrained_input_bits": 193,
         "passed": true,
-        "log_sha256": "0bb92ca30506f35be952333ffdb1dd13f844daeaac41f709c59e59504368ee72"
+        "log_sha256": "56f62f4c6fd0f064b5da8f74eb1824bd58e5b638a0d6ad20061d68ca89ee790a"
       }
     ],
     "passed": true
   },
   "four_state": {
-    "source_sha256": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
-    "bench_sha256": "2a549d51c229103150da0519af5691d34f411dd1e5ad0b01a1634caf168a0f9b",
+    "source_sha256": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+    "bench_sha256": "e75c5badce387cd818491076618f4e2a34f86284e1bd1c78f6b9459e10c56911",
     "method": "Four-state case-equality comparison against vector carry consistency",
     "runs": [
       {
         "width": 1,
         "passed": true,
         "tests": 256,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
-        "log_sha256": "84232f8f04c8ecc009b08c1178bfaf722edebeac67dc62d59cc40e8d11cbea20"
+        "log_sha256": "e0a1cf3dab5fbacb6ecb374e820f5fc1488d7d68662ebfde5fd62099e8ad2064"
       },
       {
         "width": 2,
         "passed": true,
         "tests": 16384,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
-        "log_sha256": "6ee89ce5fe12a6692efa7786a7caa9ed3db0c1dbdfefc1f887c781b1524bd543"
+        "log_sha256": "61ebaa779e38fe6c143b92803467ae2ff6742dbf778ea38f64109acbb53b4977"
       },
       {
         "width": 4,
         "passed": true,
         "tests": 6000,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
-        "log_sha256": "8f42aff9882cd1d03e01fffa928e1ca05ff5c8519e0ca5fed4c6d28e7988f41f"
+        "log_sha256": "6db75d84d64e460ea83e57c869afbda864bc44e5d5d2d203295ed8908c4df006"
       },
       {
         "width": 8,
         "passed": true,
         "tests": 6000,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
-        "log_sha256": "4f322f304cf4e1a86fdbb78c09dcf0244a72e1603bf7ac3e56fed0e80d2ea513"
+        "log_sha256": "4b4abf3e5d44f3c30c8101bc5b21c4f78852323721abc3d7e4f20ec4416eaf0b"
       },
       {
         "width": 16,
         "passed": true,
         "tests": 6000,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
-        "log_sha256": "a366c7e3e3b54f06635be2ef823cdeec98eef31eaf24b571ab7ec47f95a10ec0"
+        "log_sha256": "923166f8d045b5d2d8686998f6529ebcdfcb5c5e4effdc66aa0897e1806907fa"
       },
       {
         "width": 28,
         "passed": true,
         "tests": 6000,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
-        "log_sha256": "7e54ff9042dabb692cf4822f0dc6dfa39ddce792773d231f4ac1bca71c1a7746"
+        "log_sha256": "fef62d74ea17c5229964682a85950395cbd88a9e8bad26ad277f554c533ac271"
       },
       {
         "width": 32,
         "passed": true,
         "tests": 6000,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
-        "log_sha256": "5229706378525eb1d80deb901bf172af7bed4a45448e84e3bbf30b695968609b"
+        "log_sha256": "e0b52c5330fd4700589a49e9c9747f37b52582b0ceae99ad1d4715d51e180a95"
       },
       {
         "width": 33,
         "passed": true,
         "tests": 6000,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
-        "log_sha256": "50a1f975b97fa5d77017fafbbb27cec84f7d8086fd14054e1a22b2acba312554"
+        "log_sha256": "bbd6173576eb0b2b3852ccd00194c7669919eb343cf106972a8e9844bb86c136"
       },
       {
         "width": 64,
         "passed": true,
         "tests": 6000,
-        "preserve_modes": [
-          "default",
-          0,
-          1
-        ],
-        "log_sha256": "234eb17bbc135c9beeaa2ab40809538615952dc98404cced0797b842f8bc9db7"
+        "log_sha256": "6e78d4159b3360f11c6409e22259598c6c843b0b115bde435731b236602801cd"
       }
     ],
     "passed": true
-  },
-  "passed": true
+  }
 }

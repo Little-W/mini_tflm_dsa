@@ -75,11 +75,12 @@ def prepare_driver(out):
 
 
 def run_simulation(out, args):
-    sources = [HERE/'tb.sv',
+    sources = [ROOT/'rtl/npu/writeback/requant_pkg.sv',
+               ROOT/'rtl/npu/writeback/requant_shift_pipeline.sv', HERE/'tb.sv',
                ROOT/'rtl/npu/writeback/vec_requant.sv',
                ROOT/'rtl/npu/writeback/requant_compute_lane.sv',
                ROOT/'rtl/npu/writeback/requant_group_buffer.sv',
-               ROOT/'rtl/npu/conv/vector_scalar_multiplier.sv', ROOT/'rtl/common/regfile.v',
+               ROOT/'rtl/npu/conv/registered_multiplier_s32.sv', ROOT/'rtl/common/regfile.v',
                ROOT/'rtl/common/parallel_prefix_add.sv',
                ROOT/'test/monitors/requant_group_buffer_observer.sv']
     checked = sources+[ROOT/'test/requant_time_share/main.cpp', Path(__file__).resolve()]

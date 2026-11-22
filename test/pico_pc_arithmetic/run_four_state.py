@@ -9,6 +9,10 @@ from pathlib import Path
 import re
 import subprocess
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -19,12 +23,12 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     source = ROOT / "rtl/soc/picorv32_npu.v"
-    text = source.read_text()
+    text = read_rtl_text(source)
     names = ("operand_addition", "operand_difference", "signed_difference",
              "return_address_sum", "next_cycle_count", "next_instruction_count")
     declarations = []
     for name in names:
-        match = re.search(r'\(\* use_dsp = "yes" \*\) wire \[[^\]]+\] '
+        match = re.search(r'wire \[[^\]]+\] '
                           + re.escape(name) + r'\s*=.*?;', text, re.S)
         if not match:
             raise RuntimeError(f"没有找到实际算术表达式：{name}")
@@ -98,9 +102,9 @@ endmodule
     with (out / "run.log").open("w") as log:
         subprocess.run(["vvp", str(binary)], stdout=log, stderr=subprocess.STDOUT,
                        check=True, timeout=60)
-    result = (out / "run.log").read_text()
+    result = read_rtl_text(out / "run.log")
     assert "PASS checks=240000" in result
-    assert source.read_text() == text
+    assert read_rtl_text(source) == text
     summary = {"passed": True, "strict_four_state": True, "checks": 240000,
                "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
                "test_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),

@@ -21,7 +21,7 @@
 
 ## 量化参数观察输出
 
-`vec_requant` 和 `vec_requant_full` 提供 `p_parameter_output`，默认值为 `1'b1`。启用时，`quant_multiplier_lane` 和 `quant_shift_lane` 保持完整的参数观察功能。设置为 `1'b0` 时，这两个观察输出为零，专门服务这些输出的原始 IS multiplier、shift 表不展开。量化运算实际使用的 product multiplier、product amount 和 WS 参数表保持完整。
+`vec_requant` 提供 `p_parameter_output`，默认值为 `1'b1`。启用时，`quant_multiplier_lane` 和 `quant_shift_lane` 保持完整的参数观察功能。设置为 `1'b0` 时，这两个观察输出为零，专门服务这些输出的原始 IS multiplier、shift 表不展开。量化运算实际使用的 product multiplier、product amount 和 WS 参数表保持完整。
 
 `npu_top.u_vec_requant` 将此参数设置为 `1'b0`。顶层的数值输出、参数写入协议、背压和运算周期保持一致。
 
@@ -36,11 +36,11 @@
 | 非法地址读取 | 已知越界地址 | 12,930 次通过 |
 | 宏结构检查 | 10 组映射参数及 4 组行为级参数 | 14 组数量检查通过 |
 | 存储归纳证明 | 10 组映射参数的所有位、写入分段及读端口 | 全部通过 |
-| 量化接口等价 | 4 组总线、通道及容量配置，各检查观察输出启用和关闭 | 8 组、97,938 个等价位通过 |
+| 量化接口等价 | 4 组总线、通道及容量配置，直接比较观察输出启用和关闭 | 4 组、41,896 个等价位通过 |
 
 存储归纳证明选择任意固定合法地址，比较全部数据位的逻辑内容与物理内容加写入缓冲的关系，并证明读取采样、输出保持和宏端口冲突条件。生产读取与写入输入不增加约束。二态归纳使用共同初值；未初始化存储和未知输入的行为由四态比较检查。
 
-量化接口证明比较实际运算输出、控制状态和存储器读写端口。可独立处理的单读端口存储接收任意相同返回数据，并核对两侧存储参数；流水线数组和多端口 WS 存储保留实际状态。观察输出启用时同时比较这两个输出，关闭时按顶层连接仅比较实际消费者。
+量化接口证明比较实际运算输出、控制状态和存储器读写端口。可独立处理的单读端口存储接收任意相同返回数据，并核对两侧存储参数；流水线数组和多端口 WS 存储保留实际状态。两侧均按顶层连接检查实际消费者，直接比较观察参数启用和关闭时的运算与控制。原始参数输出数值由 `test/requant_parameter_read` 单独检查。
 
 `sram_model.sv` 实现同步功能模型，并在宏同时读写相同物理地址时终止测试。它用于功能比较；库时序弧与工艺面积由 DC 使用实际库文件分析。
 
@@ -51,10 +51,7 @@
 ```sh
 python test/asic_regfile/run.py --out build/asic_regfile
 python test/asic_regfile/run_formal.py --out build/asic_regfile_formal
-mkdir -p build/asic_parameter_reference
-git show ef0dc75342997721bdc4110b2841445df962018e:rtl/npu/writeback/vec_requant.sv > build/asic_parameter_reference/vec_requant.sv
 python test/asic_regfile/run_parameter_outputs.py \
-  --reference-file build/asic_parameter_reference/vec_requant.sv \
   --out build/asic_parameter_outputs
 ```
 

@@ -1,5 +1,7 @@
 # FIFO 写入目标银行选择
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 ## 行为
 
 `vec_s8_to_fifo_full` 在采用计数存储的银行配置下，先确定下一周期的写银行及相邻银行，再分别计算这两个银行的释放条件。每个目标银行先读取当前有效状态，随后按释放优先、写入完成其次的顺序更新阻塞结果。
@@ -47,6 +49,6 @@ python test/fifo_release_selection/run_formal.py --reference 8aa34632 --profile 
 python test/fifo_read_qualification/run_cycle.py --reference 8aa34632 --bus-width 32 --out build/fifo_release_selection/numeric32
 python test/fifo_read_qualification/run_cycle.py --reference 8aa34632 --bus-width 64 --out build/fifo_release_selection/numeric64
 python test/fifo_write_blocked/run_four_state.py --reference 8aa34632 --cycles 1024 --out build/fifo_release_selection/four_state
-python scripts/fpga/open_fpga_synth.py --case-config test/fifo_release_selection/cases.json --cases current --rtl-dsp-attributes --wide-alu-dsp-budget 740 --out build/fifo_release_selection/mapped
+python scripts/fpga/open_fpga_synth.py --case-config test/fifo_release_selection/cases.json --cases current --out build/fifo_release_selection/mapped
 python test/fifo_release_selection/measure_paths.py --reference build/reference_fifo/current --current build/fifo_release_selection/mapped/current --out build/fifo_release_selection/measurement.json
 ```

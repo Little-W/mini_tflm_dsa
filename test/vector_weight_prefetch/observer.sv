@@ -33,8 +33,8 @@ module vector_weight_prefetch_observer #(
     longint unsigned writes_consecutive, last_rows_published, last_taps_published;
     wire write_cancel = vector_engine.i_storage_error ||
         32'(vector_engine.state) == p_failed;
-    wire write_capture = vector_engine.weights_i_wr_en &&
-        (|vector_engine.weights_i_wr_mask) && !write_cancel;
+    wire write_capture = vector_engine.u_operand_store.weights_i_wr_en &&
+        (|vector_engine.u_operand_store.weights_i_wr_mask) && !write_cancel;
 
     // 从 DMA 接收端独立保存事务，检查共享 RAM 接口恰好延后一拍发布。
     // 逐拍比较全部负载，并分别统计连续写入、每行末拍和最后一个卷积核位置。
@@ -66,12 +66,12 @@ module vector_weight_prefetch_observer #(
             previous_write_published <= vector_engine.o_weight_write_en;
             previous_write_valid <= write_capture;
             if (write_capture) begin
-                previous_write_address <= p_addr_width'(vector_engine.weights_i_wr_tap);
-                previous_write_data <= 128'(vector_engine.weights_i_wr_data);
-                previous_write_mask <= 16'(vector_engine.weights_i_wr_mask);
+                previous_write_address <= p_addr_width'(vector_engine.u_operand_store.weights_i_wr_tap);
+                previous_write_data <= 128'(vector_engine.u_operand_store.weights_i_wr_data);
+                previous_write_mask <= 16'(vector_engine.u_operand_store.weights_i_wr_mask);
                 previous_write_last_row <= vector_engine.weight_row_last_fire;
                 previous_write_last_tap <= vector_engine.weight_row_last_fire &&
-                    vector_engine.weights_i_wr_tap + 32'd1 == 32'(vector_engine.taps);
+                    vector_engine.u_operand_store.weights_i_wr_tap + 32'd1 == 32'(vector_engine.taps);
                 writes_captured <= writes_captured + 1;
             end
         end
@@ -103,13 +103,13 @@ module vector_weight_prefetch_observer #(
             request_valid <= vector_engine.o_weight_read_en;
             if (vector_engine.o_weight_read_en) request_tap <= vector_engine.o_weight_read_addr;
             clear_previous <= clear_context;
-            if (clear_previous) assert(!vector_engine.g_shared_weights.saved_valid);
+            if (clear_previous) assert(!vector_engine.u_operand_store.g_shared_weights.saved_valid);
 
             assert(!(vector_engine.o_weight_read_en && vector_engine.o_weight_write_en &&
                 (|vector_engine.o_weight_write_mask)));
             if (vector_engine.i_weight_read_valid) begin
                 assert(request_valid);
-                assert(vector_engine.g_shared_weights.return_tap == request_tap);
+                assert(vector_engine.u_operand_store.g_shared_weights.return_tap == request_tap);
                 assert(int'(request_tap) < p_depth);
                 for (int lane = 0; lane < 16; lane++) begin
                     if (reference_mask[request_tap][lane]) begin
@@ -119,18 +119,18 @@ module vector_weight_prefetch_observer #(
                 end
                 checked_returns <= checked_returns + 1;
             end
-            if (vector_engine.g_shared_weights.saved_valid) begin
-                assert(int'(vector_engine.g_shared_weights.saved_tap) < p_depth);
+            if (vector_engine.u_operand_store.g_shared_weights.saved_valid) begin
+                assert(int'(vector_engine.u_operand_store.g_shared_weights.saved_tap) < p_depth);
                 for (int lane = 0; lane < 16; lane++) begin
-                    if (reference_mask[vector_engine.g_shared_weights.saved_tap][lane]) begin
-                        assert(vector_engine.g_shared_weights.saved_data[8*lane +: 8] ===
-                            reference_weight[vector_engine.g_shared_weights.saved_tap][8*lane +: 8]);
+                    if (reference_mask[vector_engine.u_operand_store.g_shared_weights.saved_tap][lane]) begin
+                        assert(vector_engine.u_operand_store.g_shared_weights.saved_data[8*lane +: 8] ===
+                            reference_weight[vector_engine.u_operand_store.g_shared_weights.saved_tap][8*lane +: 8]);
                     end
                 end
             end
 
             if (execute) begin
-                assert(vector_engine.dw_in_bounds == vector_engine.in_bounds);
+                assert(vector_engine.dw_in_bounds == (vector_engine.u_invariants.input_column_in_bounds && vector_engine.u_address.input_row_in_bounds));
                 if (!vector_engine.i_storage_error) assert(vector_engine.weight_data_ready);
                 if (vector_engine.dw_in_bounds && !vector_engine.input_ready[vector_engine.read_bank])
                     stalled_cycles <= stalled_cycles + 1;
@@ -140,11 +140,13 @@ module vector_weight_prefetch_observer #(
             end
             if (vector_engine.dw_issue_fire) begin
                 assert(vector_engine.weight_data_ready);
-                assert(vector_engine.weight_data_tap == p_addr_width'(vector_engine.tap));
-                if (vector_engine.g_shared_weights.return_matches)
+                assert((vector_engine.u_operand_store.g_shared_weights.return_matches ?
+                    vector_engine.u_operand_store.g_shared_weights.return_tap : vector_engine.u_operand_store.g_shared_weights.saved_tap) ==
+                    p_addr_width'(vector_engine.tap));
+                if (vector_engine.u_operand_store.g_shared_weights.return_matches)
                     returned_issues <= returned_issues + 1;
                 else begin
-                    assert(vector_engine.g_shared_weights.saved_matches);
+                    assert(vector_engine.u_operand_store.g_shared_weights.saved_matches);
                     cached_issues <= cached_issues + 1;
                 end
             end

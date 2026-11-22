@@ -45,7 +45,6 @@ def main():
             raise RuntimeError(f"Four-state comparison did not complete: {run_log}")
         summary["runs"].append({"width": width, "passed": True,
                                 "tests": 4 ** (3*width+1) if width <= 2 else 6000,
-                                "preserve_modes": ["default", 0, 1],
                                 "log_sha256": hashlib.sha256(run_log.read_bytes()).hexdigest()})
         print(output.splitlines()[0], flush=True)
     summary["passed"] = True

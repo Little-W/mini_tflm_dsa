@@ -30,7 +30,7 @@ module ia_prefetch_tb #(parameter bit ORDERED_JOB = 0) (
     output logic idle, complete, compact_active, cache_hit,
     output logic prefetch_idle, prefetch_enabled, prefetch_launch, prefetch_inflight, prefetch_issue,
     output logic prefetch_pending, demand_complete, demand_request, group_start,
-    output logic [31:0] active_valid_cols,
+    output logic [18:0] active_column_mask,
     output logic ia_data_valid, ia_sending_done, ia_row_valid,
     output logic [31:0] ps_frame_rows, ps_frame_id,
     output logic ps_frame_init, ps_frame_final
@@ -56,7 +56,7 @@ module ia_prefetch_tb #(parameter bit ORDERED_JOB = 0) (
     assign demand_complete = u_loader.tl_tile_done;
     assign demand_request = u_loader.ctrl_load_req;
     assign group_start = u_loader.cache_l1_start;
-    assign active_valid_cols = u_loader.active_valid_cols;
+    assign active_column_mask = u_loader.active_column_mask;
     for (genvar lane = 0; lane < 16; lane++) begin : g_valid
         assign lane_valid[lane] = u_loader.u_cache_mgr.ram_rd_en_d1[lane];
     end

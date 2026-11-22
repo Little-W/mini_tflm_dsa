@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_current_source, read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'test/ia_write_output_depth'))
@@ -72,7 +72,7 @@ def main():
         snapshots[label] = []
         for relative in SOURCES:
             data = (read_rtl_source(f'{args.reference_rev}:{relative}', cwd=ROOT)
-                    if label == 'reference' else (ROOT / relative).read_bytes())
+                    if label == 'reference' else read_current_source(ROOT / relative).encode())
             path = folder / relative.name
             path.write_bytes(data)
             snapshots[label].append(path)
@@ -83,32 +83,30 @@ def main():
         (out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
 
     miter = out / 'equality.sv'
-    miter.write_text("""module equality #(parameter int p_width=32, p_low_width=4,
-        parameter bit p_use_lut=1'b1)(
+    miter.write_text("""module equality #(parameter int p_width=32, p_low_width=4)(
         input logic [p_width-1:0] i_a, i_b,
         input logic [p_width-p_low_width-1:0] i_target,
         output logic o_equivalent);
         logic [p_width-1:0] sum;
         logic result;
         assign sum = i_a + i_b;
-        ia_ordered_coordinate_equal #(.p_width(p_width), .p_low_width(p_low_width),
-            .p_use_lut(p_use_lut)) u_equal (
+        ia_ordered_coordinate_equal #(.p_width(p_width), .p_low_width(p_low_width)) u_equal (
             .i_a(i_a), .i_b(i_b), .i_target(i_target), .o_equal(result));
         assign o_equivalent = result == (sum[p_width-1:p_low_width] == i_target);
     endmodule
 """)
-    profiles = ((8,4,1), (32,4,1), (35,4,1), (40,4,1),
-                (32,0,1), (32,3,1), (32,5,1), (32,4,0))
-    for width, low_width, use_lut in profiles:
+    profiles = ((8,4), (32,4), (35,4), (40,4), (32,0), (32,3), (32,5))
+    for width, low_width in profiles:
         commands = [f'read_slang --top equality -Gp_width={width} '
-                    f'-Gp_low_width={low_width} -Gp_use_lut={use_lut} ' +
+                    f'-Gp_low_width={low_width} ' +
                     ' '.join(shlex.quote(str(path)) for path in
-                             (ROOT / 'rtl/npu/loaders/ia_loader.sv',
-                              ROOT / 'rtl/common/add_equal.sv', model, miter)),
+                             (ROOT / 'rtl/npu/loaders/ia_ordered_coordinate_equal.sv',
+                              ROOT / 'rtl/common/add_equal.sv',
+                              ROOT / 'rtl/common/parallel_prefix_add.sv', model, miter)),
                     'prep -top equality -flatten',
                     'sat -verify -prove o_equivalent 1 -show-inputs -show-outputs']
-        returncode, log = run_script(out, f'equality_{width}_{low_width}_{use_lut}', commands)
-        row = {'width': width, 'low_width': low_width, 'use_lut': bool(use_lut),
+        returncode, log = run_script(out, f'equality_{width}_{low_width}', commands)
+        row = {'width': width, 'low_width': low_width,
                'unconstrained_input_bits': width * 3 - low_width,
                'passed': returncode == 0 and 'no model found: SUCCESS!' in log.read_text(),
                'log_sha256': digest(log)}

@@ -166,8 +166,8 @@ class Simulation {
         dut.ext_dma_wr_data[lane] = static_cast<std::uint16_t>(source(
             descriptor.job, descriptor.p0 + descriptor.row, descriptor.q0 + descriptor.col + lane));
       }
-      require(dut.active_valid_cols == descriptor.cols,
-              current_name + ": a cache hit changed the active DMA tail mask");
+      require(dut.active_column_mask == ((1U << descriptor.cols) - 1U),
+              current_name + ": active DMA column mask differs from its descriptor");
     }
     dut.send_ia_trigger = checking;
     dut.load_ia_granted = grant_owner;

@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source, read_current_source as read_rtl_text
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -30,11 +30,14 @@ def main():
     sources = [ROOT / "rtl/common/regfile.v", ROOT / "rtl/common/parallel_prefix_add.sv",
                ROOT / "rtl/npu/writeback/vec_s8_to_fifo.sv",
                ROOT / "rtl/npu/writeback/vec_s16_to_fifo.sv"]
+    import runpy
+    dependency_reader = runpy.run_path(str(ROOT / "scripts/rtl/source_files.py"))
+    sources = dependency_reader["with_dependencies"](sources, ROOT)
     hashes = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}
     import pyosys
     library = Path(pyosys.__file__).parent / "share/xilinx/cells_sim.v"
     model = out / "lut6_2.sv"
-    model_text = re.search(r"^module LUT6_2\b.*?^endmodule", library.read_text(), re.M | re.S)[0]
+    model_text = re.search(r"^module LUT6_2\b.*?^endmodule", read_rtl_text(library), re.M | re.S)[0]
     model.write_text(re.sub(r"\bspecify\b.*?\bendspecify\b", "", model_text, flags=re.S) + "\n")
     sources.append(model)
     reference_hashes = {}
@@ -47,7 +50,7 @@ def main():
         path = out / filename.replace(".sv", "_ref.sv")
         path.write_text(renamed)
         sources.append(path)
-    testbench = (ROOT / "test/writeback_bus/tb_writeback_bus.sv").read_text().replace(
+    testbench = read_rtl_text(ROOT / "test/writeback_bus/tb_writeback_bus.sv").replace(
         "vec_s8_to_fifo #(", f"vec_s8_to_fifo #(.p_cyclic_storage(1\'b{args.cyclic}), ")
     testbench = testbench.replace("localparam int BANKS = 16;", f"localparam int BANKS = {args.banks};")
     tb = out / "tb_writeback_cyclic.sv"

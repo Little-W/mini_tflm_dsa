@@ -3,19 +3,17 @@
 module tb_scalar_dsp_pair;
   logic clk=0, enable=0;
   logic signed [31:0] operand_a='0, operand_b='0;
-  wire signed [63:0] product [8], reference_product [8];
+  wire signed [63:0] product [4], reference_product [4];
   integer samples=0, checks=0;
 
-  for (genvar configuration=0; configuration<8; configuration++) begin : g_configuration
+  for (genvar configuration=0; configuration<4; configuration++) begin : g_configuration
     registered_multiplier_s32 #(
-      .p_input_register((configuration>>2)&1),
-      .p_b_input_register((configuration>>1)&1),
-      .p_use_dsp(configuration&1)
+      .p_input_register((configuration>>1)&1),
+      .p_b_input_register(configuration&1)
     ) u_candidate (.clk, .i_en(enable), .i_a(operand_a), .i_b(operand_b), .o_product(product[configuration]));
     registered_multiplier_s32_reference #(
-      .p_input_register((configuration>>2)&1),
-      .p_b_input_register((configuration>>1)&1),
-      .p_use_dsp(configuration&1)
+      .p_input_register((configuration>>1)&1),
+      .p_b_input_register(configuration&1)
     ) u_reference (.clk, .i_en(enable), .i_a(operand_a), .i_b(operand_b), .o_product(reference_product[configuration]));
   end
 
@@ -27,7 +25,7 @@ module tb_scalar_dsp_pair;
     #1;
     clk=1;
     #1;
-    for (integer configuration=0; configuration<8; configuration++) begin
+    for (integer configuration=0; configuration<4; configuration++) begin
       if (product[configuration] !== reference_product[configuration])
         $fatal(1,"乘积不同 configuration=%0d sample=%0d actual=%h expected=%h",
           configuration,samples,product[configuration],reference_product[configuration]);

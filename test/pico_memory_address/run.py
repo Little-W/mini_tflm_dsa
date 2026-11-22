@@ -7,6 +7,10 @@ import json
 from pathlib import Path
 import subprocess
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/soc/picorv32_npu.v')
 
@@ -24,7 +28,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     sources = {'current': out / 'current.v', 'reference': out / 'reference.v'}
-    sources['current'].write_bytes(args.source.read_bytes())
+    sources['current'].write_text(read_rtl_text(args.source))
     sources['reference'].write_bytes(subprocess.check_output(
         ['git', 'show', f'{args.reference}:{SOURCE}'], cwd=ROOT))
     helper = ROOT / 'test/pico_pc_arithmetic/run.py'

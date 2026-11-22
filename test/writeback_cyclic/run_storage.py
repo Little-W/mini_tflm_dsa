@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 
@@ -171,11 +174,11 @@ def main():
         return
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     path=ROOT/'rtl/npu/writeback/vec_s8_to_fifo.sv'
-    source=path.read_text()
+    source=read_rtl_text(path)
     import pyosys
     library=Path(pyosys.__file__).parent/'share/xilinx/cells_sim.v'
     model=out/'lut6_2.sv'
-    model_text=re.search(r'^module LUT6_2\b.*?^endmodule',library.read_text(),re.M|re.S)[0]
+    model_text=re.search(r'^module LUT6_2\b.*?^endmodule',read_rtl_text(library),re.M|re.S)[0]
     model.write_text(re.sub(r'\bspecify\b.*?\bendspecify\b','',model_text,flags=re.S)+'\n')
     extracted=out/'fifo_storage_extracted.sv';extracted.write_text(storage_module(source))
     formal=out/'fifo_storage_formal.sv';formal.write_text(storage_module(source,True)+TAG+FORMAL)
@@ -191,7 +194,7 @@ def main():
             'sat -prove-asserts -verify -show-inputs\n')
         with (folder/'formal.log').open('w') as log:
             result=subprocess.run([sys.executable,__file__,'--out',str(out),'--worker',str(script)],stdout=log,stderr=subprocess.STDOUT)
-        text=(folder/'formal.log').read_text()
+        text=read_rtl_text(folder/'formal.log')
         if result.returncode or 'SAT proof finished - no model found: SUCCESS' not in text:
             raise RuntimeError(text[-8000:])
         command=[args.verilator,'--binary','--timing','--assert','-Wno-fatal','--top-module','tb_fifo_storage',

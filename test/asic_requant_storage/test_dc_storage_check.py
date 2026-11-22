@@ -98,7 +98,7 @@ puts "checked=$result"
         self.assertIn("second\t0\t0\t0", report)
 
     def test_parallel_quantization_needs_no_group_buffer(self):
-        result, report = self.run_check([("u_quant", "vec_requant_full", True)])
+        result, report = self.run_check([("u_quant", "vec_requant", True)])
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("checked=0", result.stdout)
         self.assertEqual(len(report.splitlines()), 1)

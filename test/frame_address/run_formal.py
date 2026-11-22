@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""证明帧地址准备的原语状态、分段乘加与分块地址表达式。"""
+"""检查帧地址流水线的符号部分积、分段算术与分块地址表达式。"""
 from __future__ import annotations
 
 import argparse
@@ -29,12 +29,6 @@ def main() -> None:
     helper = ROOT / 'rtl/common/parallel_prefix_add.sv'
     source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
     helper_hash = hashlib.sha256(helper.read_bytes()).hexdigest()
-    import pyosys
-    library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
-    model = re.search(r'^module DSP48E1\b.*?^endmodule', library.read_text(), re.M | re.S)[0]
-    model_file = out / 'dsp48e1.sv'
-    model_file.write_text(re.sub(r'\bspecify\b.*?\bendspecify\b', '', model, flags=re.S) + '\n')
-
     def run(name: str, commands: list[str], timeout: int = 180) -> str:
         script = out / (name + '.ys')
         script.write_text('\n'.join(commands) + '\n')
@@ -47,53 +41,51 @@ def main() -> None:
         return log.read_text()
 
     ports = re.search(r'\) \(\n(.*?)\n\);', source.read_text(), re.S)[1]
-    names = re.findall(r'(?:input|output)\s+(?:wire\s+)?logic\s*(?:\[[^]]+\]\s*)?(\w+)', ports)
-    if len(names) != len(re.findall(r'\b(?:input|output)\b', ports)):
-        raise RuntimeError('Every declared port must have an explicit connection')
-    connections = ',\n'.join('.' + name + '(' + name + ')' for name in names)
-    commands = []
-    for label, dsp in [('reference', 0), ('candidate', 1)]:
-        wrapper = out / (label + '.sv')
-        wrapper.write_text(f'module {label}(\n{ports}\n);\n'
-                           f'frame_address_prepare #(.p_size(16),.p_use_dsp({dsp})) u_impl (\n{connections}\n);\nendmodule\n')
-        commands += [
-            'read_slang --top ' + label + ' -D VERIFIC --blackboxed-module DSP48E1 -v ' +
-            shlex.quote(str(model_file)) + ' ' + ' '.join(shlex.quote(str(p)) for p in (source, helper, wrapper)),
-            'read_verilog -formal -sv -D VERIFIC -overwrite ' + shlex.quote(str(model_file)),
-            'prep -top ' + label + ' -flatten', 'memory_map', 'wreduce', 'opt -full', 'async2sync', 'opt -full',
-            'write_json ' + shlex.quote(str(out / (label + '_flat.json'))),
-            'design -stash ' + label,
-        ]
-    run('elaborate', commands)
-    commands = []
-    for label, product_name in [('reference', 'u_impl.g_generic.partial_product'),
-                                ('candidate', 'u_impl.g_dsp.u_dsp.M')]:
-        path = out / (label + '_flat.json')
-        design = json.loads(path.read_text())
-        module = design['modules'][label]
-        product = module['netnames'][product_name]['bits']
-        if len(product) > 36:
-            assert all(bit == product[35] for bit in product[36:])
-        module['netnames']['formal_partial_product'] = {'hide_name': 0, 'bits': product[:36], 'attributes': {}}
-        path = out / (label + '_named.json')
-        path.write_text(json.dumps(design))
-        commands += ['read_json ' + shlex.quote(str(path)), 'design -stash ' + label]
-    commands += [
-        'design -copy-from reference -as reference reference',
-        'design -copy-from candidate -as candidate candidate',
-        'equiv_make reference candidate equiv', 'hierarchy -top equiv', 'opt -full',
-        'equiv_simple -seq 2', 'equiv_induct -seq 2', 'equiv_status -assert',
-    ]
-    state_log = run('primitive_state', commands)
-    if 'Equivalence successfully proven' not in state_log:
-        raise RuntimeError('Incomplete primitive state proof')
-    summary = {'source_sha256': source_hash,
-               'helper_sha256': helper_hash, 'connected_ports': names,
-               'primitive_library_sha256': hashlib.sha256(library.read_bytes()).hexdigest(),
-               'inputs_constrained': False, 'abort_constrained': False, 'result_ready_constrained': False,
-               'primitive_state': {'passed': True, 'equivalent_bits': int(re.search(
-                   r'Of those cells (\d+) are proven', state_log)[1])}, 'address_forms': []}
-    print('primitive_state', summary['primitive_state'], flush=True)
+    declarations = [line.strip().rstrip(',') for line in ports.splitlines() if 'input ' in line]
+    input_names = re.findall(r'input\s+(?:wire\s+)?logic\s*(?:\[[^]]+\]\s*)?(\w+)', ports)
+    output_names = re.findall(r'output\s+(?:wire\s+)?logic\s*(?:\[[^]]+\]\s*)?(\w+)', ports)
+    symbolic = out / 'symbolic_frame_address.sv'
+    body = source.read_text().replace('module frame_address_prepare #(', 'module symbolic_frame_address #(', 1)
+    body = body.replace('input  wire logic clk,', 'input wire logic [33:0] formal_partial_product,\n    input  wire logic clk,', 1)
+    product_expression = 'assign partial_product = multiply_a * multiply_b;'
+    if body.count(product_expression) != 1:
+        raise RuntimeError('Expected one shared partial-product expression')
+    body = body.replace(product_expression, 'assign partial_product = formal_partial_product;', 1)
+    symbolic.write_text(body)
+    miter = out / 'pipeline_miter.sv'
+    text = 'module pipeline_miter(\n' + ',\n'.join(declarations + ['input logic [33:0] product']) + '\n);\n'
+    for name in output_names:
+        width = '[31:0] ' if name.endswith('_base') else ''
+        text += 'wire ' + width + name + '_0, ' + name + '_1;\n'
+    text += 'wire start = i_start && o_start_rdy_0 && o_start_rdy_1;\n'
+    text += 'wire consume = i_result_rdy && o_result_vld_0 && o_result_vld_1;\n'
+    for stage in (0, 1):
+        connections = ['.formal_partial_product(product)']
+        for name in input_names:
+            value = 'start' if name == 'i_start' else ('consume' if name == 'i_result_rdy' else name)
+            connections.append('.' + name + '(' + value + ')')
+        connections += ['.' + name + '(' + name + '_' + str(stage) + ')' for name in output_names]
+        text += 'symbolic_frame_address #(.p_pipeline_products(' + str(stage) + ')) u_' + str(stage) + '(' + ','.join(connections) + ');\n'
+    text += 'always @(posedge clk) if (rst_n && o_result_vld_1) begin\n'
+    text += '    assert(o_result_vld_0);\n'
+    for name in output_names:
+        if name.endswith('_base'):
+            text += '    assert(' + name + '_0 == ' + name + '_1);\n'
+    text += 'end\nendmodule\n'
+    miter.write_text(text)
+    pipeline_log = run('pipeline', [
+        'read_slang --top pipeline_miter -DASIC_SYNTHESIS=1 ' + ' '.join(map(str, (symbolic, helper, miter))),
+        'prep -top pipeline_miter -flatten', 'memory_map', 'async2sync', 'chformal -lower', 'opt -full',
+        'sat -verify -prove-asserts -seq 28 -set-at 1 rst_n 0 -set-def-inputs -show-inputs',
+    ], timeout=240)
+    if 'SAT proof finished - no model found: SUCCESS!' not in pipeline_log:
+        raise RuntimeError('Incomplete pipeline comparison')
+    summary = {'source_sha256': source_hash, 'helper_sha256': helper_hash,
+               'pipeline': {'passed': True, 'bounded_cycles': 28, 'reset_at_first_cycle': True,
+                            'partial_product_symbolic': True, 'abort_unconstrained': True,
+                            'result_ready_unconstrained': True, 'compared_result_bits': 96},
+               'address_forms': []}
+    print('pipeline', summary['pipeline'], flush=True)
 
     arithmetic = out / 'arithmetic.sv'
     arithmetic.write_text('''module address_arithmetic_formal(
@@ -103,12 +95,20 @@ def main() -> None:
 );
     logic signed [47:0] first_sum, second_sum, third_sum;
     logic [31:0] expected, actual;
+    logic [31:0] narrow_first, narrow_second, narrow_third, narrow_actual;
     assign first_sum = $signed({14'd0,i_low}) + $signed({16'd0,i_addend});
     assign second_sum = (first_sum >>> 17) + 48'(i_cross_a);
     assign third_sum = second_sum + 48'(i_cross_b);
     assign actual = {third_sum[14:0],first_sum[16:0]};
     assign expected = i_low[31:0] + (32'(i_cross_a) << 17) + (32'(i_cross_b) << 17) + i_addend;
-    always_comb assert(actual == expected);
+    assign narrow_first = i_low[31:0] + i_addend;
+    assign narrow_second = i_cross_a + {17'd0,narrow_first[31:17]};
+    assign narrow_third = narrow_second + i_cross_b;
+    assign narrow_actual = {narrow_third[14:0],narrow_first[16:0]};
+    always_comb begin
+        assert(actual == expected);
+        assert(narrow_actual == expected);
+    end
 endmodule
 ''')
     text = run('arithmetic', ['read_slang --top address_arithmetic_formal ' + str(arithmetic),

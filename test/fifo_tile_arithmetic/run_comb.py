@@ -10,6 +10,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/writeback/vec_s8_to_fifo.sv')
 
@@ -154,7 +157,7 @@ def main() -> None:
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     source_path = args.source_root.resolve() / SOURCE
-    source = source_path.read_text()
+    source = read_rtl_text(source_path)
     product, row = source_models(source)
     models = out / 'models.sv'
     models.write_text(product + '\n' + row)
@@ -189,13 +192,13 @@ def main() -> None:
         with log.open('w') as stream:
             subprocess.run(['vvp', str(executable)], stdout=stream, stderr=subprocess.STDOUT,
                            check=True, timeout=args.timeout)
-        if '_FOUR_STATE_PASS' not in log.read_text():
+        if '_FOUR_STATE_PASS' not in read_rtl_text(log):
             raise RuntimeError('组合四态检查未完成：' + name)
         report['four_state'].append({'name': name, 'widths': widths, 'inputs': inputs,
                                     'comparisons': comparisons, 'passed': True,
                                     'bench_sha256': digest(bench), 'log_sha256': digest(log)})
         print(json.dumps(report['four_state'][-1]), flush=True)
-    if source != source_path.read_text():
+    if source != read_rtl_text(source_path):
         raise RuntimeError('验证期间 FIFO 源码发生变化')
     report['four_state_comparisons'] = sum(row['comparisons'] for row in report['four_state'])
     (out / 'summary.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')

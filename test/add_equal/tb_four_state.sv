@@ -7,7 +7,7 @@ module tb_add_equal_four_state #(
 );
     logic [p_width-1:0] i_a, i_b, i_target;
     logic i_carry_in;
-    wire logic [2:0] candidate_equal;
+    wire logic candidate_equal;
     logic [p_width-1:0] carry_needed, carry_generated, carry_expected;
     logic unused_final_carry, reference_equal;
     logic [3*p_width:0] stimulus;
@@ -17,14 +17,8 @@ module tb_add_equal_four_state #(
 
     add_equal #(.p_width(p_width)) u_default (
         .i_a(i_a), .i_b(i_b), .i_target(i_target),
-        .i_carry_in(i_carry_in), .o_equal(candidate_equal[0])
+        .i_carry_in(i_carry_in), .o_equal(candidate_equal)
     );
-    for (genvar mode = 0; mode < 2; mode++) begin : g_explicit_mode
-        add_equal #(.p_width(p_width), .p_use_lut(1'(mode))) u_compare (
-            .i_a(i_a), .i_b(i_b), .i_target(i_target),
-            .i_carry_in(i_carry_in), .o_equal(candidate_equal[mode+1])
-        );
-    end
 
     // 向量逻辑相等保留已知不匹配位及未知位共同出现时的四态语义。
     assign carry_needed = i_a ^ i_b ^ i_target;
@@ -34,7 +28,7 @@ module tb_add_equal_four_state #(
 
     task automatic check_result;
         #1;
-        if (candidate_equal !== {3{reference_equal}})
+        if (candidate_equal !== reference_equal)
             $fatal(1, "ADD_EQUAL_FOUR_STATE_MISMATCH width=%0d a=%b b=%b target=%b carry=%b actual=%b expected=%b",
                 p_width, i_a, i_b, i_target, i_carry_in, candidate_equal, reference_equal);
         tests++;

@@ -1,5 +1,7 @@
 # 调度器命令输出保持
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 `ps_window_scheduler` 在命令执行期间保存命令描述，`frame_id`、`frame_init`、`p0`、`rows`、`q0` 和 `frame_final` 直接读取这些寄存器。命令接收状态独立于这些字段的输出路径，因此 PS 帧尺寸和容量检查可以直接使用已保存的字段。命令接收、执行完成、压力处理、配置错误通知和所有公开输出保持原有周期关系。
 
 ## 验证结果
@@ -30,17 +32,14 @@ python3 test/kernel_issue_timing/run_formal.py \
   --module ps_window_scheduler --source-root . --reference-root /tmp/scheduler_reference \
   --profiles 4:2:0 8:4:1 16:8:16 16:16:16 16:16:0 16:16:32 \
   --fpga --out /tmp/scheduler_command_formal
-
 python3 test/ps_compression/run_window_scheduler.py \
   --source-root . --fpga --out /tmp/scheduler_command_numeric
-
 python3 test/scheduler_command_outputs/run_four_state.py \
   --source-root . --reference-root /tmp/scheduler_reference \
   --out /tmp/scheduler_command_four_state
-
 python3 scripts/fpga/open_fpga_synth.py --source-root . \
   --case-config test/scheduler_command_outputs/synthesis_cases.json --cases scheduler \
-  --wide-alu-dsp-budget 740 --rtl-dsp-attributes --max-register-path-cells 10 \
+    --max-register-path-cells 10 \
   --require-register-path-limit --out /tmp/scheduler_command_measure
 ```
 

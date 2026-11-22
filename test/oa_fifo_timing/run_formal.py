@@ -12,7 +12,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source, read_current_source as read_rtl_text
 
 ROOT = Path(__file__).resolve().parents[2]
 OA = Path('rtl/npu/writeback/oa_writer.sv')
@@ -30,8 +30,8 @@ def run(folder, name, commands):
         result = subprocess.run([sys.executable, str(ROOT / 'scripts/fpga/open_fpga_synth.py'),
                                  '--worker', str(script)], cwd=ROOT, stdout=stream,
                                 stderr=subprocess.STDOUT, timeout=180)
-    if result.returncode or 'SUCCESS' not in log.read_text():
-        raise RuntimeError(log.read_text()[-8000:])
+    if result.returncode or 'SUCCESS' not in read_rtl_text(log):
+        raise RuntimeError(read_rtl_text(log)[-8000:])
     return {'passed': True, 'log_sha256': digest(log)}
 
 
@@ -54,12 +54,12 @@ def main():
     subprocess.run([sys.executable, str(ROOT / 'test/oa_writer_geometry/run_formal.py'),
                     '--reference', args.reference, '--out', str(writer_out), '--synthesis',
                     '--profiles', *args.writer_profiles], cwd=ROOT, check=True)
-    writer_report = json.loads((writer_out / 'summary.json').read_text())
+    writer_report = json.loads(read_rtl_text(writer_out / 'summary.json'))
     if not writer_report['passed']:
         raise RuntimeError('写回器形式证明未通过')
     summary['writer'] = writer_report['profiles']
     summary['writer_report_sha256'] = digest(writer_out / 'summary.json')
-    text = (ROOT / FIFO).read_text()
+    text = read_rtl_text(ROOT / FIFO)
     start = text.index('  wire [BANK_COUNT_WIDTH-1:0] co_tiles =')
     end = text.index('  wire co_start =', start)
     fragment = text[start:end]

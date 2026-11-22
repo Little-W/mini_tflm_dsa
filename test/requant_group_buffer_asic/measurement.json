@@ -3,8 +3,8 @@
   "validation": "SRAM structure, capacity and complete data-bit connectivity",
   "macro_model": "black-box interface",
   "source_sha256": {
-    "rtl/npu/writeback/requant_group_buffer.sv": "922dbd584bf591fed0a0d2fcce2bb63fb1b966615f0e40b435f367117d692c30",
-    "rtl/common/regfile.v": "61843ca603cdb39651b9a02d785e9015fc7fefc0e8e31064cfb0008523b309df",
+    "rtl/npu/writeback/requant_group_buffer.sv": "6f6f73f37eb16a04de75f6ae476272e25e606f24827ad93a4c09c41f25543d50",
+    "rtl/common/regfile.v": "a6be89768e2d285aa8fe06ac67925179b7d445729841087320a1688fbbf7ab66",
     "asic/rtl/smic40_sram_1r1w.sv": "841b5894b63e0a67eb8484034a1aed92ae9dfdc5f96095012900521440694b0b",
     "test/shared_ia_ps/asic_macro_blackboxes.sv": "d7fc73cefa0b9ef7e5b8814df2967b20164bbe7058aba7859b3a8d5fa375d940"
   },
@@ -15,23 +15,24 @@
       "lanes": 16,
       "rows": 512,
       "passed": true,
-      "macro_count": 132,
-      "macro_depth": 128,
+      "macro_count": 33,
+      "macro_depth": 1024,
+      "macro_type": "RAMTP1024X16",
       "macro_width": 16,
-      "physical_storage_bits": 270336,
+      "physical_storage_bits": 540672,
       "logical_storage_bits": 262656,
-      "unused_storage_bits": 7680,
+      "unused_storage_bits": 278016,
       "inferred_memories": 0,
-      "control_flip_flops": 41,
-      "control_flip_flop_bound": 51,
-      "write_data_bits_checked": 2112,
-      "write_mask_bits_checked": 2112,
-      "read_data_bits_checked": 2052,
-      "read_bank_hold_bits_checked": 2,
-      "bank_enable_checks": 16896,
-      "script_sha256": "c2c78542534e65629c42af2e060739ab96ebcc856eaa01be19cd7bbd167cd1a5",
-      "netlist_sha256": "9cb2bae6b670e1b0708955395d5e1aab2eb91ccefea0b5e239cad6df0d1d1f86",
-      "log_sha256": "30b7e7782d845ef9cf8471546012299dfa9ca4fbe6715790034d39b6b7ffe896"
+      "control_flip_flops": 39,
+      "control_flip_flop_bound": 50,
+      "write_data_bits_checked": 528,
+      "write_mask_bits_checked": 528,
+      "read_data_bits_checked": 513,
+      "read_bank_hold_bits_checked": 0,
+      "bank_enable_checks": 264,
+      "script_sha256": "babbb82250bc69dae498cc0e0d7b01b8fb4613b02ab88b9df700fc9976473c31",
+      "netlist_sha256": "96226d13840956afa8b0095512103b2abf58b5ba3c41d21470f710d9299efa0b",
+      "log_sha256": "286c361d957f289d00afe4b389d5ea85992d572adad6bf67554f63e6ca1fcf86"
     },
     {
       "name": "fpga_l16_r512",
@@ -46,9 +47,9 @@
       "synchronous_read": true,
       "same_address_read": "old data",
       "macro_count": 0,
-      "script_sha256": "bec1f87813f576eefcf897c8bd51519f852fe6945fb4dd989d789576d1b92921",
-      "netlist_sha256": "a026891f3e051584eea47b3d1a66c8453b440c383e99585f9e973dd511525af0",
-      "log_sha256": "0b26ff89661a38eaa0cf0a0f28accd687094677493b2a3a8328927122832a4c7"
+      "script_sha256": "50802c61c5b926ba4345c412adbb6d593127bb7eea36ba50c320e7f88910ab16",
+      "netlist_sha256": "1e14848a2087b8d06afc5f65466e6af0e2d3cb8ffeb8b28476a147e5bef49f50",
+      "log_sha256": "357175521a11d69f99139af2f40b14b0dc804d046fb95daabf19016d2cdd9bb3"
     },
     {
       "name": "asic_l1_r1",
@@ -58,6 +59,7 @@
       "passed": true,
       "macro_count": 3,
       "macro_depth": 128,
+      "macro_type": "RAMTP128X16",
       "macro_width": 16,
       "physical_storage_bits": 6144,
       "logical_storage_bits": 33,
@@ -70,9 +72,9 @@
       "read_data_bits_checked": 33,
       "read_bank_hold_bits_checked": 0,
       "bank_enable_checks": 24,
-      "script_sha256": "4fa6011cd9b69f67c63500e3a3583f9a0ca36509f889d253042f7069f23310c0",
-      "netlist_sha256": "9656e7585c73f78be6715f468e3f3ee90ba25511afcfa148c369a5b6e874537f",
-      "log_sha256": "7c01477ae7e027be21dd7493214ba652cdafa3f5719d4e09eb69df40f16af442"
+      "script_sha256": "86639f30f2105ab2edbc7b1c0521d3ab30eec9ed4f40922be9f3cff42a2d8203",
+      "netlist_sha256": "4f3ebbcf50ea0ec5cbfab5d3436abcc8d6ae2f689ae80ba46d4baac8a21d377d",
+      "log_sha256": "308c2aee98f78d0849ebf3ad0182440a07a7f0f9a70c84e076196da093b08b99"
     },
     {
       "name": "fpga_l1_r1",
@@ -87,9 +89,9 @@
       "synchronous_read": true,
       "same_address_read": "old data",
       "macro_count": 0,
-      "script_sha256": "2b508b80745266c9fb36fc526aa0a18282657b056a751fa3321534ee5a91a7c5",
-      "netlist_sha256": "5d012a30a04348f89be82628b358446cce05876da8766dc9f8d6778e084b1f9c",
-      "log_sha256": "3464f705ec842a41278d47769e93c5c114650844f5a6e8a49a39f5dd7c9ab864"
+      "script_sha256": "37149658af4ee148363110ddf7ba64f343676468944e9978f4c0ab026c98f147",
+      "netlist_sha256": "d31c73b4e46b73926460a8e64bb576a7e61660890967456b629e5c355a50d8db",
+      "log_sha256": "7332f4f2d20c221b47a0b672dcb16791dfce5754706352572da726bacff1a556"
     },
     {
       "name": "asic_l1_r15",
@@ -99,6 +101,7 @@
       "passed": true,
       "macro_count": 3,
       "macro_depth": 128,
+      "macro_type": "RAMTP128X16",
       "macro_width": 16,
       "physical_storage_bits": 6144,
       "logical_storage_bits": 495,
@@ -111,9 +114,9 @@
       "read_data_bits_checked": 33,
       "read_bank_hold_bits_checked": 0,
       "bank_enable_checks": 24,
-      "script_sha256": "4a24ee9eb2cf639012149b1ba5db91872ae40b17a50906c1e7322ea02f74f24d",
-      "netlist_sha256": "785fb8b701df5f3ac5c677e9fd99e792791d736675b2df7b9f17fdbab4827136",
-      "log_sha256": "3f6a09c366abe6a5f6ff062d1b27ee24e4a45c0906a39865380a1952ba2655cd"
+      "script_sha256": "1d0b3464e8042b1f8a749e40de59edb2cfb8dd1b5aa92ec184a17ad493102d1a",
+      "netlist_sha256": "dbe4ca3b3d18adc84142c05a6ecebcf1e11826081681bf7ac06b8e9cea2db285",
+      "log_sha256": "697c625ce9aa5e3f357259feea1d2d4695c9b523fea72f330c33aa7855463d0b"
     },
     {
       "name": "fpga_l1_r15",
@@ -128,9 +131,9 @@
       "synchronous_read": true,
       "same_address_read": "old data",
       "macro_count": 0,
-      "script_sha256": "3a6dd113e6b6845ad4b68d6bd3f011163536e5ea5cd2ea7c541c20c448c7cc95",
-      "netlist_sha256": "37d176eb8c7a07a512ed958d1e4e575dbbe99da4676f0151bc59709e3b8a89b4",
-      "log_sha256": "17ddb6260ef2a99321aab6c9cf865476663373054ca1ad155f79c063c1dd8f02"
+      "script_sha256": "fb38ef001488a8d322f96ed1d143bd50a485156e21cfcd8986543f624c213b31",
+      "netlist_sha256": "1da9ec8e3b9fd471503cfe9f01e4f871f3714e2d44673329682db31b36480247",
+      "log_sha256": "3e51b50d69e211ca97403e64570e5430f5d88e9276d3ad94c198f67c181e419f"
     },
     {
       "name": "asic_l1_r16",
@@ -140,6 +143,7 @@
       "passed": true,
       "macro_count": 3,
       "macro_depth": 128,
+      "macro_type": "RAMTP128X16",
       "macro_width": 16,
       "physical_storage_bits": 6144,
       "logical_storage_bits": 528,
@@ -152,9 +156,9 @@
       "read_data_bits_checked": 33,
       "read_bank_hold_bits_checked": 0,
       "bank_enable_checks": 24,
-      "script_sha256": "5619089ee71e9746476a4326c99c8dd1463c43aa05c306a307539e64e2e1cd12",
-      "netlist_sha256": "8462c38de1df8e9bd3fb481661e70714b8869455dc22b622cc61dee3710c8916",
-      "log_sha256": "524e91634bff384fb46b738090132a600b00f12d572a308af9aeb8e074821645"
+      "script_sha256": "c58890991e45394731f60c30fb0a58f38385866c5cae61152abb9e13124f74e1",
+      "netlist_sha256": "a8e184f1117870319b49ef58299a4a48942fcc5b180b3b5bb7cc37c51b82ea75",
+      "log_sha256": "d2d08ec3b13cf43e9a4a29fedaa6fbe5bf5f824a516c4e86c978884ba40944bf"
     },
     {
       "name": "fpga_l1_r16",
@@ -169,9 +173,9 @@
       "synchronous_read": true,
       "same_address_read": "old data",
       "macro_count": 0,
-      "script_sha256": "5f12617190d9cb27c6d7faf8d2ead7e4d9021f5393e6e79b2e31b178d4903904",
-      "netlist_sha256": "c9d1a323c985b9b342263a1c653f62e8a103bf4e0b4b76badf5fe75fb42aea94",
-      "log_sha256": "c628a7b924f384a05fc64a5e6e1e36646a3f17455e671bbd8e824cc8fb36a039"
+      "script_sha256": "660de091cc007eab2057bb985ec15f0e13e0a60b5168fc9f8a332bd658c3e3ae",
+      "netlist_sha256": "005de443aa70034378856ae4f680d1ba381d19415f4817b67d117b32e0e48346",
+      "log_sha256": "2b07dc9b15969970894a14ba6d33a8178e60c1a84c141d6ac1c97687180b4a45"
     },
     {
       "name": "asic_l1_r17",
@@ -181,6 +185,7 @@
       "passed": true,
       "macro_count": 3,
       "macro_depth": 128,
+      "macro_type": "RAMTP128X16",
       "macro_width": 16,
       "physical_storage_bits": 6144,
       "logical_storage_bits": 561,
@@ -193,9 +198,9 @@
       "read_data_bits_checked": 33,
       "read_bank_hold_bits_checked": 0,
       "bank_enable_checks": 24,
-      "script_sha256": "aad25bfc1aea6bdaae1f9ee95b026d6057d9c0541531ca9081d98eb5959211cf",
-      "netlist_sha256": "e675edcedde369af57ac158a4ecd920b29eae382e2cf6e9de9f08e40924024bb",
-      "log_sha256": "d4a8c036bc8252f73bf7da561af21c144f9765de19af01b3be07a1db47557568"
+      "script_sha256": "76537baf20bba0bbe0f367472df582e4f69ad247bb880aa6ce1b206ae4c947b4",
+      "netlist_sha256": "0eae3f88571c46759234c9366e80da87e0a11e69b3647e6f05ec2f538f973640",
+      "log_sha256": "efa66f7e9bcffb8001ce0f81a628c7106e71b3d8db7827bf9cd2a741979825af"
     },
     {
       "name": "fpga_l1_r17",
@@ -210,9 +215,9 @@
       "synchronous_read": true,
       "same_address_read": "old data",
       "macro_count": 0,
-      "script_sha256": "910e2b487af808b174fa8cd0406428e8fddd2bde3817ff7fc91a4dbcb4e0bee1",
-      "netlist_sha256": "635b833040b04d615a29ac37f355f08d35f9e708b5d758427e3831ccf8b3a95e",
-      "log_sha256": "67224ac5a4d569fc637c9284303cb8681c727894f07b619c15a235632c2c839f"
+      "script_sha256": "42a6a6c863db35f907d9b18244cf02ed8051d7c31c6e23547694e739ff138713",
+      "netlist_sha256": "4beffc2d86edfb211b54700fad7480462d51a3db3c5784e7d15fecf3b886f483",
+      "log_sha256": "38ae5632974ba47471a7a16a7d35a10b004744c2bdf86807367b9ea751d8d510"
     },
     {
       "name": "asic_l3_r127",
@@ -222,6 +227,7 @@
       "passed": true,
       "macro_count": 7,
       "macro_depth": 128,
+      "macro_type": "RAMTP128X16",
       "macro_width": 16,
       "physical_storage_bits": 14336,
       "logical_storage_bits": 12319,
@@ -234,9 +240,9 @@
       "read_data_bits_checked": 97,
       "read_bank_hold_bits_checked": 0,
       "bank_enable_checks": 56,
-      "script_sha256": "f4fedf72df41f0f554af4ecebdc1300e42d8e69325f3d3d0154fc84eaa889083",
-      "netlist_sha256": "aefc4eb7d83d3e605bb782348d7fcb853da0f6b904258a228b9845c3ab10b9a4",
-      "log_sha256": "17653ccc4c361f61a7b3327d23ac107f7690e99321259c77d948f982ebd5d7ba"
+      "script_sha256": "536cba1ad8fb193402d200407e4fe16e708f3a3f65e6427526ce7adf044d3c32",
+      "netlist_sha256": "ca1c865cfb38f23cc49ef1cea038c4e30d5e42ac80c3b691c6b62671cdfc9597",
+      "log_sha256": "e4c456a3e00ca545456a74ddb1d7d3d7dce3d3cc471a7d056ffae62c2861d261"
     },
     {
       "name": "fpga_l3_r127",
@@ -251,9 +257,9 @@
       "synchronous_read": true,
       "same_address_read": "old data",
       "macro_count": 0,
-      "script_sha256": "b9d79bed40afdfcc3fde2fa445b3491c7be23880879a69c142405cc36015e0cc",
-      "netlist_sha256": "876606b3353e9797fd384c2659534479d039f5280a362af1df3ac943e545cc90",
-      "log_sha256": "ce118c27c0a45cb75e36dca0776d2157fa14a919f402488384af7f51ebf17e2f"
+      "script_sha256": "f8ef25041f5ac413e690772e0148bd41abf3b0bdaee58c39bebb845b17c00127",
+      "netlist_sha256": "60f6b6dffef749f1152e8c179965ecf5e377f52296d8210a32dd1b21e9dd6a06",
+      "log_sha256": "656a150983c6e1e6ea587643d67df13a15d850253b328e39761df8c1d5a33859"
     },
     {
       "name": "asic_l3_r128",
@@ -263,6 +269,7 @@
       "passed": true,
       "macro_count": 7,
       "macro_depth": 128,
+      "macro_type": "RAMTP128X16",
       "macro_width": 16,
       "physical_storage_bits": 14336,
       "logical_storage_bits": 12416,
@@ -275,9 +282,9 @@
       "read_data_bits_checked": 97,
       "read_bank_hold_bits_checked": 0,
       "bank_enable_checks": 56,
-      "script_sha256": "cdcaecd7280d91a7a1b36212483f83090eba62162bcd68a19bb9bf17ba3b13a3",
-      "netlist_sha256": "558eb1e085fafe8ba6010ca7b482dca4164805614909d2b19e911cd0d4474b86",
-      "log_sha256": "efb0f115d6579405f5df47a857cea16ea302b8f7000ca5eb90cf63cb3d12849a"
+      "script_sha256": "d89d69bd8fe7d415858e49b6c1096ad2424c7fc493c1f99af779b2aa059569b4",
+      "netlist_sha256": "a230b26060555614784eae159704509f39e5dbe53ef2b74dc0be6561e111af59",
+      "log_sha256": "bc6391aaf5b11c00adbfa63cd02af11074bea0277fdc24b9dd2895baa0da757b"
     },
     {
       "name": "fpga_l3_r128",
@@ -292,9 +299,9 @@
       "synchronous_read": true,
       "same_address_read": "old data",
       "macro_count": 0,
-      "script_sha256": "652b0f33833557f880530da5b3e13e22a727a49b4b776ab1c0a1300ebd2fe72d",
-      "netlist_sha256": "e5da32b8d5987428026e5acac4a2da2d3ba203fb7f022c332af7c5ce79d0155e",
-      "log_sha256": "bd5d3231f2325802333c1191df8c8711ea52aed3346004c9bbd97260b8c21b78"
+      "script_sha256": "af998d5151835287a94073cd19fa397d155031e3b1107e57d583b130ff829261",
+      "netlist_sha256": "3d3aa34be6f2327b7cbcf4a5d207ff593e13cba4b6d76d6acce14485b3a683a7",
+      "log_sha256": "82b6deddbf8e94832c197c14255b6575c50a3af7af8f0295dea81b69bcd0baf5"
     },
     {
       "name": "asic_l3_r129",
@@ -302,23 +309,24 @@
       "lanes": 3,
       "rows": 129,
       "passed": true,
-      "macro_count": 14,
-      "macro_depth": 128,
+      "macro_count": 7,
+      "macro_depth": 1024,
+      "macro_type": "RAMTP1024X16",
       "macro_width": 16,
-      "physical_storage_bits": 28672,
+      "physical_storage_bits": 114688,
       "logical_storage_bits": 12513,
-      "unused_storage_bits": 16159,
+      "unused_storage_bits": 102175,
       "inferred_memories": 0,
-      "control_flip_flops": 34,
+      "control_flip_flops": 33,
       "control_flip_flop_bound": 42,
-      "write_data_bits_checked": 224,
-      "write_mask_bits_checked": 224,
-      "read_data_bits_checked": 194,
-      "read_bank_hold_bits_checked": 1,
-      "bank_enable_checks": 448,
-      "script_sha256": "5ac0d4026ad9dc21cd1012b881a757c103e285b2ea444a3942c660aaa184d011",
-      "netlist_sha256": "3d94e378e68c25976e02bc2ed49734d45dc6550acdbe69f899095ef294698fe3",
-      "log_sha256": "e9ecad5ab59ee427b6a59ae0302b5b1185fb5aa7f433f19b59f41a4a8f28295f"
+      "write_data_bits_checked": 112,
+      "write_mask_bits_checked": 112,
+      "read_data_bits_checked": 97,
+      "read_bank_hold_bits_checked": 0,
+      "bank_enable_checks": 56,
+      "script_sha256": "ab98b5a8ffb779449fbedd464df35cb1b4b094d3171e232dadcdda58e12bea35",
+      "netlist_sha256": "d8b99b42c0ef3ed98225c2fa435fec744d89a973a378c1fb11747c3b49d27049",
+      "log_sha256": "cc6752677fe29b75daf80a36f409dc6853d78cdb5a4dc719f79140995912b857"
     },
     {
       "name": "fpga_l3_r129",
@@ -333,9 +341,9 @@
       "synchronous_read": true,
       "same_address_read": "old data",
       "macro_count": 0,
-      "script_sha256": "9a6cf3ac12df26e9df38ad364fc43561559a883939f5137d0ddbbd940bbefb8e",
-      "netlist_sha256": "ceb11aa8bfac08055541f1bb078f91ea44469e5ced849091a0bbdcd74ed32298",
-      "log_sha256": "4419a04d8abd395abce1cb850ccef0825a8843a590d5d7bf203290aaa174afc4"
+      "script_sha256": "54cb1cfee92391aa8f9a492c3eac6cf796b0427e1d40fec6f7d6161e415e47f5",
+      "netlist_sha256": "69e752309f972f5a1ba6f979a6b7f804bb20fda4a6cd3239898dd564614cbabb",
+      "log_sha256": "d5354568768219ab81fe9040d022a9784f7803dacc94aaaa2e92457c4666bf7d"
     },
     {
       "name": "asic_l16_r511",
@@ -343,23 +351,24 @@
       "lanes": 16,
       "rows": 511,
       "passed": true,
-      "macro_count": 132,
-      "macro_depth": 128,
+      "macro_count": 33,
+      "macro_depth": 1024,
+      "macro_type": "RAMTP1024X16",
       "macro_width": 16,
-      "physical_storage_bits": 270336,
+      "physical_storage_bits": 540672,
       "logical_storage_bits": 262143,
-      "unused_storage_bits": 8193,
+      "unused_storage_bits": 278529,
       "inferred_memories": 0,
-      "control_flip_flops": 39,
-      "control_flip_flop_bound": 48,
-      "write_data_bits_checked": 2112,
-      "write_mask_bits_checked": 2112,
-      "read_data_bits_checked": 2052,
-      "read_bank_hold_bits_checked": 2,
-      "bank_enable_checks": 16896,
-      "script_sha256": "0e978b7dd8255617c1888fca1e0cd9d6e85352eac21cb6a92c80ccd091d77512",
-      "netlist_sha256": "7e1a67fcd2bf86cf73578a0283e48b8f777e9da2fd0b3036fdc28b715a8affc1",
-      "log_sha256": "1ef59ff457192deb4e107183ae2e78b6b4cc5ca6de70fa4f13e55c4b3f7f987e"
+      "control_flip_flops": 37,
+      "control_flip_flop_bound": 47,
+      "write_data_bits_checked": 528,
+      "write_mask_bits_checked": 528,
+      "read_data_bits_checked": 513,
+      "read_bank_hold_bits_checked": 0,
+      "bank_enable_checks": 264,
+      "script_sha256": "7af4985953303ef6363be6e114ab41fc0cd871af3d1b63941d26f84eeb476c7e",
+      "netlist_sha256": "b6103741e77edfff23698fd019d3648a7aa2144ba3a9ee23287158b0eea136e2",
+      "log_sha256": "86eead1d1ced142861e63b68d272417e752bede68b0cd6aa2e2f560a568c347a"
     },
     {
       "name": "fpga_l16_r511",
@@ -374,9 +383,9 @@
       "synchronous_read": true,
       "same_address_read": "old data",
       "macro_count": 0,
-      "script_sha256": "7a64830b1dde069635bb2f510d70b256e0528f61e230add7daa80900abd033be",
-      "netlist_sha256": "5073261b7bf6aac0bbffc6556a75a14a2c6e77d33bb99e293f17c7999f479f83",
-      "log_sha256": "83d1e2496eb9080e23c03aa70915f492ce7f06d80ab51d52efb669de89e2f731"
+      "script_sha256": "1a35740c1c36ec0f4d48f986dd36f32dc4998c1173f65d8fbfcb005cfe516ec6",
+      "netlist_sha256": "5fbc20e3dffd00db3f24a7c39466e8b1000003ade0d24094cddd84c9044633e2",
+      "log_sha256": "56f2047e6d92814fdcb01bf9cbd2cf18cff0848c2d6e6ef529c263dabdacff84"
     },
     {
       "name": "asic_l16_r513",
@@ -384,23 +393,24 @@
       "lanes": 16,
       "rows": 513,
       "passed": true,
-      "macro_count": 165,
-      "macro_depth": 128,
+      "macro_count": 33,
+      "macro_depth": 1024,
+      "macro_type": "RAMTP1024X16",
       "macro_width": 16,
-      "physical_storage_bits": 337920,
+      "physical_storage_bits": 540672,
       "logical_storage_bits": 263169,
-      "unused_storage_bits": 74751,
+      "unused_storage_bits": 277503,
       "inferred_memories": 0,
-      "control_flip_flops": 44,
-      "control_flip_flop_bound": 54,
-      "write_data_bits_checked": 2640,
-      "write_mask_bits_checked": 2640,
-      "read_data_bits_checked": 2565,
-      "read_bank_hold_bits_checked": 3,
-      "bank_enable_checks": 33000,
-      "script_sha256": "6102e0c35305daaebd54b10146e50d9b5eee3058e79e38eb000cd10b6af43474",
-      "netlist_sha256": "1b98393fada7673db22b8a28bd1b0c31b5d8603a6c8c97c0a00d1574e25e92ee",
-      "log_sha256": "5c571ffa481ddff16d26dc5b15bc3ebed73357f706953b3d792e49e9207722b4"
+      "control_flip_flops": 41,
+      "control_flip_flop_bound": 52,
+      "write_data_bits_checked": 528,
+      "write_mask_bits_checked": 528,
+      "read_data_bits_checked": 513,
+      "read_bank_hold_bits_checked": 0,
+      "bank_enable_checks": 264,
+      "script_sha256": "31c448a008ad2f7c9a55c36c6c35154026495cb8893b16f711d8a413afeed6e9",
+      "netlist_sha256": "825110b74dc550c01f3f6591b1d7c25d6d4fb5aeaa1594bffba9b7aed6246389",
+      "log_sha256": "a7dfe08cee0180f7fad4cf9750a2eadf5568da4cfba67e3fc2b469265cef6dd6"
     },
     {
       "name": "fpga_l16_r513",
@@ -415,9 +425,9 @@
       "synchronous_read": true,
       "same_address_read": "old data",
       "macro_count": 0,
-      "script_sha256": "1aa18654e134e9bf40bb3819561a0f6eeaf7aadb9d2dd0ae8864327b6d7c9b4a",
-      "netlist_sha256": "fe44514f18d74234fa904489ffc3623b7c542f8b5ac15cc3e3c81321f1b5811e",
-      "log_sha256": "b50ec8f1456f3a22d20d1a3a3734b2bf65663f43769003e3132272677c64cfcc"
+      "script_sha256": "efac2b9da0ba11fa3a2188023e67624d7fadc3e1e068a606dbfd11db6c1c351c",
+      "netlist_sha256": "05181ac3b001ab26a1579d58098d2a66c2b563986eba76c3ecd9fdc8b6e75ce1",
+      "log_sha256": "1f223aeb73e4fa910a171404671897065676dcfba66e029581e7ea32e6b19326"
     },
     {
       "name": "asic_l1_r1024",
@@ -425,23 +435,24 @@
       "lanes": 1,
       "rows": 1024,
       "passed": true,
-      "macro_count": 24,
-      "macro_depth": 128,
+      "macro_count": 3,
+      "macro_depth": 1024,
+      "macro_type": "RAMTP1024X16",
       "macro_width": 16,
       "physical_storage_bits": 49152,
       "logical_storage_bits": 33792,
       "unused_storage_bits": 15360,
       "inferred_memories": 0,
-      "control_flip_flops": 46,
-      "control_flip_flop_bound": 57,
-      "write_data_bits_checked": 384,
-      "write_mask_bits_checked": 384,
-      "read_data_bits_checked": 264,
-      "read_bank_hold_bits_checked": 3,
-      "bank_enable_checks": 12288,
-      "script_sha256": "2585b108f803317eae06277835dbfd0c5f339f414c327781c0ad6d6ad39df003",
-      "netlist_sha256": "6d654547e8e2b73cb6dfdeb4532cd01a1cd473b65f6f064cdefda90b49786840",
-      "log_sha256": "1155bb151f0116e0e40700d09a9381d7abe6d5e717f6dbd5750623eedfb88cca"
+      "control_flip_flops": 43,
+      "control_flip_flop_bound": 55,
+      "write_data_bits_checked": 48,
+      "write_mask_bits_checked": 48,
+      "read_data_bits_checked": 33,
+      "read_bank_hold_bits_checked": 0,
+      "bank_enable_checks": 24,
+      "script_sha256": "b6e1dd31b3d5fc9b1031cff6d0d653332127c36833c70cac92ce3ff66e5aeadb",
+      "netlist_sha256": "67fc4389e6c0dd1e080942c2a823438e424b7d020492da313487ebc2e63ab2ed",
+      "log_sha256": "609038fe5209a81d5f077bea10eae304ec3924acf6865ca48b973a43589d73f8"
     },
     {
       "name": "fpga_l1_r1024",
@@ -456,9 +467,9 @@
       "synchronous_read": true,
       "same_address_read": "old data",
       "macro_count": 0,
-      "script_sha256": "22e00bf9d9ec9b2dc67a40e6f6a13a34828ca358b9d18c277befae7bcfd497ad",
-      "netlist_sha256": "dc3ab8a1b2da340f8ca355b98fb7a76110925ff360513c936898adab2fb9b2fb",
-      "log_sha256": "4faac01602dd6e58d16dff05a1267c299e83aa15fba54321b1f40c4af35a4cfa"
+      "script_sha256": "f73926aafb5d4107735a051dc7b4c44842d415c2cb3cea54f76059ff4788ba19",
+      "netlist_sha256": "5cd4012a2e84793000a08f8dfd7d76c193afcb434bdb18692ebee5c8bfc103b5",
+      "log_sha256": "1e0874803d35dec28c5f1c8d16adcc4fb67c9d0f3ad1b6e68caa29cf9c511e4b"
     },
     {
       "name": "asic_l1_r2048",
@@ -466,23 +477,24 @@
       "lanes": 1,
       "rows": 2048,
       "passed": true,
-      "macro_count": 48,
-      "macro_depth": 128,
+      "macro_count": 6,
+      "macro_depth": 1024,
+      "macro_type": "RAMTP1024X16",
       "macro_width": 16,
       "physical_storage_bits": 98304,
       "logical_storage_bits": 67584,
       "unused_storage_bits": 30720,
       "inferred_memories": 0,
-      "control_flip_flops": 51,
-      "control_flip_flop_bound": 63,
-      "write_data_bits_checked": 768,
-      "write_mask_bits_checked": 768,
-      "read_data_bits_checked": 528,
-      "read_bank_hold_bits_checked": 4,
-      "bank_enable_checks": 98304,
-      "script_sha256": "7bb833ab27fa72c5a5029c723320e9f888c00ca0a7054a20780579da58f87b5b",
-      "netlist_sha256": "e6b1c87d30d458bcdc36b0d9d1eb15f321065f85aa26f354c85eed6c129d426f",
-      "log_sha256": "61b441d3aa6037914ca50e91a77534ada661f1ab7ebfbf77ee1616e099ae429d"
+      "control_flip_flops": 48,
+      "control_flip_flop_bound": 60,
+      "write_data_bits_checked": 96,
+      "write_mask_bits_checked": 96,
+      "read_data_bits_checked": 66,
+      "read_bank_hold_bits_checked": 1,
+      "bank_enable_checks": 192,
+      "script_sha256": "95e5355910f3acc3fcfbe270c68f65a2b58445efaa41cdc474b6942fcf2246a2",
+      "netlist_sha256": "11197a6e659ef9a4cccd6da661b74c15326cdd77f33f558fdabdd65b6a46d9e3",
+      "log_sha256": "dcd5bd906760bd98e8f4a47935054b00c849f321e9af2e23b37fcf5b12e8530e"
     },
     {
       "name": "fpga_l1_r2048",
@@ -497,9 +509,9 @@
       "synchronous_read": true,
       "same_address_read": "old data",
       "macro_count": 0,
-      "script_sha256": "866ee1e0171db15ed83c830e77dc57137fc788cfa0d20ea4e7cd89857c9afbac",
-      "netlist_sha256": "61080736eb1d3cd72c52c474d7f111b9f386bea01616c89c514c89b64b7e64f9",
-      "log_sha256": "05e96880f2c0c294b3446e11a7795fa8d1578fa5a4df5d3fa361c67398670894"
+      "script_sha256": "1aebd5becb769471f7f99cbdb4968b16f8e0c658f34cb3331d2a27d9a335028a",
+      "netlist_sha256": "3ea89be8c92b20e039cd1bc9a5440c6d894439440768f34b2119924a058a6097",
+      "log_sha256": "24397857d3493bdbbb580db92ee32069e02ecf06f7100796ee914d5a30c9b647"
     },
     {
       "name": "asic_l1_r2049",
@@ -507,23 +519,24 @@
       "lanes": 1,
       "rows": 2049,
       "passed": true,
-      "macro_count": 51,
-      "macro_depth": 128,
+      "macro_count": 9,
+      "macro_depth": 1024,
+      "macro_type": "RAMTP1024X16",
       "macro_width": 16,
-      "physical_storage_bits": 104448,
+      "physical_storage_bits": 147456,
       "logical_storage_bits": 67617,
-      "unused_storage_bits": 36831,
+      "unused_storage_bits": 79839,
       "inferred_memories": 0,
-      "control_flip_flops": 54,
-      "control_flip_flop_bound": 66,
-      "write_data_bits_checked": 816,
-      "write_mask_bits_checked": 816,
-      "read_data_bits_checked": 561,
-      "read_bank_hold_bits_checked": 5,
-      "bank_enable_checks": 117912,
-      "script_sha256": "d19573924abff61bc9767d8e8974502c090c38e7e819796bbf4947f065e4a600",
-      "netlist_sha256": "ce59b21c461c12bec9575ad267436d5ec3cb597f3002be9018a29d1efcbe2f1b",
-      "log_sha256": "8dcf647e409fa4d1a5c6a9ae18102f4bbb8c968cd05815104d3f25eb3cd12563"
+      "control_flip_flops": 51,
+      "control_flip_flop_bound": 63,
+      "write_data_bits_checked": 144,
+      "write_mask_bits_checked": 144,
+      "read_data_bits_checked": 99,
+      "read_bank_hold_bits_checked": 2,
+      "bank_enable_checks": 648,
+      "script_sha256": "5e4ed5d63801ff8b989ac60ac43a81da37150251bb8e343ac873b2c1141250a5",
+      "netlist_sha256": "8c7ca1407d16c38fff18ffe732d0f882e0b518ebd0e2bc38a1a0199ffd7b0d44",
+      "log_sha256": "8705e188f337190deef6255e91d78961ecc466728bad81391b7289f0abf7500e"
     },
     {
       "name": "fpga_l1_r2049",
@@ -538,12 +551,12 @@
       "synchronous_read": true,
       "same_address_read": "old data",
       "macro_count": 0,
-      "script_sha256": "c2336f9a4ba08ea75eb454079014ab03d8c6793dd875438dd96eee44999aba3f",
-      "netlist_sha256": "0225c4027672d6cfe2318f0a59851883784b497cd4865a2579287a65b8fc2546",
-      "log_sha256": "d07d654467c0056d67280166cca7e27aaad78cc8699bddf809d61fa87e096edb"
+      "script_sha256": "1b285a40a619153ba65f83c87abc3e2f7b297275dd07d6b4181262a28686e394",
+      "netlist_sha256": "f0ee7ddc2828599853dc3c1bd00f31c7e5495aa81848933921142fc6d88858c1",
+      "log_sha256": "466e221a83e3a6fbcf311842da869927ff725d06a6119c0e5fe5d63fbfc0e56e"
     }
   ],
-  "source_commit": "e870c662e7913819f54c01b90a1af2f122863b72",
+  "source_commit": "ef0dc75342997721bdc4110b2841445df962018e",
   "source_unchanged_during_checks": true,
-  "checker_sha256": "d4e538916c26126f217e6307f683abfea7df2caf22977e8683116486cb75f3e0"
+  "checker_sha256": "2b52a2f0cbc64b2cf4871042051e315907ea3e46e4ad55a8b7e4d2a20d1b2c9b"
 }

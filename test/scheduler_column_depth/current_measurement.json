@@ -1,0 +1,309 @@
+{
+  "inputs": {
+    "source": "rtl/npu/control/ps_window_scheduler.sv",
+    "reference_commit": null,
+    "reference_file": "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/scheduler_column_depth/reference_scheduler.sv",
+    "source_path": "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_window_scheduler.sv",
+    "reference_sha256": "34c943d79b79ab67f49a920e875592ba2f6bf64218e83fc06aa78767d56a68cb",
+    "source_sha256": "b2576300a71f270a644681de6bec571f4333634cdd9aef7d62c0e6e352701dde",
+    "helper_sha256": {
+      "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+      "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+      "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+      "rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758"
+    },
+    "dependency_sha256": {
+      "reference": {},
+      "current": {
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/control/ps_scheduler_priority.sv": "4731215f8de56b9efb55047aae70c9fda1ff9af24c3229cfb5fd95264d807537"
+      }
+    },
+    "prepared_source_sha256": {
+      "reference": "34c943d79b79ab67f49a920e875592ba2f6bf64218e83fc06aa78767d56a68cb",
+      "current": "685e3776683001a862b78d4ca14513cfd52faf3447f063fc6dc281bb8e029c89"
+    },
+    "module_sha256": {
+      "reference": {
+        "ps_window_scheduler": "2977a5ad1f07c2d63733e0eebc4b6a25b3bffc3a68d3e3ef9b3b846496946253",
+        "ps_scheduler_any": "253ac99b3bd86c1f91d9210cdd85014667866e4246cf904a12110f8a6e35b155"
+      },
+      "current": {
+        "ps_window_scheduler": "6b59f337093ff893d36ffef27f249c47fa001341742e1ba53e9156a8e1ae63cd",
+        "ps_scheduler_priority": "0ddf1ac930fd00da9343d2d2fbf5682bca4592ca317bbfe1f40b649818f81798"
+      }
+    }
+  },
+  "parameters": {
+    "SIZE": 16,
+    "FRAME_COUNT": 16,
+    "MAX_REUSE_TILES": 32
+  },
+  "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+  "part": "xc7a200tfbg484-3",
+  "family": "xc7",
+  "scope": "Independent scheduler synthesis and connected register path cell counts",
+  "method": "synth_xilinx -top ps_window_scheduler -family xc7 -noiopad -noclkbuf -flatten",
+  "cases": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 1469,
+        "distributed_ram_lut_sites_nominal": 56,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1525,
+        "flip_flops": 950,
+        "carry4": 110,
+        "ramb36e1": 2,
+        "ramb18e1": 0,
+        "dsp48e1": 2
+      },
+      "module_maximum_register_depth": 11,
+      "paths": {
+        "prediction_column_s0": {
+          "maximum_cells": 9,
+          "startpoint": "next_column_tile [0]",
+          "endpoint": "prediction_column_s0 [24]",
+          "cell_types": {
+            "INV": 1,
+            "CARRY4": 3,
+            "LUT6": 2,
+            "LUT2": 3
+          }
+        },
+        "next_column_tile": {
+          "maximum_cells": 9,
+          "startpoint": "next_column_tile [0]",
+          "endpoint": "next_column_tile [20]",
+          "cell_types": {
+            "INV": 1,
+            "CARRY4": 3,
+            "LUT6": 1,
+            "LUT2": 4
+          }
+        }
+      },
+      "next_column_tile_0_to_prediction_column_stage0_28": 7,
+      "selection_paths": {
+        "opened_paths": {
+          "all_registers": 8,
+          "phase": 8,
+          "selected_id_q": 5,
+          "frame_k$rdreg": 6,
+          "next_column_tile": 6,
+          "cursor": 6,
+          "live": 6,
+          "resume_valid": 6,
+          "command_buffer_valid": 6
+        },
+        "protected_paths": {
+          "all_registers": 6,
+          "phase": 6,
+          "selected_id_q": 5,
+          "frame_k$rdreg": 6,
+          "next_column_tile": 6,
+          "cursor": 6,
+          "live": 6,
+          "resume_valid": 6,
+          "command_buffer_valid": 6
+        },
+        "phase_paths": {
+          "all_registers": 7,
+          "phase": 7,
+          "selected_id_q": 6,
+          "frame_k$rdreg": 7,
+          "next_column_tile": 7,
+          "cursor": 7,
+          "live": 7,
+          "resume_valid": 7,
+          "command_buffer_valid": 7
+        },
+        "frame_open_paths": {
+          "all_registers": 7,
+          "phase": 7,
+          "selected_id_q": 6,
+          "frame_k$rdreg": 7,
+          "next_column_tile": 7,
+          "cursor": 7,
+          "live": 7,
+          "resume_valid": 7,
+          "command_buffer_valid": 7
+        },
+        "live_paths": {
+          "all_registers": 7,
+          "phase": 7,
+          "selected_id_q": 6,
+          "frame_k$rdreg": 7,
+          "next_column_tile": 7,
+          "cursor": 7,
+          "live": 7,
+          "resume_valid": 7,
+          "command_buffer_valid": 7
+        },
+        "cursor_paths": {
+          "all_registers": 8,
+          "phase": 0,
+          "selected_id_q": 7,
+          "frame_k$rdreg": 8,
+          "next_column_tile": 0,
+          "cursor": 0,
+          "live": 0,
+          "resume_valid": 0,
+          "command_buffer_valid": 0
+        },
+        "output_paths": {
+          "ready": 0,
+          "done_valid": 0,
+          "err_code": 0,
+          "command_valid": 1,
+          "frame_id": 1,
+          "p0": 1,
+          "q0": 1,
+          "column0": 1,
+          "rows": 1,
+          "cols": 0,
+          "count_k": 0,
+          "reserve_rows": 3,
+          "frame_init": 1,
+          "frame_final": 1,
+          "command_active": 0,
+          "lookahead_valid": 1,
+          "lookahead_q0": 0,
+          "lookahead_column": 0,
+          "lookahead_cols": 0,
+          "lookahead_count_k": 0
+        }
+      }
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 1306,
+        "distributed_ram_lut_sites_nominal": 56,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1362,
+        "flip_flops": 916,
+        "carry4": 107,
+        "ramb36e1": 2,
+        "ramb18e1": 0,
+        "dsp48e1": 2
+      },
+      "module_maximum_register_depth": 9,
+      "paths": {
+        "prediction_column_q[0]": {
+          "maximum_cells": 8,
+          "startpoint": "next_column_tile [0]",
+          "endpoint": "prediction_column_q[0] [24]",
+          "cell_types": {
+            "INV": 1,
+            "CARRY4": 3,
+            "LUT4": 1,
+            "LUT6": 2,
+            "LUT2": 1
+          }
+        },
+        "next_column_tile": {
+          "maximum_cells": 9,
+          "startpoint": "next_column_tile [0]",
+          "endpoint": "next_column_tile [28]",
+          "cell_types": {
+            "INV": 1,
+            "CARRY4": 3,
+            "LUT4": 1,
+            "LUT6": 2,
+            "LUT2": 1,
+            "LUT5": 1
+          }
+        }
+      },
+      "next_column_tile_0_to_prediction_column_stage0_28": 7,
+      "selection_paths": {
+        "opened_paths": {
+          "all_registers": 8,
+          "phase": 7,
+          "selected_id_q": 4,
+          "frame_k$rdreg": 5,
+          "next_column_tile": 0,
+          "cursor": 7,
+          "live": 0,
+          "resume_valid": 5,
+          "command_buffer_valid": 5
+        },
+        "protected_paths": {
+          "all_registers": 6,
+          "phase": 0,
+          "selected_id_q": 5,
+          "frame_k$rdreg": 6,
+          "next_column_tile": 0,
+          "cursor": 0,
+          "live": 0,
+          "resume_valid": 0,
+          "command_buffer_valid": 5
+        },
+        "phase_paths": {
+          "all_registers": 7,
+          "phase": 5,
+          "selected_id_q": 5,
+          "frame_k$rdreg": 6,
+          "next_column_tile": 7,
+          "cursor": 5,
+          "live": 4,
+          "resume_valid": 5,
+          "command_buffer_valid": 5
+        },
+        "frame_open_paths": {
+          "all_registers": 8,
+          "phase": 0,
+          "selected_id_q": 7,
+          "frame_k$rdreg": 8,
+          "next_column_tile": 0,
+          "cursor": 0,
+          "live": 0,
+          "resume_valid": 0,
+          "command_buffer_valid": 0
+        },
+        "live_paths": {
+          "all_registers": 8,
+          "phase": 0,
+          "selected_id_q": 7,
+          "frame_k$rdreg": 8,
+          "next_column_tile": 0,
+          "cursor": 0,
+          "live": 2,
+          "resume_valid": 0,
+          "command_buffer_valid": 0
+        },
+        "cursor_paths": {
+          "all_registers": 0,
+          "phase": 0,
+          "selected_id_q": 0,
+          "frame_k$rdreg": 0,
+          "next_column_tile": 0,
+          "cursor": 0,
+          "live": 0,
+          "resume_valid": 0,
+          "command_buffer_valid": 0
+        },
+        "output_paths": {
+          "ready": 0,
+          "done_valid": 0,
+          "err_code": 0,
+          "command_valid": 1,
+          "frame_id": 0,
+          "p0": 0,
+          "q0": 0,
+          "column0": 1,
+          "rows": 0,
+          "cols": 0,
+          "count_k": 0,
+          "reserve_rows": 3,
+          "frame_init": 0,
+          "frame_final": 0,
+          "command_active": 0,
+          "lookahead_valid": 1,
+          "lookahead_q0": 0,
+          "lookahead_column": 0,
+          "lookahead_cols": 0,
+          "lookahead_count_k": 0
+        }
+      }
+    }
+  }
+}

@@ -17,6 +17,10 @@ from stream_soc_trace import event_lines, verify as verify_stream
 from planner_profile import normalize_profile
 
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 PAYLOAD_WORD_BYTES = 16
@@ -41,7 +45,7 @@ def source_hashes():
                HERE / "cpp_adaptive_codec.hpp", HERE / "cpp_row_codec.hpp",
                HERE / "stream_soc_trace.py",
                HERE / "planner_profile.py",
-               ROOT / "rtl/npu/ps_compact/ps_adaptive_codec.sv",
+               ROOT / "rtl/npu/ps_compact/ps_adaptive_encoder.sv", ROOT / "rtl/npu/ps_compact/ps_adaptive_decoder.sv",
                ROOT / "rtl/npu/ps_compact/ps_frame_store.sv"]
     return {str(path.relative_to(ROOT)): digest(path) for path in sources}
 
@@ -50,13 +54,13 @@ def simulator_geometry(path):
     path = path.resolve()
     if path.is_dir():
         path /= "build.json"
-    manifest = json.loads(path.read_text())
+    manifest = json.loads(read_rtl_text(path))
     require(manifest.get("returncode") == 0 and
             manifest.get("sources_unchanged_during_build") is True,
             "The simulator requires a successful build with stable source hashes")
     require(isinstance(manifest.get("binary_sha256"), str) and
             len(manifest["binary_sha256"]) == 64, "Missing simulator executable hash")
-    for name in ("rtl/npu/ps_compact/ps_adaptive_codec.sv", "rtl/npu/ps_compact/ps_frame_store.sv"):
+    for name in ("rtl/npu/ps_compact/ps_adaptive_encoder.sv", "rtl/npu/ps_compact/ps_adaptive_decoder.sv", "rtl/npu/ps_compact/ps_frame_store.sv"):
         require(manifest.get("source_sha256", {}).get(name) == digest(ROOT / name),
                 f"Selected simulator uses a different codec source: {name}")
     profile = normalize_profile(manifest, root=ROOT)
@@ -121,7 +125,7 @@ def extract(summaries, output, hardware, selected_cases=()):
     requested, matched = set(selected_cases), set()
     with output.open("wb") as target:
         for path in summaries:
-            summary = json.loads(path.read_text())
+            summary = json.loads(read_rtl_text(path))
             inputs.append(dict(path=str(path), sha256=digest(path)))
             for directory, metadata, pairs in recorded_cases(path, summary):
                 identifiers = {metadata["case"], str(directory.resolve())}
@@ -143,7 +147,7 @@ def extract(summaries, output, hardware, selected_cases=()):
                 log_path = directory / "run.log"
                 require(digest(log_path) == metadata["run_log_sha256"],
                         "Run log differs from the recorded report")
-                check = verify_stream(event_path, log_path.read_text())
+                check = verify_stream(event_path, read_rtl_text(log_path))
                 require(all(check[key] == metadata[key] for key in
                             ("event_file_sha256", "write_data_sha256", "read_data_sha256")),
                         "PS event content differs from the recorded report")
@@ -322,7 +326,7 @@ def main():
                    str(geometry["ps_directory_bits_per_row"])]
     with (out / "comparison.json").open("w") as report, (out / "run.log").open("w") as log:
         subprocess.run(run_command, stdout=report, stderr=log, check=True)
-    comparison = json.loads((out / "comparison.json").read_text())
+    comparison = json.loads(read_rtl_text(out / "comparison.json"))
     require(comparison["passed"], "Candidate roundtrip comparison failed")
     require(comparison["physical_directory_bits_per_row"] == geometry["ps_directory_bits_per_row"] and
             comparison["physical_payload_word_bytes"] == PAYLOAD_WORD_BYTES,

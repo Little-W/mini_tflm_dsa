@@ -19,20 +19,14 @@ MITER = """module add_equal_proof #(
 );
     logic [p_width-1:0] reference_sum;
     logic unused_reference_carry;
-    logic [2:0] candidate_equal;
+    logic candidate_equal;
     add_equal #(.p_width(p_width)) u_default (
         .i_a(i_a), .i_b(i_b), .i_target(i_target),
-        .i_carry_in(i_carry_in), .o_equal(candidate_equal[0])
+        .i_carry_in(i_carry_in), .o_equal(candidate_equal)
     );
-    for (genvar mode = 0; mode < 2; mode++) begin : g_explicit_mode
-        add_equal #(.p_width(p_width), .p_use_lut(1'(mode))) u_compare (
-            .i_a(i_a), .i_b(i_b), .i_target(i_target),
-            .i_carry_in(i_carry_in), .o_equal(candidate_equal[mode+1])
-        );
-    end
     assign {unused_reference_carry, reference_sum} =
         {1'b0, i_a} + {1'b0, i_b} + {{p_width{1'b0}}, i_carry_in};
-    assign o_equivalent = (candidate_equal == {3{reference_sum == i_target}});
+    assign o_equivalent = (candidate_equal == (reference_sum == i_target));
 endmodule
 """
 
@@ -68,7 +62,7 @@ def main():
             process = subprocess.run([sys.executable, str(ROOT / "scripts/fpga/open_fpga_synth.py"),
                                       "--worker", str(script)], stdout=stream, stderr=subprocess.STDOUT)
         passed = process.returncode == 0 and "SAT proof finished - no model found: SUCCESS!" in log.read_text()
-        result = {"width": width, "xilinx_fpga": bool(fpga), "preserve_modes": ["default", 0, 1],
+        result = {"width": width, "xilinx_fpga": bool(fpga),
                   "unconstrained_input_bits": 3 * width + 1,
                   "passed": passed, "log_sha256": hashlib.sha256(log.read_bytes()).hexdigest()}
         summary["runs"].append(result)

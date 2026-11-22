@@ -5,15 +5,15 @@ S8 输出 FIFO 先选择普通读取或合并读取所需的行列坐标，再�
 ## 功能与形式检查
 
 ```sh
-python3 test/writeback_bus/run.py --bus-width 32 --reference aa2ef9a3 --out build/writeback32
-python3 test/writeback_bus/run.py --bus-width 64 --reference aa2ef9a3 --out build/writeback64
+python3 test/writeback_bus/run.py --bus-width 32 --reference ef0dc75 --out build/writeback32
+python3 test/writeback_bus/run.py --bus-width 64 --reference ef0dc75 --out build/writeback64
 python3 test/writeback_bus/run_selection_formal.py
 python3 test/writeback_bus/run_watermark_formal.py
 ```
 
 功能测试在两种总线宽度下各执行 81 项用例，检查 12,392 个字节，并逐周期比较所有输出。用例覆盖随机等待、转置、合并读取、尾部字节及存储分组复用。
 
-`run_selection_formal.py` 从实际 RTL 提取输出选择逻辑，检查全部输入编码下的数据和字节掩码。参数组合为 `VLEN/BUS_WIDTH` 的 `4/32`、`8/32`、`8/64`、`16/32`、`16/64`、`16/128`、`32/64`、`32/256`。`run_watermark_formal.py` 检查空间计算，包含计数器编码的完整取值范围。
+`run_selection_formal.py` 从实际 RTL 提取输出选择逻辑，检查全部输入编码下的数据和字节掩码。参数组合为 `VLEN/BUS_WIDTH` 的 `4/32`、`8/32`、`8/64`、`16/32`、`16/64`、`16/128`、`32/64`、`32/256`，每组检查普通存储与循环存储两种选择方式，共 16 组。字节遍历变量仅在对应循环内声明。`run_watermark_formal.py` 检查空间计算，包含计数器编码的完整取值范围。
 
 ## 独立综合
 

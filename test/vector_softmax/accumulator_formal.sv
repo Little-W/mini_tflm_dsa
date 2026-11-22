@@ -13,7 +13,7 @@ module accumulator_formal (
     logic saved_valid;
     logic started = 1'b0;
 
-    vector_softmax_accumulator #(.p_use_dsp(1'b1)) u_dut (
+    vector_softmax_accumulator u_dut (
         .clk(clk), .rst_n(rst_n), .i_clear(i_clear), .i_vld(i_vld),
         .i_value(i_value), .i_increment(i_increment), .o_sum(actual_sum)
     );

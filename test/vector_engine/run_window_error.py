@@ -44,19 +44,20 @@ def main():
     if args.jobs<1 or args.jobs>2:
         parser.error('--jobs must be 1 or 2')
     out=args.out.resolve(); out.mkdir(parents=True,exist_ok=True)
-    conv=ROOT/'rtl/npu/conv'
+    source_root=args.source_root.resolve()
+    conv=source_root/'rtl/npu/conv'
     sources=[conv/'conv_im2col_pkg.sv',conv/'vector_engine_pkg.sv']
     sources += [path for path in sorted(conv.rglob('*.sv')) if path not in sources]
-    sources += sorted((ROOT/'rtl/npu/dma').rglob('*.sv'))
-    sources += [ROOT/'rtl/npu/writeback'/name for name in
+    sources += sorted((source_root/'rtl/npu/dma').rglob('*.sv'))
+    sources += [source_root/'rtl/npu/writeback'/name for name in
                 ('vec_requant.sv','requant_compute_lane.sv','requant_group_buffer.sv')]
     sources += [HERE/'shared_quant_model.sv']
-    sources += [ROOT/'rtl/common/pseudo_dual_port_ram.v',HERE/'window_error_top.sv']
+    sources += [source_root/'rtl/common/pseudo_dual_port_ram.v',HERE/'window_error_top.sv']
     import runpy
-    sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
-    source_root=args.source_root.resolve()
-    sources=[source_root/path.relative_to(ROOT) if path.is_relative_to(ROOT/'rtl') else path
-             for path in sources]
+    observer_root=source_root/'test/monitors'
+    if not observer_root.is_dir():observer_root=ROOT/'test/monitors'
+    sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](
+        sources, source_root=source_root, observer_root=observer_root)
     dependencies=sources+[HERE/'window_error.cpp',Path(__file__)]
     source_sha={str(path):digest(path) for path in dependencies}
     parameters={'pe_count':args.pes,'bus_width':args.bus_width,'window_lanes':args.window_lanes,'shared_quant':args.shared_quant,

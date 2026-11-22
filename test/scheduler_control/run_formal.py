@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_current_source, read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/control/ps_window_scheduler.sv')
@@ -18,13 +18,13 @@ HELPER = Path('rtl/common/onehot_check.sv')
 ADDER = Path('rtl/common/parallel_prefix_add.sv')
 MEMORY = Path('rtl/common/regfile.v')
 PROOF = '''module scheduler_any_proof #(
-    parameter int p_width=16, parameter bit p_use_lut=1'b0
+    parameter int p_width=16
 ) (
     input logic [p_width-1:0] i_value,
     output logic equivalent
 );
     logic any_value;
-    ps_scheduler_any #(.p_width(p_width),.p_use_lut(p_use_lut)) u_dut (
+    ps_scheduler_any #(.p_width(p_width)) u_dut (
         .i_value(i_value),.o_any(any_value)
     );
     assign equivalent = any_value == (|i_value);
@@ -47,7 +47,7 @@ def main():
     hashes = {str(p.relative_to(ROOT)): digest(p) for p in sources}
     current = out/'current.sv'
     reference = out/'reference.sv'
-    current.write_bytes((ROOT/SOURCE).read_bytes())
+    current.write_text(read_current_source(ROOT / SOURCE))
     reference.write_bytes(read_rtl_source(f'{args.reference_rev}:{SOURCE}', cwd=ROOT))
     proof = out/'any_proof.sv'
     proof.write_text(PROOF)
@@ -77,15 +77,15 @@ def main():
         return text, digest(log)
 
     for width in (1, 2, 3, 6, 7, 16, 31, 36, 37, 64):
-        for lut in (0, 1):
-            commands = [f'read_slang -D ASIC_SYNTHESIS=1 --top scheduler_any_proof '
-                        f'-Gp_width={width} -Gp_use_lut={lut} '+
+        for configuration in ('ASIC_SYNTHESIS', 'XILINX_FPGA'):
+            commands = [f'read_slang -D {configuration}=1 --top scheduler_any_proof '
+                        f'-Gp_width={width} '+
                         ' '.join(shlex.quote(str(p)) for p in (current, model, proof)),
                         'prep -top scheduler_any_proof -flatten',
                         'sat -verify -prove equivalent 1 -show-inputs -show-outputs']
-            _, log_hash = run(f'any_w{width}_lut{lut}', commands,
+            _, log_hash = run(f'any_w{width}_{configuration}', commands,
                               'SAT proof finished - no model found: SUCCESS!')
-            report['any_profiles'].append({'width': width, 'lut': lut, 'passed': True,
+            report['any_profiles'].append({'width': width, 'configuration': configuration, 'passed': True,
                                           'log_sha256': log_hash})
     print('All balanced reduction profiles passed', flush=True)
     for size, frames, reuse in ((1, 1, 1), (4, 3, 4), (16, 16, 32), (16, 16, 0), (16, 17, 64)):

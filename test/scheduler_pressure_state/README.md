@@ -1,5 +1,7 @@
 # 调度器命令等待与压力处理
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 `ps_window_scheduler` 在命令进入缓冲区时保存恢复资格和打开阶段标志。命令等待期间，这两个标志保持稳定，压力到达时直接选择恢复操作。
 
 完成、配置准备和行组结束分别更新其所属状态。有效等待命令与这些事件互斥，因此压力输入只参与等待命令的处理。公开接口、命令顺序、接收周期、完成周期和错误通知周期保持一致。
@@ -60,7 +62,6 @@ python scripts/fpga/open_fpga_synth.py \
   --source-root . \
   --case-config test/scheduler_pressure_state/synthesis_cases.json \
   --cases scheduler --out /tmp/scheduler_pressure_measure \
-  --wide-alu-dsp-budget 740 --rtl-dsp-attributes \
   --lock-file ../soc_synth.lock
 ```
 

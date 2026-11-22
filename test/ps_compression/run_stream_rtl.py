@@ -35,7 +35,7 @@ def main():
     sources = [Path(__file__).resolve(), test / (top + ".sv"),
                test / ("stream_" + args.target + "_test.cpp"),
                test / "stream_test_vectors.hpp", test / "cpp_adaptive_codec.hpp",
-               test / "cpp_row_codec.hpp", repo / "rtl/npu/ps_compact/ps_adaptive_codec.sv"]
+               test / "cpp_row_codec.hpp", repo / "rtl/npu/ps_compact/ps_adaptive_encoder.sv", repo / "rtl/npu/ps_compact/ps_adaptive_decoder.sv"]
     before = {str(path.relative_to(repo)): digest(path) for path in sources}
     rules = out / "compile_rules.mk"
     rules.write_text("""%.o: %.cpp

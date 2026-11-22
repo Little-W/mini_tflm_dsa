@@ -9,21 +9,16 @@ module select_add_formal #(
     input logic i_add_enable
 );
     logic signed [p_width-1:0] actual_sum;
-    logic signed [p_width-1:0] generic_sum;
     logic signed [p_width-1:0] bias_sum;
     logic signed [p_width:0] exact_sum;
     logic signed [p_width-1:0] selected_rhs;
     logic signed [p_width-1:0] reference_bias_sum;
 
-    select_add #(.p_width(p_width), .p_use_dsp(1'b1)) u_dsp (
+    select_add #(.p_width(p_width)) u_sum (
         .i_lhs(i_lhs), .i_rhs0(i_rhs0), .i_rhs1(i_rhs1),
         .i_rhs_select(i_rhs_select), .i_add_enable(i_add_enable), .o_sum(actual_sum)
     );
-    select_add #(.p_width(p_width), .p_use_dsp(1'b0)) u_generic (
-        .i_lhs(i_lhs), .i_rhs0(i_rhs0), .i_rhs1(i_rhs1),
-        .i_rhs_select(i_rhs_select), .i_add_enable(i_add_enable), .o_sum(generic_sum)
-    );
-    select_add #(.p_width(p_width), .p_use_dsp(1'b1)) u_bias (
+    select_add #(.p_width(p_width)) u_bias (
         .i_lhs(i_lhs), .i_rhs0(i_rhs0), .i_rhs1(i_rhs1),
         .i_rhs_select(i_rhs_select), .i_add_enable(i_rhs_select || i_add_enable), .o_sum(bias_sum)
     );
@@ -36,7 +31,6 @@ module select_add_formal #(
                                 i_add_enable ? i_lhs + i_rhs0 : i_lhs;
     always_comb begin
         assert(actual_sum == (i_add_enable ? exact_sum[p_width-1:0] : i_lhs));
-        assert(generic_sum == actual_sum);
         assert(bias_sum == reference_bias_sum);
     end
 endmodule

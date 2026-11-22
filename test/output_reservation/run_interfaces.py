@@ -12,6 +12,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -30,8 +33,8 @@ def main():
         "fifo_memory_ports", ROOT / "test/fifo_count_storage/run_formal.py")
     helper = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(helper)
-    s8 = files[0].read_text()
-    s16 = files[1].read_text()
+    s8 = read_rtl_text(files[0])
+    s16 = read_rtl_text(files[1])
     profiles = [("vec_s8_to_fifo_full", 16, 32, 64, 1),
                 ("vec_s8_to_fifo_full", 16, 3, 32, 1),
                 ("vec_s8_to_fifo_full", 8, 4, 32, 0),
@@ -81,7 +84,7 @@ def main():
             subprocess.run([sys.executable, str(ROOT / "scripts/fpga/open_fpga_synth.py"),
                             "--worker", str(script)], stdout=stream,
                            stderr=subprocess.STDOUT, check=True, timeout=300)
-        result = log.read_text()
+        result = read_rtl_text(log)
         match = re.search(r"Of those cells (\d+) are proven and 0 are unproven", result)
         if not match or "Equivalence successfully proven" not in result:
             raise RuntimeError("FIFO 完整状态证明未完成")

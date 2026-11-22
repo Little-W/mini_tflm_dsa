@@ -1,5 +1,7 @@
 # 向量输入银行与 Softmax 指数存储
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 ## 当前结构
 
 生产配置采用 16 通道、8 个 PE、64 位总线和 8 路窗口响应。输入存储由 8 个银行组成，每个银行保存 4 个完整的 16 位元素。向量、Add 和 Softmax 共用各银行的读取端口，标量输入字节在使用前经过寄存。数组由普通 SystemVerilog 读写语句描述。
@@ -48,7 +50,7 @@ Softmax 指数存放于独立的 `TILE × 32` 普通数组，使用一个写入�
 以下命令在仓库根目录执行，工具需位于 `PATH`。
 
 ```bash
-python scripts/fpga/open_fpga_synth.py --out build/vector_input_measurement --case-config test/vector_engine/production_synthesis_cases.json --cases vector --wide-alu-dsp-budget 740 --rtl-dsp-attributes --max-register-path-cells 10 --require-register-path-limit
+python scripts/fpga/open_fpga_synth.py --out build/vector_input_measurement --case-config test/vector_engine/production_synthesis_cases.json --cases vector --max-register-path-cells 10 --require-register-path-limit
 python test/vector_engine/run.py --out build/vector_input_production --pes 8 --tile 16 --jobs 1 --cache-sets 16 --cache-policy 3 --cache-line-bytes 128 --bus-width 64 --window-lanes 8 --shared-storage --shared-bank-bytes 8192 --shared-bank-count 7 --shared-ia-banks 2 --check-weight-prefetch --rtl-assertions --stable-stimulus --xilinx
 python test/vector_softmax/run.py --out build/vector_softmax_registered --depths 1 16 256 --input-registered --jobs 1 --xilinx
 python test/vector_softmax/run_formal.py --out build/vector_softmax_default_formal --reference-rev 42a820c7

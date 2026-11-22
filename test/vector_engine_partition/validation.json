@@ -1,0 +1,398 @@
+{
+  "scope": "向量引擎职责划分、阶段数组及公开接口逐周期行为验证",
+  "passed": true,
+  "sources": {
+    "rtl/npu/conv/vector_engine.sv": {
+      "sha256": "4ef682bd4245675681858e53e93852488edef97085a740ce98e2a70d638842ec",
+      "lines": 1488
+    },
+    "rtl/npu/conv/vector_engine_control.sv": {
+      "sha256": "050e69004a31ee5b1fcb978bf79222efc32a0663facffcb31dc09dbd59c65eaf",
+      "lines": 1102
+    },
+    "rtl/npu/conv/vector_engine_address.sv": {
+      "sha256": "51f9d0364251f7595b43dfe3a625145eb732c01cbc2362600d938a056a9ce778",
+      "lines": 1208
+    },
+    "rtl/npu/conv/vector_engine_operand_store.sv": {
+      "sha256": "f04549f7afbc8414d4744010687cae86cc84d2b2c23aa5033b95a4632f55b39e",
+      "lines": 986
+    },
+    "rtl/npu/conv/vector_engine_control_pkg.sv": {
+      "sha256": "468c03eb88992e3b6d0f380689dec7b11e0891accbe4fbf0880f882ddd3ec1e6",
+      "lines": 39
+    }
+  },
+  "reference_source_sha256": "5a3b43803c9c10af980e5cfc63aa233e7ba55f9434a35e630f5d1ab7bd2e66a6",
+  "interface": {
+    "public_ports": 93,
+    "compared_output_ports": 55,
+    "q_right_stages": 3,
+    "q_index_stages": 7
+  },
+  "lint": {
+    "passed": true,
+    "profiles": [
+      {
+        "profile": {
+          "BUS_WIDTH": 64,
+          "PE_COUNT": 8,
+          "WINDOW_LANES": 8,
+          "SHARED_QUANT_ENABLE": 1,
+          "SHARED_STORAGE_ENABLE": 1
+        },
+        "passed": true,
+        "log": "/workspace/scratch/e1a5fa683a84/vector_split_work/final_lint0.log",
+        "log_sha256": "43f031d234f6bde3b9f4ff18f711be61866d32022ea2a2a5f2f1dc95ddf6559a"
+      },
+      {
+        "profile": {
+          "BUS_WIDTH": 32,
+          "PE_COUNT": 8,
+          "WINDOW_LANES": 4,
+          "SHARED_QUANT_ENABLE": 0,
+          "SHARED_STORAGE_ENABLE": 0
+        },
+        "passed": true,
+        "log": "/workspace/scratch/e1a5fa683a84/vector_split_work/final_lint1.log",
+        "log_sha256": "0604e40a414ffb428e8747d97d29f8d9a22f88adc1620cd687057c67fa88bea2"
+      },
+      {
+        "profile": {
+          "BUS_WIDTH": 64,
+          "PE_COUNT": 16,
+          "WINDOW_LANES": 8,
+          "SHARED_QUANT_ENABLE": 1,
+          "SHARED_STORAGE_ENABLE": 1
+        },
+        "passed": true,
+        "log": "/workspace/scratch/e1a5fa683a84/vector_split_work/final_lint2.log",
+        "log_sha256": "98c42b280492dd2dd3cc9845e5dbc49d92eef83935030af44e6c7e3916190539"
+      },
+      {
+        "profile": {
+          "TILE": 8,
+          "DMA_SIZE": 32,
+          "BUS_WIDTH": 32,
+          "PE_COUNT": 4,
+          "WINDOW_LANES": 4,
+          "SHARED_QUANT_ENABLE": 0,
+          "SHARED_STORAGE_ENABLE": 0
+        },
+        "passed": true,
+        "log": "/workspace/scratch/e1a5fa683a84/vector_split_work/final_lint3.log",
+        "log_sha256": "4455e788ebd2cee83d9eaedc92e18ccf18e94b1bba5b09d994cc6d88a4231125"
+      },
+      {
+        "profile": {
+          "TILE": 16,
+          "DMA_SIZE": 64,
+          "BUS_WIDTH": 64,
+          "PE_COUNT": 3,
+          "WINDOW_LANES": 8,
+          "SHARED_QUANT_ENABLE": 0,
+          "SHARED_STORAGE_ENABLE": 0
+        },
+        "passed": true,
+        "log": "/workspace/scratch/e1a5fa683a84/vector_split_work/final_lint4.log",
+        "log_sha256": "38c26a5a3ba1faadd5823bc9bc2194a1bab45731d0262417d0b512bafaaa3ce7"
+      }
+    ],
+    "report": {
+      "path": "/workspace/scratch/e1a5fa683a84/vector_split_work/final_lint_summary.json",
+      "sha256": "7cdae75b0b03d0aad373810404b3009f22c366bc8ddcece1822d3e05c843f779"
+    }
+  },
+  "source_statement_and_connection_checks": {
+    "passed": true,
+    "report": {
+      "path": "/workspace/scratch/e1a5fa683a84/validation_vector_partition/source_layout/summary.json",
+      "sha256": "03a52e9ca9afd3465ae96e283588e53b2bf3e2d7ec139a43a7470a4289d69aed"
+    },
+    "checks": {
+      "passed": true,
+      "scope": "端口与参数名称、显式端口连接、包名限定、连续连接表示以及静态参数声明位置的源码等价检查",
+      "checks": [
+        {
+          "file": "vector_engine.sv",
+          "tested_sha256": "f2b207bc784e2d638cebfcc8858e4ee0af3a05863fefc8932c957bf52209365d",
+          "named_source_sha256": "e4ebea122fad20e04ee656683f76e266356f8fa89f5d5afeada823d867d0b0e1",
+          "normalized_statement_and_parameter_identity": true
+        },
+        {
+          "file": "vector_engine_control.sv",
+          "tested_sha256": "81f237e6fb9b76ea9b0493fb57937abfb038ee3e95f2cf88a08cdaae4c313b0c",
+          "named_source_sha256": "06a185e3543f71d2debb28dd11fa94173b175fa6a88510a85ce595fadcea908d",
+          "normalized_statement_and_parameter_identity": true
+        },
+        {
+          "file": "vector_engine_address.sv",
+          "tested_sha256": "9cdbe7b991fd695a77b3754cfa73cefdf7377999aeb7c04055d58be78c41fc54",
+          "named_source_sha256": "78d40b872c669c7ef89a7256638ed61fc6b84be06fb29ed09c05499c47d81867",
+          "normalized_statement_and_parameter_identity": true
+        },
+        {
+          "file": "vector_engine_operand_store.sv",
+          "tested_sha256": "3853b4ded633cd96024b2dbf9af562b2ad604c2246fd600d9d72128e9e3247b0",
+          "named_source_sha256": "492f21ad23367250c319fad4fcc0b9c3ddd3f81d203131f46adcd9c83b9da0a8",
+          "normalized_statement_and_parameter_identity": true
+        }
+      ],
+      "final_sources": [
+        {
+          "file": "rtl/npu/conv/vector_engine.sv",
+          "sha256": "4ef682bd4245675681858e53e93852488edef97085a740ce98e2a70d638842ec",
+          "matches_naming_and_connection_transformation": true
+        },
+        {
+          "file": "rtl/npu/conv/vector_engine_address.sv",
+          "sha256": "51f9d0364251f7595b43dfe3a625145eb732c01cbc2362600d938a056a9ce778",
+          "matches_naming_and_connection_transformation": true
+        },
+        {
+          "file": "rtl/npu/conv/vector_engine_control.sv",
+          "sha256": "050e69004a31ee5b1fcb978bf79222efc32a0663facffcb31dc09dbd59c65eaf",
+          "matches_naming_and_connection_transformation": true
+        },
+        {
+          "file": "rtl/npu/conv/vector_engine_control_pkg.sv",
+          "sha256": "468c03eb88992e3b6d0f380689dec7b11e0891accbe4fbf0880f882ddd3ec1e6",
+          "matches_naming_and_connection_transformation": true
+        },
+        {
+          "file": "rtl/npu/conv/vector_engine_operand_store.sv",
+          "sha256": "f04549f7afbc8414d4744010687cae86cc84d2b2c23aa5033b95a4632f55b39e",
+          "matches_naming_and_connection_transformation": true
+        }
+      ],
+      "arithmetic_or_state_update_changes": false,
+      "pipeline_latency_changes": false,
+      "capacity_changes": false
+    }
+  },
+  "quantization_state": {
+    "passed": true,
+    "profiles": [
+      {
+        "tile": 8,
+        "pe_count": 4,
+        "shared_quant": false,
+        "saved_state_bits": 198,
+        "inductive_equivalence": true,
+        "four_state_cycles": 65536,
+        "passed": true
+      },
+      {
+        "tile": 16,
+        "pe_count": 8,
+        "shared_quant": false,
+        "saved_state_bits": 207,
+        "inductive_equivalence": true,
+        "four_state_cycles": 65536,
+        "passed": true
+      },
+      {
+        "tile": 16,
+        "pe_count": 16,
+        "shared_quant": false,
+        "saved_state_bits": 216,
+        "inductive_equivalence": true,
+        "four_state_cycles": 65536,
+        "passed": true
+      },
+      {
+        "tile": 16,
+        "pe_count": 8,
+        "shared_quant": true,
+        "saved_state_bits": 207,
+        "inductive_equivalence": true,
+        "four_state_cycles": 65536,
+        "passed": true
+      }
+    ],
+    "four_state_cycles": 262144,
+    "report": {
+      "path": "/workspace/scratch/e1a5fa683a84/validation_vector_partition/pipeline_final/summary.json",
+      "sha256": "ee83f4a3aa710b052201ddc6b731856a5ac51a4d0b948d3723751542f7363d7e"
+    }
+  },
+  "window_control": {
+    "passed": true,
+    "unconstrained_count_input_bits": 97,
+    "formal_cases": 11,
+    "four_state_comparisons": 500000,
+    "reports": [
+      {
+        "path": "/workspace/scratch/e1a5fa683a84/validation_vector_partition/window_count_final/summary.json",
+        "sha256": "55c9f921adc39f43230649ba0bf8506c79292f9726cf7051c0b3f7cbad572f3d"
+      },
+      {
+        "path": "/workspace/scratch/e1a5fa683a84/validation_vector_partition/window_comb_final/summary.json",
+        "sha256": "700cef5cfb54d24b148234d812848dea156f6005dd7f31682bb0a60fd2cb18b9"
+      }
+    ]
+  },
+  "normalized_structure": {
+    "scope": "将抽象存储转换为寄存器表示后比较保存位数、公开端口及乘法器数量和位宽",
+    "passed": true,
+    "profiles": [
+      {
+        "profile": {
+          "TILE": 16,
+          "BUS_WIDTH": 64,
+          "PE_COUNT": 8,
+          "WINDOW_LANES": 8,
+          "SHARED_QUANT_ENABLE": 1,
+          "SHARED_STORAGE_ENABLE": 1
+        },
+        "passed": true,
+        "checks": {
+          "register_bits": true,
+          "memory_bits": true,
+          "memory_shapes": true,
+          "multipliers": true,
+          "ports": true
+        },
+        "reference_register_representation_bits": 9260,
+        "current_register_representation_bits": 9260,
+        "multipliers": {
+          "$mul:A_WIDTH=16:B_WIDTH=16:Y_WIDTH=32": 12,
+          "$mul:A_WIDTH=17:B_WIDTH=16:Y_WIDTH=33": 1,
+          "$mul:A_WIDTH=16:B_WIDTH=17:Y_WIDTH=33": 1
+        }
+      },
+      {
+        "profile": {
+          "TILE": 16,
+          "BUS_WIDTH": 64,
+          "PE_COUNT": 16,
+          "WINDOW_LANES": 16,
+          "SHARED_QUANT_ENABLE": 0,
+          "SHARED_STORAGE_ENABLE": 0
+        },
+        "passed": true,
+        "checks": {
+          "register_bits": true,
+          "memory_bits": true,
+          "memory_shapes": true,
+          "multipliers": true,
+          "ports": true
+        },
+        "reference_register_representation_bits": 17074,
+        "current_register_representation_bits": 17074,
+        "multipliers": {
+          "$mul:A_WIDTH=16:B_WIDTH=16:Y_WIDTH=32": 20,
+          "$mul:A_WIDTH=17:B_WIDTH=16:Y_WIDTH=33": 1,
+          "$mul:A_WIDTH=16:B_WIDTH=17:Y_WIDTH=33": 1
+        }
+      }
+    ],
+    "report": {
+      "path": "/workspace/scratch/e1a5fa683a84/validation_vector_partition/structure_style/summary.json",
+      "sha256": "a7acf3dc925e59ecdaf25c6d2e7a9dab4eaba8f9fdf05646064d5357c88c2e75"
+    }
+  },
+  "functional_runs": [
+    {
+      "parameters": {
+        "TILE": 16,
+        "PE_COUNT": 8,
+        "BUS_WIDTH": 64,
+        "WINDOW_LANES": 8,
+        "SHARED_QUANT_ENABLE": true,
+        "SHARED_STORAGE_ENABLE": true,
+        "CACHE_SETS": 16,
+        "CACHE_LINE_BYTES": 128
+      },
+      "passed": true,
+      "totals": {
+        "cases": 616,
+        "outputs": 170743,
+        "add_cases": 143,
+        "add_outputs": 135758,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "cycle_comparison": {
+        "cycles": 3455126,
+        "output_ports": 55,
+        "passed": true
+      },
+      "tested_sources_sha256": {
+        "vector_engine.sv": "f2b207bc784e2d638cebfcc8858e4ee0af3a05863fefc8932c957bf52209365d",
+        "vector_engine_control_pkg.sv": "3588e14dbce2d239614ef250648b5d15db9bc851c07e5893ca70b05cd4eb0541",
+        "vector_engine_control.sv": "81f237e6fb9b76ea9b0493fb57937abfb038ee3e95f2cf88a08cdaae4c313b0c",
+        "vector_engine_address.sv": "9cdbe7b991fd695a77b3754cfa73cefdf7377999aeb7c04055d58be78c41fc54",
+        "vector_engine_operand_store.sv": "3853b4ded633cd96024b2dbf9af562b2ad604c2246fd600d9d72128e9e3247b0"
+      },
+      "build_record": {
+        "path": "/workspace/scratch/e1a5fa683a84/validation_vector_partition/shared8/pe8/build.json",
+        "sha256": "c33d3c63afbe4d6527744d5f84240bff0cf03d66db1a74378b490dd989f671f0"
+      },
+      "report": {
+        "path": "/workspace/scratch/e1a5fa683a84/validation_vector_partition/shared8/summary.json",
+        "sha256": "e3928f9405a90774de1bfc3d49923b02974d0ae5c1796d318bcac767b73d27dc"
+      },
+      "log": {
+        "path": "/workspace/scratch/e1a5fa683a84/validation_vector_partition/shared8/pe8/functional.log",
+        "sha256": "b2fd402373a05fd58391cc6acbb74e23a362e622bd37d6425328c02be2234fe3"
+      },
+      "executable_sha256": "ec68aa50f0e518ea3f2ec287aef894febdf1753ce55d8aaba0775ed84a107018",
+      "window_request_response_overlap_events": 864
+    },
+    {
+      "parameters": {
+        "TILE": 16,
+        "PE_COUNT": 16,
+        "BUS_WIDTH": 32,
+        "WINDOW_LANES": 4,
+        "SHARED_QUANT_ENABLE": false,
+        "SHARED_STORAGE_ENABLE": false,
+        "CACHE_SETS": 16,
+        "CACHE_LINE_BYTES": 128
+      },
+      "passed": true,
+      "totals": {
+        "cases": 616,
+        "outputs": 170743,
+        "add_cases": 143,
+        "add_outputs": 135758,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "cycle_comparison": {
+        "cycles": 3735966,
+        "output_ports": 55,
+        "passed": true
+      },
+      "tested_sources_sha256": {
+        "vector_engine_control.sv": "050e69004a31ee5b1fcb978bf79222efc32a0663facffcb31dc09dbd59c65eaf",
+        "vector_engine.sv": "4ef682bd4245675681858e53e93852488edef97085a740ce98e2a70d638842ec",
+        "vector_engine_address.sv": "51f9d0364251f7595b43dfe3a625145eb732c01cbc2362600d938a056a9ce778",
+        "vector_engine_operand_store.sv": "f04549f7afbc8414d4744010687cae86cc84d2b2c23aa5033b95a4632f55b39e",
+        "vector_engine_control_pkg.sv": "468c03eb88992e3b6d0f380689dec7b11e0891accbe4fbf0880f882ddd3ec1e6"
+      },
+      "build_record": {
+        "path": "/workspace/scratch/e1a5fa683a84/validation_vector_partition/private16_final/pe16/build.json",
+        "sha256": "2c06028f0c9104432175f669f7e060738cc4c2d6bc4b4c85b6cac82c9ff524c8"
+      },
+      "report": {
+        "path": "/workspace/scratch/e1a5fa683a84/validation_vector_partition/private16_final/summary.json",
+        "sha256": "c8af0d8e90264fb45901256209c44f203c12a7e63abccd97303edc310cb02ba6"
+      },
+      "log": {
+        "path": "/workspace/scratch/e1a5fa683a84/validation_vector_partition/private16_final/pe16/functional.log",
+        "sha256": "d302a345ccaf6b502ec59ea3fec175fa9e49a73d6495fc14bfc0a4fa9a9da328"
+      },
+      "executable_sha256": "973b25c32ada31aa4297e3d2978ffeda4371c41792d2b12649a3f192d2672b40",
+      "window_request_response_overlap_events": 35
+    }
+  ],
+  "functional_totals": {
+    "tasks": 1232,
+    "numeric_outputs": 341486,
+    "compared_cycles": 7191092
+  },
+  "device_resource_measurement": null,
+  "device_timing_measurement": null
+}

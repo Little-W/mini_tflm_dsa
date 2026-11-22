@@ -7,6 +7,10 @@ from pathlib import Path
 import re
 import subprocess
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/soc/soc_axi_interconnect.sv')
 
@@ -56,9 +60,9 @@ def main():
     sources = []
     for label, source in originals.items():
         target = out / (label + '.sv')
-        target.write_text(simulation_source(source.read_text(), label))
+        target.write_text(simulation_source(read_rtl_text(source), label))
         sources.append(target)
-    header = originals['reference'].read_text().split('\n);', 1)[0]
+    header = read_rtl_text(originals['reference']).split('\n);', 1)[0]
     ports = re.findall(r'^\s*(input|output)\s+(?:(?:wire|logic)\s+)*(\[[^\]]+\]\s*)?(\w+)\s*[,\n]',
                        header + '\n', re.M)
     assert len(ports) > 130 and len({p[2] for p in ports}) == len(ports)

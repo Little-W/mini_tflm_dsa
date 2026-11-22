@@ -1,5 +1,7 @@
 # 权重缓存行存储
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 `kernel_loader_buffer` 保留两个逻辑预取槽位和三个物理槽位。对于大于 1 且为二的幂的 `SIZE`，每个输出通道保存一行权重，接收完整行后按列执行同步读取。输入行的数据并行写入；读地址按 `SIZE` 回绕，直接形成计算阵列要求的对角排列。其他 `SIZE` 使用按列保存的实现。
 
 存储器采用行为级数组描述，宽写端口与窄读端口由综合工具推断。槽位交换、接收行寄存、首次发送周期、连续发送周期和清除优先级保持一致。实际读列号随读取事件保存，输出选择同时保留四态控制的行为。同周期同地址读取返回写入前的内容。
@@ -35,7 +37,7 @@ python3 test/kernel_row_storage/run_formal.py --source-root . --reference-root b
 python3 test/kernel_row_storage/run_partitioned.py --source-root . --reference-root build/kernel_row_storage_reference --size 32 --width 16 --group-timeout 90 --out build/kernel_row_storage/partitioned_32_16
 python3 test/kernel_row_storage/run_numeric.py --source-root . --reference-root build/kernel_row_storage_reference --out build/kernel_row_storage/numeric
 python3 test/kernel_row_storage/run_four_state.py --source-root . --reference-root build/kernel_row_storage_reference --out build/kernel_row_storage/four_state
-python3 scripts/fpga/open_fpga_synth.py --source-root . --case-config test/kernel_row_storage/synthesis_cases.json --cases kernel_buffer --out build/kernel_row_storage/synthesis --wide-alu-dsp-budget 740 --rtl-dsp-attributes --max-register-path-cells 10
+python3 scripts/fpga/open_fpga_synth.py --source-root . --case-config test/kernel_row_storage/synthesis_cases.json --cases kernel_buffer --out build/kernel_row_storage/synthesis --max-register-path-cells 10
 ```
 
 `validation.json` 保存参数、已完成检查的数量、源代码散列、原报告路径和报告散列。详细逐周期输出与证明日志保存在测量目录。

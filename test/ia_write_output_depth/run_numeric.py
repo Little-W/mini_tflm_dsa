@@ -42,7 +42,7 @@ def main():
         folder.mkdir(exist_ok=True)
         models = ('DSP48E1',) if name == 'interface' else ('LUT6', 'LUT6_2', 'DSP48E1')
         model, model_info = prepare_models(folder, models)
-        extra = [str(ROOT / 'rtl/npu/compute/select_add.sv'), str(model)]
+        extra = ([str(ROOT / 'rtl/npu/compute/select_add.sv')] if name == 'interface' else []) + [str(model)]
         # 原语库包含未使用模式的显式截断及字符串宽度转换，应用 RTL 保留位宽检查。
         lint_config = folder / 'primitive_widths.vlt'
         lint_config.write_text('`verilator_config\n' +

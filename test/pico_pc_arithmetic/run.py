@@ -14,6 +14,9 @@ import subprocess
 import sys
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 UPSTREAM_COMMIT = "ef203c2b0a3fb793280f5114941416c425c5b461"
 UPSTREAM_SOURCE_SHA256 = "0836050971b3c6cdd28ac3b1e5719a67fb645161912bef1e472e63995ceb0622"
@@ -46,7 +49,7 @@ def run(command: list[str], log: Path, timeout: int = 900) -> str:
     with log.open("w", encoding="utf-8") as stream:
         subprocess.run(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT,
                        check=True, timeout=timeout)
-    return log.read_text()
+    return read_rtl_text(log)
 
 
 def formal(out: Path, sources: dict[str, Path]) -> dict:
@@ -156,7 +159,7 @@ def execution(out: Path, sources: dict[str, Path], testbench: Path) -> dict:
     out.mkdir()
     program = make_program(out)
     # 每个上游模块独立更名，使两颗 CPU 分别使用各自的乘除法实现。
-    text = sources["reference"].read_text()
+    text = read_rtl_text(sources["reference"])
     module_names = set(re.findall(r"\bmodule\s+(\w+)", text))
     pattern = re.compile(r"\b(?:" + "|".join(re.escape(name) for name in sorted(module_names)) + r")\b")
     renamed = out / "reference_cpu.v"
@@ -198,13 +201,13 @@ def measure(out: Path, source_root: Path, sources: dict[str, Path]) -> dict:
     run([sys.executable, str(ROOT / "scripts/fpga/open_fpga_synth.py"),
          "--source-root", str(source_root), "--case-config", str(config),
          "--cases", "reference", "current", "--out", str(out / "synthesis"),
-         "--wide-alu-dsp-budget", "740", "--rtl-dsp-attributes", "--max-register-path-cells", "10"],
+         "--max-register-path-cells", "10"],
         out / "synthesis.log", timeout=1800)
     report = {"passed": False, "maximum_register_path_cells": 10, "cases": {}}
     for label in cases:
         directory = out / "synthesis" / label
         path = directory / "metrics.json"
-        metrics = json.loads(path.read_text())
+        metrics = json.loads(read_rtl_text(path))
         if not metrics["paths"]["graph_complete"]:
             raise RuntimeError(f"{label} 的寄存器路径连接图不完整")
         report["cases"][label] = {

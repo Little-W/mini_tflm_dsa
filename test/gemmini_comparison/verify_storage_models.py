@@ -20,6 +20,9 @@ CPU = dict(cpu_enable_mul=1, cpu_enable_fast_mul=1, cpu_enable_div=1,
     cpu_two_cycle_compare=0, cpu_two_cycle_alu=0, cpu_icache=1)
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 def require(condition, message):
     if not condition:
         raise ValueError(message)
@@ -76,7 +79,7 @@ class Verification:
 
     def read(self, path, role="record"):
         self.digest(path, role=role)
-        return json.loads(Path(path).read_text())
+        return json.loads(read_rtl_text(Path(path)))
 
     def hashes(self, values, root=None, role="source"):
         for name, expected in values.items():
@@ -104,7 +107,7 @@ class Verification:
 
 
 def parse_log(path):
-    text = Path(path).read_text()
+    text = read_rtl_text(Path(path))
     groups = {}
     for prefix, key in (("SOC_NETWORK_COUNTER", "counters"),
         ("SOC_NETWORK_CPU_PROFILE", "cpu_profiles"), ("SOC_NETWORK_DMA_PROFILE", "dma_profiles"),
@@ -147,7 +150,7 @@ def verify_window_jobs(rows, network, profile):
 
 def memory_words(path, bits, ram_bytes=2097152):
     words, address = {}, 0
-    text = re.sub(r"/\*.*?\*/|//[^\n]*", "", Path(path).read_text(), flags=re.S)
+    text = re.sub(r"/\*.*?\*/|//[^\n]*", "", read_rtl_text(Path(path)), flags=re.S)
     for token in text.split():
         if token.startswith("@"):
             address = int(token[1:], 16)
@@ -242,7 +245,7 @@ def verify_model_build(v, build, repo, gemmini):
         tb = repo / "test/model_benchmark/tb_model_benchmark.sv"
     v.hashes(build["source_sha256"], repo)
     v.hashes(build.get("external_dependency_sha256", {}), repo)
-    source = re.sub(r"/\*.*?\*/|//[^\n]*", "", tb.read_text(), flags=re.S)
+    source = re.sub(r"/\*.*?\*/|//[^\n]*", "", read_rtl_text(tb), flags=re.S)
     require(any(v.resolve(path, repo) == tb for path in build["source_sha256"]), "Testbench is absent from the build sources")
     for pattern, description in (
         (r"\.CPU_MEM_WORD_WIDTH\s*\(\s*`SOC_NETWORK_BUS_WIDTH\s*\)", "RAM image word width"),
@@ -444,7 +447,7 @@ def verify_complete_models(repo, npu, gemmini_sim, variants, prepared=None, *,
                             v.resolve(plusargs["TRACE_FILE"]) == directory / "trace.txt" and
                             int(plusargs["TRACE_ADDR"], 16) == fw["symbols"]["full_network_trace"], "Simulator trace addresses differ")
                         v.digest(directory / "trace.txt", role="trace_descriptors")
-                        lines = (directory / "trace.txt").read_text().splitlines()
+                        lines = read_rtl_text(directory / "trace.txt").splitlines()
                         require(len(lines) == len(run["trace"]) == len(expected_sample["nodes"]) == result["trace_records"],
                             "Intermediate tensor count differs")
                         for ordinal, (line, observation, reference) in enumerate(zip(lines, run["trace"], expected_sample["nodes"])):

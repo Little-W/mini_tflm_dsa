@@ -1,0 +1,319 @@
+{
+  "passed": true,
+  "rtl_sha256": {
+    "vector_engine.sv": "05b0686453ef040e3dc88faa23a5d48231b2ef85bc9302ee1713da447cacf80b",
+    "vector_config_check.sv": "d36423342c75c0d856b175342ecd4a07800fe5b7c2fadcdc168d0177f38e63fd",
+    "vector_softmax.sv": "3a2dc04da2af633a0aef51f7b99baa83180ef68224f11f051bb1d07591be2c20"
+  },
+  "production_full_equivalence": {
+    "profile": "production",
+    "passed": true,
+    "equivalent_bits": 21768,
+    "stage": {
+      "elapsed_seconds": 190.02,
+      "peak_process_tree_rss_bytes": 423206912,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "run.ys",
+      "log": "formal.log"
+    },
+    "log_sha256": "6ec74ea99924160fc47b9f002ffbfad09c5d9bc46450aef8bb186bcf8816f710"
+  },
+  "generic_storage_equivalence": {
+    "passed": true,
+    "inputs_constrained": false,
+    "scope": "实际 RTL 的通用输入保存分支、池化响应数据及全部存储项",
+    "initial_state": "两份模型使用相同初始数据，归纳步骤比较完整存储状态的更新",
+    "source_sha256": {
+      "reference": "9cb73b1376c3e4a93ab38162875e743ff3d1a133201f9359d52d5d99198b845d",
+      "current": "05b0686453ef040e3dc88faa23a5d48231b2ef85bc9302ee1713da447cacf80b"
+    },
+    "runs": [
+      {
+        "tile": 4,
+        "bus_width": 32,
+        "window_lanes": 4,
+        "passed": true,
+        "complete_storage_state_compared": true,
+        "stage": {
+          "elapsed_seconds": 1.1,
+          "peak_process_tree_rss_bytes": 93085696
+        },
+        "log_sha256": "ff40ab78971f70c8a95b5ff5557a4de46e6f8f9ce25d4a18b037f0c2b2d078ee"
+      },
+      {
+        "tile": 16,
+        "bus_width": 32,
+        "window_lanes": 4,
+        "passed": true,
+        "complete_storage_state_compared": true,
+        "stage": {
+          "elapsed_seconds": 4.32,
+          "peak_process_tree_rss_bytes": 132886528
+        },
+        "log_sha256": "b11f6e67ea4599de8a086ba784c97b4e2852d1d8b55b8d88597d6c58356f3af7"
+      },
+      {
+        "tile": 16,
+        "bus_width": 64,
+        "window_lanes": 4,
+        "passed": true,
+        "complete_storage_state_compared": true,
+        "stage": {
+          "elapsed_seconds": 8.54,
+          "peak_process_tree_rss_bytes": 199036928
+        },
+        "log_sha256": "09b73135087727b095b72b5182e5b83146555b5bbb729bd2c69197d3ad5b5c83"
+      },
+      {
+        "tile": 16,
+        "bus_width": 32,
+        "window_lanes": 8,
+        "passed": true,
+        "complete_storage_state_compared": true,
+        "stage": {
+          "elapsed_seconds": 4.73,
+          "peak_process_tree_rss_bytes": 137977856
+        },
+        "log_sha256": "e5c11ef85b90f560c88e787c528b945d426892604ea34ac59e72f90499448102"
+      }
+    ]
+  },
+  "configuration_equivalence": {
+    "passed": true,
+    "reference": "ef0dc75342997721bdc4110b2841445df962018e",
+    "source_sha256": "d36423342c75c0d856b175342ecd4a07800fe5b7c2fadcdc168d0177f38e63fd",
+    "reference_sha256": "f0016b9298b0e58028ea3218d2034d5c8ea46752efecb1964ee17a911bc66446",
+    "dependency_sha256": {
+      "/workspace/scratch/e1a5fa683a84/vector_area_source/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+      "/workspace/scratch/e1a5fa683a84/vector_area_source/rtl/npu/conv/vector_engine_pkg.sv": "73c2bf4756dea123f75a7e0eeab3ec3722a3b11d0aaab9bf573ae0ac87bee227",
+      "/workspace/scratch/e1a5fa683a84/vector_area_source/rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41"
+    },
+    "scope": "激活范围的全部64位输入及完整检查器的公开输出与寄存状态",
+    "stable_config": false,
+    "runs": [
+      {
+        "name": "activation_bounds",
+        "input_bits": 64,
+        "input_constraints": null,
+        "elapsed_seconds": 0.2,
+        "peak_process_tree_rss_bytes": 65536,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "activation_bounds.ys",
+        "log": "activation_bounds.log"
+      },
+      {
+        "name": "checker_tile4",
+        "input_constraints": null,
+        "elapsed_seconds": 1.8,
+        "peak_process_tree_rss_bytes": 61607936,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "checker_tile4.ys",
+        "log": "checker_tile4.log"
+      },
+      {
+        "name": "checker_tile16",
+        "input_constraints": null,
+        "elapsed_seconds": 2.21,
+        "peak_process_tree_rss_bytes": 61628416,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "checker_tile16.ys",
+        "log": "checker_tile16.log"
+      },
+      {
+        "name": "checker_tile64",
+        "input_constraints": null,
+        "elapsed_seconds": 1.81,
+        "peak_process_tree_rss_bytes": 62095360,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "checker_tile64.ys",
+        "log": "checker_tile64.log"
+      }
+    ]
+  },
+  "softmax_equivalence": {
+    "passed": true,
+    "reference_revision": "ef0dc75342997721bdc4110b2841445df962018e",
+    "reference_sha256": "08c3ca2ab3ca8742428aeb7b2d14faeeca9a316df94c8abb05b2091ff4cf357f",
+    "source_sha256": {
+      "rtl/npu/conv/vector_softmax.sv": "3a2dc04da2af633a0aef51f7b99baa83180ef68224f11f051bb1d07591be2c20",
+      "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41"
+    },
+    "inputs_constrained": false,
+    "all_public_outputs_compared": true,
+    "profiles": [
+      {
+        "mode": "fpga",
+        "multiplier_latency": 0,
+        "input_registered": false,
+        "passed": true,
+        "script_sha256": "cc78bbdd0f7f9fb9f57082d7122cec44f2ed7ab7f384480decc19cf89bdaf6a0",
+        "log_sha256": "5bad118b1543cb898337d962e3eb28b628ca2f1cd576a140bdf335dc780439f3"
+      },
+      {
+        "mode": "fpga",
+        "multiplier_latency": 0,
+        "input_registered": true,
+        "passed": true,
+        "script_sha256": "ab110e7488e62f71f74f898097801ea4103d503867c90af47e769651701bbc56",
+        "log_sha256": "2700cd4526e9f258119dd37f77ed5e05536866f30ff2fbca76c9c77455b222f5"
+      },
+      {
+        "mode": "fpga",
+        "multiplier_latency": 2,
+        "input_registered": false,
+        "passed": true,
+        "script_sha256": "8a8252d3476165e3431641452afc7027e0f3b813caab7e8125e11c70feaa4a98",
+        "log_sha256": "58e82de73ac7e4c7b54507d4d7356b3e5d19cd175d9c15832d8cfef42fba51fe"
+      },
+      {
+        "mode": "fpga",
+        "multiplier_latency": 2,
+        "input_registered": true,
+        "passed": true,
+        "script_sha256": "bf74d6c72a143b61aafcc3404d9b81c7894cff317e2e377d51268db33bbe3399",
+        "log_sha256": "d9d75b59f2b8a21f0af9e52962a27061f65338ed91c2e5052631be9ca3f778aa"
+      },
+      {
+        "mode": "generic",
+        "multiplier_latency": 0,
+        "input_registered": false,
+        "passed": true,
+        "script_sha256": "321b84449066c794e4550971c8e3798c96e86500eb9e5892623c3b15955c5a83",
+        "log_sha256": "eeb7b4dc9e48dabbf1064c6f95aa1131350ffd2e1acb93e1ff8e448b7315d424"
+      },
+      {
+        "mode": "generic",
+        "multiplier_latency": 0,
+        "input_registered": true,
+        "passed": true,
+        "script_sha256": "49e235beabbbfbfdaeff7dc65277acfb9f216ddec072e76cae56c620a70bc572",
+        "log_sha256": "593c8c148da1f21ee23a5b2d72d97ec553ab9b531516b87514cedb0e7cdc36db"
+      },
+      {
+        "mode": "generic",
+        "multiplier_latency": 2,
+        "input_registered": false,
+        "passed": true,
+        "script_sha256": "e3cbd82373123e376e595a88457bd4952324c9288f0093311e375c9cd81baf79",
+        "log_sha256": "ad6b9cf240fb1ac06463cf30eaab94c96824b3f6eb52c4c77cf7a347597a9c84"
+      },
+      {
+        "mode": "generic",
+        "multiplier_latency": 2,
+        "input_registered": true,
+        "passed": true,
+        "script_sha256": "4be815829abbcd84b13db4c4adb100eae33e2f07470d2be0c0690a82aa549bc5",
+        "log_sha256": "030ffce52f78998b52f426f8eb4e60a578833cb6ae2c113b92a459197e5992a7"
+      }
+    ]
+  },
+  "input_rotation": {
+    "passed": true,
+    "strict_four_state_equivalence": true,
+    "four_state_checks": 65538,
+    "parameters": {
+      "INPUT_BANKS": 8,
+      "WINDOW_BANK_W": 3,
+      "data_bits_per_bank": 16
+    },
+    "source_sha256": {
+      "reference": "9cb73b1376c3e4a93ab38162875e743ff3d1a133201f9359d52d5d99198b845d",
+      "current": "05b0686453ef040e3dc88faa23a5d48231b2ef85bc9302ee1713da447cacf80b"
+    },
+    "formal": {
+      "elapsed_seconds": 1.61,
+      "peak_process_tree_rss_bytes": 64823296,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "equivalence.ys",
+      "log": "equivalence.log"
+    },
+    "measurements": {
+      "reference": {
+        "resources": {
+          "logic_lut_cells": 451,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 451,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 259,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 2,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 2,
+            "FDRE": 259,
+            "INV": 3,
+            "LUT3": 160,
+            "LUT4": 32,
+            "LUT5": 128,
+            "LUT6": 131
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 4,
+        "stage": {
+          "elapsed_seconds": 8.76,
+          "peak_process_tree_rss_bytes": 180355072,
+          "memory_sample_interval_seconds": 0.2,
+          "script": "synthesis.ys",
+          "log": "synthesis.log"
+        }
+      },
+      "current": {
+        "resources": {
+          "logic_lut_cells": 451,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 451,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 259,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 0,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "FDRE": 259,
+            "LUT3": 192,
+            "LUT5": 128,
+            "LUT6": 131
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 3,
+        "stage": {
+          "elapsed_seconds": 8.08,
+          "peak_process_tree_rss_bytes": 179601408,
+          "memory_sample_interval_seconds": 0.2,
+          "script": "synthesis.ys",
+          "log": "synthesis.log"
+        }
+      }
+    },
+    "scope": "实际 RTL 输入保存和循环选择，输出另设同周期比较寄存器；完整引擎回归另行执行。"
+  },
+  "production_numeric": {
+    "configuration": {
+      "tile": 16,
+      "pe_count": 8,
+      "bus_width": 64,
+      "window_lanes": 8,
+      "shared_bank_count": 7,
+      "shared_bank_bytes": 4096,
+      "shared_ia_banks": 2,
+      "cache_sets": 16,
+      "cache_line_bytes": 128
+    },
+    "totals": {
+      "cases": 616,
+      "outputs": 170743,
+      "add_cases": 143,
+      "add_outputs": 135758,
+      "softmax_cases": 273,
+      "softmax_outputs": 2188
+    },
+    "log_sha256": "dd784b93126692510c66d0b014df4ab0b7f680a847969d923364bfbf1c544ed2"
+  }
+}

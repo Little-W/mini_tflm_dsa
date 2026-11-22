@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""使用官方 FPGA 原语模型执行生产参数下的完整 NPU 功能回归。"""
+"""执行 FPGA 生产参数下的 NPU 数值、容量和帧地址检查。"""
 import argparse
 import hashlib
 import json
@@ -22,13 +22,13 @@ def main():
     parser.add_argument("--verilator", default="verilator")
     parser.add_argument("--jobs", type=int, default=2)
     parser.add_argument("--build-timeout", type=int, default=7200)
+    parser.add_argument("--skip-build", action="store_true",
+                        help="核对输入摘要后复用已有生产参数仿真程序")
     parser.add_argument('--source-root', type=Path, default=ROOT,
                         help='与完整 SoC 测量一致的固定 RTL 目录')
     args = parser.parse_args()
     sys.path.insert(0, str(ROOT / "scripts/fpga"))
     from open_fpga_synth import CASES, production_configuration
-    import pyosys
-
     configuration = production_configuration()
     source_root = args.source_root.resolve()
     if digest(source_root / configuration['path']) != configuration['sha256']:
@@ -61,31 +61,17 @@ def main():
     executable = shutil.which(args.verilator)
     if executable is None:
         raise RuntimeError("Cannot find Verilator: " + args.verilator)
-    library = Path(pyosys.__file__).parent / "share/xilinx/cells_sim.v"
-    model_names = ("LUT1", "LUT2", "LUT3", "LUT4", "LUT5", "LUT6", "LUT6_2",
-                   "MUXF7", "MUXF8", "DSP48E1", "FDRE", "CARRY4")
-    library_text = library.read_text()
-    models = []
-    for name in model_names:
-        match = re.search(r"^module " + name + r"\b.*?^endmodule", library_text,
-                          re.MULTILINE | re.DOTALL)
-        if match is None:
-            raise RuntimeError("Missing official functional model: " + name)
-        models.append(match.group(0))
-    model_path = out / "xilinx_primitives.sv"
-    model_path.write_text("\n\n".join(models) + "\n")
+    frame_observer = ROOT / "test/frame_address/npu_observer.sv"
+    frame_observer_hash = digest(frame_observer)
     observer_paths, observer_models = {}, {}
     observer_directory = out / "observers"
     observer_directory.mkdir(exist_ok=True)
+    sys.path.insert(0, str(ROOT / "test/monitors"))
+    from observer_text import simulation_text
     for source in sorted((ROOT / "test/monitors").glob("*.sv")):
         content = source.read_text()
-        opening = "`ifndef SYNTHESIS\n"
-        start, end = content.find(opening), content.rfind("`endif")
-        if start < 0 or end < start or content[end + len("`endif"):].strip():
-            raise RuntimeError("Unexpected observer guard: " + str(source))
         destination = observer_directory / source.name
-        destination.write_text(content[:start] + content[start + len(opening):end] +
-                               content[end + len("`endif"):])
+        destination.write_text(simulation_text(content))
         observer_paths[str(source)] = str(destination)
         observer_models[str(source.relative_to(ROOT))] = {
             "source_sha256": digest(source), "model_sha256": digest(destination)}
@@ -95,7 +81,7 @@ def main():
                        "observers = " + repr(observer_paths) + "\n" +
                        "arguments = [observers.get(argument, argument) for argument in sys.argv[1:]]\n" +
                        "command = " + repr([executable, *["-D" + value for value in simulation_defines],
-                                             str(model_path)]) + " + arguments\n" +
+                                             str(frame_observer)]) + " + arguments\n" +
                        "os.execv(command[0], command)\n")
     wrapper.chmod(0o755)
     command = [sys.executable, str(ROOT / "test/conv_npu/run.py"),
@@ -112,10 +98,39 @@ def main():
                "--shared-bank-bytes", values["SHARED_BANK_BYTES"],
                "--shared-bank-count", values["SHARED_BANK_COUNT"],
                "--ps-compress", "--force-raw", "--pool-bytes", values["PS_POOL_BYTES"]]
+    if args.skip_build:
+        command.append("--skip-build")
     with (out / "run.log").open("w") as log:
         result = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
     report_path = out / "npu/summary.json"
     npu = json.loads(report_path.read_text()) if report_path.is_file() else {}
+    results = {"functional": npu}
+    if result.returncode == 0 and npu.get("passed", False):
+        sim = out / "npu/s16"
+        for name, script in (("capacity", "test/ps_capacity_limits/run_npu.py"),
+                             ("output", "test/writeback_cyclic/run_npu.py")):
+            with (out / (name + ".log")).open("w") as log:
+                subprocess.run([sys.executable, str(ROOT / script), "--out", str(out / name),
+                                "--sim", str(sim)], cwd=ROOT, stdout=log,
+                               stderr=subprocess.STDOUT, check=True)
+            results[name] = json.loads((out / name / "summary.json").read_text())
+        sys.path.insert(0, str(ROOT / "test/frame_address"))
+        from run_npu import packed_cases
+        sys.path.insert(0, str(ROOT / "test/ps_compression"))
+        from run_shared_npu import npu as numeric_runner
+        results["packed"] = numeric_runner.run_suite(sim / "obj/Vtb_conv_npu", out, "packed",
+            packed_cases(out / "packed"), no_random=False, timeout=900)
+    coverage = []
+    for path in sorted(out.rglob("*.log")):
+        for line in path.read_text(errors="replace").splitlines():
+            if line.startswith("FRAME_ADDRESS_NPU_PASS "):
+                coverage.append({"log": str(path.relative_to(out)),
+                    **{key: int(value) for key, value in re.findall(r"(\w+)=(\d+)", line)}})
+    if digest(frame_observer) != frame_observer_hash:
+        raise RuntimeError("Frame observer changed during validation")
+    for name, hashes in observer_models.items():
+        if digest(ROOT / name) != hashes["source_sha256"]:
+            raise RuntimeError("Observer changed during validation: " + name)
     report = dict(passed=result.returncode == 0 and npu.get("passed", False),
                   source_root=str(source_root),
                   cache_line_bytes=cache_line_bytes, cache_parameter_source_sha256=digest(top_source),
@@ -123,15 +138,17 @@ def main():
                   ps_storage_rows=ps_storage_rows, oa_s16_fifo_banks_max=oa_s16_fifo_banks_max,
                   soc_parameter_source_sha256=digest(soc_source),
                   configuration=configuration, simulation_defines=simulation_defines,
-                  primitive_models=list(model_names),
                   observer_models=observer_models,
-                  primitive_library_sha256=digest(library), generated_models_sha256=digest(model_path),
+                  frame_observer_sha256=frame_observer_hash,
                   wrapper_sha256=digest(wrapper), runner_sha256=digest(Path(__file__)),
                   command=command, returncode=result.returncode,
                   tasks=npu.get("task_count", 0), int32_checks=npu.get("int32_checks", 0),
-                  npu_report=str(report_path))
+                  npu_report=str(report_path), results=results,
+                  frame_start_delay_cycles=12, frame_coverage=coverage)
+    report["passed"] &= all(results.get(name, {}).get("passed", False)
+                            for name in ("functional", "capacity", "output", "packed"))
     (out / "summary.json").write_text(json.dumps(report, indent=2) + "\n")
-    print(json.dumps({key: report[key] for key in ("passed", "tasks", "int32_checks", "primitive_models")}))
+    print(json.dumps({key: report[key] for key in ("passed", "tasks", "int32_checks")}))
     if not report["passed"]:
         raise RuntimeError("FPGA integration regression failed: " + str(out / "run.log"))
 

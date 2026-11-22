@@ -1,0 +1,413 @@
+{
+  "passed": true,
+  "generic": {
+    "inputs_constrained": false,
+    "latency_cycles": 0,
+    "asic": false,
+    "source_sha256": "aeedb0cea0c8e60ac9f167321e89c62f4c162add49ae63ad488f405b9d3abb97",
+    "runs": [
+      {
+        "width": 1,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 3
+      },
+      {
+        "width": 1,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 3
+      },
+      {
+        "width": 2,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 5
+      },
+      {
+        "width": 2,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 5
+      },
+      {
+        "width": 3,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 7
+      },
+      {
+        "width": 3,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 7
+      },
+      {
+        "width": 4,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 9
+      },
+      {
+        "width": 4,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 9
+      },
+      {
+        "width": 5,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 11
+      },
+      {
+        "width": 5,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 11
+      },
+      {
+        "width": 8,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 17
+      },
+      {
+        "width": 8,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 17
+      },
+      {
+        "width": 17,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 35
+      },
+      {
+        "width": 17,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 35
+      },
+      {
+        "width": 23,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 47
+      },
+      {
+        "width": 23,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 47
+      },
+      {
+        "width": 24,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 49
+      },
+      {
+        "width": 24,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 49
+      },
+      {
+        "width": 32,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 65
+      },
+      {
+        "width": 32,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 65
+      },
+      {
+        "width": 33,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 67
+      },
+      {
+        "width": 33,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 67
+      },
+      {
+        "width": 47,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 95
+      },
+      {
+        "width": 47,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 95
+      },
+      {
+        "width": 48,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 97
+      },
+      {
+        "width": 48,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 97
+      },
+      {
+        "width": 64,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 129
+      },
+      {
+        "width": 64,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 129
+      }
+    ],
+    "passed": true
+  },
+  "asic": {
+    "inputs_constrained": false,
+    "latency_cycles": 0,
+    "asic": true,
+    "source_sha256": "aeedb0cea0c8e60ac9f167321e89c62f4c162add49ae63ad488f405b9d3abb97",
+    "runs": [
+      {
+        "width": 1,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 3
+      },
+      {
+        "width": 1,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 3
+      },
+      {
+        "width": 2,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 5
+      },
+      {
+        "width": 2,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 5
+      },
+      {
+        "width": 3,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 7
+      },
+      {
+        "width": 3,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 7
+      },
+      {
+        "width": 4,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 9
+      },
+      {
+        "width": 4,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 9
+      },
+      {
+        "width": 5,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 11
+      },
+      {
+        "width": 5,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 11
+      },
+      {
+        "width": 8,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 17
+      },
+      {
+        "width": 8,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 17
+      },
+      {
+        "width": 17,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 35
+      },
+      {
+        "width": 17,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 35
+      },
+      {
+        "width": 23,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 47
+      },
+      {
+        "width": 23,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 47
+      },
+      {
+        "width": 24,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 49
+      },
+      {
+        "width": 24,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 49
+      },
+      {
+        "width": 32,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 65
+      },
+      {
+        "width": 32,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 65
+      },
+      {
+        "width": 33,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 67
+      },
+      {
+        "width": 33,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 67
+      },
+      {
+        "width": 47,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 95
+      },
+      {
+        "width": 47,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 95
+      },
+      {
+        "width": 48,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 97
+      },
+      {
+        "width": 48,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 97
+      },
+      {
+        "width": 64,
+        "group_width": 1,
+        "preserve_groups": false,
+        "passed": true,
+        "input_bits": 129
+      },
+      {
+        "width": 64,
+        "group_width": 8,
+        "preserve_groups": true,
+        "passed": true,
+        "input_bits": 129
+      }
+    ],
+    "passed": true
+  }
+}

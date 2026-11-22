@@ -126,11 +126,15 @@ def set_value(overrides, vector, value):
 
 def check_asic(module, lanes, rows):
     cells = module['cells']
-    row_width, banks = 32*lanes+1, (rows+127)//128
+    macro_depth = 128 if rows <= 128 else 1024
+    low_bits = 7 if macro_depth == 128 else 10
+    macro_type = f'RAMTP{macro_depth}X16'
+    row_width, banks = 32*lanes+1, (rows+macro_depth-1)//macro_depth
+    expected_ports = dict(MACRO_PORTS, AA=low_bits, AB=low_bits)
     macro_lanes = (row_width+15)//16
-    macros = [(name, cell) for name, cell in cells.items() if cell['type'] == 'RAMTP128X16']
+    macros = [(name, cell) for name, cell in cells.items() if cell['type'] == macro_type]
     assert len(macros) == banks*macro_lanes, (len(macros), banks*macro_lanes)
-    assert not any(cell['type'] == 'RAMTP1024X16' for cell in cells.values())
+    assert not any(cell['type'].startswith('RAMTP') and cell['type'] != macro_type for cell in cells.values())
     assert not any(cell['type'].startswith('$mem') for cell in cells.values())
     assert not module.get('memories')
     assert not any('regfile' in cell['type'] or 'latch' in cell['type'].lower()
@@ -143,7 +147,7 @@ def check_asic(module, lanes, rows):
     write_row = row_bits('i_row_data') + module['ports']['i_row_tile_done']['bits']
     output_row = row_bits('o_row_data') + module['ports']['o_row_tile_done']['bits']
     read_bank = net('u_rows.read_bank')
-    expected_bank_input = (read_address+['0']*(7+len(read_bank)))[7:7+len(read_bank)]
+    expected_bank_input = (read_address+['0']*(low_bits+len(read_bank)))[low_bits:low_bits+len(read_bank)]
     bank_register_bits = 0
     for index, bit in enumerate(read_bank):
         if isinstance(bit, str):
@@ -167,10 +171,10 @@ def check_asic(module, lanes, rows):
         bank, lane = map(int, match.groups())
         by_location[bank, lane] = cell
         ports = cell['connections']
-        assert {port: len(value) for port, value in ports.items()} == MACRO_PORTS
+        assert {port: len(value) for port, value in ports.items()} == expected_ports
         assert ports['CLKA'] == ports['CLKB'] == module['ports']['clk']['bits']
-        assert ports['AA'] == (read_address+['0']*7)[:7]
-        assert ports['AB'] == (write_address+['0']*7)[:7]
+        assert ports['AA'] == (read_address+['0']*low_bits)[:low_bits]
+        assert ports['AB'] == (write_address+['0']*low_bits)[:low_bits]
         assert ports['RET1N'] == ports['COLLDISN'] == ['1']
         assert ports['EMAA'] == ports['EMAB'] == ['0', '1', '0']
         expected_data = (write_row+['0']*16)[16*lane:16*lane+16]
@@ -190,8 +194,8 @@ def check_asic(module, lanes, rows):
             for read_enable in (0, 1):
                 for write_enable in (0, 1):
                     overrides = {}
-                    set_value(overrides, read_address, selected_bank*128)
-                    set_value(overrides, write_address, write_bank*128)
+                    set_value(overrides, read_address, selected_bank*macro_depth)
+                    set_value(overrides, write_address, write_bank*macro_depth)
                     set_value(overrides, net('storage_i_rd_en'), read_enable)
                     set_value(overrides, net('storage_i_wr_en'), write_enable)
                     values = CombinationalValues(module, overrides)
@@ -204,9 +208,9 @@ def check_asic(module, lanes, rows):
     address_width, count_width = max(1, (rows-1).bit_length()), max(1, rows.bit_length())
     ff_bound = 2*address_width + 3*count_width + 1 + max(1, (banks-1).bit_length())
     assert flip_flops <= ff_bound, (flip_flops, ff_bound)
-    return dict(macro_count=len(macros), macro_depth=128, macro_width=16,
-                physical_storage_bits=len(macros)*2048, logical_storage_bits=rows*row_width,
-                unused_storage_bits=len(macros)*2048-rows*row_width,
+    return dict(macro_count=len(macros), macro_depth=macro_depth, macro_type=macro_type, macro_width=16,
+                physical_storage_bits=len(macros)*macro_depth*16, logical_storage_bits=rows*row_width,
+                unused_storage_bits=len(macros)*macro_depth*16-rows*row_width,
                 inferred_memories=0, control_flip_flops=flip_flops, control_flip_flop_bound=ff_bound,
                 write_data_bits_checked=len(macros)*16, write_mask_bits_checked=len(macros)*16,
                 read_data_bits_checked=banks*row_width, read_bank_hold_bits_checked=bank_register_bits,

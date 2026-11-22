@@ -31,7 +31,7 @@ def product_bit_paths(design):
         paths = connected_paths(design, limit=1, group_limit=0,
             root_filter=lambda cell_name, cell, port: cell_name == name,
             sink_filter=lambda cell_name, cell, port:
-                cell.get('attributes', {}).get('fpga_register_origin') == 'coordinate_good_s1')
+                cell.get('attributes', {}).get('fpga_register_origin') in ('coordinate_good_s1', 'coordinate_good[1]', 'coordinate_good [1]'))
         if not paths['graph_complete']:
             raise RuntimeError('乘积输出位到坐标有效结果的路径未完整分析')
         results[part] = paths
@@ -108,7 +108,7 @@ def main():
             paths = connected_paths(design, limit=1, group_limit=0,
                 root_filter=lambda cell_name, cell, port: cell['type'] == 'DSP48E1',
                 sink_filter=lambda cell_name, cell, port:
-                    cell.get('attributes', {}).get('fpga_register_origin') == 'coordinate_good_s1')
+                    cell.get('attributes', {}).get('fpga_register_origin') in ('coordinate_good_s1', 'coordinate_good[1]', 'coordinate_good [1]'))
             if not paths['graph_complete']:
                 raise RuntimeError('坐标计算路径未完整分析')
             result['dsp_to_coordinate_good'] = paths

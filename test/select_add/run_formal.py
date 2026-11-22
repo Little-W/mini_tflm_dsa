@@ -15,7 +15,7 @@ HERE = Path(__file__).resolve().parent
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--widths", type=int, nargs="+", default=[1, 8, 16, 17, 32, 48])
+    parser.add_argument("--widths", type=int, nargs="+", default=[1, 8, 12, 16, 17, 24, 32, 48, 64, 128])
     parser.add_argument("--worker", type=Path)
     args = parser.parse_args()
     if args.worker:
@@ -28,7 +28,7 @@ def main():
     summary = {
         "method": "Yosys combinational SAT with unconstrained inputs",
         "latency_cycles": 0,
-        "properties_per_width": 3,
+        "properties_per_width": 2,
         "source_sha256": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
                           for path in sources},
         "runs": [],

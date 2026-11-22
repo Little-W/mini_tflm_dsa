@@ -50,8 +50,8 @@ def main():
     if counts.get('BUFGCE')!=1:raise RuntimeError('Clock buffer declaration count differs')
     if counts.get('ws_systolic_cell')!=256 or counts.get('registered_vector_pe')!=8:
         raise RuntimeError('Compute array dimensions differ')
-    pe_parameters=elaboration.constant_parameters(tree,'registered_vector_pe',('p_use_dsp',))
-    if pe_parameters['p_use_dsp']!=1 or counts.get('vector_pe',0)!=0:
+    pe_parameters=elaboration.constant_parameters(tree,'registered_vector_pe',('p_accumulator_preselected',))
+    if counts.get('vector_pe',0)!=counts['registered_vector_pe']:
         raise RuntimeError('Registered FPGA vector arithmetic differs')
     if counts.get('ps_frame_store')!=1 or state['declaration_counts']['ia_ps_shared_ram']!=9:raise RuntimeError('Storage instance count differs')
     memories=[d for d in state['sequential_declarations'] if d['buffer_category']=='ia_ps_shared_ram']

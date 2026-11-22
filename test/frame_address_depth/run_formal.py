@@ -20,7 +20,7 @@ def digest(path):
 
 
 def profiles():
-    return [dict(p_size=size, p_use_dsp=0, p_ready_mask_abort=mask)
+    return [dict(p_size=size, p_ready_mask_abort=mask)
             for size, mask in ((1,0),(1,1),(2,1),(3,1),(16,0),(16,1),(17,1),(32,1),(64,1))]
 
 

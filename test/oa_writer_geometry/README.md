@@ -1,5 +1,7 @@
 # 输出写回的配置与行组计算
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 ## 当前结构
 
 `oa_writer` 在配置接收、请求准备和 DMA 启动之间准备行组信息，输出数据、顺序、背压、请求、启动和完成事件均保持逐周期一致。
@@ -65,23 +67,17 @@
 ```sh
 python3 test/oa_writer_geometry/run_formal.py --synthesis \
   --out build/oa_writer_geometry/formal_synthesis
-
 python3 test/oa_writer_geometry/run_formal.py \
   --profiles 4:32:4 16:64:29 16:64:1 12:64:29 16:128:29 16:64:29:40 \
   --out build/oa_writer_geometry/formal_simulation
-
 python3 test/oa_writer_geometry/run_equivalence.py \
   --out build/oa_writer_geometry/numeric
-
 python3 test/oa_writer_geometry/run_four_state.py \
   --out build/oa_writer_geometry/four_state
-
 python3 scripts/fpga/open_fpga_synth.py \
   --case-config test/oa_writer_geometry/synthesis_cases.json --cases oa_writer \
   --out build/oa_writer_geometry/synthesis \
-  --wide-alu-dsp-budget 740 --rtl-dsp-attributes \
   --max-register-path-cells 10 --require-register-path-limit
-
 python3 test/oa_fifo_timing/run_formal.py --writer-profiles 16:64:29 \
   --out build/oa_writer_geometry/fifo_integration
 ```

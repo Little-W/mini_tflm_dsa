@@ -88,7 +88,7 @@ module vector_offer_system_top (
                 assert(dut.run_vector);
                 assert(!ordinary_request);
                 assert(!dut.dw_rd_req && !dut.dw_rd_start && !dut.win_req_valid);
-                assert(!dut.ctrl_calc_start && !dut.exec_dma_job_init);
+                assert(!dut.u_matrix_engine.ctrl_calc_start && !dut.exec_dma_job_init);
             end
         end
     end

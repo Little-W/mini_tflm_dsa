@@ -1,260 +1,205 @@
 {
   "passed": true,
-  "functional_comparison": {
-    "passed": true,
-    "model": "完整状态同步 SRAM 功能模型；同地址并发读写终止仿真",
-    "reference": "同一控制 RTL 的通用 regfile 分支",
-    "foundry_model_used": false,
-    "source_sha256": {
-      "rtl/npu/writeback/requant_group_buffer.sv": "922dbd584bf591fed0a0d2fcce2bb63fb1b966615f0e40b435f367117d692c30",
-      "rtl/common/regfile.v": "61843ca603cdb39651b9a02d785e9015fc7fefc0e8e31064cfb0008523b309df",
-      "asic/rtl/smic40_sram_1r1w.sv": "841b5894b63e0a67eb8484034a1aed92ae9dfdc5f96095012900521440694b0b",
-      "test/requant_group_buffer_memory/sram_functional.sv": "d3f78b28c6df525f15de3de6791e25cf855a90d106949b5b3947ba3c7ae3250e",
-      "test/requant_group_buffer_memory/tb_memory.sv": "23ca212f9e6cb37971cbdf195b9e6424051f63ce0f6012499ad07ac464f2b940",
-      "test/requant_group_buffer_memory/run.py": "fa6578bbca3df3b7eeec4a6974365b966678ca49b22ebf9403c28d2e2abb232c"
-    },
-    "reference_sha256": "f66ea2b432b6583b4b63ec90e2fc9d85cdeaa149e6bd6e4bb6cbf9b9864762c7",
-    "binary_sha256": "ca4c719e61f5d5b642d1a209cea6ba3ce1e7531089b918b1af20a52eb3ea1c3a",
-    "verilator_version": "rev vUNKNOWN-built20260516-4e853d8",
-    "profiles": [
-      {
-        "rows": 1,
-        "lanes": 1,
-        "logical_bits": 33,
-        "writes": 18,
-        "reads": 16,
-        "retirements": 16,
-        "holds": 115,
-        "simultaneous_accesses": 0,
-        "cycles": 137,
-        "full_groups": 18,
-        "clears": 1,
-        "resets": 2
-      },
-      {
-        "rows": 3,
-        "lanes": 1,
-        "logical_bits": 99,
-        "writes": 41,
-        "reads": 37,
-        "retirements": 37,
-        "holds": 155,
-        "simultaneous_accesses": 14,
-        "cycles": 199,
-        "full_groups": 10,
-        "clears": 1,
-        "resets": 2
-      },
-      {
-        "rows": 16,
-        "lanes": 1,
-        "logical_bits": 528,
-        "writes": 179,
-        "reads": 162,
-        "retirements": 162,
-        "holds": 330,
-        "simultaneous_accesses": 58,
-        "cycles": 499,
-        "full_groups": 6,
-        "clears": 1,
-        "resets": 2
-      },
-      {
-        "rows": 127,
-        "lanes": 1,
-        "logical_bits": 4191,
-        "writes": 1260,
-        "reads": 1242,
-        "retirements": 1242,
-        "holds": 1528,
-        "simultaneous_accesses": 426,
-        "cycles": 2777,
-        "full_groups": 6,
-        "clears": 1,
-        "resets": 2
-      },
-      {
-        "rows": 128,
-        "lanes": 1,
-        "logical_bits": 4224,
-        "writes": 1346,
-        "reads": 1328,
-        "retirements": 1328,
-        "holds": 1577,
-        "simultaneous_accesses": 489,
-        "cycles": 2912,
-        "full_groups": 6,
-        "clears": 1,
-        "resets": 2
-      },
-      {
-        "rows": 129,
-        "lanes": 1,
-        "logical_bits": 4257,
-        "writes": 1466,
-        "reads": 1448,
-        "retirements": 1448,
-        "holds": 1767,
-        "simultaneous_accesses": 539,
-        "cycles": 3222,
-        "full_groups": 6,
-        "clears": 1,
-        "resets": 2
-      },
-      {
-        "rows": 511,
-        "lanes": 1,
-        "logical_bits": 16863,
-        "writes": 5530,
-        "reads": 5512,
-        "retirements": 5512,
-        "holds": 5984,
-        "simultaneous_accesses": 2028,
-        "cycles": 11503,
-        "full_groups": 6,
-        "clears": 1,
-        "resets": 2
-      },
-      {
-        "rows": 512,
-        "lanes": 16,
-        "logical_bits": 262656,
-        "writes": 5957,
-        "reads": 5939,
-        "retirements": 5939,
-        "holds": 6491,
-        "simultaneous_accesses": 2199,
-        "cycles": 12437,
-        "full_groups": 6,
-        "clears": 1,
-        "resets": 2
-      },
-      {
-        "rows": 513,
-        "lanes": 1,
-        "logical_bits": 16929,
-        "writes": 5893,
-        "reads": 5875,
-        "retirements": 5875,
-        "holds": 6184,
-        "simultaneous_accesses": 2207,
-        "cycles": 12066,
-        "full_groups": 6,
-        "clears": 1,
-        "resets": 2
-      },
-      {
-        "rows": 1024,
-        "lanes": 1,
-        "logical_bits": 33792,
-        "writes": 11504,
-        "reads": 11486,
-        "retirements": 11486,
-        "holds": 11887,
-        "simultaneous_accesses": 4196,
-        "cycles": 23380,
-        "full_groups": 6,
-        "clears": 1,
-        "resets": 2
-      }
-    ],
-    "default_logical_storage_bits": 262656,
-    "default_sram_instances": 132,
-    "default_physical_storage_bits": 270336,
-    "default_physical_storage_bytes": 33792,
-    "total_row_reads": 33045,
-    "compared_consumed_bits": 3941205,
-    "full_storage_zero_and_one_checks": true,
-    "coverage": [
-      "全部数据位和完成标志",
-      "满容量预留与背压",
-      "读写并发",
-      "地址回绕",
-      "跨宏深度边界",
-      "非二的整数次幂深度",
-      "暂停保持",
-      "中途清空",
-      "中途复位"
-    ]
+  "model": "完整状态同步 SRAM 功能模型；同地址并发读写终止仿真",
+  "reference": "同一控制 RTL 的通用 regfile 分支",
+  "foundry_model_used": false,
+  "source_sha256": {
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/writeback/requant_group_buffer.sv": "6f6f73f37eb16a04de75f6ae476272e25e606f24827ad93a4c09c41f25543d50",
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/asic/rtl/smic40_sram_1r1w.sv": "841b5894b63e0a67eb8484034a1aed92ae9dfdc5f96095012900521440694b0b",
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/requant_group_buffer_memory/sram_functional.sv": "4cd3b6a8fe0e51eb33dc4879f71cad27cf1b7dea56347ac4f5e5fcfdd1ca30bb",
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/requant_group_buffer_memory/tb_memory.sv": "23ca212f9e6cb37971cbdf195b9e6424051f63ce0f6012499ad07ac464f2b940",
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/monitors/requant_group_buffer_observer.sv": "5582f883510b0710c916142216585c3369f0a4b39ecbc494e69665bac3f2249f",
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/requant_group_buffer_memory/run.py": "812297dadb9ffe285098034d98177b3664990db0c540957a56bcc5dc1fee537e"
   },
-  "control_induction": {
-    "passed": true,
-    "source_sha256": {
-      "rtl/npu/writeback/requant_group_buffer.sv": "922dbd584bf591fed0a0d2fcce2bb63fb1b966615f0e40b435f367117d692c30",
-      "rtl/common/regfile.v": "61843ca603cdb39651b9a02d785e9015fc7fefc0e8e31064cfb0008523b309df",
-      "test/requant_time_share/buffer_proof.sv": "09f748036b4d509a4c93916eed5ce294685ca6fad1ed030bf3943f988faf40f4",
-      "test/requant_group_buffer_memory/run_control.py": "05dfb00d3152fc8f4f5ffa0cb05066579b3fb7a598883a3f83d2c550211ada84"
+  "reference_sha256": "f95a570711d4d44700b315eee92eb6a384ba4d1223a517b364f40fb9fc7ab4b7",
+  "reference_storage_sha256": "69f769668466ceb429f9d2ed0a5fcf4772434340f171ac87ffcce4bcf9936226",
+  "reference_observer_sha256": "a770d58110207fad68d051906467019e7789243e90a43bf6a6e2ca626ce13190",
+  "binary_sha256": "ccf5b53ad87b42aa009742a3978a85c0f3b88969ac31f58e89c6c309d12fb611",
+  "verilator_version": "Verilator 5.054 2026-11-01 rev v5.054",
+  "compile_command": [
+    "/home/agent/.local/bin/verilator",
+    "--binary",
+    "--timing",
+    "--assert",
+    "-Wno-fatal",
+    "--sv",
+    "-DASIC_SRAM",
+    "--top-module",
+    "tb_requant_group_buffer_memory",
+    "--Mdir",
+    "/workspace/scratch/e1a5fa683a84/validation_requant_macro_numeric/obj",
+    "-j",
+    "2",
+    "-O1",
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/writeback/requant_group_buffer.sv",
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/regfile.v",
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/asic/rtl/smic40_sram_1r1w.sv",
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/requant_group_buffer_memory/sram_functional.sv",
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/requant_group_buffer_memory/tb_memory.sv",
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/monitors/requant_group_buffer_observer.sv",
+    "/workspace/scratch/e1a5fa683a84/validation_requant_macro_numeric/regfile_reference.sv",
+    "/workspace/scratch/e1a5fa683a84/validation_requant_macro_numeric/requant_group_buffer_reference.sv",
+    "/workspace/scratch/e1a5fa683a84/validation_requant_macro_numeric/requant_group_buffer_reference_observer.sv"
+  ],
+  "profiles": [
+    {
+      "rows": 1,
+      "lanes": 1,
+      "logical_bits": 33,
+      "writes": 18,
+      "reads": 16,
+      "retirements": 16,
+      "holds": 115,
+      "simultaneous_accesses": 0,
+      "cycles": 137,
+      "full_groups": 18,
+      "clears": 1,
+      "resets": 2
     },
-    "proof_sha256": "4e76a7a140cb70f5fb8606b71fbe558e64ccd6d697426f6d0f794bcebfd6b12c",
-    "profiles": [
-      {
-        "rows": 1,
-        "passed": true,
-        "script_sha256": "d311803efe16564f5b72fa7af530fc01e44378cf4245f7dc0f739eb814f9eced"
-      },
-      {
-        "rows": 3,
-        "passed": true,
-        "script_sha256": "6055e41ec53cb6683a2db2b6edf31b6432cfe8537fdf5e74c8290ec45ff98366"
-      },
-      {
-        "rows": 16,
-        "passed": true,
-        "script_sha256": "23944bb2b1fd1067e378bee0badafd19a5415e55fcfaae119779252fbebad5b9"
-      },
-      {
-        "rows": 127,
-        "passed": true,
-        "script_sha256": "db8c4a24e1ac4fade2017b4ca28c0ff1c91ab59a5a964b23d1fbd0d99e76d7b0"
-      },
-      {
-        "rows": 128,
-        "passed": true,
-        "script_sha256": "5f60972f4a165703204df9060fb7e05744de2373a04cf624667c1c086af16a90"
-      },
-      {
-        "rows": 129,
-        "passed": true,
-        "script_sha256": "4d3d4a78403bcb08c25cfdb295dd0a7e3c2e131dacefbee1c3973a6b8c9ff2d7"
-      },
-      {
-        "rows": 511,
-        "passed": true,
-        "script_sha256": "5894990c60544061365674f325e4c98f2c00b48be3d915966217b0ef99cf1b23"
-      },
-      {
-        "rows": 512,
-        "passed": true,
-        "script_sha256": "bbafa7b8c694f7f9bbe30ae7a516f43f37565709e2dc74d0d28dee8fdf198a51"
-      },
-      {
-        "rows": 513,
-        "passed": true,
-        "script_sha256": "096ab825b471db68e04fe70ad6afff4d8794e71a9f212eb7ec171bb52c60b859"
-      },
-      {
-        "rows": 1024,
-        "passed": true,
-        "script_sha256": "423517feed0dacc72d9c6433d925465c1716fe2c25609624faed5828137087cd"
-      }
-    ],
-    "properties": [
-      "整组预留覆盖全部未完成行",
-      "地址始终位于有效行范围",
-      "循环地址距离与未读取行数一致",
-      "同步 SRAM 不发生同地址读写"
-    ],
-    "assumptions": [
-      "整组仅在 ready 时预留，行数在 1 至容量之间",
-      "输入行数不超过已预留行数",
-      "输出只消费已发射的行"
-    ],
-    "unconstrained_inputs": [
-      "组到达时间",
-      "输入行到达时间",
-      "输出背压",
-      "流水完成时间",
-      "复位和清空"
-    ]
-  }
+    {
+      "rows": 3,
+      "lanes": 1,
+      "logical_bits": 99,
+      "writes": 41,
+      "reads": 37,
+      "retirements": 37,
+      "holds": 155,
+      "simultaneous_accesses": 14,
+      "cycles": 199,
+      "full_groups": 10,
+      "clears": 1,
+      "resets": 2
+    },
+    {
+      "rows": 16,
+      "lanes": 1,
+      "logical_bits": 528,
+      "writes": 179,
+      "reads": 162,
+      "retirements": 162,
+      "holds": 330,
+      "simultaneous_accesses": 58,
+      "cycles": 499,
+      "full_groups": 6,
+      "clears": 1,
+      "resets": 2
+    },
+    {
+      "rows": 127,
+      "lanes": 1,
+      "logical_bits": 4191,
+      "writes": 1260,
+      "reads": 1242,
+      "retirements": 1242,
+      "holds": 1528,
+      "simultaneous_accesses": 426,
+      "cycles": 2777,
+      "full_groups": 6,
+      "clears": 1,
+      "resets": 2
+    },
+    {
+      "rows": 128,
+      "lanes": 1,
+      "logical_bits": 4224,
+      "writes": 1346,
+      "reads": 1328,
+      "retirements": 1328,
+      "holds": 1577,
+      "simultaneous_accesses": 489,
+      "cycles": 2912,
+      "full_groups": 6,
+      "clears": 1,
+      "resets": 2
+    },
+    {
+      "rows": 129,
+      "lanes": 1,
+      "logical_bits": 4257,
+      "writes": 1466,
+      "reads": 1448,
+      "retirements": 1448,
+      "holds": 1767,
+      "simultaneous_accesses": 539,
+      "cycles": 3222,
+      "full_groups": 6,
+      "clears": 1,
+      "resets": 2
+    },
+    {
+      "rows": 511,
+      "lanes": 1,
+      "logical_bits": 16863,
+      "writes": 5530,
+      "reads": 5512,
+      "retirements": 5512,
+      "holds": 5984,
+      "simultaneous_accesses": 2028,
+      "cycles": 11503,
+      "full_groups": 6,
+      "clears": 1,
+      "resets": 2
+    },
+    {
+      "rows": 512,
+      "lanes": 16,
+      "logical_bits": 262656,
+      "writes": 5957,
+      "reads": 5939,
+      "retirements": 5939,
+      "holds": 6491,
+      "simultaneous_accesses": 2199,
+      "cycles": 12437,
+      "full_groups": 6,
+      "clears": 1,
+      "resets": 2
+    },
+    {
+      "rows": 513,
+      "lanes": 1,
+      "logical_bits": 16929,
+      "writes": 5893,
+      "reads": 5875,
+      "retirements": 5875,
+      "holds": 6184,
+      "simultaneous_accesses": 2207,
+      "cycles": 12066,
+      "full_groups": 6,
+      "clears": 1,
+      "resets": 2
+    },
+    {
+      "rows": 1024,
+      "lanes": 1,
+      "logical_bits": 33792,
+      "writes": 11504,
+      "reads": 11486,
+      "retirements": 11486,
+      "holds": 11887,
+      "simultaneous_accesses": 4196,
+      "cycles": 23380,
+      "full_groups": 6,
+      "clears": 1,
+      "resets": 2
+    }
+  ],
+  "default_logical_storage_bits": 262656,
+  "default_sram_instances": 33,
+  "default_physical_storage_bits": 540672,
+  "default_physical_storage_bytes": 67584,
+  "total_row_reads": 33045,
+  "compared_consumed_bits": 3941205,
+  "full_storage_zero_and_one_checks": true,
+  "coverage": [
+    "全部数据位和完成标志",
+    "满容量预留与背压",
+    "读写并发",
+    "地址回绕",
+    "跨宏深度边界",
+    "非二的整数次幂深度",
+    "暂停保持",
+    "中途清空",
+    "中途复位"
+  ]
 }

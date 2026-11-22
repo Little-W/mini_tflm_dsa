@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""证明显式 LUT 坐标等式和完整 IA 加载器的全部状态转移。"""
+"""证明普通 RTL 坐标等式和完整 IA 加载器的全部状态转移。"""
 import argparse
 import hashlib
 import json
@@ -12,7 +12,7 @@ import sys
 from models import prepare_models
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_current_source, read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = [Path('rtl/npu/loaders') / (name + '.sv')
@@ -68,7 +68,7 @@ def main():
         snapshots[label] = []
         for relative in SOURCES:
             data = (read_rtl_source(f'{args.reference_rev}:{relative}', cwd=ROOT)
-                    if label == 'reference' else (ROOT / relative).read_bytes())
+                    if label == 'reference' else read_current_source(ROOT / relative).encode())
             path = folder / relative.name
             path.write_bytes(data)
             snapshots[label].append(path)
@@ -85,7 +85,7 @@ def main():
         logic [p_width-1:0] sum;
         logic result;
         assign sum = i_a + i_b + p_width'(i_carry_in);
-        add_equal #(.p_width(p_width), .p_use_lut(1)) u_equal(
+        add_equal #(.p_width(p_width)) u_equal(
             .i_a(i_a), .i_b(i_b), .i_target(i_target),
             .i_carry_in(i_carry_in), .o_equal(result));
         assign o_equivalent = result == (sum == i_target);
@@ -105,7 +105,7 @@ def main():
         save()
         print(json.dumps(row), flush=True)
         if not row['passed']:
-            raise RuntimeError('LUT equality proof did not complete: ' + str(log))
+            raise RuntimeError('Coordinate equality proof did not complete: ' + str(log))
 
     for name in args.cases:
         commands = []

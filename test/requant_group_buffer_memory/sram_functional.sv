@@ -32,4 +32,34 @@ module RAMTP128X16 (
     end
 endmodule
 
+module RAMTP1024X16 (
+    output logic [15:0] QA,
+    input wire CLKA, CENA,
+    input wire [9:0] AA,
+    input wire CLKB, CENB,
+    input wire [15:0] WENB,
+    input wire [9:0] AB,
+    input wire [15:0] DB,
+    input wire [2:0] EMAA, EMAB,
+    input wire RET1N, COLLDISN
+);
+    logic [15:0] memory [0:1023];
+
+    always @(posedge CLKA) begin
+        if (!CENA) begin
+            if (!CENB && AA == AB && |(~WENB))
+                $fatal(1, "SRAM simultaneous read/write at address %0d", AA);
+            QA <= memory[AA];
+        end
+    end
+
+    always @(posedge CLKB) begin
+        if (!CENB) begin
+            for (int bit_index = 0; bit_index < 16; bit_index++) begin
+                if (!WENB[bit_index]) memory[AB][bit_index] <= DB[bit_index];
+            end
+        end
+    end
+endmodule
+
 `default_nettype wire

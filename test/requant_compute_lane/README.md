@@ -1,60 +1,36 @@
-# 独立量化算术通道
+# 统一量化通道验证
 
-`requant_compute_lane` 在同一个接受边沿保存有符号 INT32 数据、预处理乘数和七位移位量，依次完成完整 INT64 乘积、带溢出检查的移位、最近偶数舍入、输出偏移及激活范围裁剪。乘法使用四个 DSP，舍入与偏移共用一个 DSP。
+`requant_compute_lane` 接收一个有符号 INT32 累加值、预处理乘数和七位右移量，在七个使能边沿后同时提供 INT8 与 INT16 结果。`i_s16` 选择偏移处理方式。配置在一次任务及其流水排空期间保持稳定。
 
-## 接口与时序
+## 算术阶段
 
-输入到输出共有十二个使能采样边沿：三个乘法阶段、七个移位阶段、一个舍入加法阶段和一个输出阶段。
+| 使能边沿 | 操作 |
+|---|---|
+| 1 | 保存 INT32 输入；常规接口同时保存乘数 |
+| 2 | 保存四个有符号乘法部分积 |
+| 3 | 合并为完整 64 位乘积 |
+| 4 | 完成 32、16、8 位粗移位并保存必要的保护位 |
+| 5 | 完成 4、2、1 位细移位，生成商与最近偶数舍入增量 |
+| 6 | 合并商、舍入增量和输出偏移 |
+| 7 | 应用激活上下界和输出精度限制，保存结果 |
 
-- `i_en=0` 时，数值、有效位和尾列屏蔽状态共同保持。
-- `i_clear=1` 时，清除所有有效位及两个输出，清空优先于使能。
-- `rst_n=0` 异步清除有效位和输出；数值流水由有效位管理。
-- `i_valid` 表示一次批次输入，`i_lane_enable=0` 使该批次的两个数值输出均为零。
-- `i_s16`、`i_dst_offset` 和激活边界在有效流水期间保持。清空或流水排空后可以更新这些配置。
-- INT16 模式使用零输出偏移。INT8 和 INT16 输出均保留激活边界优先于目标位宽饱和的顺序。
+`p_delayed_parameters=1` 接收下一个边沿才到达的同步参数存储结果。数据首先进入输入寄存器，乘数在部分积计算时使用。该参数保持七个边沿的输出延迟，并与量化控制模块中的参数存储读取相配合。默认值为零，数据、乘数和移位量在同一输入边沿接收。
 
-模块复用 `registered_multiplier_s32`、`requant_shift_pipeline`、`requant_registered_sum` 和 `requant_activation_compare`。左右乘法输入均启用输入寄存器。乘法的完整输入与暂停证明见 [四 DSP 乘法器](../requant_four_dsp/README.md)，移位关系证明见 [量化移位](../requant_shift_clamp/README.md)。
+`i_en` 同时暂停数据和有效位。异步复位及 `i_clear` 清空有效位与输出；`i_clear` 的优先级高于 `i_en`。无效通道输出为零。
 
-## 数值与周期检查
+## 数值与控制检查
 
-`main.cpp` 使用独立的 128 位整数参考计算乘积、商、余数及舍入，负数除法显式转换为向下取整。通用 RTL、实际 FPGA 原语和实际综合后的 Verilog 使用同一个参考程序；C++ 编译启用未定义行为检查。
-
-每种实现均通过以下检查：
-
-| 项目 | 数量 |
-| --- | ---: |
-| 总周期 | 1,057,997 |
-| 有效结果 | 838,131 |
-| 定向输入 | 524,288 |
-| 随机输入 | 524,288 |
-| 暂停周期 | 73,578 |
-| 清空周期 | 3,129 |
-| 复位周期 | 468 |
-| 清空与暂停同时发生 | 787 |
-| 尾列屏蔽输入 | 42,431 |
-
-定向输入覆盖全部 128 种移位量、两种输出模式、16 个数值边界、16 个乘数边界和八组激活范围/偏移。所有周期检查公开有效位和两个完整输出，包括暂停期间保持和清空期间归零。
-
-## 独立综合
-
-Yosys 0.71、ABC9、Xilinx 7 系列原语下，所有公开输出均参与综合：405 个逻辑 LUT、12 个 SRL LUT、297 个触发器、5 个 DSP、18 个 CARRY4，无块 RAM。完整按位连接图的最长寄存器间组合路径为 9 个单元，位于舍入结果至输出裁剪寄存器。物理面积与完整 SoC 时序通过整机实现统计。
-
-`measurement.json` 保存源文件、原语库、实际综合网表和验证程序的 SHA-256，以及三个实现的检查结果。
-
-## 运行
-
-```sh
-python3 test/requant_compute_lane/run.py \
-  --out build/requant_compute_lane/numeric --jobs 2
-
-python3 scripts/fpga/open_fpga_synth.py \
-  --case-config test/requant_compute_lane/synthesis_cases.json \
-  --cases requant_compute_lane --out build/requant_compute_lane/synthesis
-
-python3 test/requant_compute_lane/run.py \
-  --out build/requant_compute_lane/mapped_numeric --variants mapped \
-  --mapped build/requant_compute_lane/synthesis/requant_compute_lane/mapped.v \
-  --jobs 2
+```bash
+python test/requant_compute_lane/run.py \
+  --out build/requant_compute_lane --verilator verilator --jobs 1 --variants generic
 ```
 
-独立综合使用 `requant_compute_lane` 为顶层，读取该模块以及 `vector_scalar_multiplier.sv`、`vec_requant.sv`，其余参数保持默认值。
+测试使用独立的 128 位整数除法与余数计算，覆盖全部 128 种移位量、乘法输入极值、两种精度、激活上下界、输出偏移、暂停、清空、复位和尾列屏蔽。C++ 测试启用未定义行为检查。当前检查完成 1,057,912 个周期、850,859 个有效输出、73,578 个暂停周期、3,129 次清空及 468 次复位。
+
+通道裁剪、有效位与清空的形式和四态检查可运行 `python test/requant_compute_lane/run_formal.py --out build/requant_lane_control`。检查覆盖全部 100 个数值输入位，另完成 131,072 次四态比较，其中包含 12,480 次已知有效输出比较。
+
+两级移位的完整输入形式检查位于 `test/requant_pipeline`。参数准备与模式选择分别由 `test/requant_parameter_prepare`、`test/requant_parameter_read` 检查。`test/requant_time_share` 与 `test/vector_shared_quant` 检查实际控制模块、存储、参数装载和任务共享行为。
+
+## 映射检查
+
+`synthesis_cases.json` 指向完整通道与普通算术依赖。映射后可将导出的 Verilog 文件传给 `run.py --variants mapped --mapped <文件>`，运行相同的独立数值测试。模块资源数量和组合级数应以对应源文件散列的实际映射结果为准。

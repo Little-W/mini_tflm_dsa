@@ -88,7 +88,9 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     reference = read_rtl_source(args.reference + ':' + str(SOURCE), cwd=ROOT, text=True)
     current = (ROOT / SOURCE).read_text()
-    registers = sorted(set(re.findall(r'\b(\w+)\s*<=', reference)))
+    reference_registers = set(re.findall(r'\b(\w+)\s*<=', reference))
+    current_registers = set(re.findall(r'\b(\w+)\s*<=', current))
+    registers = sorted(reference_registers & current_registers)
     original_file = out / 'reference.sv'
     reference_checks = INVARIANTS[INVARIANTS.index('        if (state == S_WRITE) begin'):]
     reference_checks = reference_checks.replace('if (state == S_WRITE)',

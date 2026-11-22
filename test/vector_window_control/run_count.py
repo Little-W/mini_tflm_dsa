@@ -8,6 +8,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source
+
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -23,7 +26,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     for name in('source-root','reference-root','tool-root','out'):parser.add_argument('--'+name,type=Path,required=True)
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    rel=Path('rtl/npu/conv/vector_engine.sv');current=(args.source_root/rel).read_text();reference=(args.reference_root/rel).read_text()
+    rel=Path('rtl/npu/conv/vector_engine.sv');current=read_current_source(args.source_root/rel);reference=read_current_source(args.reference_root/rel)
     pattern=r'add_equal #\([^\n]+\) u_window_count_equal \(.*?\n  \);'
     before=re.search(pattern,reference,re.S)[0];after=re.search(pattern,current,re.S)[0]
     model=out/'model.sv'
@@ -70,7 +73,8 @@ endmodule
     exe=out/'simulation.vvp'
     run(['/home/agent/.local/bin/iverilog','-g2012','-DXILINX_FPGA','-s','tb','-o',exe,dependency,model,bench],out/'compile.log')
     run(['/home/agent/.local/bin/vvp',exe],out/'simulate.log')
-    report={'passed':True,'source_sha256':sha(args.source_root/rel),'reference_sha256':sha(args.reference_root/rel),
+    report={'passed':True,'source_sha256':hashlib.sha256(current.encode()).hexdigest(),
+            'reference_sha256':hashlib.sha256(reference.encode()).hexdigest(),
             'input_bits':97,'input_constraints':'none','formal_log_sha256':sha(out/'prove.log'),
             'four_state_comparisons':100000,'four_state_log_sha256':sha(out/'simulate.log'),
             'dependency_sha256':sha(dependency),'test_sha256':sha(Path(__file__))}

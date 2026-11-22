@@ -6,6 +6,10 @@ import json
 from pathlib import Path
 
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--formal', type=Path, required=True)
@@ -14,7 +18,7 @@ def main():
     parser.add_argument('--write-overlap', type=int, choices=(0, 1), default=1)
     args = parser.parse_args()
     formal = args.formal.resolve()
-    report = json.loads((formal / 'summary.json').read_text())
+    report = json.loads(read_rtl_text(formal / 'summary.json'))
     if not report['passed']:
         raise ValueError('完整状态证明尚未通过')
     parameters = dict(ADDR_WIDTH=32, DATA_WIDTH=64, CPU_MEM_DP=65536,

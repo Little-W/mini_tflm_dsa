@@ -8,6 +8,9 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from requant_test_utils import controller_module
 
 ROOT = Path(__file__).resolve().parents[2]
 RTL = Path('rtl/npu/writeback/vec_requant.sv')
@@ -18,7 +21,7 @@ def digest(path):
 
 
 def qualification_unit(text, name):
-    text = text.split('module vec_requant_full #(', 1)[1]
+    text = controller_module(text)
     configuration = re.search(r'  wire cfg_per_channel_eff =.*?;', text, re.S)[0]
     if '  wire cfg_control_per_channel;' in text:
         first = text.index('  wire cfg_control_per_channel;')

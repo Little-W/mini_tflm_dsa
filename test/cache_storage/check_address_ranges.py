@@ -19,7 +19,10 @@ def main():
     args = parser.parse_args()
     root, out = args.source_root.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    source = (root / 'rtl/npu/dma/cache/conv_read_cache.sv').read_text()
+    source_path = root / 'rtl/npu/dma/cache/conv_windowed_cache.sv'
+    if not source_path.is_file():
+        source_path = source_path.with_name('conv_read_cache.sv')
+    source = source_path.read_text()
     start = source.index('  assign range_i_a =')
     block = source[start:source.index('  localparam int p_cfg_idle_width', start)]
     expressions = '\n'.join(re.search(r'  assign ' + name + r'\s*=.*?;', source, re.S)[0]

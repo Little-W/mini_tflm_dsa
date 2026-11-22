@@ -11,6 +11,9 @@ import sys
 from extract import ROOT, TOP, CTRL, ARB, ADD, REFERENCE, digest, source_at, bias_module, controller_wrapper
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 def load_module(name,path):
     spec=importlib.util.spec_from_file_location(name,path)
     result=importlib.util.module_from_spec(spec)
@@ -161,7 +164,7 @@ def main():
                                         for p,value in data.items()}
         controller=folder/'controller.sv'
         controller.write_text(bias_module(data[TOP])+controller_wrapper(data[CTRL]))
-        ports=json.loads((formal/f'controller_w32_s16_b64_lut1_{label}.json').read_text())['modules']['controller_compare']['ports']
+        ports=json.loads(read_rtl_text(formal/f'controller_w32_s16_b64_lut1_{label}.json'))['modules']['controller_compare']['ports']
         registered=folder/'controller_measure.sv'
         registered.write_text(registered_wrapper('controller_compare',ports,
             '#(.REG_WIDTH(32),.SIZE(16),.BUS_WIDTH(64),.p_admission_use_lut(1\'b1))'))
@@ -180,7 +183,7 @@ def main():
         with log.open('w') as stream:
             subprocess.run([sys.executable,str(ROOT/'scripts/fpga/open_fpga_synth.py'),'--worker',str(script)],
                 cwd=ROOT,stdout=stream,stderr=subprocess.STDOUT,check=True,timeout=90)
-        ports=json.loads(raw.read_text())['modules']['return_control']['ports']
+        ports=json.loads(read_rtl_text(raw))['modules']['return_control']['ports']
         registered_return=folder/'return_measure.sv'
         registered_return.write_text(registered_wrapper('return_control',ports))
         cases['return_'+label]={'top':'measurement_top','sources':[str(return_path),str(registered_return),str(ROOT/guard_path)],

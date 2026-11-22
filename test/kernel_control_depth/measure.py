@@ -65,7 +65,6 @@ def main():
     command = [sys.executable, str(ROOT / "scripts/fpga/open_fpga_synth.py"),
                "--source-root", str(source), "--case-config", str(config),
                "--cases", "reference", "current", "--out", str(out / "synthesis"),
-               "--wide-alu-dsp-budget", "740", "--rtl-dsp-attributes",
                "--max-register-path-cells", "10"]
     subprocess.run(command, cwd=ROOT, check=True)
     if hashes != {str(path.relative_to(ROOT)): digest(path) for path in paths}:

@@ -13,6 +13,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = "rtl/soc/picorv32_npu.v"
 STATE_WIDTHS = {
@@ -36,7 +39,7 @@ def run(command: list[str], log: Path, timeout: int = 900) -> str:
     with log.open("w") as stream:
         subprocess.run(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT,
                        timeout=timeout, check=True)
-    return log.read_text()
+    return read_rtl_text(log)
 
 
 def module_text(text: str, name: str) -> str:
@@ -265,7 +268,7 @@ def main() -> None:
     source_hash = digest(original)
     module_file = out / "division_modules.v"
     module_file.write_text("\n\n".join(
-        module_text(source.read_text(), "division_" + label)
+        module_text(read_rtl_text(source), "division_" + label)
         for label, source in sources.items()))
     result = {"passed": False, "reference": args.reference,
               "source_sha256": source_hash, "reference_sha256": digest(sources["reference"]),

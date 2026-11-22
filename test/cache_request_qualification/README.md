@@ -1,5 +1,7 @@
 # 缓存请求资格与预取读取
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 `conv_windowed_cache` 对四个查询位置分别计算填充冲突和组号匹配，请求出队时选择对应的单比特结果。实际数据读取地址、同拍填充转发和输出周期保持一致。
 
 预取描述与查询快照更新时同时保存四个组号匹配结果。后续预取接收直接使用匹配状态。活动预取项的动态单路读取与固定条目的并行比较分别采用行为级存储，写入事件相同；已有接收寄存级参与块存储器读取推断。全部存储和算术均通过 RTL 描述实现。
@@ -41,7 +43,7 @@ python3 test/cache_request_qualification/run_conflict_four_state.py --source-roo
 python3 test/cache_request_qualification/run_valid_four_state.py --source-root . --reference-root build/cache_request_reference --out build/cache_request_qualification/valid_four_state
 python3 test/cache_pipeline/run.py --source-root . --fpga --bus-width 64 --read-width 64 --line-bytes 128 --cache-bytes 4096 --profiles 1:2 2:2 --jobs 1 --out build/cache_request_qualification/pipeline
 python3 test/conv_frontend/tools/run_numeric.py --source-root . --fpga --sizes 16 --continuous --out build/cache_request_qualification/frontend
-python3 scripts/fpga/open_fpga_synth.py --source-root . --case-config test/cache_request_qualification/synthesis_cases.json --cases windowed_cache --out build/cache_request_qualification/synthesis --wide-alu-dsp-budget 740 --rtl-dsp-attributes --max-register-path-cells 10
+python3 scripts/fpga/open_fpga_synth.py --source-root . --case-config test/cache_request_qualification/synthesis_cases.json --cases windowed_cache --out build/cache_request_qualification/synthesis --max-register-path-cells 10
 ```
 
 `validation.json` 保存参数、通过数量、源代码散列和原始报告位置。详细证明日志与逐事务数据保存在对应测试目录。

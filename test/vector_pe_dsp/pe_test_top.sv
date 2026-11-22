@@ -12,12 +12,15 @@ module pe_test_top (
     vector_pe #(.ENABLE_EXTENDED_MULTIPLY(1'b1)) u_extended (
         .op(i_op), .a(i_a), .b(i_b), .acc(i_acc), .result(o_extended)
     );
-    registered_vector_pe #(.p_use_dsp(1'b1)) u_candidate (
+    registered_vector_pe u_candidate (
         .clk(clk), .i_en(i_en), .i_op(i_op), .i_a(i_a), .i_b(i_b), .i_acc(i_acc),
         .o_result(o_result)
     );
-    registered_vector_pe #(.p_use_dsp(1'b0)) u_reference (
-        .clk(clk), .i_en(i_en), .i_op(i_op), .i_a(i_a), .i_b(i_b), .i_acc(i_acc),
-        .o_result(o_reference)
-    );
+    logic signed [15:0] saved_a,saved_b;
+    logic signed [31:0] saved_acc;
+    always_ff @(posedge clk)begin
+        if(i_en)begin saved_a<=i_a;saved_b<=i_b;saved_acc<=i_acc;end
+    end
+    vector_pe #(.ENABLE_EXTENDED_MULTIPLY(1'b0)) u_reference(
+        .op(i_op),.a(saved_a),.b(saved_b),.acc(saved_acc),.result(o_reference));
 endmodule

@@ -1,0 +1,296 @@
+{
+  "asic_numeric": {
+    "passed": true,
+    "size": 16,
+    "address_width": 32,
+    "ready_mask_abort": 1,
+    "cancellation_phases": [
+      {
+        "age": 1,
+        "abort": 358,
+        "reset": 126
+      },
+      {
+        "age": 2,
+        "abort": 357,
+        "reset": 126
+      },
+      {
+        "age": 3,
+        "abort": 357,
+        "reset": 126
+      },
+      {
+        "age": 4,
+        "abort": 357,
+        "reset": 126
+      },
+      {
+        "age": 5,
+        "abort": 357,
+        "reset": 126
+      },
+      {
+        "age": 6,
+        "abort": 357,
+        "reset": 126
+      },
+      {
+        "age": 7,
+        "abort": 357,
+        "reset": 126
+      },
+      {
+        "age": 8,
+        "abort": 358,
+        "reset": 126
+      },
+      {
+        "age": 9,
+        "abort": 357,
+        "reset": 126
+      },
+      {
+        "age": 10,
+        "abort": 357,
+        "reset": 126
+      },
+      {
+        "age": 11,
+        "abort": 357,
+        "reset": 126
+      },
+      {
+        "age": 12,
+        "abort": 357,
+        "reset": 126
+      }
+    ],
+    "result_latency_cycles": 11,
+    "pipeline_products": 1,
+    "asic": true,
+    "source_sha256": {
+      "rtl/npu/top/frame_address_prepare.sv": "2d5e2017b2b995ba3ead68ef2b6f882768cafbe6739cd18952aec3050f3a82ce",
+      "test/frame_address/frame_address_tb.sv": "66508c69117133f1891924faf1e4fbac5da4054be2358f06825999082f1039c5",
+      "/workspace/scratch/e1a5fa683a84/validation_frame_pipeline_asic/dsp48e1.sv": "05f9622a2cc1b62d4d35c8588abdd26e1718c9e8ac0c584af4b3ce1aa36e21bd",
+      "rtl/common/parallel_prefix_add.sv": "e302438e05d73bb8859ca288c91fec89791e9cb97067fbbf575a8daf4fbb6221",
+      "test/frame_address/run.py": "0cac6008afdd52b228a486d9c33449e3ee0ee42990163b7dfe2d9b44522f536c"
+    },
+    "mapped_netlist": null,
+    "mapped_netlist_sha256": null,
+    "primitive_models": [
+      "DSP48E1"
+    ],
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "binary_sha256": "3d10cc2ccfb645d6812406fb67df71fcc72c9f411d2e6937b48c1d0330c2c0c7",
+    "command": [
+      "/home/agent/.local/bin/verilator",
+      "--binary",
+      "--timing",
+      "--assert",
+      "-sv",
+      "-Wno-fatal",
+      "--top-module",
+      "frame_address_tb",
+      "--Mdir",
+      "/workspace/scratch/e1a5fa683a84/validation_frame_pipeline_asic/obj",
+      "-Gp_ready_mask_abort=1",
+      "-Gp_pipeline_products=1",
+      "-DASIC_SYNTHESIS=1",
+      "-j",
+      "1",
+      "-CFLAGS",
+      "-std=c++20 -O1",
+      "-MAKEFLAGS",
+      "CFG_CXXFLAGS_PCH_I=-include OPT_FAST=-O1 OPT_SLOW=-O0",
+      "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/top/frame_address_prepare.sv",
+      "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/frame_address/frame_address_tb.sv",
+      "/workspace/scratch/e1a5fa683a84/validation_frame_pipeline_asic/dsp48e1.sv",
+      "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv"
+    ],
+    "completed": 36746,
+    "cancelled": 4286,
+    "reset_cases": 1512,
+    "wait_checks": 185278,
+    "cycles": 712260,
+    "abort_ready_checks": 4287,
+    "idle_abort_checks": 1
+  },
+  "fpga_numeric": {
+    "passed": true,
+    "size": 16,
+    "address_width": 32,
+    "ready_mask_abort": 0,
+    "cancellation_phases": [
+      {
+        "age": 1,
+        "abort": 390,
+        "reset": 138
+      },
+      {
+        "age": 2,
+        "abort": 389,
+        "reset": 138
+      },
+      {
+        "age": 3,
+        "abort": 390,
+        "reset": 138
+      },
+      {
+        "age": 4,
+        "abort": 390,
+        "reset": 137
+      },
+      {
+        "age": 5,
+        "abort": 389,
+        "reset": 137
+      },
+      {
+        "age": 6,
+        "abort": 389,
+        "reset": 137
+      },
+      {
+        "age": 7,
+        "abort": 390,
+        "reset": 138
+      },
+      {
+        "age": 8,
+        "abort": 390,
+        "reset": 138
+      },
+      {
+        "age": 9,
+        "abort": 389,
+        "reset": 137
+      },
+      {
+        "age": 10,
+        "abort": 390,
+        "reset": 137
+      },
+      {
+        "age": 11,
+        "abort": 390,
+        "reset": 137
+      }
+    ],
+    "result_latency_cycles": 10,
+    "pipeline_products": 0,
+    "asic": false,
+    "source_sha256": {
+      "rtl/npu/top/frame_address_prepare.sv": "2d5e2017b2b995ba3ead68ef2b6f882768cafbe6739cd18952aec3050f3a82ce",
+      "test/frame_address/frame_address_tb.sv": "66508c69117133f1891924faf1e4fbac5da4054be2358f06825999082f1039c5",
+      "/workspace/scratch/e1a5fa683a84/validation_frame_pipeline_fpga/dsp48e1.sv": "05f9622a2cc1b62d4d35c8588abdd26e1718c9e8ac0c584af4b3ce1aa36e21bd",
+      "rtl/common/parallel_prefix_add.sv": "e302438e05d73bb8859ca288c91fec89791e9cb97067fbbf575a8daf4fbb6221",
+      "test/frame_address/run.py": "0cac6008afdd52b228a486d9c33449e3ee0ee42990163b7dfe2d9b44522f536c"
+    },
+    "mapped_netlist": null,
+    "mapped_netlist_sha256": null,
+    "primitive_models": [
+      "DSP48E1"
+    ],
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "binary_sha256": "14363c4a9762a96511da65887ac32f63a5589674d6f46a74e2f8fbf00ff4843e",
+    "command": [
+      "/home/agent/.local/bin/verilator",
+      "--binary",
+      "--timing",
+      "--assert",
+      "-sv",
+      "-Wno-fatal",
+      "--top-module",
+      "frame_address_tb",
+      "--Mdir",
+      "/workspace/scratch/e1a5fa683a84/validation_frame_pipeline_fpga/obj",
+      "-Gp_ready_mask_abort=0",
+      "-Gp_pipeline_products=0",
+      "-j",
+      "1",
+      "-CFLAGS",
+      "-std=c++20 -O1",
+      "-MAKEFLAGS",
+      "CFG_CXXFLAGS_PCH_I=-include OPT_FAST=-O1 OPT_SLOW=-O0",
+      "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/top/frame_address_prepare.sv",
+      "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/frame_address/frame_address_tb.sv",
+      "/workspace/scratch/e1a5fa683a84/validation_frame_pipeline_fpga/dsp48e1.sv",
+      "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv"
+    ],
+    "completed": 36746,
+    "cancelled": 4286,
+    "reset_cases": 1512,
+    "wait_checks": 185328,
+    "cycles": 672662,
+    "abort_ready_checks": 4287,
+    "idle_abort_checks": 1
+  },
+  "symbolic_pipeline_and_arithmetic": {
+    "source_sha256": "2d5e2017b2b995ba3ead68ef2b6f882768cafbe6739cd18952aec3050f3a82ce",
+    "helper_sha256": "e302438e05d73bb8859ca288c91fec89791e9cb97067fbbf575a8daf4fbb6221",
+    "pipeline": {
+      "passed": true,
+      "bounded_cycles": 28,
+      "reset_at_first_cycle": true,
+      "partial_product_symbolic": true,
+      "abort_unconstrained": true,
+      "result_ready_unconstrained": true,
+      "compared_result_bits": 96
+    },
+    "address_forms": [
+      {
+        "size": 1,
+        "input_bits": 130,
+        "product_unconstrained": true,
+        "passed": true
+      },
+      {
+        "size": 2,
+        "input_bits": 130,
+        "product_unconstrained": true,
+        "passed": true
+      },
+      {
+        "size": 4,
+        "input_bits": 130,
+        "product_unconstrained": true,
+        "passed": true
+      },
+      {
+        "size": 8,
+        "input_bits": 130,
+        "product_unconstrained": true,
+        "passed": true
+      },
+      {
+        "size": 16,
+        "input_bits": 130,
+        "product_unconstrained": true,
+        "passed": true
+      },
+      {
+        "size": 32,
+        "input_bits": 130,
+        "product_unconstrained": true,
+        "passed": true
+      }
+    ],
+    "arithmetic": {
+      "passed": true,
+      "independent_partial_and_addend_bits": 130
+    },
+    "integer_product_identity": {
+      "passed": true,
+      "low_width": 17,
+      "high_width": 15,
+      "address_modulus": 4294967296
+    },
+    "packed_product_identity": {
+      "passed": true,
+      "ring": "integers modulo 2^32"
+    },
+    "passed": true
+  }
+}

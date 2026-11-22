@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import sys
@@ -29,7 +30,8 @@ def main():
     slots = between(text, '    logic [CACHE_SLOT_W-1:0] context_current_slot,', '    wire prefetch_context_matches =')
     first = text.index('        (cfg_global_reduction == global_reduction_q))) &&')
     first += len('        (cfg_global_reduction == global_reduction_q))) &&')
-    last = text.index('    (* use_dsp = "yes" *) wire [REG_WIDTH-1:0] next_q0', first)
+    last = re.search(r'^\s*(?:\(\*[^\n]*\*\) )?wire \[REG_WIDTH-1:0\] next_q0',
+                     text[first:], re.M).start() + first
     slot_selection = text[first:last]
     source = args.out/'configuration.sv'
     source.write_text('''module proof #(parameter int REG_WIDTH=32,CACHE_SLOT_W=6)(

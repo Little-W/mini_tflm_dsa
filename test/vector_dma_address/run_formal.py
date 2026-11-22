@@ -60,6 +60,7 @@ def decode_fragment(source, bus, tile):
     state = re.search(r'typedef enum logic \[5:0\].*?state_t;', source, re.S)[0]
     load = re.search(r'typedef enum logic \[2:0\].*?load_t;', source, re.S)[0]
     helper = re.search(r'^module vector_read_address_add\b.*?^endmodule', source, re.M | re.S)
+    helper_text = helper.group() if helper else (ROOT/'rtl/npu/conv/vector_read_address_add.sv').read_text()
     body = source[middle:last]
     # 两侧使用同一个已接收请求索引；真实保存和消费关系由引擎观察模块检查。
     body = re.sub(r'\bsoft_lut_index(?:_q)?\b', 'prepared_lut_index', body)
@@ -96,14 +97,14 @@ def decode_fragment(source, bus, tile):
     {body}
     assign write_origin_value = write_origin_next;
 endmodule
-{helper.group() if helper else ''}
+{helper_text}
 '''
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference-rev', default='dde5e7c9')
+    parser.add_argument('--reference-rev', default='ef0dc75')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)

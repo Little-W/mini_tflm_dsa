@@ -1,41 +1,55 @@
-# 配置接收与帧地址就绪
+# 配置接收资格与帧地址就绪
 
-`npu_top` 使用普通 RTL 检查配置接收条件。向量和矩阵执行状态、配置流水、操作数缓存、IA 预取以及权重加载状态共同决定 `sa_ready`。任务故障和中止状态阻止配置接收；`cfg_start_event` 同时要求 `calc_start`、`sa_ready` 和矩阵模式。
+`npu_top` 用 `task_accept_conditions` 表示组合接收资格。该表达式检查向量执行状态、计算控制器、帧调度器、配置流水、操作数缓存、IA 与权重预取、卷积空闲状态以及当前故障和中止状态。`task_accept_ready` 在时钟边沿保存资格；任务接收或中止期间清除该寄存器。公开 `sa_ready` 由已保存的资格和当前故障、中止状态共同决定。
 
-FPGA 分支以权重加载器的静止状态、后台请求和仲裁资格检查可接收条件。通用分支使用 `kernel_prefetch_idle`。检查分别覆盖各分支的全部输入，不对这两组输入附加相等假设。
+本目录的组合检查直接提取 `task_accept_conditions`，并使用 `accept_conditions` 作为测试输出名称。第二个测试输出 `matrix_start_candidate` 为 `calc_start && accept_conditions && !cfg_vector_enable`。生产 `cfg_start_event` 使用公开 `sa_ready`；本目录的组合结果不包含 `task_accept_ready` 的时序行为。
 
-`frame_address_prepare` 的 `p_ready_mask_abort` 默认为 1。设为 0 时，就绪输出表示内部状态为空闲；内部接受事件始终检查 `i_abort`。生产实例的帧命令接收条件包含任务故障和中止状态。实际调度器的空闲状态没有有效帧命令，因此配置接收不会同时接受帧命令。
+`frame_address_prepare` 的 `p_ready_mask_abort=1` 在公开就绪输出上屏蔽中止；参数为 0 时，公开就绪输出表示内部空闲状态。两种配置的内部接受事件都检查 `i_abort`。地址数据按三十二位模运算计算，准备完成后保持结果至接收。
 
-## 形式检查
+## 检查范围
 
-- 从当前实际源码提取配置接收逻辑，分别对 FPGA 和通用分支完成 19 个输入位、2 个输出位的全部取值 SAT 证明。
-- 在完整 `ps_window_scheduler` 中增加只读观察输出，使用 ABC PDR 证明 `ready` 蕴含 `!command_valid`。参数覆盖阵列大小 1、4、16，帧数 1、3、16，以及有界和无界复用。所有外部输入保持任意取值，原有状态在观察到复位前保持任意值。另检查复位后的空闲状态可达。
-- 使用当前完整 `frame_address_prepare` 比较就绪参数。6 组配置覆盖阵列大小 1、16、32，通用算术、官方 DSP48E1 功能模型及 `p_ready_mask_abort=0/1`。全部公开端口均连接，包括 `input wire logic` 声明的输入。内部状态、接受事件和中止屏蔽后的公开就绪逐周期相等。
-- 从当前顶层提取帧命令接收和地址中止表达式，结合实际调度器已证明的空闲性质，证明帧命令接受事件保持一致。
+`run_formal.py --admission-only` 对实际组合表达式和独立条件描述执行 SAT 比较，覆盖 20 个任意输入位和 2 个输出位。所有输入均不附加约束。报告将检查范围记录为 `admission_only`。
 
-报告保存于 [measurement.json](measurement.json)。源码与测试脚本的 SHA256 标识实际受测内容。收集器要求完整形式检查通过，并核对所收集的数值检查、兼容性检查和映射结果各自的源码摘要。
+`run_formal.py` 的完整局部检查还包含以下内容：
+
+- 读取完整 `ps_window_scheduler` 及独立的 `ps_scheduler_any`、`ps_scheduler_priority`，使用 ABC PDR 检查复位后的 `ready` 蕴含 `!command_valid`。四组参数覆盖阵列大小 1、4、16，帧数 1、3、16，以及有界和无界复用；另检查复位后的空闲状态可达。
+- 使用完整普通 RTL 比较 `frame_address_prepare` 的就绪参数。六组参数覆盖阵列大小 1、16、32，`p_pipeline_products=0/1` 和 `p_ready_mask_abort=0/1`。所有公开端口均连接，比较内部状态、结果数据和经过相同中止屏蔽的就绪输出。
+
+[measurement.json](measurement.json) 记录实际已执行的检查、对应源码 SHA256 和检查范围。收集器支持组合检查报告；指定 `--require-complete` 时，还要求调度器和地址模块的完整局部形式检查均已通过。数值检查和映射结果只有在文件存在且摘要核对成功时才会加入报告。
 
 ## 运行
+
+轻量组合检查：
 
 ```bash
 export PYTHONDONTWRITEBYTECODE=1
 ADMISSION_OUT=/tmp/npu_admission
-python3 test/npu_admission/run_formal.py --out "$ADMISSION_OUT/verified_formal"
-python3 test/npu_registered_fault/run_formal.py --out "$ADMISSION_OUT/registered_fault"
+python3 test/npu_admission/run_formal.py \
+  --admission-only --out "$ADMISSION_OUT/verified_formal"
 python3 test/npu_admission/collect_report.py \
   --build "$ADMISSION_OUT" --out "$ADMISSION_OUT/measurement.json"
 ```
 
-形式检查和收集器支持 `--source-root`，可在固定的另一份源码上运行。默认使用测试脚本所在仓库。
+完整局部形式检查：
 
-地址数值检查分别运行默认和生产就绪参数，并比较通用实现与官方 DSP 模型。各计算阶段、结果等待阶段和空闲阶段均检查中止、复位、同时开始以及恢复后的行为：
+```bash
+python3 test/npu_admission/run_formal.py --out "$ADMISSION_OUT/verified_formal"
+python3 test/npu_admission/collect_report.py --require-complete \
+  --build "$ADMISSION_OUT" --out "$ADMISSION_OUT/measurement.json"
+```
+
+形式检查、映射输入生成和收集器支持 `--source-root`，可读取固定的另一份 RTL 源码；默认使用测试脚本所在仓库。
+
+地址数值检查为两种就绪参数分别运行一个普通 RTL 实例，与独立的三十二位地址模型比较。各计算阶段、结果等待阶段和空闲阶段均检查中止、复位、同时开始以及恢复后的行为。默认 `p_pipeline_products=1` 时结果准备延迟为 11 拍；指定 `--pipeline-products 0` 时为 10 拍。
 
 ```bash
 python3 test/npu_admission/run_numeric.py \
   --out "$ADMISSION_OUT/frame_numeric" --verilator verilator --jobs 1
 ```
 
-局部映射使用实际配置接收表达式及完整接收条件参考，在输入和输出处添加相同寄存器。原始条件中的全部状态输入仍保留在测量接口中，未使用的输入由综合工具处理：
+## 局部映射
+
+测量模块在组合资格的输入与输出处添加寄存器，用于统计这一段逻辑的面积和深度。该模块不包含生产 `task_accept_ready` 的清除和更新控制。路径报告分别保留 `kernel_prefetch_idle`、`conv_task_idle` 和 `task_fault` 到测量输出的路径。
 
 ```bash
 python3 test/npu_admission/prepare_measurement.py --out "$ADMISSION_OUT/mapping"
@@ -54,4 +68,4 @@ python3 test/npu_admission/collect_report.py \
   --build "$ADMISSION_OUT" --out "$ADMISSION_OUT/measurement.json"
 ```
 
-局部映射用于检查这一段组合逻辑。整机资源和 150 MHz 时序由固定源码的实际 Vivado 报告确认。
+只生成映射源码时，报告记录 `executed=false`。整机资源和 150 MHz 时序使用完整设计的实际综合与时序报告确认。

@@ -1,22 +1,20 @@
 #!/usr/bin/env python3
-"""证明实际装载末拍比较对全部三十二位计数、偏移和步长成立。"""
-from __future__ import annotations
-
-import argparse
-import hashlib
-import json
+"""证明命令准备资格与实际突发字数对应的完整末拍比较结果。"""
 from pathlib import Path
+import argparse
+import json
 import re
 import shlex
 import subprocess
 import sys
+from support import ROOT, RTL, HELPER, PROFILES, digest, arithmetic_unit, reference_root
 
-ROOT = Path(__file__).resolve().parents[2]
 
-
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--source-root', type=Path, default=ROOT)
+    parser.add_argument('--reference-root', type=Path)
     parser.add_argument('--worker', type=Path)
     args = parser.parse_args()
     if args.worker:
@@ -25,44 +23,50 @@ def main() -> None:
         return
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    source = ROOT / 'rtl/npu/writeback/vec_requant.sv'
-    text = source.read_text()
-    first = text.index('  // 末拍比较并行计算')
-    last = text.index('\n  // ----------------------------', first)
-    comparison = text[first:last]
-    wrapper = out / 'load_completion.sv'
-    wrapper.write_text('''module load_completion(
-input logic [31:0] quant_need_load_r, load_offset, beats_expect
-);
-localparam int REG_WIDTH = 32;
-logic load_has_more;
-logic [31:0] next_offset;
-logic expected_more;
-assign next_offset = load_offset + beats_expect;
-assign expected_more = next_offset < quant_need_load_r;
-''' + comparison + '''
-always_comb begin
-    assert(load_has_more == expected_more);
-end
+    current = args.source_root.resolve()
+    reference = args.reference_root.resolve() if args.reference_root else reference_root(out / 'reference', current)
+    roots = {'reference': reference, 'current': current}
+    sources, hashes = [], {}
+    for label, root in roots.items():
+        source, helper = root / RTL, root / HELPER
+        helper_name = 'parallel_prefix_add_' + label
+        unit = re.sub(r'\bparallel_prefix_add\b', helper_name, arithmetic_unit(source, label))
+        unit += re.sub(r'\bparallel_prefix_add\b', helper_name, helper.read_text())
+        path = out / (label + '.sv')
+        path.write_text(unit)
+        sources.append(path)
+        hashes[label] = {str(RTL): digest(source), str(HELPER): digest(helper)}
+    proof = out / 'proof.sv'
+    proof.write_text('''module proof #(parameter VLEN=16, REG_WIDTH=32)(input logic [31:0] need, offset);
+    wire expected, observed;
+    wire [31:0] expected_chunk, observed_chunk;
+    arithmetic_reference #(REG_WIDTH, VLEN) r(.quant_need_load_r(need), .load_offset(offset), .result(expected), .chunk(expected_chunk));
+    arithmetic_current #(REG_WIDTH, VLEN) c(.quant_need_load_r(need), .load_offset(offset), .result(observed), .chunk(observed_chunk));
+    always_comb assert({expected, expected_chunk} == {observed, observed_chunk});
 endmodule
 ''')
-    script = out / 'compare.ys'
-    helper = ROOT / 'rtl/common/parallel_prefix_add.sv'
-    script.write_text('read_slang --top load_completion ' + shlex.join([str(wrapper), str(helper)]) + '\n'
-                      'prep -top load_completion\nflatten\nchformal -lower\nopt -full\n'
-                      'sat -verify -prove-asserts -show-inputs\n')
-    log = out / 'compare.log'
-    with log.open('w') as stream:
-        subprocess.run([sys.executable, __file__, '--out', str(out), '--worker', str(script)],
-                       cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, check=True)
-    assert 'SAT proof finished - no model found: SUCCESS!' in log.read_text()
-    result = {'passed': True, 'input_bits': 96, 'inputs_constrained': False,
-              'register_width': 32, 'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
-              'helper_sha256': hashlib.sha256(helper.read_bytes()).hexdigest(),
-              'formal_wrapper_sha256': hashlib.sha256(wrapper.read_bytes()).hexdigest(),
-              'log_sha256': hashlib.sha256(log.read_bytes()).hexdigest()}
-    (out / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')
-    print(json.dumps(result, indent=2))
+    report = {'passed': False, 'input_bits': 64, 'inputs_constrained': False,
+              'source_sha256': hashes, 'profiles': []}
+    for vlen, width in PROFILES:
+        name = f'v{vlen}_w{width}'
+        script, log = out / (name + '.ys'), out / (name + '.log')
+        script.write_text(f'read_slang --top proof -GVLEN={vlen} -GREG_WIDTH={width} ' +
+                          shlex.join(map(str, [*sources, proof])) +
+                          '\nprep -top proof -flatten\nchformal -lower\nopt -full\n'
+                          'sat -set-def-inputs -verify -prove-asserts -show-inputs\n')
+        with log.open('w') as stream:
+            subprocess.run([sys.executable, __file__, '--out', str(out), '--worker', str(script)],
+                           stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=120)
+        if 'SUCCESS!' not in log.read_text():
+            raise RuntimeError('完整输入证明没有完成：' + str(log))
+        row = {'vlen': vlen, 'reg_width': width, 'passed': True, 'log_sha256': digest(log)}
+        report['profiles'].append(row)
+        print(json.dumps(row), flush=True)
+    for label, root in roots.items():
+        if hashes[label] != {str(RTL): digest(root / RTL), str(HELPER): digest(root / HELPER)}:
+            raise RuntimeError('验证期间源码发生变化')
+    report['passed'] = True
+    (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')
 
 
 if __name__ == '__main__':

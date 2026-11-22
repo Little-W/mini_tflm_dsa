@@ -1,0 +1,89 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "rtl/npu/loaders/bias_loader_buffer.sv": "4299d2d37341d1eaa88e35b5a8542f71b3f374fc8d13487153282ad1154a9206",
+    "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f"
+  },
+  "scope": "偏置驻留组合表达式，保持存储、状态、接口与每个周期的有效条件",
+  "input_assumptions": [],
+  "formal": {
+    "profiles": 16,
+    "count_widths": [
+      1,
+      2,
+      3,
+      8,
+      12,
+      28,
+      29,
+      32
+    ],
+    "share_load_index": [
+      0,
+      1
+    ],
+    "summary": "build/bias_range_carry/proof_carry_direct/summary.json"
+  },
+  "four_state": {
+    "samples": 267648,
+    "bit_comparisons": 4282368,
+    "unknown_input_samples": 226416,
+    "unknown_result_samples": 146483,
+    "strict": true
+  },
+  "numeric": {
+    "cases": 392,
+    "cycles": 193571,
+    "dma_commands": 880,
+    "count_width": 12,
+    "size": 16,
+    "bus_widths": [
+      32,
+      64
+    ],
+    "group_capacities": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32
+    ],
+    "modes": [
+      "WS",
+      "IS"
+    ],
+    "summary": "build/bias_range_carry/numeric_carry_direct/result.json"
+  },
+  "measurement": {
+    "parameters": {
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "COUNT_WIDTH": 29,
+      "GROUP_BLOCKS_MAX": 32
+    },
+    "reference": {
+      "lut": 1182,
+      "ff": 1227,
+      "carry4": 125,
+      "max_cells": 14,
+      "outputs": {
+        "bias_valid": 13,
+        "bias_group_valid": 14
+      }
+    },
+    "current": {
+      "lut": 1243,
+      "ff": 1227,
+      "carry4": 91,
+      "max_cells": 9,
+      "outputs": {
+        "bias_valid": 7,
+        "bias_group_valid": 8
+      }
+    },
+    "paths": "build/bias_range_carry/measure_carry_direct/paths.json",
+    "metrics": "build/bias_range_carry/measure_carry_direct/metrics.json"
+  },
+  "original_soc_path": "build/bias_range_carry/original_soc_bias_path.json"
+}

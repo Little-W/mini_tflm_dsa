@@ -1,0 +1,36 @@
+{
+  "passed": true,
+  "reference": "ca34494",
+  "source_sha256": {
+    "rtl/npu/top/npu_output_pipeline.sv": "516cc3be9f15b5489b196d0f0ae42324b981cb56f93b3072b6fb6f3c4cd8b0ca",
+    "rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758"
+  },
+  "formal": {
+    "profiles": 16,
+    "equivalent_bits": 7044,
+    "inputs_constrained": false,
+    "path": "build/partitioned_test_entries/bias_formal/summary.json",
+    "sha256": "1864c81bbeb36bdfbb07f107938d777ed0078a5395c88fb8b51a4bdfeeb5316b"
+  },
+  "row_distance": {
+    "profiles": 16,
+    "equivalent_bits": 7044,
+    "four_state_samples": 30000,
+    "four_state_output_comparisons": 3030000,
+    "path": "build/partitioned_test_entries/bias_row_distance/summary.json",
+    "sha256": "4eaf71681d225f10c4c64d931120ffe502fac6a5e68d5728a010372411955e14"
+  },
+  "measurement_inputs": {
+    "path": "build/partitioned_test_entries/bias_inputs/manifest.json",
+    "sha256": "89e7f0da56778f3a1e117b3e7bda247d5d7616de7019334dd81b83e0cfd69f91"
+  },
+  "test_source_sha256": {
+    "test/bias_row_final_select/collect_report.py": "31f35ade360ddd2504160e458eb2d5c060225453ebddceeb49fae87365694034",
+    "test/bias_row_final_select/extract_control.py": "49532443f7a3e47b4e35fd6b4aca297a77b00e48557e5923e4ede836a501e63a",
+    "test/bias_row_final_select/measure_paths.py": "d0840a9433dc1b2743b6100be682f06650b2fbe42b371c63cc5b9d71eb4574a7",
+    "test/bias_row_final_select/prepare_measurement.py": "19a3d6a7ed52c071172d7a12abefc7f4f1ab8e677adbb907b0013870b81cf941",
+    "test/bias_row_final_select/run_formal.py": "4bd9d11dbd43ac0e841e8d5fe1f981239a7a2bd5006bf9b0beef8480fece875b",
+    "test/bias_row_final_select/run_npu.py": "d38397060e5e78503457c74fd49b6bc1738b31e91f87a0cfa687a0b49dacb962",
+    "test/bias_row_distance/run.py": "7b62c677e3f33931d72e9c08277290f718aeb2bc2964c29dc5e6dd0c31edb4e5"
+  }
+}

@@ -2,7 +2,7 @@ module tb_requant_rne (
     input logic clk, rst_n, init_cfg, in_valid,
     input logic signed [31:0] multiplier, shift, offset,
     input logic signed [31:0] input_s32[4],
-    input logic signed [63:0] input_s64[4],
+    input logic signed [31:0] input_lane_s32[4],
     output logic valid_full, valid_tensor, valid_s16, valid_shared_s16,
     output logic signed [7:0] output_full[4], output_tensor[4],
     output logic signed [15:0] output_s16[4], output_shared_s16[4]
@@ -49,9 +49,20 @@ module tb_requant_rne (
         .in_valid,.in_tile_done(in_valid),.in_vec_s32(input_s32),
         .out_valid(valid_shared_s16),.out_tile_done(),.out_vec_s8(),
         .out_vec_s16(output_shared_s16),.quant_multiplier_lane(),.quant_shift_lane());
-    vec_requant_s64 #(.VLEN(4), .ACC_WIDTH(32)) u_s16 (
-        .clk,.rst_n,.init_cfg,.activation_min_in(-32'sd32768),
-        .activation_max_in(32'sd32767),.multiplier_in(multipliers),.shift_in(shifts),
-        .in_valid,.in_tile_done(in_valid),.in_vec_s64(input_s64),
-        .out_valid(valid_s16),.out_tile_done(),.out_vec_s16(output_s16));
+    logic [3:0] lane_valid;
+    for (genvar lane=0; lane<4; lane++) begin : g_s16
+        logic signed [31:0] prepared_multiplier;
+        logic [6:0] prepared_amount;
+        assign prepared_multiplier = requant_pkg::requant_prepare_multiplier(multipliers[lane],1'b1);
+        assign prepared_amount = requant_pkg::requant_prepare_amount(shifts[lane],1'b1);
+        requant_compute_lane u_lane (
+            .clk(clk),.rst_n(rst_n),.i_clear(init_cfg),.i_en(1'b1),
+            .i_valid(in_valid),.i_lane_enable(1'b1),.i_value(input_lane_s32[lane]),
+            .i_multiplier(prepared_multiplier),.i_amount(prepared_amount),.i_s16(1'b1),
+            .i_dst_offset(32'sd0),.i_activation_min(-32'sd32768),.i_activation_max(32'sd32767),
+            .o_valid(lane_valid[lane]),.o_s8(),.o_s16(output_s16[lane])
+        );
+    end
+    assign valid_s16=lane_valid[0];
+
 endmodule

@@ -1,5 +1,7 @@
 # 帧调度候选存在性状态
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 `candidate_exists` 与帧目录在相同的时钟边沿更新，表示 `live & frame_open` 中是否存在有效帧。命令完成时，先按当前执行帧、结束标志和开放范围计算目录的后继值，再保存存在性。复位、配置开始和帧组结束清除该位。`SWEEPING` 阶段直接使用保存的资格判断当前帧组是否完成，命令接收与完成周期保持一致。
 
 ## 完成的检查
@@ -35,7 +37,7 @@ python3 test/scheduler_candidate_exists/run_formal.py --source-root . --referenc
 python3 test/scheduler_candidate_exists/prove_invariant.py --source-root . --profiles 4:4:4 16:16:32 4:2:0 8:4:1 16:8:16 4:3:4 16:17:32 --out build/scheduler_candidate_exists/invariant
 python3 test/scheduler_candidate_exists/run_four_state.py --source-root . --reference-root build/scheduler_candidate_exists/formal/reference --profiles 4:4:4 16:16:32 --out build/scheduler_candidate_exists/four_state
 python3 test/ps_compression/run_window_scheduler.py --source-root . --fpga --out build/scheduler_candidate_exists/numeric
-python3 scripts/fpga/open_fpga_synth.py --source-root . --case-config test/scheduler_candidate_exists/synthesis_cases.json --cases scheduler --out build/scheduler_candidate_exists/synthesis --wide-alu-dsp-budget 740 --rtl-dsp-attributes --max-register-path-cells 10
+python3 scripts/fpga/open_fpga_synth.py --source-root . --case-config test/scheduler_candidate_exists/synthesis_cases.json --cases scheduler --out build/scheduler_candidate_exists/synthesis --max-register-path-cells 10
 ```
 
 `validation.json` 记录通过范围、数量、源码散列及原报告路径与散列。证明、仿真和综合中间文件保存在指定输出目录。

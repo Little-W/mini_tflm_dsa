@@ -12,7 +12,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source, read_current_source as read_rtl_text
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/writeback/vec_s8_to_fifo.sv')
@@ -52,7 +52,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    current_text = (ROOT / SOURCE).read_text()
+    current_text = read_rtl_text(ROOT / SOURCE)
     reference_text = read_rtl_source(f'{args.reference}:{SOURCE}', cwd=ROOT, text=True)
     helper = 'module vec_s8_fifo_row_ram'
     if current_text[current_text.index(helper):] != reference_text[reference_text.index(helper):]:
@@ -60,7 +60,7 @@ def main():
     import pyosys
     library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
     model = out / 'lut6_2.sv'
-    model_text = re.search(r'^module LUT6_2\b.*?^endmodule', library.read_text(), re.M | re.S)[0]
+    model_text = re.search(r'^module LUT6_2\b.*?^endmodule', read_rtl_text(library), re.M | re.S)[0]
     model.write_text(re.sub(r'\bspecify\b.*?\bendspecify\b', '', model_text, flags=re.S) + '\n')
     source_files = {}
     for label, text in [('reference', reference_text), ('current', current_text)]:
@@ -112,7 +112,7 @@ def main():
             result = subprocess.run([sys.executable, str(ROOT / 'scripts/fpga/open_fpga_synth.py'),
                                      '--worker', str(script)], cwd=ROOT, stdout=log,
                                     stderr=subprocess.STDOUT, timeout=300)
-        log = log_path.read_text()
+        log = read_rtl_text(log_path)
         if result.returncode or 'Equivalence successfully proven' not in log:
             raise RuntimeError(log[-10000:])
         match = re.search(r'Of those cells (\d+) are proven and (\d+) are unproven', log)

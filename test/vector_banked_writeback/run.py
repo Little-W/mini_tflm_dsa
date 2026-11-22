@@ -28,15 +28,14 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    source = args.source_root.resolve() / 'rtl/npu/conv/vector_engine.sv'
+    source = args.source_root.resolve() / 'rtl/npu/conv/vector_banked_writeback.sv'
     original = source.read_text()
     module = re.search(r'^module vector_banked_writeback\b.*?^endmodule', original, re.M | re.S)[0]
     helper = out / 'vector_banked_writeback.sv'
     # 观察实际准备与复制状态，分别检查准备取消和部分字复制取消。
-    observed_module = module.replace(
-        'input  logic clk, rst_n,',
+    observed_module = re.sub(r'input\s+(?:wire\s+)?logic\s+clk, rst_n,',
         'output logic monitor_prepared, monitor_copy_active, monitor_copy_word_fire,\n'
-        '  input  logic clk, rst_n,')
+        '  input logic clk, rst_n,', module, count=1)
     observed_module = observed_module.replace(
         '\nendmodule',
         '\n  assign monitor_prepared = request_prepared;\n'
@@ -55,12 +54,12 @@ def main():
         folder.mkdir(exist_ok=True)
         execute([args.verilator, '--cc', '--exe', '--build', '--assert', '-j', args.jobs,
                  '--top-module', 'vector_banked_writeback', '-Wno-fatal',
-                 '-DXILINX_FPGA=1', '-DNPU_SIM_ASSERT=1', f'-GTILE={tile}', f'-GBUS_WIDTH={bus}',
+                 '-DNPU_SIM_ASSERT=1', f'-GTILE={tile}', f'-GBUS_WIDTH={bus}',
                  f'-Gp_coalesce_bytes_only={coalesce_bytes_only}',
                  '--Mdir', folder / 'obj', '-CFLAGS',
                  f'-std=c++17 -DTEST_TILE_SIZE={tile} -DTEST_BUS_WIDTH={bus} '
                  f'-DTEST_COALESCE_BYTES_ONLY={coalesce_bytes_only}',
-                 helper, HERE / 'main.cpp'], folder / 'build.log')
+                 helper, args.source_root.resolve()/'rtl/common/regfile.v', HERE / 'main.cpp'], folder / 'build.log')
         execute([folder / 'obj/Vvector_banked_writeback'], folder / 'run.log')
         text = (folder / 'run.log').read_text()
         matched = re.search(r'VECTOR_BANKED_WRITEBACK_PASS (.+)', text)

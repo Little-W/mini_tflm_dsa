@@ -7,6 +7,9 @@ from pathlib import Path
 import re
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'test/ps_compression'))
 from run_shared_npu import configure,npu
@@ -40,12 +43,12 @@ def generate(folder):
             columns=cols,lhs_s16=out16,output_s16=out16,expected_error=make_error,memory_bases=bases)
         configure(directory,banks=2 if out16 else 1,r=r,w=w,control=control,bank_bytes=8192,bank_count=7)
         config=directory/'config.mem'
-        words=[int(value,16) for value in config.read_text().split()]
+        words=[int(value,16) for value in read_rtl_text(config).split()]
         words[52],words[53]=error,inject
         config.write_text(''.join(f'{value:08x}\n' for value in words))
         if inject==2:
             (directory/'init.mem').write_bytes((directory/'golden.mem').read_bytes())
-        metadata=json.loads((directory/'case.json').read_text())
+        metadata=json.loads(read_rtl_text(directory/'case.json'))
         metadata.update(expected_error=error,inject_axi_response=inject,
             preinitialized_output=inject==2,expected_frame_commands=control==2)
         (directory/'case.json').write_text(json.dumps(metadata,indent=2)+'\n')
@@ -61,7 +64,7 @@ def main():
     sims.add_argument('--reference-sim',type=Path,help='仅检查案例期望值，不要求新增观察器')
     args=p.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     sim=(args.sim or args.reference_sim).resolve()
-    manifest=json.loads((sim/'build.json').read_text())
+    manifest=json.loads(read_rtl_text(sim/'build.json'))
     expected={'returncode':0,'size':16,'bus_width':64,'shared_bank_bytes':8192,
         'shared_bank_count':7,'ps_compress':True,'force_raw':True,'pool_bytes':49152}
     for key,value in expected.items():
@@ -70,12 +73,14 @@ def main():
     if hashlib.sha256(binary.read_bytes()).hexdigest()!=manifest['binary_sha256']:
         raise RuntimeError('Simulator binary differs from its manifest')
     if args.sim:
-        for name in ('rtl/npu/writeback/vec_s8_to_fifo.sv','test/monitors/npu_top_observer.sv'):
+        for name in ('rtl/npu/writeback/vec_s8_to_fifo.sv',
+                     'test/monitors/npu_top_observer.sv',
+                     'test/monitors/npu_output_pipeline_observer.sv'):
             if manifest['source_sha256'].get(name)!=hashlib.sha256((ROOT/name).read_bytes()).hexdigest():
                 raise RuntimeError('Simulator source differs: '+name)
     cases=generate(out/'cases')
     result=npu.run_suite(binary,out,'fifo_modes',cases,no_random=False)
-    text=(out/'fifo_modes.log').read_text()
+    text=read_rtl_text(out/'fifo_modes.log')
     matches=re.findall(r'^NPU_FIFO_COMPARE_PASS (.*)$',text,re.M)
     coverage={key:int(value) for key,value in re.findall(r'(\w+)=(\d+)',matches[-1])} if matches else {}
     coverage_passed=all(coverage.get(key,0)>0 for key in ('coalesce_cycles','frame_cycles',

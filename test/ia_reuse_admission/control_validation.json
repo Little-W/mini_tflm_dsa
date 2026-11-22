@@ -1,0 +1,417 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/loaders/ia_loader.sv": "30bfc17a45ebb1fe6a04e7cc44b0e6b3d428f4f1953dcf1556a293980a541120",
+    "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/loaders/ia_loader_ctrl.sv": "ca2000ef7025c5b78155765d13d22260d114a80592480e51a317fae80e244da8"
+  },
+  "external_inputs_constrained": false,
+  "state_relations": {
+    "cursor_and_rows": {
+      "result": {
+        "passed": true,
+        "source_sha256": "ca2000ef7025c5b78155765d13d22260d114a80592480e51a317fae80e244da8",
+        "runs": [
+          {
+            "name": "cursor_w1",
+            "passed": true,
+            "source_sha256": "5a00f26553fb33a18d89482c71c94d3a8c318d683e23847b2cb09dedfdfef896",
+            "log_sha256": "441321e3fb3635848be75d0026907cfe27a22a9c25af335c2a12767d92380fa0"
+          },
+          {
+            "name": "cursor_w2",
+            "passed": true,
+            "source_sha256": "5a00f26553fb33a18d89482c71c94d3a8c318d683e23847b2cb09dedfdfef896",
+            "log_sha256": "bb56a218970350817931a4bcd9374c5b01c84e55ac36791d27fee50012b358af"
+          },
+          {
+            "name": "cursor_w3",
+            "passed": true,
+            "source_sha256": "5a00f26553fb33a18d89482c71c94d3a8c318d683e23847b2cb09dedfdfef896",
+            "log_sha256": "d7a7d37e9a453290fcd33eb3ed78a35e7b8e371faacb57b7b700825e39fc1269"
+          },
+          {
+            "name": "cursor_w4",
+            "passed": true,
+            "source_sha256": "5a00f26553fb33a18d89482c71c94d3a8c318d683e23847b2cb09dedfdfef896",
+            "log_sha256": "5c70b878bbfbbf7c4e3fd315704c13271fdfb75cffdda278a21d786f3ee45eac"
+          },
+          {
+            "name": "cursor_w5",
+            "passed": true,
+            "source_sha256": "5a00f26553fb33a18d89482c71c94d3a8c318d683e23847b2cb09dedfdfef896",
+            "log_sha256": "d14866e0e17ec69bb953e558e0a9d8906b096c04091c68bf2ba1da3fcffccc10"
+          },
+          {
+            "name": "cursor_w6",
+            "passed": true,
+            "source_sha256": "5a00f26553fb33a18d89482c71c94d3a8c318d683e23847b2cb09dedfdfef896",
+            "log_sha256": "49550427eb54c282cc7daf00ac4b5c5b8237d8bc032555059cdb4685356d5ebd"
+          },
+          {
+            "name": "cursor_w7",
+            "passed": true,
+            "source_sha256": "5a00f26553fb33a18d89482c71c94d3a8c318d683e23847b2cb09dedfdfef896",
+            "log_sha256": "eddda40199f7b929b8dbe35e525d36a1d0a53ef0f426174dca540d17ce5bbb3b"
+          },
+          {
+            "name": "cursor_w8",
+            "passed": true,
+            "source_sha256": "5a00f26553fb33a18d89482c71c94d3a8c318d683e23847b2cb09dedfdfef896",
+            "log_sha256": "fe7863df3604745f8227561041bc740e67ba9ca10a32063c96dfbe5aac666f35"
+          },
+          {
+            "name": "cursor_w9",
+            "passed": true,
+            "source_sha256": "5a00f26553fb33a18d89482c71c94d3a8c318d683e23847b2cb09dedfdfef896",
+            "log_sha256": "2587740d42b0e64d965b1f6f27d7b9cf81027e739c62bea2f008591ae2b692b7"
+          },
+          {
+            "name": "rows_s2_r8",
+            "passed": true,
+            "source_sha256": "77c1335211745dec8ca5620abf6a34cbc8e33960260d0518ecdde35ee3920828",
+            "log_sha256": "9fdd86c2ba3973ea079a9ddf67f224def12f977990dc34ee6e9ac04ffc0030ba"
+          },
+          {
+            "name": "rows_s4_r16",
+            "passed": true,
+            "source_sha256": "6f93a283434003b6ccbe6bb004febd681d016b15b5cf3af7fe70ee9ea81ac299",
+            "log_sha256": "f8ead5fb4eed0ba554a14acc6823118beccbfe33c57e00c16504c9935ed530cf"
+          },
+          {
+            "name": "rows_s8_r16",
+            "passed": true,
+            "source_sha256": "c0bb651834c2be4ca30e4a70db81c0087c73e0d93a0bc0578d78db3b2f285c8c",
+            "log_sha256": "8eb47ae77f6a39adbde1c97cd830effe23b7ae9b57316a9a133d56aba06d1b64"
+          },
+          {
+            "name": "rows_s16_r32",
+            "passed": true,
+            "source_sha256": "f397731fd7daeb5b4577da93aa63654b87b871a5f04cdd02817edebd19a4b0ae",
+            "log_sha256": "03c118663961fcef1ca20858ea5b9557d3392692437d6f2a7a6e524b6a22e92a"
+          },
+          {
+            "name": "rows_s32_r32",
+            "passed": true,
+            "source_sha256": "35070b40ec2132ced3f8aab2f43179df861a308e61bfdc8ed1b898dcbd541c91",
+            "log_sha256": "9e816041b67e857614c4207915e5e7b527557f34929e4437267fd36d1b302ab8"
+          },
+          {
+            "name": "rows_s16_r64",
+            "passed": true,
+            "source_sha256": "fccfc71e16c6f532f0fe1422550627e7a393489cc9ab8ff173f808e3b1adffb2",
+            "log_sha256": "2a3c14073fd44d34a931ec2c6ce5845687e2df88bee06db6efacd3f69dc80547"
+          }
+        ],
+        "binary_input_constraints": [],
+        "cursor_relation": "Saved counter equals current cursor plus one modulo LOAD_CNT_W on every cycle.",
+        "reset_steps": 2,
+        "unbounded_induction_steps": 1,
+        "four_state_comparisons": 144000,
+        "event_path": "Original row selection followed by equality."
+      },
+      "summary_sha256": "02928e8384038eb44ba27088344f0a4a3e33183453a2f435f574bb25494c3703"
+    },
+    "boundary_selection": {
+      "result": {
+        "passed": true,
+        "source_sha256": "ca2000ef7025c5b78155765d13d22260d114a80592480e51a317fae80e244da8",
+        "runs": [
+          {
+            "name": "w1_s16_r32",
+            "passed": true,
+            "width": 1,
+            "size": 16,
+            "reg_width": 32,
+            "log_sha256": "68d7cae1b0463140cf73a052b3d65309c79cd4ec3925a2785d4d947e70e66747"
+          },
+          {
+            "name": "w2_s16_r32",
+            "passed": true,
+            "width": 2,
+            "size": 16,
+            "reg_width": 32,
+            "log_sha256": "dd840f52d21551b897164d323754b8fb233d86d5b66e8f9a60b12ba61bf77a3b"
+          },
+          {
+            "name": "w3_s16_r32",
+            "passed": true,
+            "width": 3,
+            "size": 16,
+            "reg_width": 32,
+            "log_sha256": "ee286854c2a95f2ff4af10148d32db34e4a89ca21b3a2474aa1c5f2fd5ee0870"
+          },
+          {
+            "name": "w4_s16_r32",
+            "passed": true,
+            "width": 4,
+            "size": 16,
+            "reg_width": 32,
+            "log_sha256": "b8945bdc5e32833d6e68fb271e18d43f0bc15fef19b5d394fb66282256c65afa"
+          },
+          {
+            "name": "w5_s16_r32",
+            "passed": true,
+            "width": 5,
+            "size": 16,
+            "reg_width": 32,
+            "log_sha256": "0eec3493361bb4a0856d61abbb19ba4bfa1f2e145b4dae3f5ce0ac215015c2a1"
+          },
+          {
+            "name": "w6_s16_r32",
+            "passed": true,
+            "width": 6,
+            "size": 16,
+            "reg_width": 32,
+            "log_sha256": "ae0d19616792e6186479882ea444d5c171c27d665531a0c53210e79eaf7b9d55"
+          },
+          {
+            "name": "w7_s16_r32",
+            "passed": true,
+            "width": 7,
+            "size": 16,
+            "reg_width": 32,
+            "log_sha256": "b2b6284d117a5b040f0591a677e3cd55a8817dc436acc71af29664ad8191f988"
+          },
+          {
+            "name": "w8_s16_r32",
+            "passed": true,
+            "width": 8,
+            "size": 16,
+            "reg_width": 32,
+            "log_sha256": "9a2c899602985cfe3b6ffd061f65e0b6fd19867ce6c2225e6488573d60e67d79"
+          },
+          {
+            "name": "w9_s16_r32",
+            "passed": true,
+            "width": 9,
+            "size": 16,
+            "reg_width": 32,
+            "log_sha256": "6b5dfa351778aa13b60a618f819a873d5f2a9924d96abb84305ce7d827442814"
+          },
+          {
+            "name": "w10_s16_r32",
+            "passed": true,
+            "width": 10,
+            "size": 16,
+            "reg_width": 32,
+            "log_sha256": "c8bcc76c982c6a4f99808f258a73da3bcf2167696b7701f1416e469a0b3fd655"
+          },
+          {
+            "name": "w7_s2_r64",
+            "passed": true,
+            "width": 7,
+            "size": 2,
+            "reg_width": 64,
+            "log_sha256": "09e61e73d7d232536522da1b80f5c30a1f0c5071662c13edfdd158257b0d6687"
+          },
+          {
+            "name": "w7_s4_r64",
+            "passed": true,
+            "width": 7,
+            "size": 4,
+            "reg_width": 64,
+            "log_sha256": "3b2c1899889654f076716ce0e9dbbd43034eef57808531ec83ffaaeb2cfc5caf"
+          },
+          {
+            "name": "w7_s8_r64",
+            "passed": true,
+            "width": 7,
+            "size": 8,
+            "reg_width": 64,
+            "log_sha256": "47fba2cd095c45ba5c1539daafd9cc341b1c396240417f6c1d1849eb940c9407"
+          },
+          {
+            "name": "w7_s32_r64",
+            "passed": true,
+            "width": 7,
+            "size": 32,
+            "reg_width": 64,
+            "log_sha256": "7f7623556d94d172e1c8e6eedc78c07bc1e74dd1172d4c3b76eb7d99a8c89336"
+          },
+          {
+            "name": "w7_s64_r64",
+            "passed": true,
+            "width": 7,
+            "size": 64,
+            "reg_width": 64,
+            "log_sha256": "215305a80f7acc1eaab15e317aa09a26320024419695a58c4cd54d7dbc290ac5"
+          }
+        ],
+        "binary_input_constraints": [],
+        "four_state_comparisons": 100000,
+        "event_path": "Direct conditional boundary and row selection."
+      },
+      "summary_sha256": "e5527ff1d14c6d4916a5cdc38120afdb4ac74127936cd4df10fdcdab9e060fae"
+    }
+  },
+  "runs": [
+    {
+      "name": "count_w1_c1_registered0_ASIC_SYNTHESIS",
+      "passed": true,
+      "count_width": 1,
+      "load_count_width": 1,
+      "registered_request": false,
+      "configuration": "ASIC_SYNTHESIS",
+      "log_sha256": "7e24f1c15b5d0961b33db48ce2365911ec7af8b603f137381d89fa50d1371780"
+    },
+    {
+      "name": "count_w1_c1_registered0_XILINX_FPGA",
+      "passed": true,
+      "count_width": 1,
+      "load_count_width": 1,
+      "registered_request": false,
+      "configuration": "XILINX_FPGA",
+      "log_sha256": "4e7b7ed6ead16584540d9e1cd096e80f598379e3367ef1c9adbe9a00fa50b11d"
+    },
+    {
+      "name": "count_w2_c1_registered0_ASIC_SYNTHESIS",
+      "passed": true,
+      "count_width": 1,
+      "load_count_width": 2,
+      "registered_request": false,
+      "configuration": "ASIC_SYNTHESIS",
+      "log_sha256": "6065eb7355061323320a110f58539bce3f9cc8b3f1aae24cdc1abff9582075af"
+    },
+    {
+      "name": "count_w2_c1_registered0_XILINX_FPGA",
+      "passed": true,
+      "count_width": 1,
+      "load_count_width": 2,
+      "registered_request": false,
+      "configuration": "XILINX_FPGA",
+      "log_sha256": "11aec945fdaea99a609c6fd3ae5fc4efee992d10d1048b6e9c32e9909a898285"
+    },
+    {
+      "name": "count_w3_c2_registered0_ASIC_SYNTHESIS",
+      "passed": true,
+      "count_width": 2,
+      "load_count_width": 3,
+      "registered_request": false,
+      "configuration": "ASIC_SYNTHESIS",
+      "log_sha256": "fd917313619f835356998b0af9ae48a0bda2f40deb33129b004200c2429f5c15"
+    },
+    {
+      "name": "count_w3_c2_registered0_XILINX_FPGA",
+      "passed": true,
+      "count_width": 2,
+      "load_count_width": 3,
+      "registered_request": false,
+      "configuration": "XILINX_FPGA",
+      "log_sha256": "30c3c8e1647897e01b6bd524569230f0c26fb333ffd5e355070170e952c3fcd7"
+    },
+    {
+      "name": "count_w4_c8_registered0_ASIC_SYNTHESIS",
+      "passed": true,
+      "count_width": 8,
+      "load_count_width": 4,
+      "registered_request": false,
+      "configuration": "ASIC_SYNTHESIS",
+      "log_sha256": "d039e6a6903aea5eb36d43f3eb7f55250090c9e6a10e78c62f30b2a7312e8400"
+    },
+    {
+      "name": "count_w4_c8_registered0_XILINX_FPGA",
+      "passed": true,
+      "count_width": 8,
+      "load_count_width": 4,
+      "registered_request": false,
+      "configuration": "XILINX_FPGA",
+      "log_sha256": "3b0c9f4c117585c8e93fc6adacaa4cd76487bd4b863d785194d967b70ff37c03"
+    },
+    {
+      "name": "count_w7_c29_registered0_ASIC_SYNTHESIS",
+      "passed": true,
+      "count_width": 29,
+      "load_count_width": 7,
+      "registered_request": false,
+      "configuration": "ASIC_SYNTHESIS",
+      "log_sha256": "b78ac8ee0c72b1ddaf11494a6d2ea3d1d8d4a82ffe3e401974ba8dc3702f478e"
+    },
+    {
+      "name": "count_w7_c29_registered0_XILINX_FPGA",
+      "passed": true,
+      "count_width": 29,
+      "load_count_width": 7,
+      "registered_request": false,
+      "configuration": "XILINX_FPGA",
+      "log_sha256": "9dc91571521cd087a20ec8c4f039de17c6bdb5865fd0a2c4f77a9b2eab849907"
+    },
+    {
+      "name": "count_w8_c29_registered0_ASIC_SYNTHESIS",
+      "passed": true,
+      "count_width": 29,
+      "load_count_width": 8,
+      "registered_request": false,
+      "configuration": "ASIC_SYNTHESIS",
+      "log_sha256": "e3f49d91c794f81925e9b341e97d633fca22dfc243c82885ecb70c7f2a6a947c"
+    },
+    {
+      "name": "count_w8_c29_registered0_XILINX_FPGA",
+      "passed": true,
+      "count_width": 29,
+      "load_count_width": 8,
+      "registered_request": false,
+      "configuration": "XILINX_FPGA",
+      "log_sha256": "20341616a70697329da8bddeb07880e909004c150c4c773842debeb2d4928350"
+    },
+    {
+      "name": "count_w12_c32_registered0_ASIC_SYNTHESIS",
+      "passed": true,
+      "count_width": 32,
+      "load_count_width": 12,
+      "registered_request": false,
+      "configuration": "ASIC_SYNTHESIS",
+      "log_sha256": "586c94b3a6262ae07c7bfdb389e01ccabaa5384257532648221b43bf4fd8c7ad"
+    },
+    {
+      "name": "count_w12_c32_registered0_XILINX_FPGA",
+      "passed": true,
+      "count_width": 32,
+      "load_count_width": 12,
+      "registered_request": false,
+      "configuration": "XILINX_FPGA",
+      "log_sha256": "542a692af73c2b46101f704f44e266a97d0d544db8e1457691d7efd8551c9c3a"
+    },
+    {
+      "name": "request_w0_c0_registered0_ASIC_SYNTHESIS",
+      "passed": true,
+      "count_width": 0,
+      "load_count_width": 0,
+      "registered_request": false,
+      "configuration": "ASIC_SYNTHESIS",
+      "log_sha256": "cea3ee1fe35f9de8534a714b7d81c195104aa0f980f25d8a82cbdfa84a8bd417"
+    },
+    {
+      "name": "request_w0_c0_registered0_XILINX_FPGA",
+      "passed": true,
+      "count_width": 0,
+      "load_count_width": 0,
+      "registered_request": false,
+      "configuration": "XILINX_FPGA",
+      "log_sha256": "adcc21af981ab3c88e9325354752b79ba4338d1388443da2bb24c5009e5b36cd"
+    },
+    {
+      "name": "request_w0_c0_registered1_ASIC_SYNTHESIS",
+      "passed": true,
+      "count_width": 0,
+      "load_count_width": 0,
+      "registered_request": true,
+      "configuration": "ASIC_SYNTHESIS",
+      "log_sha256": "1c8b9b056eed0932372150a81516fa533e9ddb57bfc173cb7097a6c715e5d329"
+    },
+    {
+      "name": "request_w0_c0_registered1_XILINX_FPGA",
+      "passed": true,
+      "count_width": 0,
+      "load_count_width": 0,
+      "registered_request": true,
+      "configuration": "XILINX_FPGA",
+      "log_sha256": "216624338cbb97db0c79f28325d265db189b937b89b3f0234ee0abbfa37a7e26"
+    }
+  ],
+  "request_state_initialization": "one reset edge; subsequent inputs unrestricted",
+  "request_unbounded_induction_steps": 1,
+  "model_sha256": {
+    "count_control.sv": "b06014855529f9859529df451535b9e5e2f038a08325cf5a82394a701fc0e2e2",
+    "request_control.sv": "905c059a16a38b25ea9b4d6104a18ba75d82f8b7b7314441319d35ffe546d0c0"
+  }
+}

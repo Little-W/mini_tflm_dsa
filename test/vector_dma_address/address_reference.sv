@@ -12,8 +12,8 @@ module reference(input logic clk, input logic[5:0] state,input logic[2:0] load_k
     ADD_MULT, ADD_DRAIN, ADD_ROUND, ADD_SUM, ADD_STORE,
     POOL_LOAD_PREP, POOL_LOAD_REQ, POOL_LOAD_WAIT,
     DRAIN, DRAIN_TILE, SOFT_START, SOFT_RUN, SOFT_LUT_REQ, SOFT_LUT_WAIT,
-    CHECK_WAIT, QUANT_STREAM, EXECUTE_COMMIT, ADD_ROUND_WAIT, AVG_POWER_STORE, POOL_LOAD_DRAIN,
-    DW_EXECUTE, DW_FINISH
+    CHECK_WAIT, EXECUTE_COMMIT = 6'd38, ADD_ROUND_WAIT, AVG_POWER_STORE, POOL_LOAD_DRAIN,
+    DW_EXECUTE, DW_FINISH, ADD_CLAMP, AVG_POWER_DELAY, AVG_POWER_CLAMP, LOAD_VERIFY
   } state_t;
  typedef enum logic [2:0] {LD_WEIGHT, LD_BIAS, LD_MULT, LD_SHIFT, LD_A, LD_B, LD_LUT} load_t;
  logic[31:0] read_address_base,read_address_offset;logic[15:0] read_address_channel;logic[1:0] unused_read_address_carry;
@@ -73,7 +73,7 @@ module reference(input logic clk, input logic[5:0] state,input logic[2:0] load_k
       EXECUTE_COMMIT: write_address_offset = vector_offset << 2;
       ADD_STORE: write_address_offset = vector_offset;
       // 空间位置与通道号共同组成行偏移。
-      QUANT_STREAM, AVG_POWER_STORE, AVG_WAIT, POOL_STORE, DW_FINISH:
+      AVG_POWER_STORE, AVG_WAIT, POOL_STORE, DW_FINISH:
         write_address_offset = position_offset + {16'd0, channel_base};
       default: begin end
     endcase
@@ -85,17 +85,7 @@ module reference(input logic clk, input logic[5:0] state,input logic[2:0] load_k
 
 
 endmodule
-module vector_read_address_add_reference #(
-`ifdef ASIC_SYNTHESIS
-  parameter bit p_use_dsp = 1'b0
-`elsif XILINX_FPGA
-  parameter bit p_use_dsp = 1'b1
-`elsif SYNTHESIS
-  parameter bit p_use_dsp = 1'b1
-`else
-  parameter bit p_use_dsp = 1'b0
-`endif
-) (
+module vector_read_address_add_reference (
   input logic clk,
   input logic [31:0] i_base,
   input logic [31:0] i_offset,

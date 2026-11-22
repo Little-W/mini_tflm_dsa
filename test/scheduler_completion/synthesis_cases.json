@@ -1,0 +1,26 @@
+{
+  "reference": {
+    "top": "ps_scheduler_completion_measure",
+    "sources": [
+      "build/scheduler_completion/formal/reference/rtl/npu/control/ps_window_scheduler.sv",
+      "test/scheduler_completion/measure.sv"
+    ],
+    "options": [
+      "-D", "SYNTHESIS=1", "-D", "XILINX_FPGA=1",
+      "-GSIZE=16", "-GFRAME_COUNT=16", "-GMAX_REUSE_TILES=32"
+    ],
+    "configuration": "生产参数调度器，完成通知和容量限制输入由测量模块保存"
+  },
+  "current": {
+    "top": "ps_scheduler_completion_measure",
+    "sources": [
+      "rtl/npu/control/ps_window_scheduler.sv",
+      "test/scheduler_completion/measure.sv"
+    ],
+    "options": [
+      "-D", "SYNTHESIS=1", "-D", "XILINX_FPGA=1",
+      "-GSIZE=16", "-GFRAME_COUNT=16", "-GMAX_REUSE_TILES=32"
+    ],
+    "configuration": "生产参数调度器，完成通知和容量限制输入由测量模块保存"
+  }
+}

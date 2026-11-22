@@ -13,9 +13,11 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 SOURCES = [f'rtl/npu/conv/{name}.sv' for name in
-           ('vector_pe', 'vector_round_shift', 'vector_scalar_multiplier')]
+           ('vector_reduce_alu', 'vector_round_shift', 'registered_multiplier_s32')]
 COMMON = 'rtl/common/parallel_prefix_add.sv'
-DEFAULT_REFERENCE = 'dde5e7c9'
+DEFAULT_REFERENCE = 'ef0dc75'
+REFERENCE_SOURCES = dict(zip(SOURCES, [f'rtl/npu/conv/{name}.sv' for name in
+                        ('vector_pe', 'vector_round_shift', 'vector_scalar_multiplier')]))
 
 
 def digest(path: Path) -> str:
@@ -49,8 +51,11 @@ def main() -> None:
     hashes = {name: digest(source_root / name) for name in SOURCES + [COMMON]}
     original_hashes = {}
     for name in SOURCES:
-        original = ((args.reference_root / name).read_bytes() if args.reference_root else
-                    subprocess.check_output(['git', 'show', f'{reference}:{name}'], cwd=ROOT))
+        original_name = REFERENCE_SOURCES[name]
+        if args.reference_root and (args.reference_root / name).exists():
+            original_name = name
+        original = ((args.reference_root / original_name).read_bytes() if args.reference_root else
+                    subprocess.check_output(['git', 'show', f'{reference}:{original_name}'], cwd=ROOT))
         original_hashes[name] = hashlib.sha256(original).hexdigest()
         for label, data in [('reference', original), ('current', (source_root / name).read_bytes())]:
             target = inputs / label / name
@@ -114,7 +119,7 @@ def main() -> None:
             if name not in args.modules:
                 continue
             measurement_cases[f'{label}_{name}'] = {
-                'top': top, 'sources': [str(inputs / label / source_name), str(wrappers)],
+                'top': top, 'sources': [str(inputs / label / source_name), str(common), str(wrappers)],
                 'options': ['-D', 'SYNTHESIS=1', '-D', 'XILINX_FPGA=1'],
                 'configuration': f'{name}：保留实际算术位宽和寄存器边界',
             }

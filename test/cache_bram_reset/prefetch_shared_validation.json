@@ -1,0 +1,440 @@
+{
+  "passed": true,
+  "source": "rtl/npu/dma/cache/conv_windowed_cache.sv",
+  "reference_sha256": "fd242382d3c41cf8402a207d0ffa775aa66d7976cb000e79b632255132c6682b",
+  "source_sha256": "bee92dd85c96882afd4356c146e41f08dcc9fd6a9ffcf7b6ce68e9ecb7032056",
+  "checks": {
+    "storage_validation": {
+      "summary_sha256": "a9a61cdf688274ebfcfe1a4840141357977ffe489d98cfcd5d1a9ad1988ce007",
+      "result": {
+        "passed": true,
+        "external_inputs_constrained": false,
+        "source_sha256": {
+          "reference": "fd242382d3c41cf8402a207d0ffa775aa66d7976cb000e79b632255132c6682b",
+          "current": "e1c26b4f7f983887fabcf9d0621dbf208556879cf394647c5beaa630619036ab"
+        },
+        "regfile_sha256": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+        "compared_outputs_bits": 576,
+        "equivalent_bits": 576,
+        "four_state_cycles": 8192,
+        "four_state_checks": 16384,
+        "unknown_output_checks": 11376,
+        "fpga_identical_tokens": 18175,
+        "logical_storage_bits": 512,
+        "prefetch_entries": 8,
+        "checker_sha256": "413ebfb6a65e9278c92474c8abd5e5d9fb53e3060e2d1405e324d013bf938560"
+      }
+    },
+    "merged_formal": {
+      "summary_sha256": "8a623910b0d5f16c54eba824304f40ba563d48c80ca287c827e9199f2baae067",
+      "result": {
+        "passed": true,
+        "external_inputs_constrained": false,
+        "compared": "all public outputs and common internal state",
+        "source_sha256": {
+          "reference": {
+            "rtl/npu/dma/cache/conv_read_cache.sv": "fd242382d3c41cf8402a207d0ffa775aa66d7976cb000e79b632255132c6682b",
+            "rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+            "rtl/npu/conv/conv_axi_span_reader.sv": "c4da511ad0622b432de89bc214d25c7e51d438ccf480e915980530ef474f4bc1",
+            "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+            "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+            "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+            "rtl/common/parallel_prefix_add.sv": "e302438e05d73bb8859ca288c91fec89791e9cb97067fbbf575a8daf4fbb6221",
+            "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+            "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+            "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+            "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+          },
+          "current": {
+            "rtl/npu/dma/cache/conv_read_cache.sv": "e1c26b4f7f983887fabcf9d0621dbf208556879cf394647c5beaa630619036ab",
+            "rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+            "rtl/npu/conv/conv_axi_span_reader.sv": "c4da511ad0622b432de89bc214d25c7e51d438ccf480e915980530ef474f4bc1",
+            "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+            "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+            "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+            "rtl/common/parallel_prefix_add.sv": "e302438e05d73bb8859ca288c91fec89791e9cb97067fbbf575a8daf4fbb6221",
+            "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+            "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+            "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+            "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+          }
+        },
+        "asic": true,
+        "complete_prefetch_storage_observed": true,
+        "profiles": [
+          {
+            "name": "direct",
+            "passed": true,
+            "parameters": {
+              "SETS": 8,
+              "WAYS": 2,
+              "LINE_BYTES": 16,
+              "BUS_WIDTH": 32,
+              "READ_WIDTH": 32,
+              "DEMAND_DEPTH": 1
+            },
+            "equivalent_bits": 9327,
+            "log_sha256": "2ac32b168de2e7f4ab523d32591d664d1071e003cf2c17e73240c5290f039046"
+          },
+          {
+            "name": "single_way",
+            "passed": true,
+            "parameters": {
+              "SETS": 8,
+              "WAYS": 1,
+              "LINE_BYTES": 16,
+              "BUS_WIDTH": 64,
+              "READ_WIDTH": 32,
+              "DEMAND_DEPTH": 4
+            },
+            "equivalent_bits": 4681,
+            "log_sha256": "9a2875241c0a54b4f7c82b7b3eb1e54dfb29e80c89e05bf41efbef710b6d1b78"
+          },
+          {
+            "name": "production_asic",
+            "passed": true,
+            "parameters": {
+              "SETS": 16,
+              "WAYS": 2,
+              "LINE_BYTES": 128,
+              "BUS_WIDTH": 64,
+              "READ_WIDTH": 128,
+              "DEMAND_DEPTH": 2,
+              "p_defer_retire_shift": 1
+            },
+            "equivalent_bits": 43584,
+            "log_sha256": "6b792da0877ba445e9e318f1c3ba0cabed5cd64cc707305322cfb6b77e6f6ab3"
+          }
+        ]
+      }
+    },
+    "numeric_asic": {
+      "summary_sha256": "92d47242edecdeee23848788735eadb07c0d99d9dce28956c20c1e2d3cca33eb",
+      "result": {
+        "passed": true,
+        "reference_commit": null,
+        "reference_root": "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/reference",
+        "output_ports": [
+          "cfg_ready",
+          "req_ready",
+          "hint_pending",
+          "rsp_valid",
+          "rsp_data",
+          "rsp_error",
+          "arvalid",
+          "araddr",
+          "arlen",
+          "arsize",
+          "arburst",
+          "rready",
+          "prefetch_ready"
+        ],
+        "source_sha256": {
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/candidate/rtl/npu/dma/cache/conv_read_cache.sv": "e1c26b4f7f983887fabcf9d0621dbf208556879cf394647c5beaa630619036ab",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/candidate/rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/candidate/rtl/npu/conv/conv_axi_span_reader.sv": "c4da511ad0622b432de89bc214d25c7e51d438ccf480e915980530ef474f4bc1",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/numeric_asic/reference_cache.sv": "65b94db3a962dd4cfb920780e84dc0fc17db72bf8ca74c9e256386a669f058b4",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/numeric_asic/tb_cache_pipeline.sv": "80e4ab780a78d2d48276de5f43bb5114ef78c4850ee98b091e7fb7e152dd8fbd",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/numeric_asic/axi_counted_memory.sv": "03b072baa30839d6555b60ea6866df5e80d579625967365bfb42a7b7bed0d944",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/candidate/rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/candidate/rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/candidate/rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/candidate/rtl/common/parallel_prefix_add.sv": "e302438e05d73bb8859ca288c91fec89791e9cb97067fbbf575a8daf4fbb6221",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/candidate/rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/numeric_asic/asic_conv_read_cache_observer.sv": "7afe12600c6ad13667f43d61c70594e51fb65c88aba68f780230f4e15653790d",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/numeric_asic/asic_conv_read_cache_reference_observer.sv": "0abc4f70df5f05f1c3f7b12927f921af9ec07507e8b604ec777a99f9f3473a5e",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/cache_prefetch_shared/numeric_asic/asic_conv_windowed_cache_observer.sv": "c50592ef6d761a9299d7a50652f3d8e5c485be55de04ec5c4625a5d9c44fd5c3",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/asic/rtl/smic40_sram_1r1w.sv": "841b5894b63e0a67eb8484034a1aed92ae9dfdc5f96095012900521440694b0b",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/asic_regfile/sram_model.sv": "4fc274be34a817c4ffb5c660aa8cfc93fe9e474dd01a1b2af701cf293f50fd55"
+        },
+        "fpga": false,
+        "asic": true,
+        "observer_input_sha256": {
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/monitors/conv_read_cache_observer.sv": "1d712e28fa59f287e6dabea704614fb6459136a4bf9ff43cc27abb4b078c5654",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/monitors/conv_read_cache_reference_observer.sv": "a7c88412d08eda2a5337e708addace122eb29076366abe58f1d932f51841db99",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/monitors/conv_windowed_cache_observer.sv": "46de48f063202202282ec0ead43eb1924788eb64c8229f09df459ee4d5133576"
+        },
+        "compare_prefetch_keys": true,
+        "profiles": [
+          {
+            "bus_width": 64,
+            "read_width": 128,
+            "depth": 2,
+            "ways": 2,
+            "cache_sets": 16,
+            "line_bytes": 128,
+            "defer_retire_shift": true,
+            "result": "CACHE_PIPELINE_PASS tests=13 accepted=250 completed=248 cancelled=2 peak_outstanding=2 warm_accept_interval=1 warm_return_interval=1 demand_depth=2 ways=2",
+            "prefetch_queue": "PREFETCH_QUEUE_PASS peak=8 swaps=11 simultaneous_push_pop=2",
+            "prefetch_storage": "PREFETCH_STORAGE_PASS fixed_ports=8 selected_ports=1 cycles=9996"
+          }
+        ]
+      }
+    },
+    "current_prefetch_storage": {
+      "summary_sha256": "897308214455f2a243add081d4da433f2d8ee3942d8009e0183f6867f9094c8d",
+      "result": {
+        "passed": true,
+        "external_inputs_constrained": false,
+        "source_sha256": {
+          "reference": "fd242382d3c41cf8402a207d0ffa775aa66d7976cb000e79b632255132c6682b",
+          "current": "bee92dd85c96882afd4356c146e41f08dcc9fd6a9ffcf7b6ce68e9ecb7032056"
+        },
+        "regfile_sha256": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+        "compared_outputs_bits": 576,
+        "equivalent_bits": 576,
+        "four_state_cycles": 8192,
+        "four_state_checks": 16384,
+        "unknown_output_checks": 11376,
+        "fpga_identical_storage_tokens": 331,
+        "logical_storage_bits": 512,
+        "prefetch_entries": 8,
+        "checker_sha256": "a3f1e1f862a29cc05636defc276508db72068d4f9b25b9df72b8b674a43084e3"
+      }
+    },
+    "current_cache_data": {
+      "summary_sha256": "90a6718aeea5e8be824f2ea2d085d3ca6e91cd591f72da40a35cb73c43b08a2e",
+      "result": {
+        "passed": true,
+        "comparisons": 300000,
+        "fields": [
+          "lookup_snapshot_set",
+          "pf_snapshot_set",
+          "incoming_snapshot_set",
+          "next_snapshot_set",
+          "incoming_hold_snapshot_set",
+          "next_hold_snapshot_set",
+          "hint_snapshot_set",
+          "pf_pick",
+          "pf_addr",
+          "pf_index",
+          "pf_epoch",
+          "pf_retire",
+          "pf_index_valid",
+          "hint_value_q"
+        ],
+        "reset": "binary asynchronous reset; unknown control and data inputs",
+        "source_sha256": {
+          "reference": "fd242382d3c41cf8402a207d0ffa775aa66d7976cb000e79b632255132c6682b",
+          "current": "bee92dd85c96882afd4356c146e41f08dcc9fd6a9ffcf7b6ce68e9ecb7032056"
+        },
+        "models_sha256": "74eff2f4519da8ddfabf18a25380aae772a2079459d7eb67b3d79f4a0add656b",
+        "bench_sha256": "9ec1b6ee092698f9a50de1cfd2bcc3cb0857edfa445016afd429c41356099153",
+        "log_sha256": "a919c57def02262b34aa9c80b0ea2ab665b4c5d43dc2f7b88d6689d8b7290513"
+      }
+    },
+    "current_cache_snapshot": {
+      "summary_sha256": "98113c07f65a5a57a7aea9c0f7df653d0f34ca1cfc1c00069589275fe577b026",
+      "result": {
+        "passed": true,
+        "input_constraints": false,
+        "profiles": [
+          {
+            "count_width": 1,
+            "passed": true
+          },
+          {
+            "count_width": 2,
+            "passed": true
+          },
+          {
+            "count_width": 3,
+            "passed": true
+          },
+          {
+            "count_width": 4,
+            "passed": true
+          }
+        ],
+        "four_state_comparisons": 200000,
+        "source_sha256": {
+          "reference": "fd242382d3c41cf8402a207d0ffa775aa66d7976cb000e79b632255132c6682b",
+          "current": "bee92dd85c96882afd4356c146e41f08dcc9fd6a9ffcf7b6ce68e9ecb7032056"
+        },
+        "model_sha256": "4f587af0a8221f9b5ed6b43509e9c81ecc14f19b9b095d8b3a6ec438e0e63cbe",
+        "comparison_boundaries": "all candidate comparison bits and selection controls are free inputs"
+      }
+    },
+    "current_cache_prefetch_snapshot": {
+      "summary_sha256": "4d57553ba400f6a0fb28053baeb88de86e158d9a321013fbc2cb381a1b5886ba",
+      "result": {
+        "passed": true,
+        "external_inputs_constrained": false,
+        "compared": "actual prefetch payload, configuration and snapshot clock updates",
+        "profiles": [
+          {
+            "set_index_width": 1,
+            "line_offset_width": 4,
+            "passed": true
+          },
+          {
+            "set_index_width": 3,
+            "line_offset_width": 4,
+            "passed": true
+          },
+          {
+            "set_index_width": 4,
+            "line_offset_width": 7,
+            "passed": true
+          },
+          {
+            "set_index_width": 7,
+            "line_offset_width": 4,
+            "passed": true
+          },
+          {
+            "set_index_width": 8,
+            "line_offset_width": 8,
+            "passed": true
+          }
+        ],
+        "four_state_comparisons": 300000,
+        "source_sha256": {
+          "reference": "fd242382d3c41cf8402a207d0ffa775aa66d7976cb000e79b632255132c6682b",
+          "current": "bee92dd85c96882afd4356c146e41f08dcc9fd6a9ffcf7b6ce68e9ecb7032056"
+        },
+        "model_sha256": "553f11aace575c82243574f11c76aec54a4bdba232a1113ef72569d44701457a"
+      }
+    },
+    "current_cache_tag": {
+      "summary_sha256": "d951ca11e59efcf673ad46e94a84051c3db88607f40c82104f4d9cb7cd1355cc",
+      "result": {
+        "passed": true,
+        "source_sha256": "bee92dd85c96882afd4356c146e41f08dcc9fd6a9ffcf7b6ce68e9ecb7032056",
+        "proof_sha256": "ffaaf536abec6129a488b7359dcfaa97d403df9bc84add7081c3e2ffd8248cfc",
+        "formal": [
+          {
+            "ways": 1,
+            "line_bytes": 16,
+            "passed": true
+          },
+          {
+            "ways": 1,
+            "line_bytes": 128,
+            "passed": true
+          },
+          {
+            "ways": 1,
+            "line_bytes": 256,
+            "passed": true
+          },
+          {
+            "ways": 2,
+            "line_bytes": 16,
+            "passed": true
+          },
+          {
+            "ways": 2,
+            "line_bytes": 128,
+            "passed": true
+          },
+          {
+            "ways": 2,
+            "line_bytes": 256,
+            "passed": true
+          }
+        ],
+        "input_constraints": [
+          "rst_n=0 at the first sampled edge"
+        ],
+        "four_state_samples": 20000
+      }
+    },
+    "current_cache_ranges": {
+      "summary_sha256": "469b57b64ab87e5a24a0c004ac4acffaa48cdd911a0f49bf81c259947cdd030a",
+      "result": {
+        "source_sha256": "bee92dd85c96882afd4356c146e41f08dcc9fd6a9ffcf7b6ce68e9ecb7032056",
+        "input_bits": 257,
+        "input_constraints": [],
+        "runs": [
+          {
+            "line_bytes": 16,
+            "read_width": 32,
+            "xilinx_fpga": false,
+            "passed": true,
+            "log_sha256": "352768176eeab26b7e5b3358c280eb5d29e0562a26b2359ce38e986b641bb76f"
+          },
+          {
+            "line_bytes": 16,
+            "read_width": 32,
+            "xilinx_fpga": true,
+            "passed": true,
+            "log_sha256": "7cce7dc7e4da42e4ffb1f72939322d12ce854c056f8eb593139ae1551543c1c7"
+          },
+          {
+            "line_bytes": 16,
+            "read_width": 64,
+            "xilinx_fpga": false,
+            "passed": true,
+            "log_sha256": "9adc341d64a42c73075dbe03faf87eab949f7f68279a9e25abcb3c6b89cb8ffa"
+          },
+          {
+            "line_bytes": 16,
+            "read_width": 64,
+            "xilinx_fpga": true,
+            "passed": true,
+            "log_sha256": "786ae8f2f30d7b5ac131f6d16071fd934f13f453fe9d1c3c582e6bd26f392960"
+          },
+          {
+            "line_bytes": 16,
+            "read_width": 128,
+            "xilinx_fpga": false,
+            "passed": true,
+            "log_sha256": "103d2a413e5a0073596c6315e783f2d0b39bd3c1ff67259a778d2463eb4eb006"
+          },
+          {
+            "line_bytes": 16,
+            "read_width": 128,
+            "xilinx_fpga": true,
+            "passed": true,
+            "log_sha256": "1a9fd91d566c0ddc12d1d3570142f6c557e6aa4b0a1149ae201f48a3bbf6afd3"
+          },
+          {
+            "line_bytes": 128,
+            "read_width": 32,
+            "xilinx_fpga": false,
+            "passed": true,
+            "log_sha256": "20c8e0870734edcebd44a8558d60e2dd2c267c342ea5ca124f244ecaf964a03d"
+          },
+          {
+            "line_bytes": 128,
+            "read_width": 32,
+            "xilinx_fpga": true,
+            "passed": true,
+            "log_sha256": "89698f5a21ecd6fce55b31f1dc61f273ecc865e028146e9093c211c6b523fcfa"
+          },
+          {
+            "line_bytes": 128,
+            "read_width": 64,
+            "xilinx_fpga": false,
+            "passed": true,
+            "log_sha256": "740e404f1034391671613e0f79d4e6adcf61e124848443c135c8deb3ae02bad8"
+          },
+          {
+            "line_bytes": 128,
+            "read_width": 64,
+            "xilinx_fpga": true,
+            "passed": true,
+            "log_sha256": "944723824b534e59b88e70ea983748d48420e6bfd2fb981e1730a8a28b3f661f"
+          },
+          {
+            "line_bytes": 128,
+            "read_width": 128,
+            "xilinx_fpga": false,
+            "passed": true,
+            "log_sha256": "af441f7e500756ba92e3b98a024f2a7954146662bd3a28650f55e132cb10a2bb"
+          },
+          {
+            "line_bytes": 128,
+            "read_width": 128,
+            "xilinx_fpga": true,
+            "passed": true,
+            "log_sha256": "0f5636d9eb9b2b06aeac20d2ff08c33b052aaee291c709ea7785da47943bf5b2"
+          }
+        ],
+        "passed": true
+      }
+    }
+  },
+  "component_check_source_sha256": "e1c26b4f7f983887fabcf9d0621dbf208556879cf394647c5beaa630619036ab"
+}

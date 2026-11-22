@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT=Path(__file__).resolve().parents[2]
 
 
@@ -54,12 +57,12 @@ def main():
     with (out/'synthesis.log').open('w') as log:
         subprocess.run([sys.executable,str(ROOT/'scripts/fpga/open_fpga_synth.py'),'--worker',str(script)],cwd=ROOT,
                        stdout=log,stderr=subprocess.STDOUT,check=True)
-    design=json.loads(mapped.read_text())['modules'][top]
+    design=json.loads(read_rtl_text(mapped))['modules'][top]
     for name,origin in netlist_metrics.register_origins(pre).items():
         if name in design['cells']:design['cells'][name].setdefault('attributes',{})['fpga_register_origin']=origin
     metrics=netlist_metrics.analyze(design)
     storage=[]
-    for name,cell in json.loads(structure.read_text())['modules'][top]['cells'].items():
+    for name,cell in json.loads(read_rtl_text(structure))['modules'][top]['cells'].items():
         if cell['type']=='$mem_v2':
             params=cell['parameters'];entry={'name':name}
             for key in ('WIDTH','SIZE','RD_PORTS','WR_PORTS','RD_CLK_ENABLE','WR_CLK_ENABLE'):

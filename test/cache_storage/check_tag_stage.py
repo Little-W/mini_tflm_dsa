@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import sys
@@ -18,10 +19,21 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    source = args.source_root.resolve() / 'rtl/npu/dma/cache/conv_read_cache.sv'
+    source = args.source_root.resolve() / 'rtl/npu/dma/cache/conv_windowed_cache.sv'
+    if not source.is_file():
+        source = source.with_name('conv_read_cache.sv')
     text = source.read_text()
-    start = text.index('  logic [WAYS-1:0][31:LB] lookup_tag_raw;')
-    end = text.index('  if (DEMAND_DEPTH == 1) begin : g_direct_response_lookup', start)
+    start = text.index('logic [WAYS-1:0][31:LB] lookup_tag_raw;')
+    loop = text.index('for (genvar hit_way', start)
+    begin = text.index('begin', loop)
+    depth = 0
+    for token in re.finditer(r'\bbegin\b|\bend\b', text[begin:]):
+        depth += 1 if token[0] == 'begin' else -1
+        if depth == 0:
+            end = begin + token.end()
+            break
+    else:
+        raise RuntimeError('标签比较寄存过程未完整提取')
     actual = text[start:end]
     proof = out / 'tag_stage.sv'
     proof.write_text('''module tag_stage_proof #(parameter int WAYS=2, LB=7, DEMAND_DEPTH=2) (

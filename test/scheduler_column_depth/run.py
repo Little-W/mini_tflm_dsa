@@ -10,7 +10,7 @@ import shlex
 import subprocess
 import sys
 
-from support import ROOT, REFERENCE, check_sources, digest, increment_body, prepare_inputs
+from support import ROOT, REFERENCE, check_sources, digest, increment_body, prepare_inputs, proof_state_aliases
 
 
 def main():
@@ -29,11 +29,13 @@ def main():
         parser.error("状态关系名称应为顶层逻辑标识符")
     out = args.out.resolve()
     _, paths, helpers, manifest = prepare_inputs(out, args.reference, args.candidate)
+    state_aliases = {label: proof_state_aliases(path.read_text()) for label, path in paths.items()}
     report = {
         "passed": False, "inputs": manifest, "input_assumptions": [],
         "state_relation": "Every public output and every shared clocked state is compared; equal register states remain equal for every input sequence.",
         "memory_relation": "Both complete metadata memories and frame K memories are expanded and compared.",
         "additional_relation_outputs": args.relation_nets,
+        "proof_state_aliases": state_aliases,
         "increment_profiles": [], "scheduler_profiles": [],
     }
 
@@ -83,8 +85,12 @@ endmodule
                 f"read_slang -D SYNTHESIS=1 -D XILINX_FPGA=1 --top ps_window_scheduler "
                 f"-GSIZE={size} -GFRAME_COUNT={frames} -GMAX_REUSE_TILES={reuse} {sources}",
                 "prep -top ps_window_scheduler -flatten", "memory_map", "opt_clean",
-                f"rename ps_window_scheduler {label}", f"design -stash {label}",
             ]
+            if state_aliases[label]:
+                commands.append("select -module ps_window_scheduler")
+                commands += [f"rename {name} {alias}" for name, alias in state_aliases[label].items()]
+                commands.append("select -clear")
+            commands += [f"rename ps_window_scheduler {label}", f"design -stash {label}"]
         commands += [
             "design -copy-from reference -as reference reference",
             "design -copy-from current -as current current",

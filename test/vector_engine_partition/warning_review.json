@@ -1,0 +1,190 @@
+{
+  "review_passed": true,
+  "scope": "当前完整 NPU 的 ASIC 层次展开与 FPGA 功能编译警告审查；源码保持不变。",
+  "logs": {
+    "asic": {
+      "path": "/workspace/scratch/e1a5fa683a84/validation_asic_partitioned_structure/elaboration.log",
+      "sha256": "ee3651194fcb0f8ee817deaf4c5011887abca86f17f3f0f9ab79e39771ce71e7"
+    },
+    "fpga": {
+      "path": "/workspace/scratch/e1a5fa683a84/validation_fpga_partitioned/npu/s16/compile.log",
+      "sha256": "f1402150d0d43cd985f284a650723ec2772ca7f0a305bc209316bee1522b7705"
+    }
+  },
+  "profiles": {
+    "asic": {
+      "top": "npu_top",
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "VECTOR_PE_COUNT": 16,
+      "ADDR_WIDTH": 19
+    },
+    "fpga": {
+      "top": "tb_conv_npu",
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "VECTOR_PE_COUNT": 8,
+      "ADDR_WIDTH": 32
+    }
+  },
+  "asic": {
+    "warnings": 6,
+    "errors": 0,
+    "connectivity_check_problems": 0,
+    "categories": {
+      "missing_include_directory": 1,
+      "shift_count_overflow": 5
+    },
+    "shift_review": {
+      "file": "asic/rtl/smic40_sram_1r1w.sv",
+      "line": 25,
+      "meaning": "记录中的 ADDR_WIDTH 为 6、7 或 9，右移量为 7 或 10。LOW_BITS 不小于地址位宽时，右移结果为零，符合这些特化实例的银行选择；read_bank 仍只在 read_enable 时更新。"
+    },
+    "configuration_note": "展开命令包含一个不存在且未被源码使用的 snapshot/include 搜索目录。"
+  },
+  "fpga": {
+    "warnings": 160,
+    "errors": 0,
+    "categories": {
+      "TIMESCALEMOD": 92,
+      "WIDTHTRUNC": 12,
+      "WIDTHEXPAND": 46,
+      "CMPCONST": 10
+    },
+    "design_width_truncation_warnings": 6,
+    "observer_width_truncation_warnings": 6,
+    "design_width_expansion_warnings": 32,
+    "observer_width_expansion_warnings": 14,
+    "observed_diagnostic_counts": {
+      "multiple_driver": 0,
+      "latch": 0,
+      "undriven": 0,
+      "missing_input_connection": 0,
+      "register_definition": 0
+    },
+    "register_warning_note": "两份日志均未报告异步加载值缺失或寄存器驱动定义冲突；常规优化删除信息不计为警告。"
+  },
+  "partition_comparison": {
+    "reference_log": {
+      "path": "/workspace/scratch/e1a5fa683a84/validation_fpga_unified/npu/s16/compile.log",
+      "sha256": "8e06854b2a2a45166426d3d3ab4fdc431b4500a2f6bad81c30f3931ddc404fe3"
+    },
+    "non_timescale_diagnostics": 68,
+    "non_timescale_diagnostics_identical": true,
+    "comparison_normalization": "忽略源文件位置，将层次引用 VARXREF 与局部引用 VARREF 统一；保留每条诊断正文和重复次数。",
+    "additional_time_unit_diagnostics": 15,
+    "additional_functional_diagnostics": 0
+  },
+  "width_semantics": [
+    {
+      "files": [
+        "rtl/npu/conv/vector_engine_control.sv"
+      ],
+      "lines": [
+        825
+      ],
+      "diagnostic": "WIDTHTRUNC",
+      "count": 1,
+      "meaning": "核尺寸从 32 位赋给 9 位 taps。只有 config_check_done 且 config_check_error 为零时更新；配置检查保证深度卷积核不超过 49、池化核不超过 256，9 位能够完整保存。"
+    },
+    {
+      "files": [
+        "rtl/npu/conv/vector_engine_control.sv"
+      ],
+      "lines": [
+        831,
+        1066
+      ],
+      "diagnostic": "WIDTHTRUNC",
+      "count": 2,
+      "meaning": "active_count_value 的实参为 min(remaining, TILE)，生产 TILE=16，结果范围为 0..16，5 位能够完整保存。"
+    },
+    {
+      "files": [
+        "rtl/npu/conv/vector_engine_control.sv"
+      ],
+      "lines": [
+        934
+      ],
+      "diagnostic": "WIDTHTRUNC",
+      "count": 1,
+      "meaning": "compute_index_value 将 32 位加法结果保存到 5 位索引。仅非末计算组递增，生产有效索引小于 TILE=16。"
+    },
+    {
+      "files": [
+        "rtl/npu/conv/vector_engine_operand_store.sv"
+      ],
+      "lines": [
+        799,
+        800,
+        801
+      ],
+      "diagnostic": "WIDTHTRUNC/WIDTHEXPAND",
+      "truncation_count": 1,
+      "expansion_count": 2,
+      "meaning": "输入银行共有 32 个元素、8 个银行，每银行 4 行。池化写入仅在 destination_index<pool_elements 时有效，pool_elements 最大为 32，因此有效写行号为 0..3。三位 pool_bank_row 参与条件选择后保存为两位 write_row，保留全部有效地址。"
+    },
+    {
+      "files": [
+        "rtl/npu/conv/vector_engine.sv"
+      ],
+      "lines": [
+        1135
+      ],
+      "diagnostic": "WIDTHTRUNC",
+      "count": 1,
+      "meaning": "acc_buf 包含 16 项，serial_acc_read_index 为 5 位。平均池化仅消费 quant_index<active 的通道；归约读取从第零项开始，后续捕获条件为 reduce_index+1<TILE。末项后的组合索引可等于 16，其结果没有被对应有效控制采样。完整索引保留了越界结果的原有语义。"
+    },
+    {
+      "files": [
+        "rtl/npu/conv/vector_engine.sv"
+      ],
+      "lines": [
+        1106
+      ],
+      "diagnostic": "WIDTHEXPAND",
+      "count": 1,
+      "meaning": "Add 的输入选择索引为 4 位，底层输入数组地址为 6 位。Add 仅在 compute_index+1<active<=16 时保存下一项，访问范围为 0..15。"
+    }
+  ],
+  "constant_comparisons": {
+    "count": 10,
+    "sites": {
+      "rtl/npu/loaders/kernel_loader_buffer.sv": [
+        97
+      ],
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": [
+        305,
+        309,
+        429
+      ],
+      "rtl/npu/dma/conv_window_queue.sv": [
+        203
+      ],
+      "rtl/npu/conv/vector_engine_operand_store.sv": [
+        716
+      ],
+      "rtl/npu/conv/vector_banked_writeback.sv": [
+        145,
+        149,
+        263,
+        265
+      ]
+    },
+    "meaning": "生成循环的首末通道边界、完整地址范围以及窗口计数上限在当前参数下化为常量，属于定义明确的参数特化。"
+  },
+  "other_width_warnings": "其余位宽扩展为无符号计数向 7、9 或 32 位运算及接口的扩展。观察模块的四条逻辑条件告警来自以 int 参数表示的固定功能开关；两条数组索引告警位于已有范围检查保护的观察表达式中。",
+  "required_rtl_fixes": [],
+  "source_sha256": {
+    "asic/rtl/smic40_sram_1r1w.sv": "841b5894b63e0a67eb8484034a1aed92ae9dfdc5f96095012900521440694b0b",
+    "rtl/npu/conv/vector_banked_writeback.sv": "c7f30c197fbfc6678f95f13530bf8389aee528efb70e7af4ea12c4de34e1707e",
+    "rtl/npu/conv/vector_config_check.sv": "82959318e4ee620c6190604f01a6278b0a29c91a926fa8b73ab9cb808f7c60fe",
+    "rtl/npu/conv/vector_engine.sv": "4ef682bd4245675681858e53e93852488edef97085a740ce98e2a70d638842ec",
+    "rtl/npu/conv/vector_engine_address.sv": "51f9d0364251f7595b43dfe3a625145eb732c01cbc2362600d938a056a9ce778",
+    "rtl/npu/conv/vector_engine_control.sv": "050e69004a31ee5b1fcb978bf79222efc32a0663facffcb31dc09dbd59c65eaf",
+    "rtl/npu/conv/vector_engine_operand_store.sv": "f04549f7afbc8414d4744010687cae86cc84d2b2c23aa5033b95a4632f55b39e",
+    "rtl/npu/dma/conv_window_queue.sv": "5e7a2e87325b62660e38713a3d98b67697d8356e5945c71f62da6055591e1ef4",
+    "rtl/npu/loaders/ia_loader_cache_mgr.sv": "004b36be0c707534e80ba33e39096d4199cb8576bac6e2cf0cd879f61d26d1b2",
+    "rtl/npu/loaders/kernel_loader_buffer.sv": "6766457a21276ab1f722e39ca3928e6025e0929732f1638b145b8b35b35a935e"
+  }
+}

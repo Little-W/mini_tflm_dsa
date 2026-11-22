@@ -14,6 +14,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts/fpga"))
 from open_fpga_synth import run_stage
+sys.path.insert(0, str(ROOT / "test"))
+from requant_test_utils import RTL_SOURCES
 
 
 def digest(path):
@@ -21,11 +23,10 @@ def digest(path):
 
 
 def make_wrapper(source, enabled):
-    first = source.index("module vec_requant_full #(")
+    first = source.index("module vec_requant #(")
     last = source.index("\n);", first) + 3
-    header = source[first:last].replace("module vec_requant_full #(", "module parameter_output_top #(", 1)
-    if not enabled:
-        header = header.replace(
+    header = source[first:last].replace("module vec_requant #(", "module parameter_output_top #(", 1)
+    header = header.replace(
             "    output logic signed [15:0] out_vec_s16[VLEN],\n"
             "    output logic signed [31:0] quant_multiplier_lane[VLEN],\n"
             "    output logic signed [31:0] quant_shift_lane[VLEN]",
@@ -34,10 +35,9 @@ def make_wrapper(source, enabled):
     values = {name: name for name in parameters}
     if "p_parameter_output" in parameters:
         values["p_parameter_output"] = "1'b1" if enabled else "1'b0"
-    return (header + "\nvec_requant_full #(\n" +
+    return (header + "\nvec_requant #(\n" +
             ",\n".join(f"    .{name}({value})" for name, value in values.items()) +
-            ("\n) u_quant (.*);\nendmodule\n" if enabled else
-             "\n) u_quant (.*, .quant_multiplier_lane(), .quant_shift_lane());\nendmodule\n"))
+            "\n) u_quant (.*, .quant_multiplier_lane(), .quant_shift_lane());\nendmodule\n")
 
 
 def memory_interfaces(module):
@@ -66,17 +66,14 @@ def memory_interfaces(module):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--reference-file", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--profiles", nargs="+", default=["16:64:2:32", "16:64:16:32", "8:32:1:8", "4:128:4:2"])
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    dependencies = [ROOT / name for name in (
-        "rtl/npu/writeback/requant_compute_lane.sv", "rtl/npu/writeback/requant_group_buffer.sv",
-        "rtl/npu/conv/vector_scalar_multiplier.sv")]
-    dependencies += sorted(path for path in (ROOT / "rtl/common").glob("*") if path.suffix in (".sv", ".v"))
-    sources = {"reference": args.reference_file.resolve(), "current": ROOT / "rtl/npu/writeback/vec_requant.sv"}
+    dependencies = [ROOT / name for name in RTL_SOURCES if not name.endswith('/vec_requant.sv')]
+    sources = {"reference": ROOT / "rtl/npu/writeback/vec_requant.sv",
+               "current": ROOT / "rtl/npu/writeback/vec_requant.sv"}
     snapshot = out / "inputs"
     snapshot.mkdir(exist_ok=True)
     saved_dependencies = []
@@ -96,20 +93,20 @@ def main():
               "comparison": "全部运算输出、控制状态及存储器读写端口"}
     for profile in args.profiles:
         vlen, bus, lanes, reuse = map(int, profile.split(":"))
-        for enabled in (False, True):
+        for enabled in (False,):
             folder = out / (profile.replace(":", "_") + f"_observe{int(enabled)}")
             folder.mkdir(exist_ok=True)
             models = {}
             for label, source in sources.items():
                 wrapper = folder / (label + "_wrapper.sv")
-                wrapper.write_text(make_wrapper(source.read_text(), enabled))
+                wrapper.write_text(make_wrapper(source.read_text(), label == "reference"))
                 raw = folder / (label + "_raw.json")
                 script = folder / (label + "_read.ys")
                 script.write_text(
                     f"read_slang --top parameter_output_top -D SYNTHESIS=1 -D XILINX_FPGA=1 "
                     f"-GVLEN={vlen} -GBUS_WIDTH={bus} -GMAX_IA_REUSE={reuse} -GENABLE_S16=1 "
                     f"-Gp_compute_lanes={lanes} -Gp_input_rows={vlen*reuse} " +
-                    shlex.join(map(str, [source, *dependencies, wrapper])) +
+                    shlex.join(map(str, [*dependencies, source, wrapper])) +
                     "\nprep -top parameter_output_top -flatten\nsetattr -unset keep\nopt_clean -purge\nwrite_json " +
                     shlex.quote(str(raw)) + "\n")
                 run_stage(script, folder / (label + "_read.log"), dict(os.environ))
@@ -129,7 +126,7 @@ def main():
             if match is None or int(match[2]):
                 raise RuntimeError("量化参数配置证明未完成")
             record = {"vlen": vlen, "bus_width": bus, "compute_lanes": lanes, "reuse": reuse,
-                      "parameter_output": enabled, "passed": True, "equivalent_bits": int(match[1]),
+                      "compared_parameter_output": [True, False], "passed": True, "equivalent_bits": int(match[1]),
                       "memories": len(models["current"]), **stage}
             report["profiles"].append(record)
             (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")

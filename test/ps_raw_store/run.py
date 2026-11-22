@@ -29,6 +29,9 @@ def main():
     sources = [root/'test/ps_raw_store/tb.sv', root/'test/ps_raw_store/main.cpp',
                root/'rtl/npu/ps_compact/ps_frame_store.sv', root/'rtl/common/regfile.v',
                root/'rtl/common/parallel_prefix_add.sv']
+    import runpy
+    dependency_reader = runpy.run_path(str(root / "scripts/rtl/source_files.py"))
+    sources = dependency_reader["with_dependencies"](sources, root)
     hashes = {str(p.relative_to(root)): digest(p) for p in sources}
     reference_hash = None
     if args.reference:

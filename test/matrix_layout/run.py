@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / 'veri/top_regression'))
 from host_tiling import plan
+sys.path.insert(0, str(ROOT / 'scripts/rtl'))
+from source_files import with_dependencies
 
 SIZE, WORDS = 16, 131072
 SENTINEL = bytes.fromhex('c33ca55a')
@@ -278,6 +280,7 @@ def command(argv: list, log: Path, timeout=1200) -> int:
 
 def build(directory: Path, ia: int, args) -> Path:
     enable_is_mode=int(not getattr(args, 'ws_only', False))
+    lint_only=bool(getattr(args, 'lint_only', False))
     npu=ROOT/'rtl/npu'
     package=npu/'conv/conv_im2col_pkg.sv'
     packages=[package,npu/'conv/vector_engine_pkg.sv']
@@ -286,9 +289,11 @@ def build(directory: Path, ia: int, args) -> Path:
     sources += [ROOT/'rtl/common/pseudo_dual_port_ram.v',ROOT/'rtl/axi_top/npu_axil_reg_if.sv',
                 ROOT/'rtl/axi_top/npu_axil_top.sv',ROOT/'test/conv_npu/axi_memory.sv',HERE/'tb_matrix_layout.sv']
     sources += [Path(path) for path in getattr(args, 'extra_sources', [])]
+    sources=with_dependencies(sources, ROOT)
     hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
     binary=directory/'obj/Vtb_matrix_layout'
-    manifest=directory/'build.json'
+    manifest=directory/('lint.json' if lint_only else 'build.json')
+    log_path=directory/('lint.log' if lint_only else 'compile.log')
     if args.skip_build:
         previous=json.loads(manifest.read_text())
         if previous['source_sha256']!=hashes:
@@ -296,19 +301,20 @@ def build(directory: Path, ia: int, args) -> Path:
         if previous.get('enable_is_mode', 1)!=enable_is_mode:
             raise RuntimeError('compiled dataflow support differs')
         return binary
-    argv=[args.verilator,'--binary','--timing','--assert','-sv','--top-module','tb_matrix_layout','-Wno-fatal',
+    argv=[args.verilator,'--lint-only' if lint_only else '--binary','--timing','--assert','-sv','--top-module','tb_matrix_layout','-Wno-fatal',
           f'-I{npu/"ps_compact"}',f'-DTB_IA_CACHE_BLOCKS={ia}','-DTB_PS_STORAGE_ROWS=799','-DTB_S16_BANKS=4',
           f'-DTB_ENABLE_IS_MODE={enable_is_mode}',
           '--Mdir',directory/'obj','-j',args.jobs,'-CFLAGS','-std=c++20 -O1',
           '-MAKEFLAGS','OPT_FAST=-O1 OPT_SLOW=-O0',*sources]
-    print(f'Building IA={ia}, PS=799, S16 banks=4',flush=True)
-    code=command(argv,directory/'compile.log')
+    print(f'{"Lint" if lint_only else "Building"} IA={ia}, PS=799, S16 banks=4',flush=True)
+    code=command(argv,log_path)
     after={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
     manifest.write_text(json.dumps(dict(returncode=code,source_sha256=hashes,sources_unchanged_during_build=hashes==after,
-                          enable_is_mode=enable_is_mode,
-                          command=[str(v) for v in argv],binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest() if code==0 else None),indent=2)+'\n')
+                          enable_is_mode=enable_is_mode,lint_only=lint_only,
+                          log_sha256=hashlib.sha256(log_path.read_bytes()).hexdigest(),
+                          command=[str(v) for v in argv],binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest() if code==0 and not lint_only else None),indent=2)+'\n')
     if code or hashes!=after:
-        raise RuntimeError((directory/'compile.log').read_text()[-6000:])
+        raise RuntimeError(log_path.read_text()[-6000:])
     return binary
 
 
@@ -337,11 +343,14 @@ def main() -> None:
     parser.add_argument('--verilator',default='verilator')
     parser.add_argument('--jobs',type=int,default=2)
     parser.add_argument('--skip-build',action='store_true')
+    parser.add_argument('--lint-only',action='store_true',help='仅检查当前参数的 RTL 和测试层次，不生成 C++ 程序')
     parser.add_argument('--compact',action='store_true')
     parser.add_argument('--fixed-only',action='store_true')
     parser.add_argument('--ws-only',action='store_true',help='Build without IS hardware and select only WS workloads')
     parser.add_argument('--case',help='regular expression selecting case names')
     args=parser.parse_args();args.out=args.out.resolve();args.out.mkdir(parents=True,exist_ok=True)
+    if args.lint_only and args.skip_build:
+        parser.error('--lint-only 与 --skip-build 不能同时使用')
     summary=dict(verilator=subprocess.check_output([args.verilator,'--version'],text=True).strip(),profiles=[])
     summary['generator_sha256']=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     summary['tiling_helper_sha256']=hashlib.sha256((ROOT/'veri/top_regression/host_tiling.py').read_bytes()).hexdigest()
@@ -349,6 +358,13 @@ def main() -> None:
     for ia in args.profiles:
         directory=args.out/f'ia{ia}'
         directory.mkdir(parents=True,exist_ok=True)
+        if args.lint_only:
+            build(directory,ia,args)
+            summary['profiles'].append(dict(ia_cache_blocks=ia,ps_storage_rows=799,
+                s16_fifo_banks=4,enable_is_mode=int(not args.ws_only),lint_only=True,passed=True))
+            summary['passed']=True
+            (args.out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
+            continue
         tasks=cases(directory/'cases',ia,args.compact or ia!=8)
         if args.ws_only:
             tasks=[t for t in tasks if json.loads((t/'case.json').read_text())['dataflow']=='WS']

@@ -49,7 +49,11 @@ def main():
     if text.count(declaration) != 1:
         raise RuntimeError("Unexpected buffer module declaration")
     text = text.replace(declaration, "module requant_group_buffer_reference #(")
+    text = text.replace("    regfile #(", "    regfile_reference #(")
     reference.write_text("`undef ASIC_SRAM\n" + text + "\n`define ASIC_SRAM\n")
+    reference_storage = out / "regfile_reference.sv"
+    storage = sources[1].read_text().replace("module regfile #(", "module regfile_reference #(", 1)
+    reference_storage.write_text("`undef ASIC_SRAM\n" + storage + "\n`define ASIC_SRAM\n")
     # 通用参考实例使用相同的五项断言，分别检查两条实际存储路径。
     reference_observer = out / "requant_group_buffer_reference_observer.sv"
     reference_observer.write_text(sources[5].read_text().replace(
@@ -59,7 +63,7 @@ def main():
         args.verilator, "--binary", "--timing", "--assert", "-Wno-fatal", "--sv",
         "-DASIC_SRAM", "--top-module", "tb_requant_group_buffer_memory",
         "--Mdir", str(objects), "-j", str(args.jobs), "-O1",
-        *map(str, sources[:-1]), str(reference), str(reference_observer),
+        *map(str, sources[:-1]), str(reference_storage), str(reference), str(reference_observer),
     ]
     run(command, out / "compile.log", source_root)
     binary = out / "simulation"
@@ -80,15 +84,16 @@ def main():
         "foundry_model_used": False,
         "source_sha256": hashes,
         "reference_sha256": sha(reference),
+        "reference_storage_sha256": sha(reference_storage),
         "reference_observer_sha256": sha(reference_observer),
         "binary_sha256": sha(binary),
         "verilator_version": subprocess.check_output([args.verilator, "--version"], text=True).strip(),
         "compile_command": command,
         "profiles": sorted(profiles, key=lambda item: item["rows"]),
         "default_logical_storage_bits": default["logical_bits"],
-        "default_sram_instances": 132,
-        "default_physical_storage_bits": 132 * 128 * 16,
-        "default_physical_storage_bytes": 132 * 128 * 16 // 8,
+        "default_sram_instances": 33,
+        "default_physical_storage_bits": 33 * 1024 * 16,
+        "default_physical_storage_bytes": 33 * 1024 * 16 // 8,
         "total_row_reads": sum(profile["reads"] for profile in profiles),
         "compared_consumed_bits": sum(profile["reads"] * (profile["lanes"] * 32 + 1)
                                       for profile in profiles),

@@ -118,8 +118,8 @@ module npu_kernel_pending_environment_observer;
     always @(posedge npu_top.clk) begin
         if (npu_top.core_rst_n) begin
             if (npu_top.cfg_stage2_fire) begin
-                assert (!npu_top.u_kernel_loader.ext_dma_busy);
-                assert (npu_top.u_kernel_loader.tb_pending_observer.dma_slots == 0);
+                assert (!npu_top.u_matrix_engine.u_kernel_loader.ext_dma_busy);
+                assert (npu_top.u_matrix_engine.u_kernel_loader.tb_pending_observer.dma_slots == 0);
             end
             // 普通卷积可保存两条 DMA 描述符，图像任务与线性返回互斥。
             if (npu_top.u_block_dma_arbiter.conv_job_q)

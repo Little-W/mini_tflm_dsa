@@ -14,6 +14,7 @@ RTL=ROOT.parents[1]/'rtl/npu/conv'
 FILES=[str((RTL.parent/'dma/cache'/Path(name).name if Path(name).name in {'conv_read_cache.sv', 'conv_sdp_ram.sv', 'conv_next_use_predictor.sv'} else RTL/Path(name).name)) if name.startswith('rtl/') else name for name in FILES]
 
 import runpy
+FILES = [str((ROOT / name).resolve()) if not Path(name).is_absolute() else name for name in FILES]
 FILES = [str(p) for p in runpy.run_path(str(ROOT.parents[1] / "test/monitors/sources.py"))["with_observers"](FILES)]
 
 def main():

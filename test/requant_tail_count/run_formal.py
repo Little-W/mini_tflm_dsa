@@ -11,12 +11,13 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from rtl_reference import read_rtl_source
+from requant_test_utils import controller_module
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def block_span(source):
-    module = source.index('module vec_requant_full #(')
+    module = source.index(controller_module(source))
     first = source.index('  logic [31:0] lane_start_cur;', module)
     end = source.index('  // 参数就绪拍锁存', first)
     return first, end
@@ -57,7 +58,7 @@ def header(name, reg_width, lanes):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference-rev', default='dde5e7c9')
+    parser.add_argument('--reference-rev', default='2297cb12')
     parser.add_argument('--worker', type=Path)
     args = parser.parse_args()
     if args.worker:

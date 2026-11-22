@@ -1,5 +1,7 @@
 # PS 帧资格并行选择
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 每个帧目录项独立计算初始化资格或长度相等条件，`request_frame_match` 的 `keep` 属性保留独立的比较结果。`frame_id` 只选择最终的一位资格。行数范围、请求接收、压力通知、容量错误与数据回放保持原有逐周期行为。未知行数继续使用完整的四态关系表达式。
 
 ## 完成的检查
@@ -18,7 +20,7 @@ git archive 9d75f75a rtl/npu/ps_compact/ps_frame_store.sv rtl/common | tar -x -C
 python3 test/ps_request_ranges/run_formal.py --source-root . --reference-root build/ps_frame_selection/reference --out build/ps_frame_selection/formal
 python3 test/ps_request_ranges/run_numeric.py --source-root . --reference 9d75f75a --jobs 1 --out build/ps_frame_selection/numeric
 python3 test/ps_request_ranges/run_numeric.py --source-root . --reference 9d75f75a --jobs 1 --large --out build/ps_frame_selection/numeric_large
-python3 scripts/fpga/open_fpga_synth.py --source-root build/ps_frame_selection/formal/current_source/512_16 --case-config test/ps_frame_selection/synthesis_cases.json --cases qualification --out build/ps_frame_selection/synthesis --wide-alu-dsp-budget 740 --rtl-dsp-attributes --max-register-path-cells 10
+python3 scripts/fpga/open_fpga_synth.py --source-root build/ps_frame_selection/formal/current_source/512_16 --case-config test/ps_frame_selection/synthesis_cases.json --cases qualification --out build/ps_frame_selection/synthesis --max-register-path-cells 10
 ```
 
 `validation.json` 记录参数、通过数量、源码及原始报告的 SHA256。生成的仿真与综合文件保存在指定输出目录。

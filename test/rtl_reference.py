@@ -5,6 +5,52 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 
+SOURCE_GROUPS = {
+    'conv_im2col_frontend.sv': ('conv_im2col_frontend_pkg.sv', 'conv_im2col_frontend.sv',
+                               'conv_im2col_geometry.sv', 'conv_im2col_descriptor.sv',
+                               'conv_im2col_stream.sv', 'conv_im2col_prefetch.sv'),
+    'npu_top.sv': ('npu_top.sv', 'npu_task_configuration.sv',
+                   'npu_output_pipeline.sv', 'npu_matrix_engine.sv',
+                   'npu_operand_cache_bridge.sv'),
+    'vector_engine.sv': ('vector_engine_control_pkg.sv', 'vector_engine.sv',
+                         'vector_engine_control.sv', 'vector_engine_address.sv',
+                         'vector_engine_operand_store.sv'),
+    'axi_dual_block_dma.sv': ('axi_dual_block_dma.sv', 'dma_register_buffer.sv'),
+    'conv_read_cache.sv': ('conv_read_cache.sv', 'conv_read_cache_reference.sv',
+                          'conv_windowed_cache.sv', 'conv_cache_metadata_way.sv',
+                          'conv_cache_rank_table.sv'),
+    'ia_loader.sv': ('ia_loader.sv', 'ia_ordered_coordinate_equal.sv'),
+    'kernel_loader.sv': ('kernel_loader.sv', 'kernel_request_idle.sv',
+                         'kernel_candidate_equal.sv', 'kernel_burst_encode.sv'),
+    'kernel_loader_ctrl.sv': ('kernel_loader_ctrl.sv', 'kernel_count_increment.sv',
+                              'kernel_count_compare.sv', 'kernel_count_next_reaches.sv'),
+    'ia_ps_shared_ram.sv': ('ia_ps_shared_ram.sv', 'shared_ram_read_mux.sv', 'ia_ps_channel_ram.sv'),
+    'ps_buffer.sv': ('ps_buffer.sv', 'ps_buffer_wide_fifo.sv', 'ps_buffer_exact_ram.sv'),
+    'ps_window_scheduler.sv': ('ps_window_scheduler.sv', 'ps_scheduler_any.sv', 'ps_scheduler_priority.sv'),
+    'vec_s8_to_fifo.sv': ('vec_s8_to_fifo_full.sv', 'vec_s8_to_fifo_linear.sv',
+                         'vec_s8_to_fifo.sv', 'vec_s8_fifo_row_ram.sv', 'fifo_bank_watermark.sv'),
+    'ps_frame_store.sv': ('ps_frame_store.sv', 'ps_raw_address.sv', 'ps_frame_store_capacity.sv'),
+    'soc_axi_interconnect.sv': ('soc_axi_interconnect.sv', 'soc_axi_step_address.sv'),
+    'soc_axi_pingpong_buffer.sv': ('soc_axi_pingpong_chan.sv', 'soc_axil_pingpong_buffer.sv',
+        'soc_axi_read_pingpong_buffer.sv', 'soc_axi_write_pingpong_buffer.sv', 'soc_axi_pingpong_buffer.sv'),
+    'picorv32_npu.v': ('picorv32_npu.v', 'picorv32_regs.v', 'picorv32_pcpi_mul.v',
+        'picorv32_pcpi_fast_mul.v', 'picorv32_pcpi_div.v', 'picorv32_axi.v',
+        'picorv32_axi_adapter.v', 'picorv32_wb.v'),
+}
+
+
+def read_current_source(path, *args, **kwargs):
+    """为局部提取与版本比较读取一个功能模块及其独立子模块。"""
+    path = Path(path)
+    content = path.read_text(*args, **kwargs)
+    group = SOURCE_GROUPS.get(path.name)
+    if group is None or len(re.findall(r'^\s*module\s+\w+', content, re.M)) != 1:
+        return content
+    files = [path.with_name(name) for name in group]
+    if not all(source.is_file() for source in files):
+        return content
+    return '\n'.join(source.read_text(*args, **kwargs) for source in files)
+
 
 def optional_shared_write_port(content, path, cwd):
     """让默认关闭的共享写数据接口参与不同版本的完整端口比较。"""

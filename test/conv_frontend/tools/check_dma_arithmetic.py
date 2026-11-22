@@ -10,6 +10,8 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT/'test/frontend_pipeline'))
+from source_sections import read_module, declarations
 
 
 def main():
@@ -19,18 +21,21 @@ def main():
     args = parser.parse_args()
     root, out = args.source_root.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    frontend_path = root / "rtl/npu/conv/conv_im2col_frontend.sv"
+    frontend_path, frontend = read_module(root, 'prefetch')
     predictor_path = root / "rtl/npu/dma/cache/conv_next_use_predictor.sv"
     prefix_path = root / "rtl/common/parallel_prefix_add.sv"
-    frontend, predictor = frontend_path.read_text(), predictor_path.read_text()
-    start = frontend.index("  logic [31:0] prefetch_next_x, prefetch_wrapped_x,")
-    end = frontend.index("  // 较大通道数", start)
-    coordinate_logic = frontend[start:end]
+    predictor = predictor_path.read_text()
+    start = frontend.index("  assign prefetch_wrap_i_a =")
+    end = frontend.index("  // 核行片段和跨步窗口", start)
+    coordinate_logic = declarations(frontend, ('prefetch_next_x', 'prefetch_wrapped_x',
+        'prefetch_wrap_base', 'prefetch_wrap_base_q', 'prefetch_wrap_i_a',
+        'prefetch_wrap_i_b', 'unused_prefetch_x_carry'))+frontend[start:end]
     coordinate_logic = coordinate_logic.replace("32'(pfa_x)", "input_x")
+    coordinate_logic = coordinate_logic.replace("32'(accepted_coordinate_q[0])", "input_x")
     coordinate_logic = coordinate_logic.replace("c.input_w", "input_w")
     accumulator_logic = "\n".join(re.search(pattern, predictor, re.S).group(0) for pattern in (
         r"  logic \[47:0\] cfg_accumulate_addend;",
-        r'  \(\* use_dsp = "yes" \*\) logic \[47:0\] cfg_accumulated_upper;',
+        r'  \s*logic \[47:0\] cfg_accumulated_upper;',
         r"  assign cfg_accumulate_addend = .*?;",
         r"  assign cfg_accumulated_upper = .*?;",
     ))

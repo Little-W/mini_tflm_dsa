@@ -1,0 +1,82 @@
+{
+  "source_sha256": {
+    "rtl/npu/loaders/ia_loader_cache_mgr.sv": "004b36be0c707534e80ba33e39096d4199cb8576bac6e2cf0cd879f61d26d1b2",
+    "rtl/npu/buffers/ia_ps_shared_ram.sv": "e4e355403ad11149b072b705ff28f92830aed3bb3a500f411bc7eac65239e1d5",
+    "rtl/npu/compute/select_add.sv": "7666adf571cc7267a9cbde09f7d9eb2e46bb3538481f3603b784f0bf9775e631",
+    "rtl/npu/buffers/vector_shared_store.sv": "947f99649e6ab70a0d91a7e08185163e4c139e2306d206809ec4d62f4f93a5a0",
+    "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+    "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+    "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+    "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+    "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+    "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+    "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+    "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+  },
+  "producer": [
+    {
+      "case": "producer_s0_layout0",
+      "passed": true,
+      "script_sha256": "aabb1dc9091b7a4408b2493fc5b697682f90eba89840f1617b9433a4df14ebac",
+      "log_sha256": "2fad78baae072d7cf0f47e560a185de740394ae8ecf353b165f4f0f2399ee2ff"
+    },
+    {
+      "case": "producer_s0_layout1",
+      "passed": true,
+      "script_sha256": "6b171c530f2c68bcf0fd55e09f96a040f62ec1048b37d163fc91c1d0229aecfe",
+      "log_sha256": "21c89292a3cd25cda0267f2d15747de1766a4ad485dff78c259589a212a27769"
+    },
+    {
+      "case": "producer_s1_layout0",
+      "passed": true,
+      "script_sha256": "75e4aa6b7e0d8abd7d6a27875497839740d9d282ba2fddf53f160bbff7442970",
+      "log_sha256": "24db0c71aca8b690a53004d56ca1367552b29b8ce4949661364a251bec499f34"
+    },
+    {
+      "case": "producer_s1_layout1",
+      "passed": true,
+      "script_sha256": "d87340564c435cd20dfd651e03d5355566813a990943b990905909f296afcbbd",
+      "log_sha256": "c6e17fcfca94f393276d5b98c7f4e465c9f41c40abe4412925e51097ddde7fe2"
+    },
+    {
+      "case": "vector_producer",
+      "passed": true,
+      "script_sha256": "24396f74f4be908105c7c720a334a29ae7781a58b60f00f45734348268fb133d",
+      "log_sha256": "7fa22c7e047c79240a5e614cf9bc62aca468eec457c825f2151d73b4062c9da3"
+    }
+  ],
+  "consumer": [
+    {
+      "case": "consumer_b2048_n6",
+      "passed": true,
+      "script_sha256": "c26db5f63e69bd242b662dc391a3bf77bc5791a37ccf15a422bfaadc49a3c98e",
+      "log_sha256": "dff67e5f3df92d1364f89b96136a90f627be78fd866fc69b10b23aa913ec8d20"
+    },
+    {
+      "case": "consumer_b2048_n8",
+      "passed": true,
+      "script_sha256": "2aebc7d4c045358cc523d1c70620c51d521015a809cb187137f68baae57f8396",
+      "log_sha256": "72279a2a32c29e74137c66431ec2e2974b64a5534bdab6a4755af3545d6e9645"
+    },
+    {
+      "case": "consumer_b8192_n7",
+      "passed": true,
+      "script_sha256": "624433a5d8f77ff564559e821852daaa7d59d3ea7e481d79282aa50ce71ea3ba",
+      "log_sha256": "5b8e6184f524d65ca396cb18222880dcc08dd8ee08f1ec42be6ae544e4b07a3a"
+    },
+    {
+      "case": "consumer_b8192_n9",
+      "passed": true,
+      "script_sha256": "9a2f2cd9fd1fabe144994fb4bba7e6bf3168938371db6254d7dfe3f133ca4844",
+      "log_sha256": "b22f16c8a89782d4d4ea39fb11469907ea4b5ac02d201af52fcf69138e9fa518"
+    }
+  ],
+  "reference": "ef0dc75342997721bdc4110b2841445df962018e",
+  "reset_condition": "rst_n=0 at the first sampled edge; subsequent resets are unrestricted",
+  "producer_input_constraints": null,
+  "consumer_write_condition": "Each enabled IA write has at least one enabled byte, as proved for the connected producer",
+  "consumer_scope": "All storage commands, data, masks, enabled addresses, configuration, fault and return selection state",
+  "memory_abstraction": "Storage commands and return selection are compared; stored contents do not affect control",
+  "source_hashes_unchanged": true,
+  "passed": true
+}

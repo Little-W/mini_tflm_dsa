@@ -51,8 +51,11 @@ def main():
     parser.add_argument("--verilator", type=Path,
                         default=Path(shutil.which("verilator") or "verilator"))
     parser.add_argument("--reference-ref", help="Compare every public output with this Git revision")
+    parser.add_argument("--reference-root", type=Path,
+                        help="Compare every public output with this source snapshot")
     parser.add_argument("--source-root", type=Path, default=ROOT,
                         help="Read candidate RTL from this source snapshot")
+    parser.add_argument("--jobs", type=int, default=1)
     parser.add_argument("--no-contract-assert", action="store_true",
                         help="Exercise out-of-contract start/busy inputs")
     args = parser.parse_args()
@@ -136,10 +139,12 @@ def main():
                args.source_root / "rtl/common/onehot_check.sv",
                args.source_root / "rtl/common/parallel_prefix_add.sv",
                args.source_root / "rtl/npu/dma/cache/conv_next_use_predictor.sv", HERE / "predictor_tb.sv"]
-    if args.reference_ref:
+    if args.reference_ref or args.reference_root:
         reference = args.build / "reference_predictor.sv"
-        original = read_rtl_source(args.reference_ref +
-            ":rtl/npu/dma/cache/conv_next_use_predictor.sv", cwd=ROOT, text=True)
+        original = ((args.reference_root.resolve() /
+            "rtl/npu/dma/cache/conv_next_use_predictor.sv").read_text()
+            if args.reference_root else read_rtl_source(args.reference_ref +
+            ":rtl/npu/dma/cache/conv_next_use_predictor.sv", cwd=ROOT, text=True))
         reference.write_text(original.replace("module conv_next_use_predictor", "module reference_conv_next_use_predictor"))
         comparison = args.build / "predictor_tb.sv"
         tb = (HERE / "predictor_tb.sv").read_text()
@@ -170,7 +175,7 @@ def main():
     binary = obj_dir / "Vpredictor_tb"
     assertion_defines = ["-DCONV_ASSERT"] + ([] if args.no_contract_assert else ["-DNPU_SIM_ASSERT"])
     command([args.verilator, "--binary", "--timing", "--assert", *assertion_defines, "-Wno-fatal",
-             "--top-module", "predictor_tb", "--Mdir", obj_dir, "-j", "2", *sources],
+             "--top-module", "predictor_tb", "--Mdir", obj_dir, "-j", str(args.jobs), *sources],
             args.build / "build.log")
     command([binary, f"+CONFIG={config_path}", f"+VECTORS={vectors_path}", f"+CASES={len(cases)}"],
             args.build / "run.log", timeout=60)
@@ -196,10 +201,12 @@ def main():
         "build": str(args.build), "build_log_sha256": sha256(args.build / "build.log"),
         "run_log_sha256": sha256(args.build / "run.log"),
     }
-    if args.reference_ref:
+    if args.reference_ref or args.reference_root:
         comparison = next(line for line in run_log.splitlines() if line.startswith("PREDICTOR_CYCLE_COMPARE_PASS"))
         report.update(reference_ref=args.reference_ref, cycle_comparison=comparison,
                       public_outputs_cycle_equivalent=True)
+        if args.reference_root:
+            report["reference_root"] = str(args.reference_root.resolve())
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2) + "\n")
     # All generated vectors, logs and reports remain beneath selected build/output paths.

@@ -11,6 +11,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/soc/soc_axi_pingpong_buffer.sv")
 WIDTHS = (1, 2, 34, 35, 36, 54, 64, 67, 73)
@@ -23,7 +26,7 @@ def digest(path):
 def measure_output_paths(path, tool_root):
     sys.path.insert(0, str(tool_root / "scripts/fpga"))
     from netlist_metrics import connected_paths
-    module = json.loads(path.read_text())["modules"]["soc_axi_pingpong_chan"]
+    module = json.loads(read_rtl_text(path))["modules"]["soc_axi_pingpong_chan"]
     next_bit = max(bit for net in module["netnames"].values() for bit in net["bits"]
                    if isinstance(bit, int)) + 1
     result = {}
@@ -83,7 +86,7 @@ def main():
     sys.path.insert(0, str(tool_root / "test"))
     from rtl_reference import read_rtl_source
     reference = read_rtl_source(f"{args.reference}:{SOURCE}", cwd=tool_root, text=True)
-    current = (source_root / SOURCE).read_text()
+    current = read_rtl_text(source_root / SOURCE)
     marker = "module soc_axil_pingpong_buffer"
     if reference.split(marker, 1)[1] != current.split(marker, 1)[1]:
         raise ValueError("AXI 与 AXI-Lite 封装发生变化")
@@ -140,7 +143,7 @@ endmodule
             subprocess.run([sys.executable, str(tool_root / "scripts/fpga/open_fpga_synth.py"),
                             "--worker", str(script)], cwd=tool_root, stdout=stream,
                            stderr=subprocess.STDOUT, check=True, timeout=120)
-        text = log.read_text()
+        text = read_rtl_text(log)
         if ("SAT proof finished - no model found: SUCCESS!" not in text or
                 "Induction step proven: SUCCESS!" not in text):
             raise RuntimeError(f"位宽 {width} 的状态归纳证明未完成")
@@ -185,13 +188,13 @@ endmodule
             subprocess.run(cmd, cwd=tool_root, stdout=log, stderr=subprocess.STDOUT, check=True)
         report["mapping"] = {}
         for name in cases:
-            metrics = json.loads((out / "mapping" / name / "metrics.json").read_text())
+            metrics = json.loads(read_rtl_text(out / "mapping" / name / "metrics.json"))
             report["mapping"][name] = {"resources": metrics["resources"],
                                         "max_register_path_cells": metrics["paths"]["longest_register_path_cells"],
                                         "graph_complete": metrics["paths"]["graph_complete"],
                                         "output_path_cells": measure_output_paths(
                                             out / "mapping" / name / "mapped.json", tool_root)}
-    if current != (source_root / SOURCE).read_text():
+    if current != read_rtl_text(source_root / SOURCE):
         raise RuntimeError("验证期间源文件发生变化")
     report["passed"] = True
     (out / "summary.json").write_text(json.dumps(report, indent=2) + "\n")

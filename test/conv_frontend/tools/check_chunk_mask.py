@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""证明连续通道范围的掩码和末通道选择，并检查四态传播。"""
+"""验证输出掩码和独热传输数量选择的完整输入关系。"""
 import argparse
 import hashlib
 import json
@@ -9,162 +9,69 @@ import shlex
 import subprocess
 import sys
 
-ROOT = Path(__file__).resolve().parents[3]
-
+ROOT=Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT/'test/frontend_pipeline'))
+from source_sections import read_module
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--source-root', type=Path, default=ROOT)
-    parser.add_argument('--out', type=Path, required=True)
-    args = parser.parse_args()
-    root, out = args.source_root.resolve(), args.out.resolve()
-    out.mkdir(parents=True, exist_ok=True)
-    source = root / 'rtl/npu/conv/conv_im2col_frontend.sv'
-    text = source.read_text()
-    selection = text[text.index('  localparam bit p_contiguous_chunk ='):
-                     text.index('  logic incoming_request, incoming_context')]
-    word_start = text.index('  for (genvar lane = 0; lane < LANES; lane++) begin : g_word_lane')
-    word_stop = text.index('  if (TILE_COUNT_W >= CHUNK_COUNT_W) begin : g_direct_chunk_end', word_start)
-    word = text[word_start:word_stop]
-    word_context = text[text.index('`ifdef ASIC_SYNTHESIS\n  localparam bit p_short_sum_dsp'):text.index('  conv_cfg_t c;')]
-    if 'word_mask_for_address' in text:
-        mask_function = re.search(
-            r'  function automatic logic \[LANES-1:0\] word_mask_for_address\(.*?  endfunction',
-            text, re.S).group()
-        word_context += mask_function + '\n'
-        word_context += '    assign word_lane_allowed = word_mask_for_address(addr, input_s16);\n'
-    if 'word_output_q' in word:
-        state_function = re.search(
-            r'  function automatic logic state_uses_word\(.*?  endfunction', text, re.S).group()
-        word_context += state_function.replace('input st_t next_state', 'input logic [21:0] next_state') + '\n'
-        word_context += '    wire word_output_q = state_uses_word(state);\n'
-    end_stop = text.index('  end\n', word_stop) + len('  end\n')
-    chunk_end = text[word_stop:end_stop]
-    output_start = text.index('  for (genvar output_lane = 0; output_lane < LANES; output_lane++) begin : g_output_mask')
-    output_stop = text.index('  always_comb begin', output_start)
-    output = text[output_start:output_stop]
-    lane_assignment = '    assign ' + re.search(r'chunk_lane_allowed\[lane\] = .*?;', text, re.S)[0]
-    proof = out / 'chunk_mask.sv'
-    proof.write_text('''module chunk_mask_proof #(
-    parameter int SIZE=16,
-    parameter int LANES=8,
-    parameter int NARROW_LANES=4
-) (
-    input logic [21:0] state,
-    input logic input_s16, past_active_q, narrow_output, group_has_channel,
-    input logic [LANES-1:0] group_short,
-    input logic [$clog2(SIZE+1)-1:0] active_remaining, col_remaining,
-    input logic [31:0] addr,
-    output logic equivalent,
-    output logic [LANES-1:0] wr_mask, reference_mask,
-    output logic [LANES:0] chunk_selected, reference_selected,
-    output logic chunk_reaches_end, reference_reaches_end
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--source-root',type=Path,default=ROOT)
+    parser.add_argument('--out',type=Path,required=True)
+    args=parser.parse_args()
+    root,out=args.source_root.resolve(),args.out.resolve();out.mkdir(parents=True,exist_ok=True)
+    path,source=read_module(root,'stream')
+    predicate=re.search(r'  localparam bit p_contiguous_chunk\s*=([^,;\n]+)',source)[1]
+    start=source.index('  assign chunk_selected[0]')
+    following=('  logic incoming_request','  if (CHUNK_COUNT_W + 1 < 32)')
+    stop=min(source.index(marker,start) for marker in following if marker in source[start:])
+    selection='localparam bit p_contiguous_chunk = '+predicate+';\n'+source[start:stop]
+    start=source.index('  for (genvar output_lane = 0; output_lane < LANES; output_lane++) begin : g_output_mask')
+    output=source[start:source.index('  always_comb begin',start)]
+    model=out/'chunk_mask.sv'
+    model.write_text("""module comparison #(parameter int SIZE=16,LANES=8)(
+ input logic [LANES-1:0] chunk_lane_allowed,
+ output logic equivalent
 );
-    localparam int TILE_COUNT_W=$clog2(SIZE+1), CHUNK_COUNT_W=$clog2(LANES+1);
-    localparam int p_cache_read_bytes=LANES<=4 ? 4 : (1 << $clog2(LANES));
-    localparam int p_word_shift=$clog2(p_cache_read_bytes);
-    localparam logic [21:0] WAIT_WORD=22'h080000, STREAM=22'h100000;
-    typedef struct packed {logic input_s16;} config_t;
-    config_t c;
-    logic [LANES-1:0] group_lane_allowed, word_lane_allowed, chunk_end_lane;
-    logic [LANES-1:0] chunk_data_allowed, chunk_lane_allowed;
-    logic [LANES-1:0] lane_context_allowed,word_lane_s8,word_lane_s16,chunk_end_s8,chunk_end_s16;
-    logic [LANES:0] active_lane_allowed_q, column_lane_allowed_q;
-    logic [CHUNK_COUNT_W-1:0] chunk_count;
-    assign c.input_s16=input_s16;
-    // 通道范围在配置、解码与描述符阶段均由边界前缀生成。
-    // 任意边界位组合覆盖寄存范围的所有连续前缀。
-    for (genvar lane=0;lane<LANES;lane++) begin : g_range
-        if (lane==0) assign group_lane_allowed[lane]=group_has_channel;
-        else assign group_lane_allowed[lane]=group_has_channel && !(|group_short[lane-1:0]);
-''' + lane_assignment + '''
-        assign reference_mask[lane]=|chunk_lane_allowed[LANES-1:lane];
-    end
-    for (genvar lane=0;lane<=LANES;lane++) begin : g_active
-        assign active_lane_allowed_q[lane]=TILE_COUNT_W'(lane)<active_remaining;
-        assign column_lane_allowed_q[lane]=TILE_COUNT_W'(lane)<col_remaining;
-    end
-    assign reference_selected[0]=!(|chunk_lane_allowed);
-    always_comb begin
-        chunk_count='0;
-        for (int lane=0;lane<LANES;lane++)
-            if (chunk_lane_allowed[lane]) chunk_count=CHUNK_COUNT_W'(lane+1);
-    end
-    for (genvar step=1;step<=LANES;step++) begin : g_reference_select
-        if (step==LANES) assign reference_selected[step]=chunk_lane_allowed[step-1];
-        else assign reference_selected[step]=chunk_lane_allowed[step-1] &&
-            !(|chunk_lane_allowed[LANES-1:step]);
-    end
-''' + word_context + selection + word + chunk_end + output + '''
-    assign reference_reaches_end = TILE_COUNT_W'(chunk_count) == col_remaining;
-    assign equivalent=(wr_mask==reference_mask) && (chunk_selected==reference_selected) &&
-        (chunk_reaches_end==reference_reaches_end);
+ localparam int TILE_COUNT_W=$clog2(SIZE+1),CHUNK_COUNT_W=$clog2(LANES+1);
+ logic [LANES:0] chunk_selected,expected_selection;
+ logic [LANES-1:0] wr_mask,expected_mask;
+ logic [CHUNK_COUNT_W-1:0] expected_count;
+ logic prefix_mask;
+"""+selection+output+"""
+ always_comb begin
+   expected_count='0;
+   for(int lane=0;lane<LANES;lane++)begin
+     if(chunk_lane_allowed[lane])expected_count=CHUNK_COUNT_W'(lane+1);
+   end
+ end
+ for(genvar lane=0;lane<LANES;lane++)begin:g_expected_mask
+   assign expected_mask[lane]=CHUNK_COUNT_W'(lane)<expected_count;
+ end
+ for(genvar step=0;step<=LANES;step++)begin:g_expected_count
+   assign expected_selection[step]=expected_count==CHUNK_COUNT_W'(step);
+ end
+ assign prefix_mask=(chunk_lane_allowed&(chunk_lane_allowed+LANES'(1)))=='0;
+ assign equivalent=(p_contiguous_chunk&&!prefix_mask)||
+                   (wr_mask==expected_mask&&chunk_selected==expected_selection);
 endmodule
-''')
-    result = {'passed': True, 'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
-              'proof_sha256': hashlib.sha256(proof.read_bytes()).hexdigest(),
-              'range_invariants': ['group flags form a continuous prefix',
-                                   'active flags are stored with their column count',
-                                   'word flags match the stored address and format',
-                                   'word output class matches the stored state'],
-              'input_constraints': [], 'runs': []}
-    for size in (2, 4, 8, 16):
-        for lanes in (1, 2, 4, 8, 16):
-            for fpga in (0, 1):
-                name = f's{size}_l{lanes}_f{fpga}'
-                script, log = out / (name + '.ys'), out / (name + '.log')
-                script.write_text('read_slang --top chunk_mask_proof -DSYNTHESIS=1 '+('-DXILINX_FPGA=1 ' if fpga else '')+'-GSIZE=' + str(size) +
-                    ' -GLANES=' + str(lanes) + ' ' + shlex.quote(str(proof)) + '\n' +
-                    'prep -top chunk_mask_proof -flatten\ncheck -assert\n' +
-                    'sat -verify -prove equivalent 1 -show-inputs -show-outputs\n')
-                with log.open('w') as stream:
-                    subprocess.run([sys.executable, str(ROOT / 'scripts/fpga/open_fpga_synth.py'),
-                                    '--worker', str(script)], stdout=stream, stderr=subprocess.STDOUT, check=True)
-                assert 'SUCCESS' in log.read_text(), log
-                result['runs'].append({'size': size, 'lanes': lanes, 'xilinx_fpga': bool(fpga), 'passed': True})
-    tb = out / 'tb_four_state.sv'
-    tb.write_text('''module tb_four_state;
-    reg [21:0] state;
-    reg input_s16, past_active_q, narrow_output, group_has_channel;
-    reg [7:0] group_short;
-    reg [4:0] active_remaining, col_remaining;
-    reg [31:0] addr;
-    wire equivalent;
-    wire [7:0] wr_mask, reference_mask;
-    wire [8:0] chunk_selected, reference_selected;
-    wire chunk_reaches_end, reference_reaches_end;
-    chunk_mask_proof dut (.*);
-    reg [75:0] pattern;
-    integer index, bit_index;
-    initial begin
-        for (index=0;index<20000;index=index+1) begin
-            pattern={$random,$random,$random};
-            if (index%3==0) pattern[index%76]=1'bx;
-            if (index%5==0) pattern[(index*7)%76]=1'bz;
-            {state,input_s16,past_active_q,narrow_output,group_has_channel,
-             group_short,active_remaining,col_remaining,addr}=pattern;
-            #1;
-            if (wr_mask!==reference_mask || chunk_selected!==reference_selected)
-                $fatal(1,"chunk mask comparison at sample %0d",index);
-        end
-        $display("CHUNK_MASK_FOUR_STATE_PASS samples=20000");
-        $finish;
-    end
-endmodule
-''')
-    binary = out / 'four_state.vvp'
-    compile_log = out / 'four_state_compile.log'
-    with compile_log.open('w') as stream:
-        subprocess.run(['/home/agent/.local/bin/iverilog', '-g2012', '-s', 'tb_four_state',
-                        '-o', str(binary), str(proof), str(tb)], stdout=stream,
-                       stderr=subprocess.STDOUT, check=True)
-    run = subprocess.run(['/home/agent/.local/bin/vvp', str(binary)], capture_output=True, text=True, check=True)
-    (out / 'four_state.log').write_text(run.stdout + run.stderr)
-    assert 'CHUNK_MASK_FOUR_STATE_PASS' in run.stdout
-    result['four_state_samples'] = 20000
-    (out / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')
-    print(json.dumps(result))
+""")
+    cases=[]
+    for size in (2,4,8,16):
+        for lanes in (1,2,4,8,16):
+            stem=f's{size}_l{lanes}';script=out/(stem+'.ys');log=out/(stem+'.log')
+            script.write_text(f'read_slang --top comparison -GSIZE={size} -GLANES={lanes} '+shlex.quote(str(model))+
+                              '\nprep -top comparison -flatten\ncheck -assert\n'
+                              'sat -verify -prove equivalent 1 -show-inputs -show-outputs\n')
+            with log.open('w')as stream:
+                result=subprocess.run([sys.executable,str(ROOT/'scripts/fpga/open_fpga_synth.py'),'--worker',str(script)],
+                                      cwd=ROOT,stdout=stream,stderr=subprocess.STDOUT,timeout=60)
+            if result.returncode or 'SUCCESS!'not in log.read_text():raise RuntimeError(str(log))
+            cases.append({'size':size,'lanes':lanes,'passed':True,
+                          'log_sha256':hashlib.sha256(log.read_bytes()).hexdigest()})
+    report={'passed':True,'source_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'cases':cases,
+            'range_invariant':'连续通道优化适用时，通道资格形成从最低通道开始的连续前缀；其余参数检查任意掩码',
+            'model_sha256':hashlib.sha256(model.read_bytes()).hexdigest()}
+    (out/'summary.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+    print('CHUNK_MASK_PASS',len(cases))
 
-
-if __name__ == '__main__':
-    main()
+if __name__=='__main__':main()

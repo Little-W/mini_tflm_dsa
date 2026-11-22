@@ -1,5 +1,7 @@
 # 权重加载器请求资格与行接收
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 控制器在进入运行状态时保存待发请求资格，并在最后一次发出请求、任务完成或清除时更新这一位状态。加载器分别计算普通需求、受管理的需求和预取请求，在接收位置合并缓存命中、DMA 授予和清除条件。
 
 待发预取状态包含管理模式资格，预取选择直接使用待发条件。返回数据按当前列对应的通道判断有效性，行结束条件独立控制累积状态。描述符、请求接收、缓存取消、返回顺序、发送重叠以及公开接口周期保持一致。
@@ -84,7 +86,6 @@ python test/kernel_prefetch/run.py \
 python scripts/fpga/open_fpga_synth.py \
   --source-root . --case-config test/kernel_request_state/synthesis_cases.json \
   --cases current --out /tmp/kernel_request_measure \
-  --wide-alu-dsp-budget 740 --rtl-dsp-attributes \
   --lock-file ../soc_synth.lock
 ```
 

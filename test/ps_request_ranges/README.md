@@ -1,5 +1,7 @@
 # PS 帧请求范围检查
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 `ps_frame_store` 将请求的行数范围与目录状态分别计算。高于实际行数宽度的位独立检查为零，低位比较有效行数、配置步长与帧长度，最终请求资格只合并各项结果。包含未知位的行数使用完整关系表达式，保留四态传播。帧接收、压力通知、容量错误、数据写入与回放的周期保持一致。
 
 ## 已完成检查
@@ -20,7 +22,7 @@ git archive 108e8185 rtl/npu/ps_compact/ps_frame_store.sv rtl/common | tar -x -C
 python3 test/ps_request_ranges/run_formal.py --source-root . --reference-root build/ps_request_ranges_reference --out build/ps_request_ranges/formal
 python3 test/ps_request_ranges/run_numeric.py --source-root . --reference 108e8185 --jobs 1 --out build/ps_request_ranges/numeric
 python3 test/ps_request_ranges/run_numeric.py --source-root . --reference 108e8185 --jobs 1 --large --out build/ps_request_ranges/numeric_large
-python3 scripts/fpga/open_fpga_synth.py --source-root build/ps_request_ranges/formal/current_source/512_16 --case-config test/ps_request_ranges/synthesis_cases.json --cases qualification --out build/ps_request_ranges/synthesis --wide-alu-dsp-budget 740 --rtl-dsp-attributes --max-register-path-cells 10
+python3 scripts/fpga/open_fpga_synth.py --source-root build/ps_request_ranges/formal/current_source/512_16 --case-config test/ps_request_ranges/synthesis_cases.json --cases qualification --out build/ps_request_ranges/synthesis --max-register-path-cells 10
 ```
 
 `validation.json` 保存参数、检查数量、源文件散列和原报告散列。仿真可执行文件及综合中间文件保存在测试输出目录。

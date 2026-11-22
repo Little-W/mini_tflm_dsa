@@ -6,9 +6,14 @@ tb_compute_core.sv
 ../../rtl/npu/compute/compute_core.sv
 ../../rtl/npu/compute/bias_mux.sv
 ../../rtl/npu/buffers/ps_buffer.sv
+../../rtl/npu/buffers/ps_buffer_wide_fifo.sv
+../../rtl/npu/buffers/ps_buffer_exact_ram.sv
 ../../rtl/common/pseudo_dual_port_ram.v
 ../../rtl/common/regfile.v
 ../../rtl/npu/compute/ws_systolic_array.sv
 ../../rtl/npu/compute/ws_systolic_cell.sv
-../../rtl/npu/ps_compact/ps_adaptive_codec.sv
+../../rtl/npu/ps_compact/ps_adaptive_encoder.sv
+../../rtl/npu/ps_compact/ps_adaptive_decoder.sv
 ../../rtl/npu/ps_compact/ps_frame_store.sv
+../../rtl/npu/ps_compact/ps_raw_address.sv
+../../rtl/npu/ps_compact/ps_frame_store_capacity.sv

@@ -17,15 +17,16 @@ def main():
     args=parser.parse_args()
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     sources=[ROOT/name for name in (
+        'rtl/npu/writeback/requant_pkg.sv','rtl/npu/writeback/requant_shift_pipeline.sv',
         'rtl/npu/writeback/vec_requant.sv','rtl/npu/writeback/requant_compute_lane.sv',
-        'rtl/npu/writeback/requant_group_buffer.sv','rtl/npu/conv/vector_scalar_multiplier.sv',
+        'rtl/npu/writeback/requant_group_buffer.sv','rtl/npu/conv/registered_multiplier_s32.sv',
         'rtl/common/regfile.v','rtl/common/add_equal.sv','rtl/common/onehot_check.sv',
         'rtl/common/parallel_prefix_add.sv')]
     sources.append(ROOT/'test/monitors/requant_group_buffer_observer.sv')
     sources += [HERE/'shared_quant_top.sv',HERE/'main.cpp']
     hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources+[Path(__file__)]}
-    command=[args.verilator,'--cc','--exe','--build','-j','2','--assert','-Wno-fatal','-Wno-PINMISSING',
-             '--top-module','shared_quant_top','--Mdir',str(out/'obj'),'-CFLAGS','-std=c++17',*map(str,sources)]
+    command=[args.verilator,'--cc','--exe','--build','-j','1','--assert','-Wno-fatal','-Wno-PINMISSING',
+             '--top-module','shared_quant_top','--Mdir',str(out/'obj'),'-CFLAGS','-std=c++17 -fsanitize=undefined -fno-sanitize-recover=all','-LDFLAGS','-fsanitize=undefined',*map(str,sources)]
     with (out/'build.log').open('w') as log:
         subprocess.run(command,cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,check=True)
     if any(hashlib.sha256((ROOT/n).read_bytes()).hexdigest()!=h for n,h in hashes.items()):

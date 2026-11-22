@@ -10,21 +10,23 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_current_source, read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'scripts/rtl'))
+from source_files import with_dependencies
 SOURCE = Path('rtl/npu/loaders/kernel_loader.sv')
 DEPENDENCIES = [Path('rtl/npu/loaders/kernel_loader_ctrl.sv'),
                 Path('rtl/npu/loaders/kernel_loader_buffer.sv')]
 
 EQUAL_PROOF = '''module kernel_equal_proof #(
-    parameter int p_width=160, parameter bit p_use_lut=1'b0
+    parameter int p_width=160
 ) (
     input logic [p_width-1:0] current_value,saved_value,
     output logic equivalent
 );
     logic equal_result;
-    kernel_candidate_equal #(.p_width(p_width),.p_use_lut(p_use_lut)) dut (
+    kernel_candidate_equal #(.p_width(p_width)) dut (
         .i_current(current_value),.i_saved(saved_value),.o_equal(equal_result)
     );
     assign equivalent=equal_result==(current_value==saved_value);
@@ -72,7 +74,7 @@ def main():
     hashes = {str(p.relative_to(ROOT)): digest(p) for p in sources}
     current = out/'current.sv'
     reference = out/'reference.sv'
-    current.write_bytes((ROOT/SOURCE).read_bytes())
+    current.write_text(read_current_source(ROOT / SOURCE))
     reference.write_bytes(read_rtl_source(f'{args.reference_rev}:{SOURCE}', cwd=ROOT))
     equal_proof = out/'equal_proof.sv'
     burst_proof = out/'burst_proof.sv'
@@ -101,15 +103,15 @@ def main():
         return text, digest(log)
 
     for width in (1, 2, 3, 4, 5, 31, 32, 160, 320):
-        for lut in (0, 1):
-            commands = [f'read_slang -D ASIC_SYNTHESIS=1 --top kernel_equal_proof '
-                        f'-Gp_width={width} -Gp_use_lut={lut} '+
+        for configuration in ('ASIC_SYNTHESIS', 'XILINX_FPGA'):
+            commands = [f'read_slang -D {configuration}=1 --top kernel_equal_proof '
+                        f'-Gp_width={width} '+
                         ' '.join(shlex.quote(str(p)) for p in (current, model, equal_proof)),
                         'prep -top kernel_equal_proof -flatten',
                         'sat -verify -prove equivalent 1 -show-inputs -show-outputs']
-            _, log_hash = run(f'equal_w{width}_lut{lut}', commands,
+            _, log_hash = run(f'equal_w{width}_{configuration}', commands,
                               'SAT proof finished - no model found: SUCCESS!')
-            report['equal_profiles'].append({'width': width, 'lut': lut, 'passed': True,
+            report['equal_profiles'].append({'width': width, 'configuration': configuration, 'passed': True,
                                              'log_sha256': log_hash})
     for width, bus, size in ((8, 32, 4), (8, 64, 16), (10, 32, 4), (11, 64, 16),
                              (12, 128, 16), (16, 32, 4), (32, 32, 4), (32, 32, 16),
@@ -128,7 +130,7 @@ def main():
     for size, count, bus in ((4, 8, 32), (16, 16, 32), (16, 29, 64), (16, 29, 128)):
         commands = []
         for label, source in [('reference', reference), ('current', current)]:
-            paths = [source]+sources[1:]
+            paths = with_dependencies([source] + sources[1:], ROOT)
             commands += [f'read_slang -D ASIC_SYNTHESIS=1 --top kernel_loader '
                          f'-GSIZE={size} -GCOUNT_WIDTH={count} -GBUS_WIDTH={bus} -GDATA_WIDTH=16 '+
                          ' '.join(shlex.quote(str(p)) for p in paths),

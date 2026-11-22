@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source, read_current_source as read_rtl_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -22,7 +22,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    wrapper_text = (ROOT / 'test/oa_fifo_timing/oa_fifo_timing_top.sv').read_text()
+    wrapper_text = read_rtl_text(ROOT / 'test/oa_fifo_timing/oa_fifo_timing_top.sv')
     assert wrapper_text.count('vec_s8_to_fifo_full #(') == 1
     assert wrapper_text.count('.start_permitted(start_permitted)') == 1
     wrapper_text = wrapper_text.replace('oa_fifo_timing_top', 'fifo_bank_timing_top')

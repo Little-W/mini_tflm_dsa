@@ -1,5 +1,7 @@
 # 窗口缓存有效位读取
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 `conv_windowed_cache` 并行读取请求队首、下一项、新输入请求和当前缺失请求对应的有效位。每个候选独立处理同周期写入转发，出队状态选择已经形成的一位结果。标签、有效位和请求上下文仍在同一个时钟边沿保存，接口接收和返回周期保持一致。
 
 `DEMAND_DEPTH=1` 使用单请求读取结构。队列深度大于一时使用四个候选，综合工具根据实际消费者删除未使用的存储端口。所有存储和算术均采用行为级 RTL。
@@ -38,21 +40,17 @@ python3 test/windowed_cache_timing/run_formal.py \
   --reference-root "$REFERENCE_ROOT" \
   --profiles 2:2:16:2:32:32:0 16:2:128:2:64:64:1 4:1:32:4:64:32:0 \
   --out build/cache_valid_lookup/formal
-
 python3 test/cache_valid_lookup/run_four_state.py \
   --reference-root "$REFERENCE_ROOT" \
   --out build/cache_valid_lookup/four_state
-
 python3 test/cache_pipeline/run.py --fpga \
   --bus-width 64 --read-width 64 --line-bytes 128 --cache-bytes 4096 \
   --profiles 1:2 2:2 --jobs 1 --out build/cache_valid_lookup/numeric
-
 python3 test/conv_frontend/tools/run_numeric.py --fpga --sizes 16 --continuous \
   --out build/cache_valid_lookup/frontend
-
 python3 scripts/fpga/open_fpga_synth.py \
   --case-config test/cache_valid_lookup/synthesis_cases.json \
-  --cases windowed_cache --wide-alu-dsp-budget 740 --rtl-dsp-attributes \
+  --cases windowed_cache \
   --max-register-path-cells 10 --require-register-path-limit \
   --out build/cache_valid_lookup/synthesis
 ```

@@ -40,7 +40,7 @@ int main(int argc,char** argv) {
                 if(lane==1 && v!=INT32_MIN)v=-v;
                 if(lane==2)v=INT32_MIN;
                 if(lane==3)v=INT32_MAX;
-                dut.input_s32[lane]=v;dut.input_s64[lane]=uint64_t(int64_t(v));
+                dut.input_s32[lane]=v;dut.input_lane_s32[lane]=uint64_t(int64_t(v));
                 expected_s8[lane]=int8_t(clip(divide_even(int64_t(v)*m,31-shift)+offset,-128,127));
                 int64_t reduced=std::min<int64_t>(32767,divide_even(m,16));
                 expected_s16[lane]=int16_t(clip(divide_even(int64_t(v)*reduced,15-std::min(shift,15)),-32768,32767));

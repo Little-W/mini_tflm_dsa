@@ -1,0 +1,556 @@
+{
+  "passed": true,
+  "scope": "im2col 职责模块、公开输入输出数值与握手，以及实际算术表达式的形式和四态检查",
+  "source_sha256": {
+    "rtl/npu/conv/conv_im2col_frontend_pkg.sv": "0734e80146bd85e376ddf8c3dd306e668ceb7920321099d23da5c74be5cc9053",
+    "rtl/npu/conv/conv_im2col_geometry.sv": "36311e914a5fd8e1edb8ed3d23e3261906fb32b445cca891a19a2280d7cccd17",
+    "rtl/npu/conv/conv_im2col_descriptor.sv": "fba7def2294ce86fc0ca3cd943496318341f8bcf8675bbf2b49c747dddcb8a3b",
+    "rtl/npu/conv/conv_im2col_stream.sv": "84087dd0616b518f39070a9c8994e747597f9c92f3e723af704f1f706970120a",
+    "rtl/npu/conv/conv_im2col_prefetch.sv": "2b989b686a9304af17d5756257c3e8b64ed0f906c4356bec14a5262969399319",
+    "rtl/npu/conv/conv_im2col_frontend.sv": "7fca294a30d6f57214d8476575f36ff539729010b2b8c458cdc4e51b849ee4bf"
+  },
+  "helper_sha256": {
+    "rtl/npu/conv/conv_coordinate_step.sv": "3ea31b8f9df59d2fd062efd40adfea351c6dbbefc7849e59a2644d41fae538f1",
+    "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+    "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f"
+  },
+  "module_lines": {
+    "rtl/npu/conv/conv_im2col_frontend_pkg.sv": 28,
+    "rtl/npu/conv/conv_im2col_geometry.sv": 1021,
+    "rtl/npu/conv/conv_im2col_descriptor.sv": 1254,
+    "rtl/npu/conv/conv_im2col_stream.sv": 1156,
+    "rtl/npu/conv/conv_im2col_prefetch.sv": 406,
+    "rtl/npu/conv/conv_im2col_frontend.sv": 1486
+  },
+  "numeric": {
+    "numeric8": {
+      "passed": true,
+      "parameters": {
+        "size": 16,
+        "lanes": 8,
+        "bus_width": 64,
+        "target": "asic",
+        "register_descriptor": 1,
+        "cache_sets": 16,
+        "cache_ways": 2,
+        "line_bytes": 128,
+        "cache_data_bytes": 4096,
+        "narrow_mode": 2,
+        "windowed": true,
+        "prefetch": true,
+        "policy": 3,
+        "slot_width": 6
+      },
+      "tasks": 42,
+      "cycles": 176795,
+      "configuration_cases": 1024,
+      "configuration_cycles_total": 7100,
+      "expected_axi_error_tasks": 1,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend_pkg.sv": "0734e80146bd85e376ddf8c3dd306e668ceb7920321099d23da5c74be5cc9053",
+        "rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "e433deb2121741c26cca45d13b8bd34d772f6883a6e57042236ea061dfb01903",
+        "rtl/npu/conv/conv_axi_span_reader.sv": "c4da511ad0622b432de89bc214d25c7e51d438ccf480e915980530ef474f4bc1",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "7245549f9b7babddb589bb649c048dfd5216b3c82748ead8ae0020259c024a7a",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "7fca294a30d6f57214d8476575f36ff539729010b2b8c458cdc4e51b849ee4bf",
+        "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+        "rtl/npu/conv/conv_ia_tile_path.sv": "f41af594a0daa40d42681d7878a1266dfcc3d07a9c6271e482d1e9e689d0bab3",
+        "test/frontend_pipeline/tb_frontend_pipeline.sv": "60ef9807c027d1d6a4d054a6efd063d806537d25a72e324ad7852777d7cd24f7",
+        "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+        "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+        "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+        "rtl/npu/dma/cache/conv_read_cache_reference.sv": "d07f8634bf7e850b5a93cf129b9b5c01a1d396610b0e7350e020adb8aa9b567a",
+        "rtl/npu/dma/cache/conv_windowed_cache.sv": "97a4611f10526d244bda6b8a54748501d65291eeef2f38b9650d0084c3765337",
+        "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+        "rtl/npu/conv/conv_coordinate_step.sv": "3ea31b8f9df59d2fd062efd40adfea351c6dbbefc7849e59a2644d41fae538f1",
+        "rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758",
+        "rtl/npu/dma/cache/conv_cache_metadata_way.sv": "37b47f7fc390314f3c41380929ca441ea5a5a6192722629e3d2f9e9fceb4af34",
+        "rtl/npu/dma/cache/conv_cache_rank_table.sv": "532af7e2a7c76f5e1cee9715e04611244a4f55d487462c932c14d10980f50d5b",
+        "test/monitors/conv_ia_tile_path_observer.sv": "5aa4616e9cedaec0abb7c058a759579e66e12d54ca918cb8128a6a214ebd299a",
+        "test/monitors/conv_im2col_frontend_observer.sv": "d527bd5a205b38659b69d46368fd4d06744c41906794fd9b0058ce5e9f057216",
+        "test/monitors/conv_read_cache_observer.sv": "7b8e1f9f4ea9a58e56e06be861b99bede1139bb02335008a1efc63e4d22493d7",
+        "test/monitors/conv_read_cache_reference_observer.sv": "95c8896e35d5913ef94a39b9b5a5093c0b6b29d972963614c8155bc507ecba8c",
+        "test/monitors/conv_windowed_cache_observer.sv": "dd11d0be0ad4eb771e307ece257409d148c87d70a3604b71a1127d8f0d343334",
+        "rtl/npu/conv/conv_im2col_descriptor.sv": "fba7def2294ce86fc0ca3cd943496318341f8bcf8675bbf2b49c747dddcb8a3b",
+        "rtl/npu/conv/conv_im2col_geometry.sv": "36311e914a5fd8e1edb8ed3d23e3261906fb32b445cca891a19a2280d7cccd17",
+        "rtl/npu/conv/conv_im2col_prefetch.sv": "2b989b686a9304af17d5756257c3e8b64ed0f906c4356bec14a5262969399319",
+        "rtl/npu/conv/conv_im2col_stream.sv": "84087dd0616b518f39070a9c8994e747597f9c92f3e723af704f1f706970120a"
+      },
+      "vector_sha256": "f7282840d1be30c892fd4b6bfb81b91ba6dbcd35d13b5ff0e1bfef58afa649a0",
+      "report": "../conv_module_split/numeric8/rtl_status.json",
+      "report_sha256": "3cc106836475625ec0f385287d97ce41b6bcaa274bc3fdd0ea0dc46bcb578b98",
+      "simulation_log_sha256": "75e6b2a04324a8ebfd3ee63248523eb56e8aa72239c954eaa7a223a1f95524bd",
+      "accepted": 2160,
+      "completed": 2159,
+      "overlap": 2118,
+      "output_beats": 26728,
+      "consecutive_beats": 6268,
+      "minimum_accept_gap": 1,
+      "fast_descriptors": 1404,
+      "minimum_fast_first_output_from_commit": 5,
+      "maximum_fast_first_output_from_commit": 70
+    },
+    "numeric16": {
+      "passed": true,
+      "parameters": {
+        "size": 16,
+        "lanes": 16,
+        "bus_width": 64,
+        "target": "asic",
+        "register_descriptor": 1,
+        "cache_sets": 16,
+        "cache_ways": 2,
+        "line_bytes": 128,
+        "cache_data_bytes": 4096,
+        "narrow_mode": 2,
+        "windowed": true,
+        "prefetch": true,
+        "policy": 3,
+        "slot_width": 6
+      },
+      "tasks": 42,
+      "cycles": 153734,
+      "configuration_cases": 1024,
+      "configuration_cycles_total": 7100,
+      "expected_axi_error_tasks": 1,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend_pkg.sv": "0734e80146bd85e376ddf8c3dd306e668ceb7920321099d23da5c74be5cc9053",
+        "rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "e433deb2121741c26cca45d13b8bd34d772f6883a6e57042236ea061dfb01903",
+        "rtl/npu/conv/conv_axi_span_reader.sv": "c4da511ad0622b432de89bc214d25c7e51d438ccf480e915980530ef474f4bc1",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "7245549f9b7babddb589bb649c048dfd5216b3c82748ead8ae0020259c024a7a",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "7fca294a30d6f57214d8476575f36ff539729010b2b8c458cdc4e51b849ee4bf",
+        "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+        "rtl/npu/conv/conv_ia_tile_path.sv": "f41af594a0daa40d42681d7878a1266dfcc3d07a9c6271e482d1e9e689d0bab3",
+        "test/frontend_pipeline/tb_frontend_pipeline.sv": "60ef9807c027d1d6a4d054a6efd063d806537d25a72e324ad7852777d7cd24f7",
+        "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+        "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+        "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+        "rtl/npu/dma/cache/conv_read_cache_reference.sv": "d07f8634bf7e850b5a93cf129b9b5c01a1d396610b0e7350e020adb8aa9b567a",
+        "rtl/npu/dma/cache/conv_windowed_cache.sv": "97a4611f10526d244bda6b8a54748501d65291eeef2f38b9650d0084c3765337",
+        "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+        "rtl/npu/conv/conv_coordinate_step.sv": "3ea31b8f9df59d2fd062efd40adfea351c6dbbefc7849e59a2644d41fae538f1",
+        "rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758",
+        "rtl/npu/dma/cache/conv_cache_metadata_way.sv": "37b47f7fc390314f3c41380929ca441ea5a5a6192722629e3d2f9e9fceb4af34",
+        "rtl/npu/dma/cache/conv_cache_rank_table.sv": "532af7e2a7c76f5e1cee9715e04611244a4f55d487462c932c14d10980f50d5b",
+        "test/monitors/conv_ia_tile_path_observer.sv": "5aa4616e9cedaec0abb7c058a759579e66e12d54ca918cb8128a6a214ebd299a",
+        "test/monitors/conv_im2col_frontend_observer.sv": "d527bd5a205b38659b69d46368fd4d06744c41906794fd9b0058ce5e9f057216",
+        "test/monitors/conv_read_cache_observer.sv": "7b8e1f9f4ea9a58e56e06be861b99bede1139bb02335008a1efc63e4d22493d7",
+        "test/monitors/conv_read_cache_reference_observer.sv": "95c8896e35d5913ef94a39b9b5a5093c0b6b29d972963614c8155bc507ecba8c",
+        "test/monitors/conv_windowed_cache_observer.sv": "dd11d0be0ad4eb771e307ece257409d148c87d70a3604b71a1127d8f0d343334",
+        "rtl/npu/conv/conv_im2col_descriptor.sv": "fba7def2294ce86fc0ca3cd943496318341f8bcf8675bbf2b49c747dddcb8a3b",
+        "rtl/npu/conv/conv_im2col_geometry.sv": "36311e914a5fd8e1edb8ed3d23e3261906fb32b445cca891a19a2280d7cccd17",
+        "rtl/npu/conv/conv_im2col_prefetch.sv": "2b989b686a9304af17d5756257c3e8b64ed0f906c4356bec14a5262969399319",
+        "rtl/npu/conv/conv_im2col_stream.sv": "84087dd0616b518f39070a9c8994e747597f9c92f3e723af704f1f706970120a"
+      },
+      "vector_sha256": "f7282840d1be30c892fd4b6bfb81b91ba6dbcd35d13b5ff0e1bfef58afa649a0",
+      "report": "../conv_module_split/numeric16/rtl_status.json",
+      "report_sha256": "753b78bf4d0f28a4baf39814557886f0f83895f0063f59eb3817bc800d146683",
+      "simulation_log_sha256": "1a60e37013671064dc7a890cde6bd8ad0586cf9bf0c5d444beccf49dd6017a3f",
+      "accepted": 2160,
+      "completed": 2159,
+      "overlap": 2118,
+      "output_beats": 21838,
+      "consecutive_beats": 7502,
+      "minimum_accept_gap": 1,
+      "fast_descriptors": 1404,
+      "minimum_fast_first_output_from_commit": 5,
+      "maximum_fast_first_output_from_commit": 100
+    },
+    "numeric_direct4": {
+      "passed": true,
+      "parameters": {
+        "size": 4,
+        "lanes": 2,
+        "bus_width": 32,
+        "target": "fpga",
+        "register_descriptor": 0,
+        "cache_sets": 4,
+        "cache_ways": 2,
+        "line_bytes": 16,
+        "cache_data_bytes": 128,
+        "narrow_mode": 2,
+        "windowed": false,
+        "prefetch": true,
+        "policy": 3,
+        "slot_width": 6
+      },
+      "tasks": 42,
+      "cycles": 1215387,
+      "configuration_cases": 1024,
+      "configuration_cycles_total": 5516,
+      "expected_axi_error_tasks": 1,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend_pkg.sv": "0734e80146bd85e376ddf8c3dd306e668ceb7920321099d23da5c74be5cc9053",
+        "rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "e433deb2121741c26cca45d13b8bd34d772f6883a6e57042236ea061dfb01903",
+        "rtl/npu/conv/conv_axi_span_reader.sv": "c4da511ad0622b432de89bc214d25c7e51d438ccf480e915980530ef474f4bc1",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "7245549f9b7babddb589bb649c048dfd5216b3c82748ead8ae0020259c024a7a",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "7fca294a30d6f57214d8476575f36ff539729010b2b8c458cdc4e51b849ee4bf",
+        "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+        "rtl/npu/conv/conv_ia_tile_path.sv": "f41af594a0daa40d42681d7878a1266dfcc3d07a9c6271e482d1e9e689d0bab3",
+        "test/frontend_pipeline/tb_frontend_pipeline.sv": "0c6eee57cda160e041343c85c5f48073236f1b78ce80f01754e6d244daea8b91",
+        "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+        "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+        "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+        "rtl/npu/dma/cache/conv_read_cache_reference.sv": "d07f8634bf7e850b5a93cf129b9b5c01a1d396610b0e7350e020adb8aa9b567a",
+        "rtl/npu/dma/cache/conv_windowed_cache.sv": "97a4611f10526d244bda6b8a54748501d65291eeef2f38b9650d0084c3765337",
+        "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+        "rtl/npu/conv/conv_coordinate_step.sv": "3ea31b8f9df59d2fd062efd40adfea351c6dbbefc7849e59a2644d41fae538f1",
+        "rtl/common/unsigned_compare.sv": "b5b7fdc79466ec6ebeeaf31cca8e01b4a23ef78dfe7127f45aa5b367fe02d758",
+        "rtl/npu/dma/cache/conv_cache_metadata_way.sv": "37b47f7fc390314f3c41380929ca441ea5a5a6192722629e3d2f9e9fceb4af34",
+        "rtl/npu/dma/cache/conv_cache_rank_table.sv": "532af7e2a7c76f5e1cee9715e04611244a4f55d487462c932c14d10980f50d5b",
+        "test/monitors/conv_ia_tile_path_observer.sv": "5aa4616e9cedaec0abb7c058a759579e66e12d54ca918cb8128a6a214ebd299a",
+        "test/monitors/conv_im2col_frontend_observer.sv": "d527bd5a205b38659b69d46368fd4d06744c41906794fd9b0058ce5e9f057216",
+        "test/monitors/conv_read_cache_observer.sv": "7b8e1f9f4ea9a58e56e06be861b99bede1139bb02335008a1efc63e4d22493d7",
+        "test/monitors/conv_read_cache_reference_observer.sv": "95c8896e35d5913ef94a39b9b5a5093c0b6b29d972963614c8155bc507ecba8c",
+        "test/monitors/conv_windowed_cache_observer.sv": "dd11d0be0ad4eb771e307ece257409d148c87d70a3604b71a1127d8f0d343334",
+        "rtl/npu/conv/conv_im2col_descriptor.sv": "fba7def2294ce86fc0ca3cd943496318341f8bcf8675bbf2b49c747dddcb8a3b",
+        "rtl/npu/conv/conv_im2col_geometry.sv": "36311e914a5fd8e1edb8ed3d23e3261906fb32b445cca891a19a2280d7cccd17",
+        "rtl/npu/conv/conv_im2col_prefetch.sv": "2b989b686a9304af17d5756257c3e8b64ed0f906c4356bec14a5262969399319",
+        "rtl/npu/conv/conv_im2col_stream.sv": "84087dd0616b518f39070a9c8994e747597f9c92f3e723af704f1f706970120a"
+      },
+      "vector_sha256": "eef163f14cf8190aa2bc28cdda138033d8ee01ce74d71c27795bc721338cf2d8",
+      "report": "../conv_module_split/numeric_direct4/rtl_status.json",
+      "report_sha256": "e32e5a5754554db539d4de36afdaf49e8c6168d1685cb6b1ef5e444d4590cb43",
+      "simulation_log_sha256": "f9790ef1ae365c521e9633ef1a6bd18adabf90e137f835b553ae02ca9b5126a7",
+      "accepted": 11573,
+      "completed": 11572,
+      "overlap": 11573,
+      "output_beats": 59128,
+      "consecutive_beats": 15117,
+      "minimum_accept_gap": 9,
+      "fast_descriptors": 0,
+      "minimum_fast_first_output_from_commit": null,
+      "maximum_fast_first_output_from_commit": null
+    }
+  },
+  "numeric_totals": {
+    "tasks": 126,
+    "cycles": 1545916,
+    "configuration_cases": 3072,
+    "accepted": 15893,
+    "completed": 15890,
+    "overlap": 15809,
+    "output_beats": 107694,
+    "consecutive_beats": 28887
+  },
+  "formal": {
+    "window": {
+      "passed": true,
+      "formal_cases": 1,
+      "four_state_comparisons": 360000,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_descriptor.sv": "fba7def2294ce86fc0ca3cd943496318341f8bcf8675bbf2b49c747dddcb8a3b",
+        "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7"
+      },
+      "report": "../conv_module_split/formal/window/summary.json",
+      "report_sha256": "5971b8e6034d8ac0925cdec844183b02dda3e0b98ef879d244122165624780a8",
+      "scope": "实际窗口匹配表达式的完整三十三位模运算，包含 X/Z 输入的事件仿真语义"
+    },
+    "critical": {
+      "passed": true,
+      "formal_cases": 15,
+      "four_state_comparisons": 360000,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_frontend.sv": "7fca294a30d6f57214d8476575f36ff539729010b2b8c458cdc4e51b849ee4bf",
+        "rtl/npu/conv/conv_im2col_geometry.sv": "36311e914a5fd8e1edb8ed3d23e3261906fb32b445cca891a19a2280d7cccd17",
+        "rtl/npu/conv/conv_im2col_descriptor.sv": "fba7def2294ce86fc0ca3cd943496318341f8bcf8675bbf2b49c747dddcb8a3b",
+        "rtl/npu/conv/conv_im2col_prefetch.sv": "2b989b686a9304af17d5756257c3e8b64ed0f906c4356bec14a5262969399319",
+        "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+        "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+        "rtl/npu/conv/conv_coordinate_step.sv": "3ea31b8f9df59d2fd062efd40adfea351c6dbbefc7849e59a2644d41fae538f1"
+      },
+      "report": "../conv_module_split/formal/critical/summary.json",
+      "report_sha256": "d16909b9c136178a7acb3e07d6246a58b212a1e22e4dfae3dbbd43d2d3030b52",
+      "scope": "坐标完整和值与范围、五种地址移动、两种字宽的行字匹配、预取横坐标与阶段二模式保存关系"
+    },
+    "shared": {
+      "passed": true,
+      "formal_cases": 9,
+      "four_state_comparisons": 0,
+      "source_sha256": "36311e914a5fd8e1edb8ed3d23e3261906fb32b445cca891a19a2280d7cccd17",
+      "report": "../conv_module_split/formal/shared/summary.json",
+      "report_sha256": "d0c61e00d63f61a9c501da51c0bb807523dbb08bf6e5b6101bc47ae787fb4f70"
+    },
+    "direct": {
+      "passed": true,
+      "formal_cases": 14,
+      "four_state_comparisons": 0,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_descriptor.sv": "fba7def2294ce86fc0ca3cd943496318341f8bcf8675bbf2b49c747dddcb8a3b",
+        "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7"
+      },
+      "report": "../conv_module_split/formal/direct/summary.json",
+      "report_sha256": "ab69e9559ce6f885667f95ee264ecb74b08736b0f22997d0c6da6ee50b25971f",
+      "scope": "实际直连描述符的保存字及返回字匹配表达式，完整三十二位地址回绕与参数静态分支",
+      "inputs_constrained": false,
+      "input_bits": 162,
+      "output_bits": 2
+    },
+    "arithmetic": {
+      "passed": true,
+      "formal_cases": 9,
+      "four_state_comparisons": 0,
+      "source_sha256": "fba7def2294ce86fc0ca3cd943496318341f8bcf8675bbf2b49c747dddcb8a3b",
+      "report": "../conv_module_split/formal/arithmetic/summary.json",
+      "report_sha256": "7a0e17e057bcc1cf9f72c05fe71de80cdc71a7580bcbc026fc1bd3845c07270a"
+    },
+    "group": {
+      "passed": true,
+      "formal_cases": 44,
+      "four_state_comparisons": 400000,
+      "source_sha256": "84087dd0616b518f39070a9c8994e747597f9c92f3e723af704f1f706970120a",
+      "report": "build/conv_portable/partition/group/summary.json",
+      "report_sha256": "3acdc96f43a40de7a8d4040132319ee9e8001a4d37366e42184ab78b2cb7425e",
+      "scope": "All 16-bit group and channel values; transfer count from zero through LANES"
+    },
+    "stream": {
+      "passed": true,
+      "formal_cases": 14,
+      "four_state_comparisons": 0,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_frontend.sv": "7fca294a30d6f57214d8476575f36ff539729010b2b8c458cdc4e51b849ee4bf",
+        "rtl/npu/conv/conv_im2col_stream.sv": "84087dd0616b518f39070a9c8994e747597f9c92f3e723af704f1f706970120a",
+        "rtl/npu/conv/conv_im2col_frontend_pkg.sv": "0734e80146bd85e376ddf8c3dd306e668ceb7920321099d23da5c74be5cc9053"
+      },
+      "report": "build/conv_portable/partition/stream/summary.json",
+      "report_sha256": "84c761a9fe82612258fed4e2ce5ec6aa9fbfa10091f35aa0a9497509677aedc4",
+      "range_scope": "Qualified range-write branch; speculative stream updates are checked by test/frontend_pipeline/check_control.py."
+    },
+    "control": {
+      "passed": true,
+      "formal_cases": 11,
+      "four_state_comparisons": 0,
+      "source_sha256": "84087dd0616b518f39070a9c8994e747597f9c92f3e723af704f1f706970120a",
+      "report": "build/conv_portable/partition/control/summary.json",
+      "report_sha256": "83e4b236061a80ac372b144720ca548b6f27532c8fece9ef5ce7d4194f73aaff",
+      "range_event_scope": "Abstract update-event model; observable data is restored by row, descriptor or decode loads.",
+      "configuration_product_comparisons": 720896
+    },
+    "dma_arithmetic": {
+      "passed": true,
+      "formal_cases": 2,
+      "four_state_comparisons": 0,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_prefetch.sv": "2b989b686a9304af17d5756257c3e8b64ed0f906c4356bec14a5262969399319",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "e433deb2121741c26cca45d13b8bd34d772f6883a6e57042236ea061dfb01903",
+        "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f"
+      },
+      "report": "build/conv_portable/partition/dma_arithmetic/summary.json",
+      "report_sha256": "cda49011eae3ff6ae4eac157d9c5237098b2f92143ccf41ee600d280eb66efcb",
+      "inputs_constrained": false,
+      "input_bits": 180
+    },
+    "configuration_arithmetic": {
+      "passed": true,
+      "formal_cases": 1,
+      "four_state_comparisons": 60000,
+      "source_sha256": {
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/conv/conv_im2col_geometry.sv": "36311e914a5fd8e1edb8ed3d23e3261906fb32b445cca891a19a2280d7cccd17",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/conv/conv_im2col_stream.sv": "84087dd0616b518f39070a9c8994e747597f9c92f3e723af704f1f706970120a",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/conv/conv_im2col_frontend.sv": "7fca294a30d6f57214d8476575f36ff539729010b2b8c458cdc4e51b849ee4bf",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7"
+      },
+      "report": "build/conv_portable/partition/configuration_arithmetic/summary.json",
+      "report_sha256": "16fcb377720625edf98625d2512f0d81ec7a850643a34eb9ec029c6c9057a476",
+      "binary_input_constraints": []
+    },
+    "chunk_mask": {
+      "passed": true,
+      "formal_cases": 20,
+      "four_state_comparisons": 0,
+      "source_sha256": "84087dd0616b518f39070a9c8994e747597f9c92f3e723af704f1f706970120a",
+      "report": "build/conv_portable/partition/chunk_mask/summary.json",
+      "report_sha256": "3fb542cc51e2dfb17046c1fdac8a64e73499c8a1b0aa275b4d30c059ea8294a8",
+      "range_invariant": "连续通道优化适用时，通道资格形成从最低通道开始的连续前缀；其余参数检查任意掩码"
+    },
+    "short_sums": {
+      "passed": true,
+      "formal_cases": 1,
+      "four_state_comparisons": 0,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_geometry.sv": "36311e914a5fd8e1edb8ed3d23e3261906fb32b445cca891a19a2280d7cccd17",
+        "rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f"
+      },
+      "report": "build/conv_portable/partition/short_sums/summary.json",
+      "report_sha256": "ce0fee9528d61dac88611bd2e6e9ea6469342d60728eb4e98ae3d5bae1c0ab15",
+      "inputs_constrained": false,
+      "input_bits": 69,
+      "output_bits": [
+        18,
+        19
+      ]
+    },
+    "epoch_shared": {
+      "passed": true,
+      "formal_cases": 8,
+      "four_state_comparisons": 0,
+      "source_sha256": "36311e914a5fd8e1edb8ed3d23e3261906fb32b445cca891a19a2280d7cccd17",
+      "report": "build/conv_portable/partition/epoch_shared/summary.json",
+      "report_sha256": "ac68e61a617f083a0dfbd28754ebbd25c7732658fb6a13cda68c3a1b45ddf8f3",
+      "input_scope": "group_offset 和 ch_q 为完整十六位值，chunk_count 为零至 LANES"
+    }
+  },
+  "formal_totals": {
+    "cases": 149,
+    "four_state_comparisons": 1180000,
+    "configuration_product_comparisons": 720896
+  },
+  "elaboration": {
+    "parameter_profiles": [
+      {
+        "profile": "production8",
+        "returncode": 0
+      },
+      {
+        "profile": "production16",
+        "returncode": 0
+      },
+      {
+        "profile": "direct4",
+        "returncode": 0
+      }
+    ],
+    "four_state_configuration": {
+      "passed": true,
+      "log_sha256": "595ec7cb71b3fffe9195658f0faeda51b73cc2e965bc74e380efa0befe8f191d"
+    }
+  },
+  "local_registered_measurements": {
+    "scope": "各算术表达式单独加入输入和输出寄存器后的 xc7 映射；完整 SoC 综合及器件布局布线分别执行",
+    "results": [
+      {
+        "report": "build/conv_portable/window_match/measurement/summary.json",
+        "report_sha256": "3779f85b9844fcc33df76b9e9f9c4ede670718033570ecc2c5eb69cce9cc9ae7",
+        "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+        "part": "xc7a200tfbg484-3",
+        "clock_period_ns": 6.666666666666667,
+        "cases": {
+          "registered_window_match_mathematical": {
+            "configuration": "96-bit unconstrained input, three 33-bit modular step o_match, registered input and output",
+            "lut_cells": 78,
+            "flip_flops": 99,
+            "ramb36": 0,
+            "ramb18": 0,
+            "dsp": 0,
+            "carry4": 9,
+            "longest_register_path_cells": 13
+          },
+          "registered_window_match_actual": {
+            "configuration": "96-bit unconstrained input, three 33-bit modular step o_match, registered input and output",
+            "lut_cells": 163,
+            "flip_flops": 99,
+            "ramb36": 0,
+            "ramb18": 0,
+            "dsp": 0,
+            "carry4": 0,
+            "longest_register_path_cells": 6
+          }
+        }
+      },
+      {
+        "report": "build/conv_portable/critical_paths/measurement/summary.json",
+        "report_sha256": "5318c99ec864d4cb26357ca8d7ab49b502dc2c23bc1a18f73642ecee12e2520e",
+        "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+        "part": "xc7a200tfbg484-3",
+        "clock_period_ns": 6.666666666666667,
+        "cases": {
+          "coordinate_math_registered": {
+            "configuration": "35-bit complete sum and unsigned bound against 16-bit limit; 86 input register bits, 36 output register bits",
+            "lut_cells": 50,
+            "flip_flops": 122,
+            "ramb36": 0,
+            "ramb18": 0,
+            "dsp": 0,
+            "carry4": 12,
+            "longest_register_path_cells": 12
+          },
+          "coordinate_step_registered": {
+            "configuration": "35-bit complete sum and unsigned bound against 16-bit limit; 86 input register bits, 36 output register bits",
+            "lut_cells": 145,
+            "flip_flops": 122,
+            "ramb36": 0,
+            "ramb18": 0,
+            "dsp": 0,
+            "carry4": 9,
+            "longest_register_path_cells": 8
+          }
+        }
+      },
+      {
+        "report": "build/conv_portable/critical_paths/measurement_complete/summary.json",
+        "report_sha256": "a78bbd1a3113db7e67b62edbf750c4127d7f7512fced902400992a96d1de7e2c",
+        "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+        "part": "xc7a200tfbg484-3",
+        "clock_period_ns": 6.666666666666667,
+        "cases": {
+          "row_mathematical_registered": {
+            "configuration": "161 input register bits, 2 output register bits; row",
+            "lut_cells": 63,
+            "flip_flops": 157,
+            "ramb36": 0,
+            "ramb18": 0,
+            "dsp": 0,
+            "carry4": 8,
+            "longest_register_path_cells": 12
+          },
+          "row_actual_registered": {
+            "configuration": "161 input register bits, 2 output register bits; row",
+            "lut_cells": 271,
+            "flip_flops": 157,
+            "ramb36": 0,
+            "ramb18": 0,
+            "dsp": 0,
+            "carry4": 2,
+            "longest_register_path_cells": 6
+          },
+          "horizontal_mathematical_registered": {
+            "configuration": "102 input register bits, 35 output register bits; horizontal",
+            "lut_cells": 36,
+            "flip_flops": 137,
+            "ramb36": 0,
+            "ramb18": 0,
+            "dsp": 0,
+            "carry4": 9,
+            "longest_register_path_cells": 10
+          },
+          "horizontal_actual_registered": {
+            "configuration": "102 input register bits, 35 output register bits; horizontal",
+            "lut_cells": 114,
+            "flip_flops": 137,
+            "ramb36": 0,
+            "ramb18": 0,
+            "dsp": 0,
+            "carry4": 9,
+            "longest_register_path_cells": 9
+          },
+          "movement_mathematical_registered": {
+            "configuration": "320 input register bits, 160 output register bits; movement",
+            "lut_cells": 160,
+            "flip_flops": 480,
+            "ramb36": 0,
+            "ramb18": 0,
+            "dsp": 0,
+            "carry4": 40,
+            "longest_register_path_cells": 9
+          },
+          "movement_actual_registered": {
+            "configuration": "320 input register bits, 160 output register bits; movement",
+            "lut_cells": 389,
+            "flip_flops": 480,
+            "ramb36": 0,
+            "ramb18": 0,
+            "dsp": 0,
+            "carry4": 40,
+            "longest_register_path_cells": 6
+          }
+        }
+      }
+    ]
+  }
+}

@@ -8,6 +8,10 @@ import re
 import shutil
 import subprocess
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -24,10 +28,10 @@ def main():
     out.mkdir(parents=True,exist_ok=False)
     source = ROOT/'rtl/soc/soc_axi_interconnect.sv'
     frozen = out/source.name
-    shutil.copyfile(source,frozen)
+    frozen.write_text(read_rtl_text(source))
     harness = out/'main.cpp'
     shutil.copyfile(Path(__file__).with_name('main.cpp'),harness)
-    header = frozen.read_text().split('\n);',1)[0]
+    header = read_rtl_text(frozen).split('\n);',1)[0]
     inputs = re.findall(r'^\s*input\s+(?:(?:wire|logic)\s+)*(?:\[[^\]]+\]\s*)?(\w+)\s*[,\n]',header+'\n',re.M)
     (out/'initialize.hpp').write_text('static void initialize(Vsoc_axi_interconnect &dut) {\n'+
         ''.join(f'    dut.{name}=0;\n' for name in inputs)+'}\n')
@@ -51,7 +55,7 @@ def main():
         with (folder/'run.log').open('w') as log:
             subprocess.run([str(objects/'Vsoc_axi_interconnect')],stdout=log,stderr=subprocess.STDOUT,
                 check=True,cwd=ROOT,timeout=120)
-        rows=[json.loads(line.split(' ',1)[1]) for line in (folder/'run.log').read_text().splitlines()
+        rows=[json.loads(line.split(' ',1)[1]) for line in read_rtl_text(folder/'run.log').splitlines()
               if line.startswith('INTERCONNECT_TRANSACTIONS_PASS ')]
         if len(rows)!=1 or not rows[0]['passed']:
             raise RuntimeError('互连事务检查没有完成')
@@ -60,7 +64,7 @@ def main():
         print(json.dumps(rows[0]),flush=True)
         for path in objects.iterdir():
             if path.suffix in ('.o','.a','.gch'):path.unlink()
-    if digest(source)!=report['source_sha256']:
+    if hashlib.sha256(read_rtl_text(source).encode()).hexdigest()!=report['source_sha256']:
         raise RuntimeError('验证期间源码发生变化')
     report['passed']=True
     (out/'summary.json').write_text(json.dumps(report,indent=2)+'\n')

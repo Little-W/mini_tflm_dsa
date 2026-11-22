@@ -8,6 +8,10 @@ import subprocess
 import time
 
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 def digest(path):
     value = hashlib.sha256()
     with Path(path).open("rb") as stream:
@@ -36,7 +40,7 @@ def main():
     sources = [Path(__file__).resolve(), test / "shared_storage_tb.sv", test / "shared_storage_test.cpp",
                codec_test / "stream_test_vectors.hpp", codec_test / "cpp_adaptive_codec.hpp", codec_test / "cpp_row_codec.hpp",
                root / "rtl/npu/buffers/ia_ps_shared_ram.sv", root / "rtl/npu/ps_compact/ps_frame_store.sv",
-               root / "rtl/npu/ps_compact/ps_adaptive_codec.sv"]
+               root / "rtl/npu/ps_compact/ps_adaptive_encoder.sv", root / "rtl/npu/ps_compact/ps_adaptive_decoder.sv"]
     import runpy
     selector = root / "test/monitors/sources.py"
     sources = runpy.run_path(str(selector))["with_observers"](sources) + [selector]
@@ -71,7 +75,7 @@ $(VK_GLOBAL_OBJS): %.o: %.cpp
         if result.returncode:
             raise RuntimeError(f"RTL compilation failed; see {out / 'compile.log'}")
     else:
-        prior = json.loads((out / "summary.json").read_text())
+        prior = json.loads(read_rtl_text(out / "summary.json"))
         if not prior.get("passed") or prior.get("source_sha256") != before:
             raise RuntimeError("Saved build differs from current sources")
         if (prior.get("force_raw") != args.force_raw or prior.get("binary_sha256") != digest(binary) or
@@ -79,7 +83,7 @@ $(VK_GLOBAL_OBJS): %.o: %.cpp
                 prior["parameters"]["BANK_COUNT"] != args.bank_count):
             raise RuntimeError("Saved binary or mode differs")
         command = prior["compile_command"]
-    translation_units = [line for line in (out / "compile.log").read_text().splitlines()
+    translation_units = [line for line in read_rtl_text(out / "compile.log").splitlines()
                          if " -c " in line and " -o " in line]
     if not translation_units or any("-fsanitize=undefined" not in line or "-fno-sanitize-recover=all" not in line
                                     for line in translation_units):

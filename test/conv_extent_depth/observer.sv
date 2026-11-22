@@ -16,14 +16,14 @@ module conv_extent_observer;
     integer checked_cycles=0, dma_initializations=0;
 
     always @(posedge npu_top.clk) begin
-        if (npu_top.core_rst_n && npu_top.cfg_stage2_valid) begin
-            case (npu_top.cfg_capacity_phase)
+        if (npu_top.core_rst_n && npu_top.cfg_valid_q[2]) begin
+            case (npu_top.u_matrix_engine.u_task_configuration.cfg_capacity_phase)
                 3'd0: begin
-                    expected_rhs <= (npu_top.rhs_product_diagonal +
-                        (64'(npu_top.rhs_product_cross) << 16)) <<
+                    expected_rhs <= (npu_top.u_matrix_engine.u_task_configuration.rhs_product_diagonal +
+                        (64'(npu_top.u_matrix_engine.u_task_configuration.rhs_product_cross) << 16)) <<
                         (npu_top.run_rhs_tile_packed ? (2*npu_top.SIZE_SHIFT) : 0);
-                    expected_input <= 48'(npu_top.conv_input_low) + (48'(npu_top.conv_input_high) << 16);
-                    expected_kernel <= 48'(npu_top.conv_kernel_low) + (48'(npu_top.conv_kernel_high) << 16);
+                    expected_input <= 48'(npu_top.u_matrix_engine.u_task_configuration.conv_input_low) + (48'(npu_top.u_matrix_engine.u_task_configuration.conv_input_high) << 16);
+                    expected_kernel <= 48'(npu_top.u_matrix_engine.u_task_configuration.conv_kernel_low) + (48'(npu_top.u_matrix_engine.u_task_configuration.conv_kernel_high) << 16);
                 end
                 3'd1: begin
                     expected_range[0] <= expected_rhs_end ^ {expected_rhs[32],32'd0};
@@ -35,22 +35,22 @@ module conv_extent_observer;
                     expected_parameter_invalid <= (|(32'(npu_top.m) >> 30)) ||
                         expected_bias_end[32] || (npu_top.use_per_channel &&
                         (expected_mult_end[32] || expected_shift_end[32]));
-                    expected_dimension_invalid <= 64'(npu_top.conv_output_area)!=64'(npu_top.k) ||
+                    expected_dimension_invalid <= 64'(npu_top.u_matrix_engine.u_task_configuration.conv_output_area)!=64'(npu_top.k) ||
                         64'(expected_kernel)!=64'(npu_top.n);
                 end
-                3'd2: expected_validation_invalid <= npu_top.conv_syntax_invalid ||
+                3'd2: expected_validation_invalid <= npu_top.u_matrix_engine.u_task_configuration.conv_syntax_invalid ||
                     expected_input_invalid || expected_rhs_invalid || expected_parameter_invalid ||
                     expected_dimension_invalid;
                 default: ;
             endcase
-            if (npu_top.cfg_capacity_phase>=3'd5) begin
+            if (npu_top.u_matrix_engine.u_task_configuration.cfg_capacity_phase>=3'd5) begin
                 checked_cycles++;
-                assert({npu_top.rhs_allocation_bytes,npu_top.conv_input_bytes,npu_top.conv_kernel_elements} ==
+                assert({npu_top.u_matrix_engine.u_task_configuration.rhs_allocation_bytes,npu_top.u_matrix_engine.u_task_configuration.conv_input_bytes,npu_top.u_matrix_engine.u_task_configuration.conv_kernel_elements} ==
                        {expected_rhs,expected_input,expected_kernel})
                     else $fatal(1,"Tensor extent differs during configuration consumption");
-                assert({npu_top.conv_input_range_invalid,npu_top.conv_rhs_range_invalid,
-                        npu_top.conv_parameter_range_invalid,npu_top.conv_dimension_invalid,
-                        npu_top.conv_validation_invalid} ==
+                assert({npu_top.u_matrix_engine.u_task_configuration.conv_input_range_invalid,npu_top.u_matrix_engine.u_task_configuration.conv_rhs_range_invalid,
+                        npu_top.u_matrix_engine.u_task_configuration.conv_parameter_range_invalid,npu_top.u_matrix_engine.u_task_configuration.conv_dimension_invalid,
+                        npu_top.u_matrix_engine.u_task_configuration.conv_validation_invalid} ==
                        {expected_input_invalid,expected_rhs_invalid,expected_parameter_invalid,
                         expected_dimension_invalid,expected_validation_invalid})
                     else $fatal(1,"Tensor validation differs during configuration consumption");

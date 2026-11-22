@@ -8,8 +8,11 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
-SOURCES = [ROOT / 'rtl/npu/ps_compact/ps_frame_store.sv',
+SOURCES = [ROOT / 'rtl/npu/ps_compact/ps_frame_store_capacity.sv',
            ROOT / 'rtl/common/parallel_prefix_add.sv',
            ROOT / 'rtl/common/regfile.v', ROOT / 'test/ps_raw_store/capacity.sv']
 PROFILES = [(1, 1, 1), (1, 2, 2), (4, 4, 3), (10, 8, 3), (14, 10, 4),
@@ -48,7 +51,7 @@ def main():
             result = subprocess.run([sys.executable, str(Path(__file__).resolve()),
                 '--out', str(out), '--worker', str(script)],
                 cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
-        passed = result.returncode == 0 and 'SAT proof finished - no model found: SUCCESS' in (folder / 'formal.log').read_text()
+        passed = result.returncode == 0 and 'SAT proof finished - no model found: SUCCESS' in read_rtl_text(folder / 'formal.log')
         record = {'initial_row_width': initial_w, 'bank_words_width': words_w,
                   'bank_count_width': banks_w, 'frame_rows_width': 32,
                   'reserve_rows_width': 32, 'passed': passed}
@@ -57,7 +60,7 @@ def main():
         (out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
         print(json.dumps(record), flush=True)
         if not passed:
-            raise SystemExit((folder / 'formal.log').read_text()[-6000:])
+            raise SystemExit(read_rtl_text(folder / 'formal.log')[-6000:])
     assert summary['source_sha256'] == {str(p.relative_to(ROOT)): digest(p) for p in SOURCES}
 
 

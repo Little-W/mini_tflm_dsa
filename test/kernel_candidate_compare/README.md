@@ -1,5 +1,7 @@
 # 权重描述符比较
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 `kernel_candidate_equal` 先独立比较每组三位输入，再通过六路归并树形成完整相等结果。FPGA 综合保留每个叶比较结果，使归并层只处理单比特相等条件。候选稳定性与已保存描述符元数据使用相同结构，比较语义、预取资格、完成排空和所有接口周期保持一致。
 
 ## 已完成检查
@@ -27,7 +29,7 @@ mkdir -p build/kernel_candidate_compare_reference
 git archive b9773a15 rtl/common rtl/npu/loaders | tar -x -C build/kernel_candidate_compare_reference
 python3 test/kernel_candidate_compare/run_formal.py --source-root . --reference-root build/kernel_candidate_compare_reference --module kernel_loader --profiles 16:29:64 3:33:32 --fpga --out build/kernel_candidate_compare/formal
 python3 test/kernel_candidate_compare/run_four_state.py --source-root . --reference-root build/kernel_candidate_compare_reference --out build/kernel_candidate_compare/four_state
-python3 scripts/fpga/open_fpga_synth.py --source-root . --case-config test/kernel_candidate_compare/synthesis_cases.json --cases kernel --out build/kernel_candidate_compare/synthesis --wide-alu-dsp-budget 740 --rtl-dsp-attributes --max-register-path-cells 10
+python3 scripts/fpga/open_fpga_synth.py --source-root . --case-config test/kernel_candidate_compare/synthesis_cases.json --cases kernel --out build/kernel_candidate_compare/synthesis --max-register-path-cells 10
 ```
 
 `validation.json` 保存源码散列、参数、通过数量及原报告散列。正式资料只包含源代码、测试脚本和文本报告。

@@ -28,30 +28,19 @@ def main():
                         default=[1, 2, 5, 6, 8, 16, 17, 31, 32, 33, 64, 65, 128])
     parser.add_argument("--synthesize", action="store_true")
     args = parser.parse_args()
-    import pyosys
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    library = Path(pyosys.__file__).parent / "share/xilinx/cells_sim.v"
-    models = []
-    for name in ("LUT6", "LUT6_2"):
-        match = re.search(r"^module " + name + r"\b.*?^endmodule", library.read_text(), re.M | re.S)
-        if match is None:
-            raise RuntimeError("Missing official primitive: " + name)
-        models.append(match.group(0))
-    model_path = out / "xilinx_lut_models.sv"
-    model_path.write_text("\n".join(models) + "\n")
     harness = out / "formal.sv"
     harness.write_text("""module onehot_formal #(
     parameter int p_width=32,
-    parameter bit p_allow_zero=0,
-    parameter bit p_use_lut=0
+    parameter bit p_allow_zero=0
 ) (
     input logic [p_width-1:0] value,
     output logic equivalent
 );
     logic [p_width-1:0] decremented;
     logic candidate, reference;
-    onehot_check #(.p_width(p_width), .p_allow_zero(p_allow_zero), .p_use_lut(p_use_lut))
+    onehot_check #(.p_width(p_width), .p_allow_zero(p_allow_zero))
         u_candidate (.i_value(value), .o_valid(candidate));
     assign decremented = value - p_width'(1);
     assign reference = ((value & decremented) == '0) && (p_allow_zero || value != '0);
@@ -61,8 +50,7 @@ endmodule
     summary = {
         "passed": False,
         "source_sha256": hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
-        "primitive_library_sha256": hashlib.sha256(library.read_bytes()).hexdigest(),
-        "method": "SAT over every input encoding; arithmetic reference and official LUT functional models",
+        "method": "SAT over every input encoding against arithmetic reference",
         "inputs_constrained": False,
         "runs": [],
     }
@@ -70,15 +58,15 @@ endmodule
         if width < 1:
             raise ValueError("Width must be positive")
         for allow_zero in (0, 1):
-            for use_lut in (0, 1):
-                label = f"w{width}_zero{allow_zero}_lut{use_lut}"
+            for configuration, defines in (("generic", ""), ("fpga", "-DXILINX_FPGA=1")):
+                label = f"w{width}_zero{allow_zero}_{configuration}"
                 folder = out / label
                 folder.mkdir(exist_ok=True)
                 script = folder / "run.ys"
                 script.write_text(
                     f"read_slang --top onehot_formal -Gp_width={width} "
-                    f"-Gp_allow_zero={allow_zero} -Gp_use_lut={use_lut} " +
-                    " ".join(shlex.quote(str(p)) for p in (SOURCE, model_path, harness)) + "\n"
+                    f"-Gp_allow_zero={allow_zero} {defines} " +
+                    " ".join(shlex.quote(str(p)) for p in (SOURCE, harness)) + "\n"
                     "prep -top onehot_formal -flatten\n"
                     "delete t:$specify2\n"
                     "check -assert\n"
@@ -88,13 +76,15 @@ endmodule
                 if "SAT proof finished - no model found: SUCCESS!" not in log.read_text():
                     raise RuntimeError("Missing complete-input proof: " + label)
                 record = {"width": width, "allow_zero": bool(allow_zero),
-                          "implementation": "official LUT primitives" if use_lut else "generic logic",
+                          "configuration": configuration,
                           "passed": True}
                 summary["runs"].append(record)
                 print(json.dumps(record), flush=True)
     if args.synthesize:
         sys.path.insert(0, str(ROOT / "scripts/fpga"))
         import open_fpga_synth
+        import pyosys
+        library = Path(pyosys.__file__).parent / "share/xilinx/cells_sim.v"
         summary["synthesis"] = []
         reference = out / "reference.sv"
         reference.write_text("""module onehot_reference (
@@ -106,8 +96,7 @@ endmodule
 """)
         for label, top, sources, options in (
             ("reference", "onehot_reference", [reference], ""),
-            ("generic", "onehot_check", [SOURCE], "-Gp_width=32 -Gp_use_lut=0"),
-            ("lut", "onehot_check", [SOURCE], "-Gp_width=32 -Gp_use_lut=1"),
+            ("current", "onehot_check", [SOURCE], "-Gp_width=32"),
         ):
             folder = out / ("synth_" + label)
             folder.mkdir(exist_ok=True)

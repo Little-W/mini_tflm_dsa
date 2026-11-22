@@ -1,0 +1,3600 @@
+{
+  "passed": true,
+  "source": "rtl/npu/loaders/ia_loader.sv",
+  "source_sha256": "d26ba1ab17a84266f5488cf8dc06f3472bd3a25ea301119f07c8c1a58a038f72",
+  "reference_sha256": "3863b614a2b43b542638e255fe5a9938ba527c61cba44ece486d7202b7077e6a",
+  "reference": "ef0dc75",
+  "parameters": {
+    "SIZE": 16,
+    "BUS_WIDTH": 64,
+    "DMA_LANES": 8,
+    "COUNT_WIDTH": 29,
+    "CACHE_BLOCKS": 32,
+    "EXTERNAL_RAM": 1,
+    "ORDERED_JOB": 1,
+    "p_register_dma_request": 1,
+    "p_dma_source_layout": 1,
+    "p_shared_write_stage": 1,
+    "RAM_WORD_ADDR_WIDTH": 12
+  },
+  "complete_module_formal": [
+    {
+      "name": "production",
+      "passed": true,
+      "options": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1",
+        "-GSIZE=16",
+        "-GBUS_WIDTH=64",
+        "-GDMA_LANES=8",
+        "-GCOUNT_WIDTH=29",
+        "-GCACHE_BLOCKS=32",
+        "-GEXTERNAL_RAM=1",
+        "-GORDERED_JOB=1",
+        "-GRAM_WORD_ADDR_WIDTH=12",
+        "-Gp_register_dma_request=1",
+        "-Gp_dma_source_layout=1",
+        "-Gp_shared_write_stage=1"
+      ],
+      "equivalent_bits": 12706,
+      "log_sha256": "ab3414ba34bbd434600327d19aa4cf1bba1f9c08c09d949f5b965e6306a478c0"
+    },
+    {
+      "name": "generic",
+      "passed": true,
+      "options": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1",
+        "-GSIZE=16",
+        "-GBUS_WIDTH=32",
+        "-GCOUNT_WIDTH=8",
+        "-GCACHE_BLOCKS=4",
+        "-GEXTERNAL_RAM=1",
+        "-GORDERED_JOB=0"
+      ],
+      "equivalent_bits": 10541,
+      "log_sha256": "15904ffb8872650d5e7b593adee45aab953d21ea83bf011c49d3233a48bc5f8c"
+    },
+    {
+      "name": "small",
+      "passed": true,
+      "options": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1",
+        "-GSIZE=3",
+        "-GBUS_WIDTH=32",
+        "-GCOUNT_WIDTH=8",
+        "-GCACHE_BLOCKS=4",
+        "-GEXTERNAL_RAM=0",
+        "-GORDERED_JOB=1"
+      ],
+      "equivalent_bits": 6846,
+      "log_sha256": "7ae58df2008409803c044df95e5c60696edeb3fad8e0d5aa5f79033984c76a4e"
+    },
+    {
+      "name": "wide_cache",
+      "passed": true,
+      "options": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1",
+        "-GSIZE=16",
+        "-GBUS_WIDTH=64",
+        "-GCOUNT_WIDTH=32",
+        "-GCACHE_BLOCKS=64",
+        "-GEXTERNAL_RAM=1",
+        "-GORDERED_JOB=1",
+        "-Gp_register_dma_request=1"
+      ],
+      "equivalent_bits": 17571,
+      "log_sha256": "a26c4e0b39ed9a58a296d152308fb2b9dba503ef850346ba6b925173d983c7eb"
+    }
+  ],
+  "capture_formal": {
+    "passed": true,
+    "scope": "Actual request and demand capture expressions; reset, configuration and arbitrary control inputs",
+    "input_constraints": false,
+    "profiles": [
+      {
+        "REG_WIDTH": 8,
+        "SIZE": 3,
+        "CACHE_SLOT_W": 3,
+        "passed": true,
+        "log_sha256": "887457486f908ce14de640482a315fc647f9efb55eea4249e77be2264ebbc09e"
+      },
+      {
+        "REG_WIDTH": 16,
+        "SIZE": 4,
+        "CACHE_SLOT_W": 3,
+        "passed": true,
+        "log_sha256": "cc7371b7c7308f81db3d8679ae0a74c384b7ee881ea3951a2506dc9ce8a25537"
+      },
+      {
+        "REG_WIDTH": 32,
+        "SIZE": 8,
+        "CACHE_SLOT_W": 4,
+        "passed": true,
+        "log_sha256": "23580b2c1b968459b67ad34b55947c15ef596c29a9193d7e7316a7f43760cb7f"
+      },
+      {
+        "REG_WIDTH": 32,
+        "SIZE": 16,
+        "CACHE_SLOT_W": 6,
+        "passed": true,
+        "log_sha256": "b1e39907a220ebbcfdad7b73008e5ba8522bf4dc9848809ca77c0e3dfc055ded"
+      },
+      {
+        "REG_WIDTH": 32,
+        "SIZE": 16,
+        "CACHE_SLOT_W": 7,
+        "passed": true,
+        "log_sha256": "f69774f0c3af184088d6bc18f7caac66e0b59a634daac093faf0e034ff93fb7c"
+      },
+      {
+        "REG_WIDTH": 32,
+        "SIZE": 32,
+        "CACHE_SLOT_W": 6,
+        "passed": true,
+        "log_sha256": "68a9f9943ea03e730488fb655048d9138dc4acae985afd50e9880d0249d79dc8"
+      }
+    ],
+    "four_state_comparisons": 1204386,
+    "reference_sha256": "3863b614a2b43b542638e255fe5a9938ba527c61cba44ece486d7202b7077e6a",
+    "candidate_sha256": "af6ea435d8f26b2c941f4ff4872de8c7490e86f37f66ca693108af6ead0a7e4b",
+    "controller_sha256": "9f7a5b0837e5f154c983f732ad1ba9ffc36ea2364ef9261adcd9291d7483076f",
+    "extracted_rtl_sha256": "1e8eaaba8947501344acc77326e40b7221be8850028a4541ee0b48d8bb3c89f0"
+  },
+  "public_output_comparison": {
+    "ports": [
+      "prefetch_idle",
+      "load_ia_req",
+      "ext_dma_start",
+      "ext_dma_is_write",
+      "ext_dma_linear_read_mode",
+      "ext_dma_im2col",
+      "ext_dma_p0",
+      "ext_dma_q0",
+      "ext_dma_group",
+      "ext_dma_base_addr",
+      "ext_dma_row_stride",
+      "ext_dma_rows_to_read",
+      "ext_dma_burst_len_m1",
+      "ext_dma_slot_id",
+      "ext_dma_use_16bits",
+      "ext_dma_lhs_zp",
+      "ram_port_wr_en",
+      "ram_port_wr_addr",
+      "ram_port_wr_data",
+      "ram_port_wr_mask",
+      "ram_shared_wr_data",
+      "ram_port_rd_en",
+      "ram_port_rd_addr",
+      "ia_out",
+      "ia_row_valid",
+      "ia_is_init_data",
+      "ia_calc_done",
+      "ia_tile_start",
+      "ia_sending_done",
+      "ia_data_valid",
+      "ps_frame_rows",
+      "ps_frame_id",
+      "ps_frame_init",
+      "ps_frame_final",
+      "ia_output_pending",
+      "bias_sleep",
+      "bias_load_sleep",
+      "bias_switch",
+      "bias_last_loop",
+      "ia_l1_switch"
+    ],
+    "runs": [
+      {
+        "passed": true,
+        "commands": 253,
+        "value_checks": 181440,
+        "cycles": 59396,
+        "demand_dma_requests": 372,
+        "prefetch_dma_requests": 124,
+        "cache_hits": 427,
+        "cache_hits_during_prefetch": 140,
+        "different_k_tail_hits": 1,
+        "background_completions": 124,
+        "init_while_prefetch_active": 83,
+        "output_cycles_during_prefetch": 3873,
+        "slot_wraps": 88,
+        "padding_value_checks": 1943,
+        "prefetch_priority_checks": 124,
+        "cancelled_requests": 1,
+        "sustained_grant": false,
+        "physical_data_bytes": 2048,
+        "mode": "blocked",
+        "log_sha256": "bfeb81cfd8c7eb6e0966f1d8a53ef093c4960ba43a611ebc8effb2fca0e59dce"
+      },
+      {
+        "passed": true,
+        "commands": 253,
+        "value_checks": 181440,
+        "cycles": 59337,
+        "demand_dma_requests": 372,
+        "prefetch_dma_requests": 124,
+        "cache_hits": 427,
+        "cache_hits_during_prefetch": 140,
+        "different_k_tail_hits": 1,
+        "background_completions": 124,
+        "init_while_prefetch_active": 83,
+        "output_cycles_during_prefetch": 3879,
+        "slot_wraps": 88,
+        "padding_value_checks": 1943,
+        "prefetch_priority_checks": 124,
+        "cancelled_requests": 1,
+        "sustained_grant": true,
+        "physical_data_bytes": 2048,
+        "mode": "sustained",
+        "log_sha256": "483dfae65330e13888c4e007d07d062ce8a517196c7004115e94586ac9fd47b8"
+      }
+    ],
+    "commands": 506,
+    "value_checks": 362880,
+    "cycles": 118733
+  },
+  "synthesis": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 5022,
+        "distributed_ram_lut_sites_nominal": 20,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 5042,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 2538,
+        "dsp48e1": 28,
+        "ramb36e1": 2,
+        "ramb18e1": 1,
+        "carry4": 195,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 195,
+          "DSP48E1": 28,
+          "FDCE": 2069,
+          "FDPE": 90,
+          "FDRE": 379,
+          "INV": 89,
+          "LUT2": 949,
+          "LUT3": 1110,
+          "LUT4": 873,
+          "LUT5": 1214,
+          "LUT6": 876,
+          "MUXF7": 2,
+          "MUXF8": 1,
+          "RAM64M": 5,
+          "RAMB18E1": 1,
+          "RAMB36E1": 2
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "all_register_path": 10,
+      "lookup_to_start": {
+        "maximum": 8,
+        "groups": [
+          {
+            "combinational_cells": 8,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20958",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[42]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [42]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$20752",
+              "type": "FDRE",
+              "port": "D",
+              "net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+              "category": "data",
+              "source": "test/ia_lookup_capture/measure.sv:221.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "ext_dma_start"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger240801$17481",
+                "type": "LUT4",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[42]",
+                "output_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17955",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "output_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17979",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "output_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17983",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "output_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17987",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16563",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "output_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17993",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "output_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241773",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "output_net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              }
+            ]
+          }
+        ],
+        "path": [
+          {
+            "combinational_cells": 8,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20958",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[42]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [42]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$20752",
+              "type": "FDRE",
+              "port": "D",
+              "net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+              "category": "data",
+              "source": "test/ia_lookup_capture/measure.sv:221.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "ext_dma_start"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger240801$17481",
+                "type": "LUT4",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[42]",
+                "output_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17955",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "output_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17979",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "output_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17983",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "output_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17987",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16563",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "output_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17993",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "output_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241773",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "output_net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              }
+            ]
+          }
+        ]
+      },
+      "lookup_to_hit": {
+        "maximum": 6,
+        "groups": [
+          {
+            "combinational_cells": 6,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20958",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[42]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [42]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$21193",
+              "type": "FDCE",
+              "port": "D",
+              "net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+              "category": "data",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:898.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.cache_hit_done"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger240801$17481",
+                "type": "LUT4",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[42]",
+                "output_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17955",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "output_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17979",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "output_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17983",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "output_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17987",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16563",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "output_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              }
+            ]
+          }
+        ],
+        "path": [
+          {
+            "combinational_cells": 6,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20958",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[42]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [42]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$21193",
+              "type": "FDCE",
+              "port": "D",
+              "net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+              "category": "data",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:898.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.cache_hit_done"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger240801$17481",
+                "type": "LUT4",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[42]",
+                "output_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17955",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "output_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17979",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "output_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17983",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "output_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17987",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16563",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "output_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              }
+            ]
+          }
+        ]
+      },
+      "lookup_all_registers": {
+        "maximum": 9,
+        "groups": [
+          {
+            "combinational_cells": 9,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20958",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[42]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [42]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$21109",
+              "type": "FDCE",
+              "port": "D",
+              "net": "$techmap243015$auto$ff.cc:337:slice$21109.D",
+              "category": "data",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:752.9|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "load_ia_req"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger240801$17481",
+                "type": "LUT4",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[42]",
+                "output_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17955",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "output_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17979",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "output_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17983",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "output_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17987",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16563",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "output_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17993",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "output_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$20708",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "output_net": "$techmap246222$abc$240802$lut$aiger$o16323.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16323",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap246222$abc$240802$lut$aiger$o16323.A[1]",
+                "output_net": "$techmap243015$auto$ff.cc:337:slice$21109.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 9,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20958",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[42]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [42]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$23436",
+              "type": "FDCE",
+              "port": "CE",
+              "net": "$abc$240802$aiger$o17964",
+              "category": "control",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:933.9|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.cache_tags_valid [63]"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger240801$17481",
+                "type": "LUT4",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[42]",
+                "output_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17955",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "output_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17979",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "output_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17983",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "output_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17987",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16563",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "output_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17993",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "output_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o17962",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "output_net": "$techmap243296$auto$ff.cc:337:slice$23436.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241608",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap243296$auto$ff.cc:337:slice$23436.D",
+                "output_net": "$abc$240802$aiger$o17964",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 9,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20958",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[42]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [42]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$23748",
+              "type": "FDCE",
+              "port": "CE",
+              "net": "$techmap243452$auto$ff.cc:337:slice$23749.D",
+              "category": "control",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:898.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.fill_is_prefetch"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger240801$17481",
+                "type": "LUT4",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[42]",
+                "output_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17955",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "output_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17979",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "output_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17983",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "output_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17987",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16563",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "output_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17993",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "output_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241773",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "output_net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o19048",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+                "output_net": "$techmap243452$auto$ff.cc:337:slice$23749.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 9,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20958",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[42]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [42]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$23749",
+              "type": "FDCE",
+              "port": "CE",
+              "net": "$abc$240802$aiger$o19052",
+              "category": "control",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:898.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.fill_pending"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger240801$17481",
+                "type": "LUT4",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[42]",
+                "output_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17955",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "output_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17979",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "output_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17983",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "output_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17987",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16563",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "output_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17993",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "output_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241773",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "output_net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241430",
+                "type": "LUT3",
+                "input_port": "I2[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+                "output_net": "$abc$240802$aiger$o19052",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 9,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20958",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[42]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [42]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$23750",
+              "type": "FDCE",
+              "port": "CE",
+              "net": "$techmap243452$auto$ff.cc:337:slice$23749.D",
+              "category": "control",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:898.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.fill_slot [0]"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger240801$17481",
+                "type": "LUT4",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[42]",
+                "output_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17955",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "output_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17979",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "output_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17983",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "output_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17987",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16563",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "output_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17993",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "output_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241773",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "output_net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o19048",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+                "output_net": "$techmap243452$auto$ff.cc:337:slice$23749.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 9,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20958",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[42]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [42]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$23756",
+              "type": "FDCE",
+              "port": "CE",
+              "net": "$techmap243452$auto$ff.cc:337:slice$23749.D",
+              "category": "control",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:898.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.fill_tag [0]"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger240801$17481",
+                "type": "LUT4",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[42]",
+                "output_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17955",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "output_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17979",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "output_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17983",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "output_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17987",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16563",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "output_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17993",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "output_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241773",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "output_net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o19048",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+                "output_net": "$techmap243452$auto$ff.cc:337:slice$23749.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 8,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20958",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[42]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [42]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$20752",
+              "type": "FDRE",
+              "port": "D",
+              "net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+              "category": "data",
+              "source": "test/ia_lookup_capture/measure.sv:221.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "ext_dma_start"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger240801$17481",
+                "type": "LUT4",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[42]",
+                "output_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17955",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "output_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17979",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "output_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17983",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "output_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17987",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16563",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "output_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17993",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "output_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241773",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "output_net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 8,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20958",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[42]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [42]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$24400",
+              "type": "FDPE",
+              "port": "CE",
+              "net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+              "category": "control",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:1131.9|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:42.41-42.97",
+              "register_origin": "dut.gen_ext_wr[0].g_direct_column.lane_valid_columns [0]"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger240801$17481",
+                "type": "LUT4",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[42]",
+                "output_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17955",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "output_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17979",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "output_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17983",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "output_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17987",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16563",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "output_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17993",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "output_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241773",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "output_net": "$techmap245358$abc$240802$lut$aiger$o19048.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 6,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$20754",
+              "type": "FDCE",
+              "port": "D",
+              "net": "$techmap242839$auto$ff.cc:337:slice$20754.D",
+              "category": "data",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader_ctrl.sv:948.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.u_ctrl.tl_start_r"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger$o25219",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o25231",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o25229",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17732",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$18947",
+                "type": "LUT5",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[3]",
+                "output_net": "$techmap246285$abc$240802$lut$aiger$o15583.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o15583",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap246285$abc$240802$lut$aiger$o15583.A[4]",
+                "output_net": "$techmap242839$auto$ff.cc:337:slice$20754.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 6,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20958",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[42]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [42]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$21193",
+              "type": "FDCE",
+              "port": "D",
+              "net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+              "category": "data",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:898.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.cache_hit_done"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger240801$17481",
+                "type": "LUT4",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[42]",
+                "output_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17955",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "output_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17979",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "output_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17983",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "output_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17987",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16563",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "output_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 6,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$22888",
+              "type": "FDCE",
+              "port": "D",
+              "net": "$techmap243095$auto$ff.cc:337:slice$22888.D",
+              "category": "data",
+              "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.u_ctrl.state [2]"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger$o25219",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o25231",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o25229",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17732",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$18947",
+                "type": "LUT5",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[3]",
+                "output_net": "$techmap246285$abc$240802$lut$aiger$o15583.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241716",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap246285$abc$240802$lut$aiger$o15583.A[4]",
+                "output_net": "$techmap243095$auto$ff.cc:337:slice$22888.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              }
+            ]
+          }
+        ],
+        "path": [
+          {
+            "combinational_cells": 9,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20958",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[42]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [42]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$21109",
+              "type": "FDCE",
+              "port": "D",
+              "net": "$techmap243015$auto$ff.cc:337:slice$21109.D",
+              "category": "data",
+              "source": "build/ia_lookup_capture/reference/rtl/npu/loaders/ia_loader.sv:752.9|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "load_ia_req"
+            },
+            "path": [
+              {
+                "cell": "$abc$240802$lut$aiger240801$17481",
+                "type": "LUT4",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[42]",
+                "output_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17955",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244472$abc$240802$lut$aiger240801$17955.A[4]",
+                "output_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17979",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244473$abc$240802$lut$aiger240801$17979.A[3]",
+                "output_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17983",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244492$abc$240802$lut$aiger240801$17983.A[3]",
+                "output_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17987",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244504$abc$240802$lut$aiger240801$17987.A[4]",
+                "output_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16563",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244574$abc$240802$lut$aiger$o16563.A[5]",
+                "output_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$17993",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap243089$auto$ff.cc:337:slice$21193.D",
+                "output_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger240801$20708",
+                "type": "LUT5",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244593$abc$240802$lut$aiger$o18182.A[4]",
+                "output_net": "$techmap246222$abc$240802$lut$aiger$o16323.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240802$lut$aiger$o16323",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap246222$abc$240802$lut$aiger$o16323.A[1]",
+                "output_net": "$techmap243015$auto$ff.cc:337:slice$21109.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 4956,
+        "distributed_ram_lut_sites_nominal": 20,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 4976,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 2539,
+        "dsp48e1": 28,
+        "ramb36e1": 2,
+        "ramb18e1": 1,
+        "carry4": 195,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 195,
+          "DSP48E1": 28,
+          "FDCE": 2070,
+          "FDPE": 90,
+          "FDRE": 379,
+          "INV": 89,
+          "LUT2": 957,
+          "LUT3": 1053,
+          "LUT4": 854,
+          "LUT5": 1226,
+          "LUT6": 866,
+          "MUXF7": 1,
+          "RAM64M": 5,
+          "RAMB18E1": 1,
+          "RAMB36E1": 2
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "all_register_path": 10,
+      "lookup_to_start": {
+        "maximum": 7,
+        "groups": [
+          {
+            "combinational_cells": 7,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$20752",
+              "type": "FDRE",
+              "port": "D",
+              "net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+              "category": "data",
+              "source": "test/ia_lookup_capture/measure.sv:221.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "ext_dma_start"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17738",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16568",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "output_net": "dut.cache_hit_event",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17744",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.cache_hit_event",
+                "output_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241645",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "output_net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              }
+            ]
+          }
+        ],
+        "path": [
+          {
+            "combinational_cells": 7,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$20752",
+              "type": "FDRE",
+              "port": "D",
+              "net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+              "category": "data",
+              "source": "test/ia_lookup_capture/measure.sv:221.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "ext_dma_start"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17738",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16568",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "output_net": "dut.cache_hit_event",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17744",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.cache_hit_event",
+                "output_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241645",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "output_net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              }
+            ]
+          }
+        ]
+      },
+      "lookup_to_hit": {
+        "maximum": 5,
+        "groups": [
+          {
+            "combinational_cells": 5,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$21194",
+              "type": "FDCE",
+              "port": "D",
+              "net": "dut.cache_hit_event",
+              "category": "data",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:921.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.cache_hit_done"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17738",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16568",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "output_net": "dut.cache_hit_event",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              }
+            ]
+          }
+        ],
+        "path": [
+          {
+            "combinational_cells": 5,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$21194",
+              "type": "FDCE",
+              "port": "D",
+              "net": "dut.cache_hit_event",
+              "category": "data",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:921.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.cache_hit_done"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17738",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16568",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "output_net": "dut.cache_hit_event",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              }
+            ]
+          }
+        ]
+      },
+      "lookup_all_registers": {
+        "maximum": 8,
+        "groups": [
+          {
+            "combinational_cells": 8,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$21109",
+              "type": "FDCE",
+              "port": "D",
+              "net": "$techmap242888$auto$ff.cc:337:slice$21109.D",
+              "category": "data",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:775.9|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "load_ia_req"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17738",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16568",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "output_net": "dut.cache_hit_event",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17744",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.cache_hit_event",
+                "output_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$20163",
+                "type": "LUT4",
+                "input_port": "I2[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "output_net": "$techmap247012$abc$240701$lut$aiger$o16325.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16325",
+                "type": "LUT6",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap247012$abc$240701$lut$aiger$o16325.A[3]",
+                "output_net": "$techmap242888$auto$ff.cc:337:slice$21109.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 8,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$23482",
+              "type": "FDCE",
+              "port": "CE",
+              "net": "$abc$240701$aiger$o17985",
+              "category": "control",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:956.9|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.cache_tags_valid [63]"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17738",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16568",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "output_net": "dut.cache_hit_event",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17744",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.cache_hit_event",
+                "output_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o17983",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "output_net": "$techmap243174$auto$ff.cc:337:slice$23482.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241483",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap243174$auto$ff.cc:337:slice$23482.D",
+                "output_net": "$abc$240701$aiger$o17985",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 8,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$23758",
+              "type": "FDCE",
+              "port": "CE",
+              "net": "$techmap243322$auto$ff.cc:337:slice$23759.D",
+              "category": "control",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:921.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.fill_is_prefetch"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17738",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16568",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "output_net": "dut.cache_hit_event",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17744",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.cache_hit_event",
+                "output_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241645",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "output_net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o19037",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+                "output_net": "$techmap243322$auto$ff.cc:337:slice$23759.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 8,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$23759",
+              "type": "FDCE",
+              "port": "CE",
+              "net": "$abc$240701$aiger$o19041",
+              "category": "control",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:921.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.fill_pending"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17738",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16568",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "output_net": "dut.cache_hit_event",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17744",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.cache_hit_event",
+                "output_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241645",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "output_net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241328",
+                "type": "LUT3",
+                "input_port": "I2[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+                "output_net": "$abc$240701$aiger$o19041",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 8,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$23760",
+              "type": "FDCE",
+              "port": "CE",
+              "net": "$techmap243322$auto$ff.cc:337:slice$23759.D",
+              "category": "control",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:921.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.fill_slot [0]"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17738",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16568",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "output_net": "dut.cache_hit_event",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17744",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.cache_hit_event",
+                "output_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241645",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "output_net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o19037",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+                "output_net": "$techmap243322$auto$ff.cc:337:slice$23759.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 8,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$23766",
+              "type": "FDCE",
+              "port": "CE",
+              "net": "$techmap243322$auto$ff.cc:337:slice$23759.D",
+              "category": "control",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:921.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.fill_tag [0]"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17738",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16568",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "output_net": "dut.cache_hit_event",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17744",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.cache_hit_event",
+                "output_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241645",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "output_net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o19037",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+                "output_net": "$techmap243322$auto$ff.cc:337:slice$23759.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 7,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$20752",
+              "type": "FDRE",
+              "port": "D",
+              "net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+              "category": "data",
+              "source": "test/ia_lookup_capture/measure.sv:221.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "ext_dma_start"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17738",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16568",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "output_net": "dut.cache_hit_event",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17744",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.cache_hit_event",
+                "output_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241645",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "output_net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 7,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$24397",
+              "type": "FDPE",
+              "port": "CE",
+              "net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+              "category": "control",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:1154.9|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:42.41-42.97",
+              "register_origin": "dut.gen_ext_wr[0].g_direct_column.lane_valid_columns [0]"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17738",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16568",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "output_net": "dut.cache_hit_event",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17744",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.cache_hit_event",
+                "output_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241645",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "output_net": "$techmap246277$abc$240701$lut$aiger$o19037.A[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 5,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$20754",
+              "type": "FDCE",
+              "port": "D",
+              "net": "$techmap242712$auto$ff.cc:337:slice$20754.D",
+              "category": "data",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader_ctrl.sv:948.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.u_ctrl.tl_start_r"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$18396",
+                "type": "LUT5",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap246700$abc$240701$lut$aiger$o15585.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o15585",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap246700$abc$240701$lut$aiger$o15585.A[3]",
+                "output_net": "$techmap242712$auto$ff.cc:337:slice$20754.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 5,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$21194",
+              "type": "FDCE",
+              "port": "D",
+              "net": "dut.cache_hit_event",
+              "category": "data",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:921.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.cache_hit_done"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17738",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16568",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "output_net": "dut.cache_hit_event",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 5,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$22889",
+              "type": "FDCE",
+              "port": "D",
+              "net": "$techmap242969$auto$ff.cc:337:slice$22889.D",
+              "category": "data",
+              "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "dut.u_ctrl.state [2]"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$18396",
+                "type": "LUT5",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap246700$abc$240701$lut$aiger$o15585.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$241587",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap246700$abc$240701$lut$aiger$o15585.A[3]",
+                "output_net": "$techmap242969$auto$ff.cc:337:slice$22889.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              }
+            ]
+          }
+        ],
+        "path": [
+          {
+            "combinational_cells": 8,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$20951",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "dut.request_lookup_q[35]",
+              "detail": "register output",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:556.5|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "dut.request_lookup_q [35]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$21109",
+              "type": "FDCE",
+              "port": "D",
+              "net": "$techmap242888$auto$ff.cc:337:slice$21109.D",
+              "category": "data",
+              "source": "build/ia_lookup_capture/candidate/rtl/npu/loaders/ia_loader.sv:775.9|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+              "register_origin": "load_ia_req"
+            },
+            "path": [
+              {
+                "cell": "$abc$240701$lut$aiger$o25226",
+                "type": "LUT6",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_lookup_q[35]",
+                "output_net": "dut.request_tag_group_equal[11]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25238",
+                "type": "LUT6",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_group_equal[11]",
+                "output_net": "dut.request_tag_part_equal[1]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o25236",
+                "type": "LUT4",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_part_equal[1]",
+                "output_net": "dut.request_tag_match",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17738",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.request_tag_match",
+                "output_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16568",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244370$abc$240701$lut$aiger$o16568.A[4]",
+                "output_net": "dut.cache_hit_event",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$17744",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "dut.cache_hit_event",
+                "output_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger240700$20163",
+                "type": "LUT4",
+                "input_port": "I2[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap244390$abc$240701$lut$aiger$o18003.A[4]",
+                "output_net": "$techmap247012$abc$240701$lut$aiger$o16325.A[3]",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$240701$lut$aiger$o16325",
+                "type": "LUT6",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap247012$abc$240701$lut$aiger$o16325.A[3]",
+                "output_net": "$techmap242888$auto$ff.cc:337:slice$21109.D",
+                "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "measured_source_sha256": "af6ea435d8f26b2c941f4ff4872de8c7490e86f37f66ca693108af6ead0a7e4b"
+  },
+  "reports": {
+    "formal_final/summary.json": {
+      "path": "build/ia_lookup_capture/formal_final/summary.json",
+      "sha256": "a2e6d342599c5a1ed13527f973f87afa3f271ae353aa5fcb28b1d1bcd4ffd886"
+    },
+    "verification_final/summary.json": {
+      "path": "build/ia_lookup_capture/verification_final/summary.json",
+      "sha256": "4d59dee3c423a1b7ebd8f0dcf0cf9698825397f125be899e51a3218731ae84c3"
+    },
+    "interface_final/summary.json": {
+      "path": "build/ia_lookup_capture/interface_final/summary.json",
+      "sha256": "058e2be2db631630b49c4d74c554f4faada120a19b328c39eeadedc2b27dc907"
+    },
+    "synthesis/paths_final.json": {
+      "path": "build/ia_lookup_capture/synthesis/paths_final.json",
+      "sha256": "93beb09beab7a2a802d801d62421f5832eb536fa25d57eeb2e236da0b8441f6b"
+    },
+    "build/rtl_cleanup/ia_formal/summary.json": {
+      "path": "build/rtl_cleanup/ia_formal/summary.json",
+      "sha256": "f66d28b4654946775f1d883542afebed577d4c50d99ec890f91e570141065106"
+    },
+    "build/rtl_cleanup/ia_columns/summary.json": {
+      "path": "build/rtl_cleanup/ia_columns/summary.json",
+      "sha256": "e762e66d66b5ab7475cf1e398eb16f4ef38bfc6576d9a91104cc98febce50013"
+    },
+    "build/rtl_cleanup/ia_interface_final/summary.json": {
+      "path": "build/rtl_cleanup/ia_interface_final/summary.json",
+      "sha256": "9b3b3822f60a225914c04fef14592b10857ab31862171a5f472a22b89411ecf6"
+    }
+  },
+  "parameter_state_validation": {
+    "reference_sha256": "af6ea435d8f26b2c941f4ff4872de8c7490e86f37f66ca693108af6ead0a7e4b",
+    "source_sha256": "d26ba1ab17a84266f5488cf8dc06f3472bd3a25ea301119f07c8c1a58a038f72",
+    "passed": true,
+    "state_formal": {
+      "passed": true,
+      "external_inputs_constrained": false,
+      "compared_outputs": "all public outputs and common internal state",
+      "source_sha256": {
+        "reference": {
+          "rtl/npu/loaders/ia_loader.sv": "af6ea435d8f26b2c941f4ff4872de8c7490e86f37f66ca693108af6ead0a7e4b",
+          "rtl/npu/loaders/ia_loader_ctrl.sv": "9f7a5b0837e5f154c983f732ad1ba9ffc36ea2364ef9261adcd9291d7483076f",
+          "rtl/npu/loaders/ia_loader_cache_mgr.sv": "6157a45789c517e151df01530eecf03f884cb0c37f1b1e0cb3be333df53f0a1d",
+          "rtl/npu/compute/select_add.sv": "7666adf571cc7267a9cbde09f7d9eb2e46bb3538481f3603b784f0bf9775e631",
+          "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+          "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+          "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+          "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+          "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+          "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+          "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+        },
+        "current": {
+          "rtl/npu/loaders/ia_loader.sv": "d26ba1ab17a84266f5488cf8dc06f3472bd3a25ea301119f07c8c1a58a038f72",
+          "rtl/npu/loaders/ia_loader_ctrl.sv": "9f7a5b0837e5f154c983f732ad1ba9ffc36ea2364ef9261adcd9291d7483076f",
+          "rtl/npu/loaders/ia_loader_cache_mgr.sv": "6157a45789c517e151df01530eecf03f884cb0c37f1b1e0cb3be333df53f0a1d",
+          "rtl/npu/compute/select_add.sv": "7666adf571cc7267a9cbde09f7d9eb2e46bb3538481f3603b784f0bf9775e631",
+          "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+          "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+          "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+          "rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+          "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+          "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+          "rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df"
+        }
+      },
+      "profiles": [
+        {
+          "name": "production",
+          "passed": true,
+          "options": [
+            "-DSYNTHESIS=1",
+            "-DXILINX_FPGA=1",
+            "-GSIZE=16",
+            "-GBUS_WIDTH=64",
+            "-GDMA_LANES=8",
+            "-GCOUNT_WIDTH=29",
+            "-GCACHE_BLOCKS=32",
+            "-GEXTERNAL_RAM=1",
+            "-GORDERED_JOB=1",
+            "-GRAM_WORD_ADDR_WIDTH=12",
+            "-Gp_register_dma_request=1",
+            "-Gp_dma_source_layout=1",
+            "-Gp_shared_write_stage=1"
+          ],
+          "equivalent_bits": 12708,
+          "log_sha256": "3eea653ff2a2f71e3d900852a594eac10180444bee0b2fc73680e7c604291a43"
+        },
+        {
+          "name": "generic",
+          "passed": true,
+          "options": [
+            "-DSYNTHESIS=1",
+            "-DXILINX_FPGA=1",
+            "-GSIZE=16",
+            "-GBUS_WIDTH=32",
+            "-GCOUNT_WIDTH=8",
+            "-GCACHE_BLOCKS=4",
+            "-GEXTERNAL_RAM=1",
+            "-GORDERED_JOB=0"
+          ],
+          "equivalent_bits": 10542,
+          "log_sha256": "b798687c79c4f118f5c2b9da14d4c80c0c089f2641c0a2529c2f4f52373aeafa"
+        },
+        {
+          "name": "small",
+          "passed": true,
+          "options": [
+            "-DSYNTHESIS=1",
+            "-DXILINX_FPGA=1",
+            "-GSIZE=3",
+            "-GBUS_WIDTH=32",
+            "-GCOUNT_WIDTH=8",
+            "-GCACHE_BLOCKS=4",
+            "-GEXTERNAL_RAM=0",
+            "-GORDERED_JOB=1"
+          ],
+          "equivalent_bits": 6816,
+          "log_sha256": "163900f06379a3cb0c4311c6afa9f1b174903487ce5c2f7a3880a65bb05a366b"
+        },
+        {
+          "name": "wide_cache",
+          "passed": true,
+          "options": [
+            "-DSYNTHESIS=1",
+            "-DXILINX_FPGA=1",
+            "-GSIZE=16",
+            "-GBUS_WIDTH=64",
+            "-GCOUNT_WIDTH=32",
+            "-GCACHE_BLOCKS=64",
+            "-GEXTERNAL_RAM=1",
+            "-GORDERED_JOB=1",
+            "-Gp_register_dma_request=1"
+          ],
+          "equivalent_bits": 17573,
+          "log_sha256": "f7608669bafe822bba48ee9121510c00ae8d937bdae56734351a473699722e1e"
+        }
+      ]
+    },
+    "column_state_formal": {
+      "passed": true,
+      "external_inputs_constrained": false,
+      "source_sha256": {
+        "reference": "af6ea435d8f26b2c941f4ff4872de8c7490e86f37f66ca693108af6ead0a7e4b",
+        "current": "d26ba1ab17a84266f5488cf8dc06f3472bd3a25ea301119f07c8c1a58a038f72"
+      },
+      "profiles": [
+        {
+          "size": 2,
+          "register_width": 1,
+          "lanes": 16,
+          "passed": true,
+          "log_sha256": "75cc6069cbbf78b7c03dbff14066204a8b0c4d83fcf8b0e52ba7452410f6e3ee"
+        },
+        {
+          "size": 3,
+          "register_width": 2,
+          "lanes": 8,
+          "passed": true,
+          "log_sha256": "0db4b079ce1ee17f8d94faa2438cbd81f3b774b75a90c6058420acb357d85c4e"
+        },
+        {
+          "size": 4,
+          "register_width": 32,
+          "lanes": 4,
+          "passed": true,
+          "log_sha256": "bd4cb2b2a2a04b7fb58ab94087840c88b0039d61b3694d453397596039f3f457"
+        },
+        {
+          "size": 8,
+          "register_width": 16,
+          "lanes": 8,
+          "passed": true,
+          "log_sha256": "7a12c37fe68a6ac2f9562cc1ce453fb984b5cf6fed4cd46c1647938b0bfd849d"
+        },
+        {
+          "size": 16,
+          "register_width": 32,
+          "lanes": 4,
+          "passed": true,
+          "log_sha256": "fbb643f57e95506423935caf9cd57ed8306f73aa486e21f7f0f8a0b19972870d"
+        },
+        {
+          "size": 16,
+          "register_width": 32,
+          "lanes": 8,
+          "passed": true,
+          "log_sha256": "9edb44dbbfd969f67c17536359d22eaf800da6016bef08d74a6d824d4ca2b8d3"
+        },
+        {
+          "size": 16,
+          "register_width": 32,
+          "lanes": 16,
+          "passed": true,
+          "log_sha256": "57a86a1687565294a913dc5bb5ea554ffd6363d6f46cfecbe8303692b46752c6"
+        },
+        {
+          "size": 16,
+          "register_width": 4,
+          "lanes": 8,
+          "passed": true,
+          "log_sha256": "80598a383d164ddc26ede4dd5bd6e2cad70424924e257d8e48ed4b9d8fbad250"
+        },
+        {
+          "size": 16,
+          "register_width": 4,
+          "lanes": 1,
+          "passed": true,
+          "log_sha256": "0966a20b97c296cdef60c4c8703720e301b0bbd32f19fe719dc30ad225e25601"
+        },
+        {
+          "size": 32,
+          "register_width": 32,
+          "lanes": 8,
+          "passed": true,
+          "log_sha256": "673adf4338d7ad380a8a6bddf8fd1ae4cbc1cc86ce8a2878b1bf3d0382a55e44"
+        },
+        {
+          "size": 64,
+          "register_width": 32,
+          "lanes": 16,
+          "passed": true,
+          "log_sha256": "92e5a24ad59047c3402f558f460c231ff9ba64154b89155f103485c29e612d01"
+        }
+      ]
+    },
+    "public_output_comparison": {
+      "passed": true,
+      "compared_outputs": [
+        "prefetch_idle",
+        "load_ia_req",
+        "ext_dma_start",
+        "ext_dma_is_write",
+        "ext_dma_linear_read_mode",
+        "ext_dma_im2col",
+        "ext_dma_p0",
+        "ext_dma_q0",
+        "ext_dma_group",
+        "ext_dma_base_addr",
+        "ext_dma_row_stride",
+        "ext_dma_rows_to_read",
+        "ext_dma_burst_len_m1",
+        "ext_dma_slot_id",
+        "ext_dma_use_16bits",
+        "ext_dma_lhs_zp",
+        "ram_port_wr_en",
+        "ram_port_wr_addr",
+        "ram_port_wr_data",
+        "ram_port_wr_mask",
+        "ram_shared_wr_data",
+        "ram_port_rd_en",
+        "ram_port_rd_addr",
+        "ia_out",
+        "ia_row_valid",
+        "ia_is_init_data",
+        "ia_calc_done",
+        "ia_tile_start",
+        "ia_sending_done",
+        "ia_data_valid",
+        "ps_frame_rows",
+        "ps_frame_id",
+        "ps_frame_init",
+        "ps_frame_final",
+        "ia_output_pending",
+        "bias_sleep",
+        "bias_load_sleep",
+        "bias_switch",
+        "bias_last_loop",
+        "ia_l1_switch"
+      ],
+      "source_sha256": "d26ba1ab17a84266f5488cf8dc06f3472bd3a25ea301119f07c8c1a58a038f72",
+      "reference_sha256": "af6ea435d8f26b2c941f4ff4872de8c7490e86f37f66ca693108af6ead0a7e4b",
+      "checked_rtl_sha256": "e8d64493c236dea9426d452f6a0728ba75ddaf15e077c68a688b3686b99e12e1",
+      "numeric": {
+        "passed": true,
+        "source_sha256": {
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ia_request_stage/run_prefetch.py": "41de72ee7a6f18d55e1de58da1ab862baf70f1c351369dbc7c36e24e8b20dc06",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/parallel_prefix_add.sv": "25942dd84cca79d6d9bc426e078c4de8e3920b06034f3f097f714aaa431eca41",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/unsigned_compare.sv": "23f5eb03d80fdff5dfa55d9e69e2c6973595350f3f9c25367f0ee44af98ae8df",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/npu/compute/select_add.sv": "7666adf571cc7267a9cbde09f7d9eb2e46bb3538481f3603b784f0bf9775e631",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/npu/loaders/ia_loader_cache_mgr.sv": "6157a45789c517e151df01530eecf03f884cb0c37f1b1e0cb3be333df53f0a1d",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/npu/loaders/ia_loader_ctrl.sv": "9f7a5b0837e5f154c983f732ad1ba9ffc36ea2364ef9261adcd9291d7483076f",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/npu/loaders/ia_loader.sv": "e8d64493c236dea9426d452f6a0728ba75ddaf15e077c68a688b3686b99e12e1",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ia_request_stage/prefetch_tb.sv": "37097d376ae8eea2088bbe966472a612fdd98d2b6fbcc6d8b5b92f8824a66f33",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ia_request_stage/request_observer.sv": "a6ff38f2544f2c5f880a6886682b936b94b7560e75c0ebb5ae730cc1e1802c6a",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ia_request_stage/prefetch_test.cpp": "165bce9a1cf2257055fa7defb591414e47825e1bb127e115ec5d2a7f4d50eee7"
+        },
+        "binary_sha256": "30153fdc5715a8a92e458a25985f02801936e5251dbc959ea4a6ead4744d5a26",
+        "compile_command": [
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/verilator_compare",
+          "-GORDERED_JOB=1",
+          "--cc",
+          "--exe",
+          "--build",
+          "--assert",
+          "-j",
+          "1",
+          "--top-module",
+          "ia_prefetch_tb",
+          "--Mdir",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/numeric/obj",
+          "-Wno-fatal",
+          "--output-groups",
+          "0",
+          "--output-split",
+          "10000",
+          "-CFLAGS",
+          "-std=c++17 -O1 -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all -DORDERED_JOB_TEST",
+          "-LDFLAGS",
+          "-fsanitize=undefined",
+          "-MAKEFLAGS",
+          "OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f /workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/numeric/compile_rules.mk",
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/numeric/xilinx_primitives.sv",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/add3_equal.sv",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/add_equal.sv",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/onehot_check.sv",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/parallel_prefix_add.sv",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/pseudo_dual_port_ram.v",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/regfile.v",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/single_port_ram.v",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/common/unsigned_compare.sv",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/npu/compute/select_add.sv",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/npu/loaders/ia_loader_cache_mgr.sv",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/npu/loaders/ia_loader_ctrl.sv",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source/rtl/npu/loaders/ia_loader.sv",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ia_request_stage/prefetch_tb.sv",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ia_request_stage/request_observer.sv",
+          "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ia_request_stage/prefetch_test.cpp"
+        ],
+        "ordered_job": true,
+        "fpga": true,
+        "runs": [
+          {
+            "passed": true,
+            "commands": 253,
+            "value_checks": 181440,
+            "cycles": 59396,
+            "demand_dma_requests": 372,
+            "prefetch_dma_requests": 124,
+            "cache_hits": 427,
+            "cache_hits_during_prefetch": 140,
+            "different_k_tail_hits": 1,
+            "background_completions": 124,
+            "init_while_prefetch_active": 83,
+            "output_cycles_during_prefetch": 3873,
+            "slot_wraps": 88,
+            "padding_value_checks": 1943,
+            "prefetch_priority_checks": 124,
+            "cancelled_requests": 1,
+            "sustained_grant": false,
+            "physical_data_bytes": 2048,
+            "mode": "blocked",
+            "log_sha256": "bfeb81cfd8c7eb6e0966f1d8a53ef093c4960ba43a611ebc8effb2fca0e59dce"
+          },
+          {
+            "passed": true,
+            "commands": 253,
+            "value_checks": 181440,
+            "cycles": 59337,
+            "demand_dma_requests": 372,
+            "prefetch_dma_requests": 124,
+            "cache_hits": 427,
+            "cache_hits_during_prefetch": 140,
+            "different_k_tail_hits": 1,
+            "background_completions": 124,
+            "init_while_prefetch_active": 83,
+            "output_cycles_during_prefetch": 3879,
+            "slot_wraps": 88,
+            "padding_value_checks": 1943,
+            "prefetch_priority_checks": 124,
+            "cancelled_requests": 1,
+            "sustained_grant": true,
+            "physical_data_bytes": 2048,
+            "mode": "sustained",
+            "log_sha256": "483dfae65330e13888c4e007d07d062ce8a517196c7004115e94586ac9fd47b8"
+          }
+        ],
+        "elapsed_seconds": 37.09634840399667
+      },
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/ia_request_stage/run_prefetch.py",
+        "--source-root",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/source",
+        "--out",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/numeric",
+        "--verilator",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_cleanup/ia_interface_final/verilator_compare",
+        "--ordered-job",
+        "--fpga"
+      ]
+    }
+  },
+  "current_source_sha256": "30bfc17a45ebb1fe6a04e7cc44b0e6b3d428f4f1953dcf1556a293980a541120",
+  "current_module_and_arithmetic_validation": "test/resource_neutral_arithmetic/validation.json"
+}

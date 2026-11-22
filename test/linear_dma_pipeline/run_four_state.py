@@ -69,7 +69,7 @@ def main():
     assign helper_a=beat_count_t'(rd_head.burst_len_m1);
     assign helper_b=beat_count_t'(1);
     assign helper_carry=1'b0;
-    add_equal #(.p_width(BEAT_CNT_W),.p_use_lut(1'b0)) helper(
+    add_equal #(.p_width(BEAT_CNT_W)) helper(
         .i_a(helper_a),.i_b(helper_b),.i_target(rd_rsp_beat_cnt),
         .i_carry_in(helper_carry),.o_equal(rsp_last_equal_o_equal));
 {rotation}

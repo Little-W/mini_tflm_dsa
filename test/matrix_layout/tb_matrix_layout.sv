@@ -81,6 +81,10 @@ module tb_matrix_layout;
     integer max_s16_used=0,max_s16_ready=0,s16_full_cycles=0,write_stall_cycles=0;
     integer ar_stall_cycles=0,r_wait_cycles=0,page_end_reads=0,page_end_writes=0;
     integer s16_tile_count=0;
+    // 已完成存储块与当前写入中的存储块共同构成实际占用量。
+    wire [31:0] s16_used_bank_count =
+        32'(u_dut.u_npu_top.u_matrix_engine.u_output_pipeline.u_vec_s16_to_fifo.ready_bank_count_q) +
+        32'(u_dut.u_npu_top.u_matrix_engine.u_output_pipeline.u_vec_s16_to_fifo.write_ptr != '0);
     bit old_aw_stall=0,old_w_stall=0;
     logic [44:0] old_aw;
     logic [36:0] old_w;
@@ -115,17 +119,20 @@ module tb_matrix_layout;
             old_aw_stall=awvalid&&!awready;old_w_stall=wvalid&&!wready;
             old_aw={awaddr,awlen,awsize,awburst};old_w={wdata,wstrb,wlast};
             if(cfg[28][0])begin
-                assert(u_dut.u_npu_top.u_vec_s16_to_fifo.used_bank_count<=`TB_S16_BANKS)
+                assert(s16_used_bank_count<=`TB_S16_BANKS)
                     else $fatal(1,"S16 FIFO capacity exceeded");
-                assert(!(u_dut.u_npu_top.u_vec_s16_to_fifo.in_valid &&
-                         u_dut.u_npu_top.u_vec_s16_to_fifo.write_bank_blocked))
+                assert(!(u_dut.u_npu_top.u_matrix_engine.u_output_pipeline.u_vec_s16_to_fifo.in_valid &&
+                         u_dut.u_npu_top.u_matrix_engine.u_output_pipeline.u_vec_s16_to_fifo.write_bank_blocked))
                     else $fatal(1,"S16 producer overwrote a ready bank");
-                if(int'(u_dut.u_npu_top.u_vec_s16_to_fifo.used_bank_count)>max_s16_used)
-                    max_s16_used=int'(u_dut.u_npu_top.u_vec_s16_to_fifo.used_bank_count);
-                if(int'(u_dut.u_npu_top.u_vec_s16_to_fifo.ready_bank_count_q)>max_s16_ready)
-                    max_s16_ready=int'(u_dut.u_npu_top.u_vec_s16_to_fifo.ready_bank_count_q);
-                if(u_dut.u_npu_top.fifo_s16_full_flag)s16_full_cycles++;
-                if(u_dut.u_npu_top.requant_s16_valid && u_dut.u_npu_top.requant_s16_tile_done)s16_tile_count++;
+                if(int'(s16_used_bank_count)>max_s16_used)
+                    max_s16_used=int'(s16_used_bank_count);
+                if(int'(u_dut.u_npu_top.u_matrix_engine.u_output_pipeline.u_vec_s16_to_fifo.ready_bank_count_q)>max_s16_ready)
+                    max_s16_ready=int'(u_dut.u_npu_top.u_matrix_engine.u_output_pipeline.u_vec_s16_to_fifo.ready_bank_count_q);
+                if(u_dut.u_npu_top.u_matrix_engine.u_output_pipeline.fifo_s16_full_flag)s16_full_cycles++;
+                // FIFO 输入已包含输出模式选择，统计实际接收的 INT16 分块。
+                if(u_dut.u_npu_top.u_matrix_engine.u_output_pipeline.u_vec_s16_to_fifo.in_valid &&
+                   u_dut.u_npu_top.u_matrix_engine.u_output_pipeline.u_vec_s16_to_fifo.in_tile_done)
+                    s16_tile_count++;
             end
         end
     end
@@ -237,7 +244,7 @@ module tb_matrix_layout;
                     if(!status[2])repeat(5)@(negedge clk);
                 end
                 end_cycle=cycle;
-                assert(status[2])else $fatal(1,"job timeout task=%0d state=%0d",task_number,u_dut.u_npu_top.u_npu_controller.current_state);
+                assert(status[2])else $fatal(1,"job timeout task=%0d state=%0d",task_number,u_dut.u_npu_top.u_matrix_engine.u_npu_controller.current_state);
                 assert(status[4:3]==cfg[52][1:0])else $fatal(1,"error task=%0d got=%0d expected=%0d",task_number,status[4:3],cfg[52]);
                 if(cfg[53]!=0)assert(injected)else $fatal(1,"requested bus error was not injected");
                 assert(u_mem.count==0&&!u_mem.rd_active&&!rvalid&&!u_mem.wr_active&&!bvalid)

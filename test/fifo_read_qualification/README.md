@@ -1,5 +1,7 @@
 # INT8 FIFO 读取资格与字节掩码
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 `vec_s8_to_fifo_full` 采用分层选择读取银行有效位。每层选择至多四个输入，32 个银行经过三层组合选择。银行有效位与行数非零条件分别计算，在读取请求生成处合并。银行数量较小或使用非二次幂配置时，保留直接索引的参数化实现。
 
 输出掩码逐字节比较剩余有效列数。剩余列数小于零时没有有效字节，超过总线宽度时所有字节有效。计数减法保持完整的有符号整数表达式，掩码生成覆盖空拍、部分尾拍、完整拍、转置和合并输出。
@@ -48,7 +50,7 @@ python test/fifo_read_qualification/run_mask.py --out /tmp/fifo_read_mask
 python test/fifo_read_qualification/run_cycle.py --bus-width 32 --out /tmp/fifo_read_bus32
 python test/fifo_read_qualification/run_cycle.py --bus-width 64 --out /tmp/fifo_read_bus64
 python test/fifo_read_qualification/prepare_measurement.py --out /tmp/fifo_read_measure
-python scripts/fpga/open_fpga_synth.py --source-root /tmp/fifo_read_measure/source --case-config /tmp/fifo_read_measure/cases.json --cases reference current --out /tmp/fifo_read_measure/results --wide-alu-dsp-budget 740 --rtl-dsp-attributes
+python scripts/fpga/open_fpga_synth.py --source-root /tmp/fifo_read_measure/source --case-config /tmp/fifo_read_measure/cases.json --cases reference current --out /tmp/fifo_read_measure/results
 ```
 
 默认参考提交为 `cedf4ed33661a53c8194eca1d484cdc2279d7549`。所有测试均支持独立候选源码目录；源码、测试结果、日志及可执行文件的 SHA-256 记录见 `validation.json`。

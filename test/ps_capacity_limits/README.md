@@ -77,11 +77,24 @@ python3 test/ps_capacity_limits/run_npu.py \
   --verilator verilator-modern --jobs 2 --bus-width 64
 ```
 
-该脚本生成 21 项 WS/IS 数值、分片尺寸、共享容量与非法配置检查，在测试副本中加入原始容量表达式断言，检查 `npu_top` 的模块连接。共享存储采用 7 个 8192 字节物理存储块。
+该脚本生成 21 项 WS/IS 数值、分片尺寸、共享容量与非法配置检查。独立构建将 `npu_capacity_observer.sv` 绑定到 `npu_task_configuration`，读取实际容量信号并比较完整定宽算式。原始及长期容量比较要求配置第二级有效、存储块索引位于数组范围内且配置相位不小于 1，接收容量比较要求配置相位不小于 4。构建清单记录该观察器的文件摘要。共享存储采用 7 个 8192 字节物理存储块。
 
-可通过 `--sim /path/to/simulator_directory` 复用容量 RTL 一致的生产仿真器，或通过 `--reference-sim /path/to/simulator_directory` 检查这些用例与既有生产版本的行为。两种复用方式均检查器件参数、64 位或 32 位总线、原始部分和配置及可执行文件摘要；参考版本方式在结果中单独标记为用例预期检查。
+可通过 `--sim /path/to/simulator_directory` 复用容量 RTL 一致的生产仿真器，或通过 `--reference-sim /path/to/simulator_directory` 检查这些用例与既有生产版本的行为。两种复用方式均检查器件参数、64 位或 32 位总线、原始部分和配置及可执行文件摘要；`--sim` 还核对 `npu_top.sv`、`npu_task_configuration.sv` 和 `ps_capacity_limits.sv` 三个文件的 SHA-256。参考版本方式在结果中单独标记为用例预期检查。程序复用直接运行已构建的可执行文件，结果记录该程序实际使用的容量源码。
 
-21 项用例已在 64 位总线、7 个 8192 字节物理存储块、`force_raw=True` 的生产参考仿真器上通过，完成 173,642 次 INT32 累加值检查。`r=32`、`w=5`、515 行的任务通过逐帧执行完成，每种 WS/IS 模式产生 594 条帧命令。两项传统窗口模式的非法行复用配置返回容量错误，其余五项非法配置返回参数错误。
+```sh
+python3 test/ps_capacity_limits/run_npu.py \
+  --out build/ps_capacity_limits_reuse \
+  --sim /path/to/simulator_directory --bus-width 64
+
+python3 test/ps_capacity_limits/test_runner.py
+
+python3 test/ps_capacity_limits/check_observer_phase.py \
+  --out build/ps_capacity_limits_observer_phase
+```
+
+观察器四态测试直接提取配置相位计数、行数与帧数保存、目录行数保存以及容量计算过程，覆盖 64 次配置、62 次连续配置、复位后首次采样和 128 次等待。645 个周期中完成 1152 次容量比较，并分别确认三项断言在各自有效阶段检测到输入不一致。结果及源码摘要保存在 `summary.json`。入口单元测试覆盖源码确认、可执行文件摘要、两种程序复用方式以及独立构建的观察器来源记录。
+
+21 项用例已在 64 位总线、7 个 8192 字节物理存储块、`force_raw=True` 的生产仿真器上通过，完成 173,642 次 INT32 累加值检查。`r=32`、`w=5`、515 行的任务通过逐帧执行完成，每种 WS/IS 模式产生 594 条帧命令。两项传统窗口模式的非法行复用配置返回容量错误，其余五项非法配置返回参数错误。数值结果、观察器相位检查及源码摘要汇总于 [npu_validation.json](npu_validation.json)。
 
 ## 有界列数计算
 

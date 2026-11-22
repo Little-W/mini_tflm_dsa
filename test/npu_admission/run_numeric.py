@@ -14,6 +14,7 @@ def main():
     parser.add_argument('--out',type=Path,required=True)
     parser.add_argument('--verilator',default='verilator')
     parser.add_argument('--jobs',type=int,default=1)
+    parser.add_argument('--pipeline-products',type=int,choices=(0,1),default=1)
     args=parser.parse_args()
     out=args.out.resolve()
     out.mkdir(parents=True,exist_ok=True)
@@ -23,11 +24,13 @@ def main():
     for mask in (0,1):
         folder=out/f'ready_mask_{mask}'
         command=[sys.executable,str(ROOT/'test/frame_address/run.py'),'--out',str(folder),
-            '--verilator',args.verilator,'--jobs',str(args.jobs),'--ready-mask-abort',str(mask)]
+            '--verilator',args.verilator,'--jobs',str(args.jobs),'--ready-mask-abort',str(mask),
+            '--pipeline-products',str(args.pipeline_products)]
         with (out/f'ready_mask_{mask}.log').open('w') as stream:
             subprocess.run(command,cwd=ROOT,stdout=stream,stderr=subprocess.STDOUT,check=True,timeout=900)
         profile=json.loads((folder/'summary.json').read_text())
-        if not profile['passed'] or profile['ready_mask_abort'] != mask:
+        if not profile['passed'] or profile['ready_mask_abort'] != mask or \
+                profile['pipeline_products'] != args.pipeline_products:
             raise RuntimeError(f'Address readiness validation did not pass: {mask}')
         for path,expected in profile['source_sha256'].items():
             if path in hashes and hashes[path] != expected:
@@ -40,9 +43,13 @@ def main():
             raise RuntimeError(f'Source changed during numeric validation: {path}')
     totals={key:sum(row[key] for row in profiles) for key in
         ('completed','cancelled','reset_cases','wait_checks','cycles','abort_ready_checks','idle_abort_checks')}
-    report={'passed':True,'size':16,'address_width':32,'result_latency_cycles':10,
+    latencies = {row['result_latency_cycles'] for row in profiles}
+    if latencies != {10 + args.pipeline_products}:
+        raise RuntimeError('Unexpected frame address preparation latency')
+    report={'passed':True,'size':16,'address_width':32,
+        'result_latency_cycles':next(iter(latencies)),'pipeline_products':args.pipeline_products,
         'source_sha256':hashes,'profiles':profiles,'totals':totals,
-        'counting':'Each parameter profile runs the generic and DSP implementations with identical inputs.'}
+        'counting':'Each readiness parameter runs one ordinary RTL implementation against the independent 32-bit address model.'}
     (out/'summary.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
     print(json.dumps(totals,ensure_ascii=False),flush=True)
 

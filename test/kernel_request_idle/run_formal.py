@@ -10,20 +10,22 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_current_source, read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'scripts/rtl'))
+from source_files import with_dependencies
 SOURCE = Path('rtl/npu/loaders/kernel_loader.sv')
 DEPENDENCIES = tuple(Path(path) for path in (
     'rtl/npu/loaders/kernel_loader_ctrl.sv',
     'rtl/npu/loaders/kernel_loader_buffer.sv',
     'rtl/common/regfile.v', 'rtl/common/add_equal.sv', 'rtl/common/add3_equal.sv', 'rtl/common/parallel_prefix_add.sv', 'rtl/common/unsigned_compare.sv'))
-PROOF = '''module kernel_request_idle_proof #(parameter bit p_use_lut=1'b0) (
+PROOF = '''module kernel_request_idle_proof (
     input logic request, granted, quiescent,
     output logic equivalent
 );
     logic start_result, idle_result;
-    kernel_request_idle #(.p_use_lut(p_use_lut)) dut (
+    kernel_request_idle dut (
         .i_request(request), .i_granted(granted), .i_quiescent(quiescent),
         .o_start(start_result), .o_idle(idle_result)
     );
@@ -52,7 +54,7 @@ def main():
     for label in ('reference', 'current'):
         path = out/(label+'.sv')
         data = read_rtl_source(f'{args.reference}:{SOURCE}', cwd=ROOT) \
-            if label == 'reference' else (ROOT/SOURCE).read_bytes()
+            if label == 'reference' else read_current_source(ROOT / SOURCE).encode()
         reuse_sources &= path.exists() and path.read_bytes() == data
         path.write_bytes(data)
         source_files[label] = path
@@ -92,7 +94,8 @@ def main():
         return content, digest(log)
 
     for fpga in (False, True):
-        command = f'read_slang -D ASIC_SYNTHESIS=1 --top kernel_request_idle_proof -Gp_use_lut={int(fpga)} '
+        configuration = 'XILINX_FPGA' if fpga else 'ASIC_SYNTHESIS'
+        command = f'read_slang -D {configuration}=1 --top kernel_request_idle_proof '
         command += ' '.join(shlex.quote(str(path)) for path in (source_files['current'], model, proof))
         _, log_hash = run('selection_'+str(int(fpga)), [command,
             'prep -top kernel_request_idle_proof -flatten',
@@ -106,7 +109,7 @@ def main():
         commands = []
         mode = '-D SYNTHESIS=1 -D XILINX_FPGA=1' if fpga else '-D ASIC_SYNTHESIS=1'
         for label, source in source_files.items():
-            inputs = [source, *(ROOT/path for path in DEPENDENCIES), model]
+            inputs = with_dependencies([source, *(ROOT/path for path in DEPENDENCIES), model], ROOT)
             commands += [f'read_slang {mode} --top kernel_loader -GSIZE={size} -GCOUNT_WIDTH={count} '
                          f'-GBUS_WIDTH={bus} -GDATA_WIDTH=16 '+
                          ' '.join(shlex.quote(str(path)) for path in inputs),

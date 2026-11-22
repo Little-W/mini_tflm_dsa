@@ -1,5 +1,7 @@
 # 写回请求准备与普通算术推断
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 ## 请求接收和数据发送
 
 `vector_banked_writeback` 在请求有效后先保存地址连续性与缓冲容量检查结果。三个单比特寄存器分别表示请求已经准备、地址可以连接以及容量足够。复制循环每周期写入一个总线字，最后一个总线字存入后通过 `request_ready` 确认接收。生产方在确认前保持地址、长度、标志和结果数组稳定。
@@ -64,7 +66,7 @@ python test/vector_medium_arithmetic/run.py --out build/vector_native_arithmetic
 python test/vector_config_ranges/run.py --out build/vector_config_formal --reference 0097b66ed57e1b8ef00e402e89dc5b274f1626be
 python test/vector_engine/run.py --out build/vector_prepare_production --verilator verilator --pes 8 --tile 16 --jobs 1 --cache-sets 16 --cache-policy 3 --cache-line-bytes 128 --bus-width 64 --window-lanes 8 --shared-storage --shared-bank-bytes 8192 --shared-bank-count 7 --shared-ia-banks 2 --check-weight-prefetch --rtl-assertions --stable-stimulus --xilinx
 python test/vector_engine/run.py --out build/vector_prepare_generic --verilator verilator --pes 16 --tile 16 --jobs 1 --cache-sets 16 --cache-policy 3 --cache-line-bytes 128 --bus-width 32 --window-lanes 4 --shared-quant --rtl-assertions --stable-stimulus
-python scripts/fpga/open_fpga_synth.py --case-config test/vector_engine/production_synthesis_cases.json --cases vector --out build/vector_prepare_synth --wide-alu-dsp-budget 740 --rtl-dsp-attributes --max-register-path-cells 10 --lock-file ../soc_synth.lock
+python scripts/fpga/open_fpga_synth.py --case-config test/vector_engine/production_synthesis_cases.json --cases vector --out build/vector_prepare_synth --max-register-path-cells 10 --lock-file ../soc_synth.lock
 ```
 
 在生产向量命令末尾添加 `--skip-build --perf` 可重复固定等待的周期测试。精确文件摘要、全部任务周期和资源记录保存在 `request_prepare_validation.json`。

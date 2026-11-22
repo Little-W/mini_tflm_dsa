@@ -4,6 +4,9 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from requant_test_utils import RTL_SOURCES
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -17,10 +20,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     sources = []
     hashes = {}
-    for relative in ('rtl/npu/writeback/vec_requant.sv',
-                     'rtl/npu/writeback/requant_compute_lane.sv',
-                     'rtl/npu/writeback/requant_group_buffer.sv',
-                     'rtl/npu/conv/vector_scalar_multiplier.sv'):
+    for relative in RTL_SOURCES:
         source = ROOT / relative
         target = out / source.name
         target.write_bytes(source.read_bytes())
@@ -31,10 +31,10 @@ def main():
         if lanes not in (1, 2, 4, 8, 16):
             raise ValueError('Physical lanes must divide the complete 16-element row')
         cases[f'lanes{lanes}'] = {
-            'top': 'vec_requant_full',
+            'top': 'vec_requant',
             'options': ['-D', 'SYNTHESIS=1', '-GBUS_WIDTH=64', '-GVLEN=16',
                         '-GMAX_IA_REUSE=32', '-GENABLE_S16=1',
-                        f'-Gp_compute_lanes={lanes}', '-Gp_input_rows=512'],
+                        f'-Gp_compute_lanes={lanes}', '-Gp_input_rows=512', '-Gp_parameter_output=0'],
             'parameters': {'BUS_WIDTH': 64, 'VLEN': 16, 'MAX_IA_REUSE': 32,
                            'ENABLE_S16': 1, 'p_compute_lanes': lanes,
                            'p_input_rows': 512},

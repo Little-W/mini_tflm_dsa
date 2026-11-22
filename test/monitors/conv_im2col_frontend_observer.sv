@@ -4,13 +4,13 @@
 module conv_im2col_frontend_observer #(parameter int p_state_width = 5);
 
 // 观察器按状态寄存器宽度读取编码，统计编号保持与状态声明顺序一致。
-localparam logic [p_state_width-1:0] OBS_IDLE = p_state_width'(p_state_width == 22 ? 1 : 0);
-localparam logic [p_state_width-1:0] OBS_WAIT_WORD = p_state_width'(p_state_width == 22 ? (1 << 19) : 19);
-localparam logic [p_state_width-1:0] OBS_ZERO_STREAM = p_state_width'(p_state_width == 22 ? (1 << 21) : 21);
+localparam logic [p_state_width-1:0] OBS_IDLE = p_state_width'(p_state_width >= 22 ? 1 : 0);
+localparam logic [p_state_width-1:0] OBS_WAIT_WORD = p_state_width'(p_state_width >= 22 ? (1 << 19) : 19);
+localparam logic [p_state_width-1:0] OBS_ZERO_STREAM = p_state_width'(p_state_width >= 22 ? (1 << 21) : 21);
 
 function automatic int state_number(input logic [p_state_width-1:0] value);
   state_number = int'(value);
-  if (p_state_width == 22) begin
+  if (p_state_width >= 22) begin
     state_number = 0;
     for (int bit_index = 0; bit_index < p_state_width; bit_index++)
       if (value[bit_index]) state_number = bit_index;
@@ -95,7 +95,7 @@ always @(posedge conv_im2col_frontend.clk) begin
       waiting_first_response=1;
       if (conv_im2col_frontend.incoming_next_position_fast) fast_pixel++;
       else if (conv_im2col_frontend.incoming_next_tile_fast) fast_tile++;
-      else if (conv_im2col_frontend.incoming_same_position_fast) begin
+      else if (conv_im2col_frontend.u_descriptor.incoming_same_position_fast) begin
         if (conv_im2col_frontend.incoming_skip_tap) fast_skip++;
         else fast_same++;
       end
@@ -104,7 +104,7 @@ always @(posedge conv_im2col_frontend.clk) begin
         $display("CONV_FRONTEND_DESCRIPTOR cycle=%0d p=%0d q=%0d rows=%0d cols=%0d fast_same=%0d fast_pixel=%0d fast_tile=%0d narrow=%0d",
           profile_cycle,conv_im2col_frontend.tile_p0,conv_im2col_frontend.tile_q0,
           conv_im2col_frontend.tile_rows,conv_im2col_frontend.tile_cols,
-          conv_im2col_frontend.incoming_same_position_fast,conv_im2col_frontend.incoming_next_position_fast,
+          conv_im2col_frontend.u_descriptor.incoming_same_position_fast,conv_im2col_frontend.incoming_next_position_fast,
           conv_im2col_frontend.incoming_next_tile_fast,conv_im2col_frontend.tile_narrow);
     end
   end

@@ -22,6 +22,22 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def observe_write_masks(source, label):
+    """写使能为一时比较字节掩码，所有控制和其他公开输出保持直接比较。"""
+    split = source.index('\n);') + len('\n);')
+    header, body = source[:split], source[split:]
+    internal = label + '_write_mask'
+    body = re.sub(r'\bram_port_wr_mask\b', internal, body)
+    declaration = '\n  logic [15:0] ' + internal + ' [0:1];\n'
+    observation = f'''
+  for (genvar formal_port = 0; formal_port < 2; formal_port++) begin : g_formal_write_mask
+    assign ram_port_wr_mask[formal_port] = ram_port_wr_en[formal_port] ?
+        {internal}[formal_port] : 16'd0;
+  end
+'''
+    return header + declaration + body.replace('endmodule', observation + '\nendmodule', 1)
+
+
 def cases():
     result = {'production': dict(SIZE=16, BUS_WIDTH=64, DATA_WIDTH=16,
         CACHE_BLOCKS=32, EXTERNAL_RAM=1, COMPACT_S8=1, REG_WIDTH=32,
@@ -54,6 +70,8 @@ def main():
     parser.add_argument('--reference', default='437a8d81')
     parser.add_argument('--source-root', type=Path, default=ROOT)
     parser.add_argument('--reference-root', type=Path)
+    parser.add_argument('--valid-write-masks', action='store_true',
+                        help='Compare external RAM byte masks only while the corresponding write enable is asserted')
     parser.add_argument('--cases', nargs='+', choices=tuple(cases()))
     args = parser.parse_args()
     out = args.out.resolve()
@@ -62,18 +80,25 @@ def main():
     original = ((args.reference_root / SOURCE).read_bytes() if args.reference_root else
                 read_rtl_source(f'{args.reference}:{SOURCE}', cwd=ROOT))
     reference = out / 'reference.sv'
-    reference.write_bytes(original)
     current = out / 'current.sv'
-    current.write_bytes((source_root / SOURCE).read_bytes())
+    current_source = (source_root / SOURCE).read_bytes()
+    if args.valid_write_masks:
+        reference.write_text(observe_write_masks(original.decode(), 'reference'))
+        current.write_text(observe_write_masks(current_source.decode(), 'current'))
+    else:
+        reference.write_bytes(original)
+        current.write_bytes(current_source)
     model, model_info = prepare_models(out)
-    memories = [source_root / 'rtl/common/regfile.v', source_root / 'rtl/common/pseudo_dual_port_ram.v',
-                source_root / 'rtl/npu/compute/select_add.sv']
-    hashes = {str(SOURCE): digest(current),
+    memories = sorted(path for path in (source_root / 'rtl/common').iterdir()
+                      if path.suffix in ('.v', '.sv'))
+    memories.append(source_root / 'rtl/npu/compute/select_add.sv')
+    hashes = {str(SOURCE): hashlib.sha256(current_source).hexdigest(),
               **{str(path.relative_to(source_root)): digest(path) for path in memories}}
     report = dict(passed=False, reference_commit=(str(args.reference_root.resolve()) if args.reference_root else
         subprocess.check_output(['git', 'rev-parse', args.reference], cwd=ROOT, text=True).strip()),
-        source_sha256=hashes, reference_source_sha256=digest(reference),
-        primitive_models=model_info, inputs_constrained=False, runs=[])
+        source_sha256=hashes, reference_source_sha256=hashlib.sha256(original).hexdigest(),
+        primitive_models=model_info, inputs_constrained=False,
+        write_mask_validity_qualified=args.valid_write_masks, runs=[])
     selected = args.cases or list(cases())
     for name in selected:
         case = cases()[name]

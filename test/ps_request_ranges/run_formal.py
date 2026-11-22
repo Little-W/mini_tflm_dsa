@@ -8,6 +8,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 RTL = Path('rtl/npu/ps_compact/ps_frame_store.sv')
 
@@ -87,13 +90,13 @@ def main():
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     sources={'reference':args.reference_root/RTL,'current':args.source_root/RTL}
     hashes={str(p):digest(p)for p in [*sources.values(),Path(__file__).resolve()]};records=[]
-    unchanged=[p.read_text().replace(extract(p.read_text()),'<request_qualification>')for p in sources.values()]
+    unchanged=[read_rtl_text(p).replace(extract(read_rtl_text(p)),'<request_qualification>')for p in sources.values()]
     if unchanged[0]!=unchanged[1]:raise RuntimeError('请求资格以外的设计内容不同')
     for profile in args.profiles:
         rows,frames=map(int,profile.split(':'));directory=out/profile.replace(':','_');directory.mkdir(exist_ok=True)
         modules=[]
         for name,path in sources.items():
-            text,width=model(name,extract(path.read_text()),rows,frames);modules.append(text)
+            text,width=model(name,extract(read_rtl_text(path)),rows,frames);modules.append(text)
             folder=out/(name+'_source')/profile.replace(':','_')/'test/ps_request';folder.mkdir(parents=True,exist_ok=True)
             (folder/'qualification.sv').write_text(text.replace('module '+name+'(', 'module qualification(')+f'''
 module ps_request_measure(input wire clk,input wire [{width-1}:0] stimulus,output logic valid);

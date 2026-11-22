@@ -15,7 +15,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/writeback/vec_s8_to_fifo.sv")
 sys.path.insert(0, str(ROOT / "test"))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source, read_current_source as read_rtl_text
 
 
 def digest(path: Path) -> str:
@@ -43,8 +43,8 @@ def main() -> None:
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    current = (ROOT / SOURCE).read_text()
-    reference = (args.reference_file.read_text() if args.reference_file else
+    current = read_rtl_text(ROOT / SOURCE)
+    reference = (read_rtl_text(args.reference_file) if args.reference_file else
                  read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT, text=True))
     sources = {}
     for label, text in (("reference", reference), ("current", current)):
@@ -83,7 +83,7 @@ def main() -> None:
             subprocess.run([sys.executable, str(ROOT / "scripts/fpga/open_fpga_synth.py"),
                             "--worker", str(script)], cwd=ROOT, stdout=stream,
                            stderr=subprocess.STDOUT, check=True, timeout=600)
-        content = log.read_text()
+        content = read_rtl_text(log)
         if "Equivalence successfully proven" not in content:
             raise RuntimeError(f"等价检查未完成：{log}")
         match = re.search(r"Of those cells (\d+) are proven and 0 are unproven", content)

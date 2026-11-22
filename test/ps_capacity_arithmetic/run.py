@@ -10,6 +10,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/ps_compact/ps_frame_store.sv')
 PROFILES = [(1, 1, 1), (1, 2, 2), (4, 4, 3), (10, 8, 3),
@@ -31,7 +34,7 @@ def execute(command, log):
     with log.open('w') as stream:
         subprocess.run(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT,
                        check=True, timeout=300)
-    return log.read_text()
+    return read_rtl_text(log)
 
 
 def main():
@@ -43,7 +46,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     source = args.source_root / SOURCE
-    current = source.read_text()
+    current = read_rtl_text(source)
     reference = subprocess.check_output(['git', 'show', f'{args.reference}:{SOURCE}'],
                                         cwd=ROOT, text=True)
     prefix = ROOT / 'rtl/common/parallel_prefix_add.sv'
@@ -133,7 +136,7 @@ endmodule
         report['four_state'].append({'initial_row_width': initial, 'bank_words_width': words,
                                     'bank_count_width': banks, 'comparisons': 32768,
                                     'passed': True, 'log_sha256': digest(log)})
-    if current != source.read_text():
+    if current != read_rtl_text(source):
         raise RuntimeError('检查期间源码发生变化')
     report['passed'] = True
     (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""验证模加等式的资源推断与逐位进位实现。"""
+"""验证模加等式在通用、ASIC 与 FPGA 编译配置下的全部输入及四态行为。"""
 from __future__ import annotations
 
 import argparse
@@ -7,13 +7,14 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
-import re
 import shlex
 import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 WIDTHS = (1, 2, 16, 23, 24, 28, 32, 33, 47, 48, 64)
+CONFIGURATIONS = (("generic", []), ("asic", ["-DASIC_SYNTHESIS=1"]),
+                  ("fpga", ["-DXILINX_FPGA=1"]))
 
 
 def digest(path):
@@ -40,20 +41,18 @@ def main():
     spec = importlib.util.spec_from_file_location("add_equal_native_reference", helper)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    miter_text = module.MITER.replace("p_width = 32", "p_width = 32, parameter bit p_infer_dsp = 1'b1")
-    miter_text = miter_text.replace(".p_width(p_width)", ".p_width(p_width), .p_infer_dsp(p_infer_dsp)")
     miter = out / "miter.sv"
-    miter.write_text(miter_text)
+    miter.write_text(module.MITER)
     report = {"passed": False, "source_sha256": digest(args.source),
               "test_source_sha256": digest(Path(__file__)),
               "native_reference_helper_sha256": digest(helper),
               "inputs_constrained": False, "formal": [], "four_state": []}
     for width in WIDTHS:
-        for infer in (0, 1):
-            script = out / f"width{width}_infer{infer}.ys"
+        for mode, defines in CONFIGURATIONS:
+            script = out / f"width{width}_{mode}.ys"
             script.write_text(
-                "read_slang -D SYNTHESIS=1 -D XILINX_FPGA=1 --top add_equal_proof " +
-                f"-Gp_width={width} -Gp_infer_dsp={infer} " +
+                "read_slang -D SYNTHESIS=1 --top add_equal_proof " +
+                f"-Gp_width={width} " + " ".join(defines) + " " +
                 shlex.join([str(snapshot), str(miter)]) + "\n" +
                 "prep -top add_equal_proof -flatten\ncheck -assert\n" +
                 "sat -verify -prove o_equivalent 1 -show-inputs -show-outputs\n")
@@ -62,15 +61,15 @@ def main():
                             "--worker", str(script)], log)
             if "SAT proof finished - no model found: SUCCESS!" not in text:
                 raise RuntimeError("模加等式证明未完成")
-            row = {"passed": True, "width": width, "infer_dsp": bool(infer),
+            row = {"passed": True, "width": width, "configuration": mode,
                    "synthesis_expression": True, "unconstrained_input_bits": 3 * width + 1,
-                   "preserve_modes": ["default", 0, 1], "log_sha256": digest(log)}
+                   "log_sha256": digest(log)}
             report["formal"].append(row)
             print(json.dumps(row), flush=True)
     bench = ROOT / "test/add_equal/tb_four_state.sv"
     report["four_state_bench_sha256"] = digest(bench)
     for width in WIDTHS:
-        for mode, defines in (("fpga", ["-DXILINX_FPGA=1"]), ("generic", ["-DASIC_SYNTHESIS=1"])):
+        for mode, defines in CONFIGURATIONS:
             name = f"four_state_width{width}_{mode}"
             binary = out / (name + ".vvp")
             execute(["iverilog", "-g2012", *defines, "-s", "tb_add_equal_four_state",
@@ -82,7 +81,7 @@ def main():
                 raise RuntimeError("模加等式四态检查未完成")
             report["four_state"].append({"passed": True, "width": width, "configuration": mode,
                 "tests": 4 ** (3 * width + 1) if width <= 2 else 6000,
-                "preserve_modes": ["default", 0, 1], "log_sha256": digest(log)})
+                "log_sha256": digest(log)})
     if digest(args.source) != report["source_sha256"]:
         raise RuntimeError("验证期间源文件发生变化")
     report["passed"] = True

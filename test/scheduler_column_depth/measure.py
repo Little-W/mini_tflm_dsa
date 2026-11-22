@@ -64,7 +64,12 @@ def main():
         row = {"resources": {name: metrics["resources"][name] for name in fields},
                "module_maximum_register_depth": metrics["paths"]["longest_register_path_cells"],
                "paths": {}}
-        for target in ("prediction_column_s0", "next_column_tile"):
+        first_column = next((name for name in ("prediction_column_q[0]", "prediction_column_s0")
+                             if any(origin(cell).startswith(name + " ")
+                                    for cell in module["cells"].values())), None)
+        if first_column is None:
+            raise RuntimeError("综合网表缺少第一阶段预测列寄存器")
+        for target in (first_column, "next_column_tile"):
             paths = connected_paths(module, limit=32,
                 root_filter=lambda name, cell, port: origin(cell).startswith("next_column_tile "),
                 sink_filter=lambda name, cell, port: port == "D" and origin(cell).startswith(target + " "))
@@ -78,8 +83,8 @@ def main():
             }
         exact = connected_paths(module, limit=8,
             root_filter=lambda name, cell, port: origin(cell) == "next_column_tile [0]",
-            sink_filter=lambda name, cell, port: port == "D" and origin(cell) == "prediction_column_s0 [28]")
-        row["next_column_tile_0_to_prediction_column_s0_28"] = exact["longest_register_path_cells"]
+            sink_filter=lambda name, cell, port: port == "D" and origin(cell) == first_column + " [28]")
+        row["next_column_tile_0_to_prediction_column_stage0_28"] = exact["longest_register_path_cells"]
         selection = analyze_selection(folder)
         (folder / "selection_paths.json").write_text(json.dumps(selection, indent=2) + "\n")
         row["selection_paths"] = {

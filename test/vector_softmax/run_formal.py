@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""证明 Softmax 完整接口在两种乘法延迟及两种算术配置下保持等价。"""
+"""证明 Softmax 完整接口在乘法延迟、输入寄存与算术配置下保持等价。"""
 
 import argparse
 import hashlib
@@ -24,6 +24,7 @@ def main():
     parser.add_argument("--reference-rev", default="415a70a")
     parser.add_argument("--source-root", type=Path, default=ROOT)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--input-registered", type=int, choices=(0, 1), nargs="+", default=[0, 1])
     args = parser.parse_args()
     source_root = args.source_root.resolve()
     out = args.out.resolve()
@@ -38,13 +39,15 @@ def main():
     source_hashes = {str(SOURCE): digest(candidate), str(COMMON): digest(common)}
     profiles = []
     for mode, define in (("fpga", "XILINX_FPGA"), ("generic", "ASIC_SYNTHESIS")):
-        for latency in (0, 2):
-            folder = out / f"{mode}_latency{latency}"
+        for latency, registered in ((latency, registered) for latency in (0, 2)
+                                    for registered in args.input_registered):
+            folder = out / f"{mode}_latency{latency}_registered{registered}"
             folder.mkdir(exist_ok=True)
             commands = []
             for label, source in (("reference", reference), ("candidate", candidate)):
                 commands += [
                     f"read_slang -D {define}=1 --top vector_softmax -GMULTIPLIER_LATENCY={latency} " +
+                    f"-GINPUT_REGISTERED={registered} " +
                     " ".join(shlex.quote(str(path)) for path in (source, common)),
                     "prep -top vector_softmax -flatten", "async2sync", "opt -full",
                     f"rename vector_softmax {label}", f"design -stash {label}",
@@ -63,7 +66,8 @@ def main():
                                stderr=subprocess.STDOUT, check=True, timeout=180)
             if "Equivalence successfully proven" not in log.read_text():
                 raise RuntimeError(f"形式检查未完成：{log}")
-            profiles.append({"mode": mode, "multiplier_latency": latency, "passed": True,
+            profiles.append({"mode": mode, "multiplier_latency": latency,
+                             "input_registered": bool(registered), "passed": True,
                              "script_sha256": digest(script), "log_sha256": digest(log)})
     if source_hashes != {name: digest(source_root / name) for name in source_hashes}:
         raise RuntimeError("检查期间 Softmax 源码或公共加法器发生变化")

@@ -1,5 +1,7 @@
 # 向量权重读写资格
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 ## 结构
 
 `state_dw_execute` 与 `state_weight_read_phase` 和状态字共同保存。前者表示 `DW_EXECUTE`，后者表示 `OUTPUT_INIT`、`DW_EXECUTE` 或 `DW_FINISH`。全部 89 处状态更新同时维护这些标志；核位置推进、计算发射和共享权重读使能直接使用相应的寄存结果。
@@ -59,6 +61,6 @@ python test/vector_control_flags/run.py --source-root . --out /tmp/vector_weight
 python test/vector_request_boundary/run_formal.py --source-root . --out /tmp/vector_weight_tap
 ```
 
-数值回归使用 [请求与预取检查](../vector_request_boundary/README.md) 中的生产和通用命令。独立综合使用 `test/vector_engine/production_synthesis_cases.json` 的 `vector` 项，并指定 `--rtl-dsp-attributes` 和 `--wide-alu-dsp-budget 740`。
+数值回归使用 [请求与预取检查](../vector_request_boundary/README.md) 中的生产和通用命令。独立综合使用 `test/vector_engine/production_synthesis_cases.json` 的 `vector` 项，采用默认综合流程。
 
 `validation.json` 保存准确的 RTL、依赖源码、验证程序、结果文件与映射校验值。`run_mask.py` 核对除已证明的状态、通道掩码及权重归并之外的源码逐项相同；既有末项证明通过 `engine_transform.json` 继续检查完整实际时序逻辑。

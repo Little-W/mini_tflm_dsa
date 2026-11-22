@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source, read_current_source as read_rtl_text
 
 ROOT = Path(__file__).resolve().parents[2]
 REFERENCE = '7ef39f0101ebf39184d11dbdc80a4042faee75c2'
@@ -44,7 +44,7 @@ def digest(path):
 
 def source_at(path, reference=None):
     return read_rtl_source(f'{reference}:{path}', cwd=ROOT, text=True) \
-        if reference else (ROOT/path).read_text()
+        if reference else read_rtl_text(ROOT/path)
 
 
 def module(source, name):

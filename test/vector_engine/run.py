@@ -3,6 +3,7 @@
 from pathlib import Path
 import argparse,hashlib,json,re,shlex,subprocess,sys
 from prepare_add_replay import prepare_replay
+from compare_reference import prepare_reference
 ROOT=Path(__file__).resolve().parents[2]
 HERE=Path(__file__).resolve().parent
 
@@ -16,6 +17,7 @@ def command(args,log):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--source-root',type=Path,default=ROOT,help='包含候选 RTL 的独立源码目录')
+    p.add_argument('--reference-engine',type=Path,help='使用同一公开输入逐周期比较的参考 vector_engine 源文件')
     p.add_argument('--verilator',default='verilator');p.add_argument('--out',type=Path,default=ROOT/'build/vector_engine')
     p.add_argument('--pes',type=int,nargs='+',help='parallel PE counts; default min(8, tile)');p.add_argument('--tile',type=int,default=16)
     p.add_argument('--jobs',type=int,default=1);p.add_argument('--perf',action='store_true');p.add_argument('--skip-build',action='store_true')
@@ -43,20 +45,29 @@ def main():
     if a.check_weight_prefetch and not a.shared_storage:p.error('--check-weight-prefetch requires --shared-storage')
     out=a.out.resolve();out.mkdir(parents=True,exist_ok=True)
     csrc=[HERE/'reference.c',HERE/'reference_add.c']
-    conv=ROOT/'rtl/npu/conv'
+    source_root=a.source_root.resolve()
+    conv=source_root/'rtl/npu/conv'
     svsrc=[conv/'conv_im2col_pkg.sv',conv/'vector_engine_pkg.sv']
     svsrc += [x for x in sorted(conv.rglob('*.sv')) if x not in svsrc]
-    svsrc += list(sorted((ROOT/'rtl/npu/dma').rglob('*.sv')))
-    svsrc += [ROOT/'rtl/npu/writeback'/name for name in
+    svsrc += list(sorted((source_root/'rtl/npu/dma').rglob('*.sv')))
+    svsrc += [source_root/'rtl/npu/writeback'/name for name in
               ('vec_requant.sv','requant_compute_lane.sv','requant_group_buffer.sv')]
     svsrc += [HERE/'shared_quant_model.sv']
-    svsrc += [ROOT/'rtl/npu/buffers'/name for name in ('ia_ps_shared_ram.sv','vector_shared_store.sv')]
-    svsrc += [ROOT/'rtl/common/pseudo_dual_port_ram.v',ROOT/'rtl/common/regfile.v',HERE/'vector_engine_dma_top.sv']
+    svsrc += [source_root/'rtl/npu/buffers'/name for name in ('ia_ps_shared_ram.sv','vector_shared_store.sv')]
+    svsrc += [source_root/'rtl/common/pseudo_dual_port_ram.v',source_root/'rtl/common/regfile.v',HERE/'vector_engine_dma_top.sv']
     import runpy
-    svsrc = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](svsrc)
-    if a.check_weight_prefetch:svsrc.append(ROOT/'test/vector_weight_prefetch/observer.sv')
-    source_root=a.source_root.resolve()
-    svsrc=[source_root/f.relative_to(ROOT) if f.is_relative_to(ROOT/'rtl') else f for f in svsrc]
+    observer_root=source_root/'test/monitors'
+    if not observer_root.is_dir():observer_root=ROOT/'test/monitors'
+    svsrc = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](
+        svsrc, source_root=source_root, observer_root=observer_root)
+    if a.check_weight_prefetch:
+        observer=source_root/'test/vector_weight_prefetch/observer.sv'
+        svsrc.append(observer if observer.exists() else ROOT/'test/vector_weight_prefetch/observer.sv')
+    comparison = None
+    if a.reference_engine:
+        comparison_sources, comparison = prepare_reference(
+            a.reference_engine, source_root/'rtl/npu/conv/vector_engine.sv', out)
+        svsrc += comparison_sources
     primitive_options=[]
     primitive_sha256=None
     if a.xilinx:
@@ -84,6 +95,7 @@ def main():
             'implementation':'official Xilinx primitive models' if a.xilinx else 'generic',
             'primitive_library_sha256':primitive_sha256,
             'verilator':subprocess.check_output([a.verilator,'--version'],text=True).strip(),'runs':[]}
+    if comparison is not None: result['cycle_comparison'] = comparison
     if a.window_study:
         result['workload_suite']='aligned depthwise windows'
         result['memory_service']={'bus_bits':a.bus_width,'first_read_response_after_ar_cycles':3,
@@ -93,7 +105,7 @@ def main():
     if a.prepared: result['replay']=prepare_replay(a.prepared,replay)
     for pe in a.pes:
         folder=out/f'pe{pe}';folder.mkdir(exist_ok=True);objects=[]
-        sources=set(csrc+svsrc+[HERE/'main.cpp',HERE/'prepare_add_replay.py',Path(__file__)]+list(HERE.glob('*.h')))
+        sources=set(csrc+svsrc+[HERE/'main.cpp',HERE/'prepare_add_replay.py',HERE/'compare_reference.py',Path(__file__)]+list(HERE.glob('*.h')))
         for src in csrc:
             deps=subprocess.check_output(list(map(str,['gcc',*cflags,'-MM','-MT','deps',src])),cwd=ROOT,text=True)
             sources.update((ROOT/x).resolve() for x in shlex.split(deps.replace('\\\n',' ').split(':',1)[1]))
@@ -146,6 +158,11 @@ def main():
         result['runs'].append({'pe':pe,'passed':True,'cases':rows,'log':str(logfile),
                               'totals':dict(zip(('cases','outputs','add_cases','add_outputs','softmax_cases','softmax_outputs'),map(int,totals.groups()))),
                               'executable_sha256':hashlib.sha256((folder/'obj/Vvector_engine_dma_top').read_bytes()).hexdigest()})
+        if comparison is not None:
+            compared = re.search(r'VECTOR_ENGINE_EQUIVALENCE_PASS cycles=(\d+) output_ports=(\d+)', text)
+            if compared is None: raise RuntimeError('缺少逐周期对照完成记录')
+            result['runs'][-1]['cycle_comparison'] = {
+                'cycles': int(compared[1]), 'output_ports': int(compared[2]), 'passed': True}
         (out/('performance.json' if a.perf else 'summary.json')).write_text(json.dumps(result,indent=2)+'\n')
     return 0
 if __name__=='__main__':sys.exit(main())

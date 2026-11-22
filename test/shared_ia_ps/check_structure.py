@@ -8,6 +8,9 @@ import subprocess
 import sys
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_current_source as read_rtl_text
+
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
@@ -27,9 +30,12 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     sources = [Path(__file__).resolve(), root / "rtl/npu/buffers/ia_ps_shared_ram.sv",
-               root / "rtl/npu/ps_compact/ps_frame_store.sv", root / "rtl/npu/ps_compact/ps_adaptive_codec.sv",
+               root / "rtl/npu/ps_compact/ps_frame_store.sv", root / "rtl/npu/ps_compact/ps_adaptive_encoder.sv", root / "rtl/npu/ps_compact/ps_adaptive_decoder.sv",
                root / "rtl/npu/loaders/ia_loader_cache_mgr.sv", root / "rtl/common/pseudo_dual_port_ram.v",
                root / "rtl/common/regfile.v", root / "rtl/common/parallel_prefix_add.sv"]
+    import runpy
+    dependency_reader = runpy.run_path(str(root / "scripts/rtl/source_files.py"))
+    sources = dependency_reader["with_dependencies"](sources, root)
     before = {str(path.relative_to(root)): digest(path) for path in sources}
     import pyosys
     sys.path.insert(0, str(root / "scripts/fpga"))
@@ -51,14 +57,18 @@ def main():
                             f"-GPOOL_BYTES={(banks-1)*bank_bytes} -GBANK_BYTES={bank_bytes} "
                             f"-GMAX_FRAME_ROWS={bank_bytes//8} -GDIRECTORY_ROWS=1024 "
                             f"-GRAM_ADDR_BITS={(banks*(bank_bytes//16)-1).bit_length()} "
-                            "rtl/npu/ps_compact/ps_frame_store.sv rtl/npu/ps_compact/ps_adaptive_codec.sv")
+                            "rtl/npu/ps_compact/ps_frame_store.sv rtl/npu/ps_compact/ps_adaptive_encoder.sv rtl/npu/ps_compact/ps_adaptive_decoder.sv")
                 else:
                     read = ("read_slang --top ia_loader_cache_mgr -D SYNTHESIS -GEXTERNAL_RAM=1 "
                             f"-GDATA_WIDTH=16 -GSIZE=16 -GCACHE_BLOCKS={bank_bytes//128} "
                             f"-GRAM_WORD_ADDR_WIDTH={(banks*(bank_bytes//16)-1).bit_length()} "
                             "rtl/npu/loaders/ia_loader_cache_mgr.sv rtl/common/pseudo_dual_port_ram.v")
                 script = out / f"{name}.ys"
-                read += " rtl/common/regfile.v rtl/common/parallel_prefix_add.sv"
+                import shlex
+                tokens = shlex.split(read)
+                rtl_names = [item for item in tokens if item.endswith((".v", ".sv"))]
+                dependency_paths = dependency_reader["with_dependencies"]([root / name for name in rtl_names], root)
+                read = shlex.join([item for item in tokens if item not in rtl_names] + list(map(str, dependency_paths)))
                 read = read.replace("read_slang ", "read_slang " + primitive_options + " ", 1)
                 memory_passes = "\nopt\nmemory_dff\n" + ("" if kind == "ia" else "memory_share\nopt_clean\n")
                 script.write_text(read + memory_passes + "memory_collect\nopt_clean\n"
@@ -68,7 +78,7 @@ def main():
                     result = subprocess.run(command, cwd=root, stdout=log, stderr=subprocess.STDOUT)
                 if result.returncode:
                     raise RuntimeError(f"Structural synthesis failed: {name}")
-                design = json.loads(json_path.read_text())
+                design = json.loads(read_rtl_text(json_path))
                 cells = [(module_name + "." + cell_name, cell)
                          for module_name, module in design["modules"].items()
                          for cell_name, cell in module.get("cells", {}).items()]

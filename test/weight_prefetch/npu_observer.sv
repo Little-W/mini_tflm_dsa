@@ -16,45 +16,45 @@ module weight_prefetch_npu_observer #(parameter int p_size=16);
                 loaded_rows <= 0;
                 burst_rows <= 0;
             end else begin
-                if (npu_top.weight_commit) begin
+                if (npu_top.u_matrix_engine.weight_commit) begin
                     assert(loaded_rows >= p_size)
                         else $fatal(1,"Weight commit requires complete coverage");
-                    loaded_rows <= npu_top.store_weight_req ? 1 : 0;
+                    loaded_rows <= npu_top.u_matrix_engine.store_weight_req ? 1 : 0;
                     commits <= commits+1;
-                end else if (npu_top.store_weight_req) begin
+                end else if (npu_top.u_matrix_engine.store_weight_req) begin
                     if (loaded_rows < p_size) loaded_rows <= loaded_rows+1;
                 end
-                if (npu_top.store_weight_req) stores <= stores+1;
-                if (npu_top.u_kernel_loader.buf_weight_sending_done) begin
-                    assert(npu_top.u_kernel_loader.buf_store_weight_req && burst_rows==p_size-1)
+                if (npu_top.u_matrix_engine.store_weight_req) stores <= stores+1;
+                if (npu_top.u_matrix_engine.u_kernel_loader.buf_weight_sending_done) begin
+                    assert(npu_top.u_matrix_engine.u_kernel_loader.buf_store_weight_req && burst_rows==p_size-1)
                         else $fatal(1,"Kernel buffer burst length differs");
                     burst_rows <= 0;
                     bursts <= bursts+1;
-                end else if (npu_top.u_kernel_loader.buf_store_weight_req) begin
+                end else if (npu_top.u_matrix_engine.u_kernel_loader.buf_store_weight_req) begin
                     assert(burst_rows < p_size-1);
                     burst_rows <= burst_rows+1;
                 end
             end
-            if (npu_top.ctrl_calc_start && npu_top.ctrl_sa_ready) begin
+            if (npu_top.u_matrix_engine.ctrl_calc_start && npu_top.ctrl_sa_ready) begin
                 if (!npu_top.cfg_stage2_fire) begin
-                    assert(!npu_top.u_kernel_loader.u_buf.send_active &&
-                           !npu_top.u_kernel_loader.u_buf.send_pending &&
-                           !npu_top.u_kernel_loader.u_buf.send_prefetch &&
-                           !npu_top.u_kernel_loader.buf_store_weight_req &&
-                           !npu_top.store_weight_req &&
-                           !npu_top.u_npu_controller.shadow_inflight)
+                    assert(!npu_top.u_matrix_engine.u_kernel_loader.u_buf.send_active &&
+                           !npu_top.u_matrix_engine.u_kernel_loader.u_buf.send_pending &&
+                           !npu_top.u_matrix_engine.u_kernel_loader.u_buf.send_prefetch &&
+                           !npu_top.u_matrix_engine.u_kernel_loader.buf_store_weight_req &&
+                           !npu_top.u_matrix_engine.store_weight_req &&
+                           !npu_top.u_matrix_engine.u_npu_controller.shadow_inflight)
                         else $fatal(1,"Frame control starts while weights are being emitted");
                     frame_starts <= frame_starts+1;
                 end
             end
             // INIT 边沿完成任务配置，随后 WEIGHT_START 使用当前驻留模式。
-            if (npu_top.u_npu_controller.current_state == 4'b0001) begin
-                resident <= npu_top.frame_mode_q && npu_top.frame_stationary_hit;
+            if (npu_top.u_matrix_engine.u_npu_controller.current_state == 4'b0001) begin
+                resident <= npu_top.frame_mode_q && npu_top.u_matrix_engine.frame_stationary_hit;
                 controller_active <= 1;
-                if (npu_top.frame_mode_q && npu_top.frame_stationary_hit)
+                if (npu_top.frame_mode_q && npu_top.u_matrix_engine.frame_stationary_hit)
                     resident_starts <= resident_starts+1;
             end else if (controller_active && !npu_top.ctrl_sa_ready && !npu_top.cfg_stage2_fire) begin
-                assert(resident == (npu_top.frame_mode_q && npu_top.frame_stationary_hit))
+                assert(resident == (npu_top.frame_mode_q && npu_top.u_matrix_engine.frame_stationary_hit))
                     else $fatal(1,"Resident weight mode changed during execution");
             end
         end

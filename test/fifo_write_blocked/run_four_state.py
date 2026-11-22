@@ -14,7 +14,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/writeback/vec_s8_to_fifo.sv')
 sys.path.insert(0, str(ROOT / 'test'))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source, read_current_source as read_rtl_text
 
 PROFILES = ((16, 1, 64, 1), (16, 2, 32, 1), (16, 3, 64, 1),
             (16, 8, 32, 1), (16, 16, 64, 1), (16, 32, 32, 1),
@@ -217,8 +217,8 @@ def main() -> None:
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     source_path = args.source_root.resolve() / SOURCE
-    source = source_path.read_text()
-    reference = (args.reference_file.read_text() if args.reference_file else
+    source = read_rtl_text(source_path)
+    reference = (read_rtl_text(args.reference_file) if args.reference_file else
                  read_rtl_source(f'{args.reference}:{SOURCE}', cwd=ROOT, text=True))
     memory_marker = 'module vec_s8_fifo_row_ram'
     if source[source.index(memory_marker):] != reference[reference.index(memory_marker):]:
@@ -252,7 +252,7 @@ def main() -> None:
         log = out / (name + '.log')
         with log.open('w') as stream:
             subprocess.run(['vvp', str(binary)], stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=args.timeout)
-        output = log.read_text()
+        output = read_rtl_text(log)
         completed = re.search(r'FIFO_BLOCKED_FOUR_STATE_PASS cycles=(\d+) profiles=(\d+) comparisons=(\d+)', output)
         if completed is None:
             raise RuntimeError('Four-state cycle comparison did not complete: ' + str(log))
@@ -266,7 +266,7 @@ def main() -> None:
                                'profiles': len(profiles), 'comparisons': int(completed[3]),
                                'coverage': coverage, 'log_sha256': digest(log)})
         print(json.dumps({key: report['runs'][-1][key] for key in ('mode', 'passed', 'cycles', 'profiles', 'comparisons')}), flush=True)
-    if source != source_path.read_text():
+    if source != read_rtl_text(source_path):
         raise RuntimeError('FIFO source changed during verification')
     report['passed'] = True
     report['comparisons'] = sum(row['comparisons'] for row in report['runs'])

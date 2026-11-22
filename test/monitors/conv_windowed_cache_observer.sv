@@ -28,7 +28,8 @@ for(genvar way=0;way<TB_WAYS;way++)begin:g_way
     else if (conv_windowed_cache.metadata_enable) begin
       if ((conv_windowed_cache.clearing && 32'(conv_windowed_cache.clear_set)==set_id) ||
           (conv_windowed_cache.select_launch && select_target) ||
-          (conv_windowed_cache.metadata_fill_bad && fill_target))
+          (conv_windowed_cache.metadata_fill &&
+           (conv_windowed_cache.fill_bad || conv_windowed_cache.span_error) && fill_target))
         observed_valid[way][set_id] <= 1'b0;
       if (conv_windowed_cache.metadata_fill_good && fill_target)
         observed_valid[way][set_id] <= !conv_windowed_cache.bypass_q;

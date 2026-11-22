@@ -21,7 +21,7 @@ PARAMETERS = {
     "SHARED_BANK_BYTES": 8192, "SHARED_BANK_COUNT": 7, "IA_CACHE_BLOCKS": 4,
     "PS_FRAME_COUNT": 16, "IM2COL_CACHE_BYTES": 4096,
     "AXI_READ_OUTSTANDING": 4, "AXI_WRITE_OUTSTANDING": 4,
-    "ENABLE_VECTOR_ENGINE": 1, "VECTOR_PE_COUNT": 8,
+    "ENABLE_VECTOR_ENGINE": 1, "VECTOR_PE_COUNT": 16,
     "ENABLE_IS_MODE": 1, "ENABLE_PER_CHANNEL": 1,
 }
 DEFINES = [
@@ -46,8 +46,7 @@ def run(command, log, cwd, timeout=600):
 def input_files(root):
     """保存 DC 文件列表、源文件、头文件及实际调用的准备程序。"""
     filelist = root / "asic/synthesis/filelists/npu_top.f"
-    paths = {filelist, root / "scripts/asic/prepare_dc_sources.py",
-             root / "asic/rtl/smic40_sram_1r1w.sv",
+    paths = {filelist, root / "asic/rtl/smic40_sram_1r1w.sv",
              root / "asic/synthesis/scripts/3_read_design.tcl"}
     for line in filelist.read_text().splitlines():
         line = line.strip()
@@ -115,7 +114,7 @@ def inspect(design):
     group_memories = [row for row in memories if row["inside_group_buffer"]]
     if group_memories or any(row["module"] == "regfile" for row in subtree):
         raise RuntimeError("Group buffer contains inferred storage arrays")
-    if Counter(row["module"] for row in macro_rows) != {"RAMTP128X16": 132}:
+    if Counter(row["module"] for row in macro_rows) != {"RAMTP1024X16": 33}:
         raise RuntimeError("Unexpected group-buffer SRAM macro geometry")
     group_module = modules[group["specialization"]]
     group_state = {name: len(group_module["netnames"][name]["bits"])
@@ -141,7 +140,7 @@ def inspect(design):
         bank_lanes[int(match[1])] += 1
         if int(match[2]) not in range(33):
             raise RuntimeError("SRAM width index is outside the expected range")
-    if bank_lanes != {0: 33, 1: 33, 2: 33, 3: 33}:
+    if bank_lanes != {0: 33}:
         raise RuntimeError("SRAM depth banks are incomplete")
     sequential_bits = 0
     for row in [group] + subtree:
@@ -152,10 +151,10 @@ def inspect(design):
                 raise RuntimeError("Group buffer contains a latch")
             if "dff" in cell["type"]:
                 sequential_bits += number(cell["parameters"]["WIDTH"])
-    if sequential_bits != 41:
-        raise RuntimeError("Group-buffer state differs from its 39 control bits and 2 bank-select bits")
+    if sequential_bits != 40:
+        raise RuntimeError("Group-buffer state differs from its 39 control bits and one elaborated selector bit")
     expected_instances = {"npu_top": 1, "compute_core": 1, "ws_systolic_array": 1,
-                          "ws_systolic_cell": 256, "vector_engine": 1, "vector_pe": 8,
+                          "ws_systolic_cell": 256, "vector_engine": 1, "vector_pe": 16,
                           "requant_group_buffer": 1, "ia_ps_shared_ram": 1}
     if any(instances[k] != v for k, v in expected_instances.items()):
         raise RuntimeError("Complete NPU compute or shared-memory dimensions differ: " +
@@ -183,11 +182,11 @@ def inspect(design):
         "group_buffer": {
             "path": group["path"], "lanes": 16, "rows": 512,
             "state_widths": group_state, "wrapper_port_widths": wrapper_widths,
-            "macro_instances": len(macro_rows), "macro_type": "RAMTP128X16",
+            "macro_instances": len(macro_rows), "macro_type": "RAMTP1024X16",
             "macros_per_depth_bank": dict(sorted(bank_lanes.items())),
             "logical_storage_bits": 513 * 512,
-            "physical_macro_storage_bits": 132 * 128 * 16,
-            "physical_macro_storage_bytes": 132 * 128 * 16 // 8,
+            "physical_macro_storage_bits": 33 * 1024 * 16,
+            "physical_macro_storage_bytes": 33 * 1024 * 16 // 8,
             "inferred_memory_cells": 0, "regfile_instances": 0,
             "control_and_bank_select_register_bits": sequential_bits,
             "macro_paths": [row["path"] for row in macro_rows],
@@ -216,10 +215,20 @@ def main():
     started = time.monotonic()
     snapshot = out / "snapshot"
     sources = input_files(root)
-    hashes = {str(path.relative_to(root)): digest(path) for path in sources}
-    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
-    for path in sources:
-        target = snapshot / path.relative_to(root)
+    input_paths = {str(path.relative_to(root)): path for path in sources}
+    prepare_relative = "scripts/asic/prepare_dc_sources.py"
+    prepare_source = root / prepare_relative
+    if not prepare_source.is_file():
+        prepare_source = ROOT / prepare_relative
+    input_paths[prepare_relative] = prepare_source
+    hashes = {relative: digest(path) for relative, path in input_paths.items()}
+    # 冻结源码目录可独立于 Git；具体输入由文件摘要及源码清单摘要标识。
+    revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, text=True,
+                              capture_output=True)
+    commit = revision.stdout.strip() if revision.returncode == 0 else None
+    source_manifest = root / "manifest.json"
+    for relative, path in input_paths.items():
+        target = snapshot / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
     if hashes != {str(path.relative_to(snapshot)): digest(path)
@@ -256,11 +265,13 @@ def main():
     run(command, log, snapshot)
     design = json.loads(netlist.read_text())
     result = inspect(design)
-    unchanged = hashes == {str(path.relative_to(root)): digest(path) for path in sources}
+    unchanged = hashes == {relative: digest(path) for relative, path in input_paths.items()}
     if not unchanged:
         raise RuntimeError("Source inputs changed during complete NPU elaboration")
     result.update({
         "passed": True, "source_root": str(root), "source_commit": commit,
+        "source_snapshot_manifest_sha256": digest(source_manifest) if source_manifest.is_file() else None,
+        "input_source_paths": {relative: str(path) for relative, path in input_paths.items()},
         "source_sha256": hashes, "sources_unchanged": unchanged,
         "snapshot_sha256": {relative: digest(snapshot / relative) for relative in hashes},
         "prepared_source_sha256": {str(path.relative_to(prepared)): digest(path)
