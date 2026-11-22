@@ -46,7 +46,8 @@ vivado -mode batch -source scripts/fpga/vivado_synth_soc.tcl \
 | `soc_top_utilization.rpt` | 完整 SoC 的原生 Vivado 资源统计 |
 | `soc_top_utilization_hier.rpt` | 按模块分层的资源统计 |
 | `soc_top_timing_summary.rpt` | 建立时间、保持时间和约束覆盖情况 |
-| `soc_top_timing_paths.rpt` | 各路径组的主要建立时间路径 |
+| `soc_top_timing_paths.rpt` | 最多 2,000 条按终点引脚去重的建立时间路径；候选查询上限为 10,000 条 |
+| `soc_top_setup_unique_endpoints.tsv` | 路径终点引脚和建立时间裕量 |
 | `soc_top_hold_paths.rpt` | 各路径组的主要保持时间路径 |
 | `soc_top_endpoints.tsv` | 每个捕获时钟下全部端点的最差建立时间与保持时间路径 |
 | `soc_top_high_fanout.rpt` | 高扇出网络 |

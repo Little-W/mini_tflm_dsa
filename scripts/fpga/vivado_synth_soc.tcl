@@ -93,8 +93,8 @@ read_xdc $xdc_file
 synth_design -top $top_name -part $part_name -generic $synth_generics -flatten_hierarchy rebuilt
 soc_reports::define_core_clock 150.0
 
-soc_reports::write $out_dir
 write_checkpoint -force [file join $out_dir soc_top_synth.dcp]
+soc_reports::write $out_dir
 puts [exec python3 $report_helper summarize --manifest $source_manifest \
     --directory $out_dir --stage synthesized]
 soc_reports::check_array $out_dir 16

@@ -3,8 +3,8 @@
 
 // 有符号坐标与十六位尺寸比较，三个相邻位组并行归并大小关系。
 module vector_coordinate_bound (
-  input  logic signed [33:0] i_coordinate,
-  input  logic [15:0] i_limit,
+  input  wire logic signed [33:0] i_coordinate,
+  input  wire logic [15:0] i_limit,
   output logic o_in_bounds
 );
   //! 0. 辅助定义

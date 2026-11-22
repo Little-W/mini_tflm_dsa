@@ -346,19 +346,61 @@ proc soc_reports::write_module_paths {directory prefix {count 20}} {
     }
 }
 
+proc soc_reports::write_setup_endpoints {directory prefix {count 2000} {query_limit 10000}} {
+    set paths [get_timing_paths -delay_type max -nworst 1 -max_paths $query_limit -no_report_unconstrained]
+    set ranked {}
+    foreach path $paths {
+        set slack [timing_checks::finite_number [get_property SLACK $path] "path slack"]
+        set endpoint [get_property NAME [get_property ENDPOINT_PIN $path]]
+        if {$endpoint eq ""} { error "Timing path has no endpoint pin" }
+        lappend ranked [list $slack $endpoint $path]
+    }
+    set seen [dict create]
+    set selected {}
+    foreach entry [lsort -real -index 0 $ranked] {
+        set endpoint [lindex $entry 1]
+        if {[dict exists $seen $endpoint]} { continue }
+        dict set seen $endpoint 1
+        lappend selected $entry
+        if {[llength $selected] == $count} { break }
+    }
+    set report [open [file join $directory ${prefix}_timing_paths.rpt] w]
+    set table [open [file join $directory ${prefix}_setup_unique_endpoints.tsv] w]
+    try {
+        puts $report "Vivado setup paths, one worst path per endpoint pin"
+        puts $report "requested=$count query_limit=$query_limit returned=[llength $paths] unique_reported=[llength $selected]"
+        puts $report "Paths are sorted by slack; timing summary contains full-design statistics."
+        if {[llength $selected] < $count && [llength $paths] >= $query_limit} {
+            puts $report "QUERY LIMIT REACHED: endpoint sample may be incomplete."
+        }
+        puts $table "endpoint\tslack_ns"
+        set index 0
+        foreach entry $selected {
+            lassign $entry slack endpoint path
+            if {[regexp {[\t\r\n]} $endpoint]} { error "Invalid endpoint name" }
+            puts $table "$endpoint\t$slack"
+            puts $report "\n===== Endpoint [incr index]: $endpoint ====="
+            puts $report [unique_timing_paths::detail [report_timing -of_objects $path -return_string]]
+        }
+    } finally {
+        close $report
+        close $table
+    }
+}
+
 proc soc_reports::write {directory {prefix soc_top}} {
     file mkdir $directory
     report_utilization -file [file join $directory ${prefix}_utilization.rpt]
     report_utilization -hierarchical -file [file join $directory ${prefix}_utilization_hier.rpt]
     report_timing_summary -delay_type min_max -report_unconstrained -check_timing_verbose \
         -file [file join $directory ${prefix}_timing_summary.rpt]
+    write_setup_endpoints $directory $prefix
     # 连接图仅在完整写入后发布；结果汇总保留测量缺失状态。
     foreach procedure {write_connectivity write_core_clock} {
         if {[catch {$procedure $directory $prefix} message]} {
             puts "Measurement unavailable ($procedure): $message"
         }
     }
-    unique_timing_paths::write [file join $directory ${prefix}_timing_paths.rpt] max
     unique_timing_paths::write [file join $directory ${prefix}_hold_paths.rpt] min
     write_module_paths $directory $prefix
     # 统计最差一万条建立时间路径的组合级数分布；该表保留明确的采样范围。

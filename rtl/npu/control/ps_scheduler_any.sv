@@ -5,7 +5,7 @@
 module ps_scheduler_any #(
     parameter int p_width = 16
 ) (
-    input  logic [p_width-1:0] i_value,
+    input  wire logic [p_width-1:0] i_value,
     output logic o_any
 );
     localparam int p_groups = (p_width + 5) / 6;

@@ -6,9 +6,9 @@ module ia_ordered_coordinate_equal #(
     parameter int unsigned p_width = 32,
     parameter int unsigned p_low_width = 4
 ) (
-    input  logic [p_width-1:0] i_a,
-    input  logic [p_width-1:0] i_b,
-    input  logic [p_width-p_low_width-1:0] i_target,
+    input  wire logic [p_width-1:0] i_a,
+    input  wire logic [p_width-1:0] i_b,
+    input  wire logic [p_width-p_low_width-1:0] i_target,
     output logic o_equal
 );
     localparam int unsigned p_high_width = p_width - p_low_width;

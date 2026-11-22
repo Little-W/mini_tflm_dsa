@@ -1,26 +1,7 @@
-# Rank one maximum-delay path per endpoint, including paths with positive slack.
-set initial_paths [get_timing_paths -delay_type max -nworst 1 -max_paths 100]
-set initial_ranked {}
-set initial_index 0
-foreach cell_delay [get_attribute $initial_paths cell_delay] net_delay [get_attribute $initial_paths net_delay] {
-    lappend initial_ranked [list [expr {$cell_delay+$net_delay}] $initial_index]
-    incr initial_index
-}
-set initial_delays {}
-set endpoints [dict create]
-foreach entry [lsort -real -decreasing -index 0 $initial_ranked] {
-    lassign $entry delay index
-    set endpoint [get_object_name [get_attribute [index_collection $initial_paths $index] endpoint]]
-    if {![dict exists $endpoints $endpoint]} {
-        dict set endpoints $endpoint 1
-        lappend initial_delays $delay
-    }
-}
-set threshold [expr {max(0.0,[lindex $initial_delays [expr {min(99,[llength $initial_delays]-1)}]]-1e-9)}]
-set paths [get_timing_paths -delay_type max -nworst 1 -max_paths 1000000 -greater $threshold]
-if {[sizeof_collection $paths] < min(100,[llength $initial_delays])} {
-    error "Timing path delay filter omitted required candidates"
-}
+# Rank the returned worst-slack path per endpoint by data-path delay.
+# Do not filter on a rounded delay: the tool's -greater comparison can omit
+# candidates even when their reported cell and net delays meet that threshold.
+set paths [get_timing_paths -delay_type max -nworst 1 -max_paths 1000000]
 set ranked {}
 set index 0
 set cell_delays [get_attribute $paths cell_delay]
@@ -33,7 +14,8 @@ set ranked [lsort -real -decreasing -index 0 $ranked]
 set csv [open ${PROJ_TEMP}/${DESIGN_TOP}_top100_delay.csv w]
 puts $csv "rank,delay_ns,slack_ns,logic_depth,startpoint,endpoint,path_group"
 set detail [open ${PROJ_TEMP}/${DESIGN_TOP}_top100_delay.rpt w]
-puts $detail "Maximum data-path delay, one path per endpoint; all constrained endpoints are considered."
+puts $detail "Data-path delay ranking of returned maximum-delay analysis paths, one path per endpoint."
+puts $detail "Candidate query: worst-slack path per endpoint, up to 1000000 paths per path group."
 puts $detail "Candidate paths: [sizeof_collection $paths]"
 set rank 0
 set endpoints [dict create]

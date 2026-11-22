@@ -162,6 +162,34 @@ class PathDiagnosticsTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("finite numeric", result.stderr)
 
+    def test_unique_setup_endpoint_export(self):
+        self.output.mkdir()
+        script = self.work / "unique.tcl"
+        script.write_text(
+            f"source {tcl_word(SCRIPT)}\n"
+            + r'''
+proc get_timing_paths {args} {
+    if {[lindex $args [expr {[lsearch -exact $args -nworst]+1}]] != 1} { error "wrong nworst" }
+    return {p1 p2 p3}
+}
+proc get_property {name object} {
+    switch $name {
+        SLACK { return [dict get {p1 0.2 p2 -0.5 p3 -0.1} $object] }
+        ENDPOINT_PIN { return [dict get {p1 a p2 a p3 b} $object] }
+        NAME { return $object }
+    }
+}
+proc report_timing {args} { return "Header\nSlack (MET) : 0.1ns\n" }
+'''
+            + f"\nsoc_reports::write_setup_endpoints {tcl_word(self.output)} soc_top 2 10\n"
+        )
+        result = subprocess.run([self.tclsh, str(script)], text=True, capture_output=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows("soc_top_setup_unique_endpoints.tsv")
+        self.assertEqual([row["endpoint"] for row in rows], ["a", "b"])
+        self.assertEqual([float(row["slack_ns"]) for row in rows], [-0.5, -0.1])
+        self.assertIn("unique_reported=2", (self.output / "soc_top_timing_paths.rpt").read_text())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -33,96 +33,96 @@ module axi_dual_block_dma #(
     parameter int unsigned CONV_LINE_BYTES = 16,
     parameter int unsigned CONV_CACHE_POLICY = 3
 ) (
-    input logic clk,
-    input logic rst_n,
-    input logic abort = 1'b0,
+    input wire logic clk,
+    input wire logic rst_n,
+    input wire logic abort = 1'b0,
 
     // ---- Immutable job context; accepted only with all reads drained ----
     // Assert for every job, including GEMM (conv_enable=0). No read command may
     // be submitted on the same cycle. Existing non-Conv users may omit these.
     // Independent ordered window requests use destination tags and credits.
-    input logic win_req_valid = 1'b0,
+    input wire logic win_req_valid = 1'b0,
     output logic win_req_ready,
-    input logic [31:0] win_req_p0 = '0, win_req_q0 = '0, win_req_cols = '0,
-    input logic [1:0] win_req_tag = '0,
+    input wire logic [31:0] win_req_p0 = '0, win_req_q0 = '0, win_req_cols = '0,
+    input wire logic [1:0] win_req_tag = '0,
     output logic win_rsp_valid,
-    input logic win_rsp_ready = 1'b1,
+    input wire logic win_rsp_ready = 1'b1,
     output logic [1:0] win_rsp_tag,
     output logic [31:0] win_rsp_col,
     output logic signed [15:0] win_rsp_data[WINDOW_LANES],
     output logic [WINDOW_LANES-1:0] win_rsp_mask,
     output logic win_rsp_last,win_rsp_error,win_busy,
 
-    input  logic conv_cfg_valid = 1'b0,
+    input  wire logic conv_cfg_valid = 1'b0,
     output logic conv_cfg_ready,
-    input  logic conv_enable = 1'b0,
-    input  logic dma_range_enable = 1'b0,
-    input  conv_im2col_pkg::conv_cfg_t conv_cfg = '0,
-    input  logic [31:0] conv_sched_r = 32'd0,
-    input  logic [31:0] conv_sched_groups = 32'd0,
-    input  logic [31:0] conv_range_base [4] = '{default:'0},
-    input  logic [32:0] conv_range_end [4] = '{default:'0},
+    input  wire logic conv_enable = 1'b0,
+    input  wire logic dma_range_enable = 1'b0,
+    input  wire conv_im2col_pkg::conv_cfg_t conv_cfg = '0,
+    input  wire logic [31:0] conv_sched_r = 32'd0,
+    input  wire logic [31:0] conv_sched_groups = 32'd0,
+    input  wire logic [31:0] conv_range_base [4] = '{default:'0},
+    input  wire logic [32:0] conv_range_end [4] = '{default:'0},
     output logic conv_error, conv_busy,
 
     // ---- Read block command ----
     // Im2col returns rows_to_read by IM2COL_SIZE signed-16 elements. Padding
     // and reduction tail are explicit zero; no extra transpose is performed.
-    input  logic rd_im2col = 1'b0,
-    input  logic rd_wide_im2col = 1'b0,
-    input  logic [31:0] rd_p0 = 32'd0,
-    input  logic [31:0] rd_q0 = 32'd0,
-    input  logic [31:0] rd_group = 32'd0,
-    input  logic                                   rd_start,
-    input  logic [RD_TAG_WIDTH-1:0]                 rd_tag = '0,
+    input  wire logic rd_im2col = 1'b0,
+    input  wire logic rd_wide_im2col = 1'b0,
+    input  wire logic [31:0] rd_p0 = 32'd0,
+    input  wire logic [31:0] rd_q0 = 32'd0,
+    input  wire logic [31:0] rd_group = 32'd0,
+    input  wire logic                                   rd_start,
+    input  wire logic [RD_TAG_WIDTH-1:0]                 rd_tag = '0,
     output logic                                   rd_start_ready,
     output logic [RD_TAG_WIDTH-1:0]                 rd_response_tag,
     output logic [RD_TAG_WIDTH-1:0]                 rd_finish_tag,
-    input  logic                                   rd_linear_read_mode,
-    input  logic        [           REG_WIDTH-1:0] rd_base_addr,
-    input  logic        [           REG_WIDTH-1:0] rd_row_stride,
-    input  logic        [           REG_WIDTH-1:0] rd_rows_to_read,
-    input  logic        [           REG_WIDTH-1:0] rd_valid_cols,
-    input  logic        [                     7:0] rd_burst_len_m1,
-    input  logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_slot_id,
-    input  logic                                   rd_use_16bits,
-    input  logic signed [           REG_WIDTH-1:0] rd_lhs_zp,
+    input  wire logic                                   rd_linear_read_mode,
+    input  wire logic        [           REG_WIDTH-1:0] rd_base_addr,
+    input  wire logic        [           REG_WIDTH-1:0] rd_row_stride,
+    input  wire logic        [           REG_WIDTH-1:0] rd_rows_to_read,
+    input  wire logic        [           REG_WIDTH-1:0] rd_valid_cols,
+    input  wire logic        [                     7:0] rd_burst_len_m1,
+    input  wire logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_slot_id,
+    input  wire logic                                   rd_use_16bits,
+    input  wire logic signed [           REG_WIDTH-1:0] rd_lhs_zp,
     output logic                                   rd_busy,
     output logic                                   rd_done,
     output logic                                   rd_finish_beat,
 
     // ---- Write block command ----
-    input  logic                            wr_start,
-    input  logic [           REG_WIDTH-1:0] wr_base_addr,
-    input  logic [           REG_WIDTH-1:0] wr_row_stride,
-    input  logic [           REG_WIDTH-1:0] wr_rows_to_write,
-    input  logic [                     7:0] wr_burst_len_m1,
+    input  wire logic                            wr_start,
+    input  wire logic [           REG_WIDTH-1:0] wr_base_addr,
+    input  wire logic [           REG_WIDTH-1:0] wr_row_stride,
+    input  wire logic [           REG_WIDTH-1:0] wr_rows_to_write,
+    input  wire logic [                     7:0] wr_burst_len_m1,
     output logic                            wr_busy,
     output logic                            wr_done,
 
     // ---- Write data stream ----
-    input  logic [  BUS_WIDTH-1:0] src_wdata,
-    input  logic [BUS_WIDTH/8-1:0] src_wmask,
-    input  logic                   src_wvalid,
+    input  wire logic [  BUS_WIDTH-1:0] src_wdata,
+    input  wire logic [BUS_WIDTH/8-1:0] src_wmask,
+    input  wire logic                   src_wvalid,
     output logic                   src_wready,
 
     // ---- AXI4 master read address channel ----
     output logic                   m_axi_arvalid,
-    input  logic                   m_axi_arready,
+    input  wire logic                   m_axi_arready,
     output logic [  REG_WIDTH-1:0] m_axi_araddr,
     output logic [            7:0] m_axi_arlen,
     output logic [            2:0] m_axi_arsize,
     output logic [            1:0] m_axi_arburst,
 
     // ---- AXI4 master read data channel ----
-    input  logic                   m_axi_rvalid,
+    input  wire logic                   m_axi_rvalid,
     output logic                   m_axi_rready,
-    input  logic [  BUS_WIDTH-1:0] m_axi_rdata,
-    input  logic [            1:0] m_axi_rresp,
-    input  logic                   m_axi_rlast,
+    input  wire logic [  BUS_WIDTH-1:0] m_axi_rdata,
+    input  wire logic [            1:0] m_axi_rresp,
+    input  wire logic                   m_axi_rlast,
 
     // ---- AXI4 master write address channel ----
     output logic                   m_axi_awvalid,
-    input  logic                   m_axi_awready,
+    input  wire logic                   m_axi_awready,
     output logic [  REG_WIDTH-1:0] m_axi_awaddr,
     output logic [            7:0] m_axi_awlen,
     output logic [            2:0] m_axi_awsize,
@@ -130,15 +130,15 @@ module axi_dual_block_dma #(
 
     // ---- AXI4 master write data channel ----
     output logic                   m_axi_wvalid,
-    input  logic                   m_axi_wready,
+    input  wire logic                   m_axi_wready,
     output logic [  BUS_WIDTH-1:0] m_axi_wdata,
     output logic [BUS_WIDTH/8-1:0] m_axi_wstrb,
     output logic                   m_axi_wlast,
 
     // ---- AXI4 master write response channel ----
-    input  logic                   m_axi_bvalid,
+    input  wire logic                   m_axi_bvalid,
     output logic                   m_axi_bready,
-    input  logic [            1:0] m_axi_bresp,
+    input  wire logic [            1:0] m_axi_bresp,
 
     // ---- Read unpack output ----
     output logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] wr_slot,
@@ -157,7 +157,6 @@ module axi_dual_block_dma #(
     output logic rd_error,
     output logic wr_error
 );
-
     localparam int LANES = BUS_WIDTH / 8;
     localparam int SLOT_W = (CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS);
     localparam int COL_W = $clog2(SIZE);

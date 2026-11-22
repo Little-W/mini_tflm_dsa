@@ -19,55 +19,55 @@ module conv_windowed_cache #(
   parameter int TAGW=32-LB-SI,
   parameter bit p_defer_retire_shift=1'b0
 ) (
-  input logic clk, rst_n,
-  input logic cfg_valid,
+  input wire logic clk, rst_n,
+  input wire logic cfg_valid,
   output logic cfg_ready,
-  input logic [31:0] cfg_base, cfg_bytes,
-  input logic cfg_bypass,
-  input logic cfg_geometry = 1'b0,
-  input logic req_valid,
+  input wire logic [31:0] cfg_base, cfg_bytes,
+  input wire logic cfg_bypass,
+  input wire logic cfg_geometry = 1'b0,
+  input wire logic req_valid,
   output logic req_ready,
-  input logic [31:0] req_addr,
-  input logic req_geometry = 1'b0,
-  input logic req_event_first = 1'b0,
-  input logic hint_valid = 1'b0,
-  input logic [31:0] hint_next = 32'hffff_ffff,
+  input wire logic [31:0] req_addr,
+  input wire logic req_geometry = 1'b0,
+  input wire logic req_event_first = 1'b0,
+  input wire logic hint_valid = 1'b0,
+  input wire logic [31:0] hint_next = 32'hffff_ffff,
   output logic hint_pending,
   output logic rsp_valid,
-  input logic rsp_ready,
+  input wire logic rsp_ready,
   output logic [READ_WIDTH-1:0] rsp_data,
   output logic rsp_error,
   output logic arvalid,
-  input logic arready,
+  input wire logic arready,
   output logic [31:0] araddr,
   output logic [7:0] arlen,
   output logic [2:0] arsize,
   output logic [1:0] arburst,
-  input logic rvalid,
+  input wire logic rvalid,
   output logic rready,
-  input logic [BUS_WIDTH-1:0] rdata,
-  input logic [1:0] rresp,
-  input logic rlast,
-  input logic cfg_windowed = 1'b0,
-  input logic cfg_prefetch_enable = 1'b0,
-  input logic req_window_index_valid = 1'b0,
-  input logic [31:0] req_window_index = 32'd0,
-  input logic [31:0] req_window_epoch = 32'd0,
-  input logic [31:0] req_window_retire = 32'hffff_ffff,
-  input logic [31:0] req_window_progress = 32'd0,
-  input logic prefetch_valid = 1'b0,
+  input wire logic [BUS_WIDTH-1:0] rdata,
+  input wire logic [1:0] rresp,
+  input wire logic rlast,
+  input wire logic cfg_windowed = 1'b0,
+  input wire logic cfg_prefetch_enable = 1'b0,
+  input wire logic req_window_index_valid = 1'b0,
+  input wire logic [31:0] req_window_index = 32'd0,
+  input wire logic [31:0] req_window_epoch = 32'd0,
+  input wire logic [31:0] req_window_retire = 32'hffff_ffff,
+  input wire logic [31:0] req_window_progress = 32'd0,
+  input wire logic prefetch_valid = 1'b0,
   output logic prefetch_ready,
-  input logic [31:0] prefetch_addr = 32'd0,
-  input logic prefetch_window_index_valid = 1'b0,
-  input logic [31:0] prefetch_window_index = 32'd0,
-  input logic [31:0] prefetch_window_epoch = 32'd0,
-  input logic [31:0] prefetch_window_retire = 32'hffff_ffff,
-  input logic prefetch_next_fragment = 1'b0,
-  input logic prefetch_ref_valid = 1'b0,
-  input logic [31:0] prefetch_ref_addr = 32'd0,
-  input logic prefetch_ref_index_valid = 1'b0,
-  input logic [31:0] prefetch_ref_index = 32'd0,
-  input logic [31:0] prefetch_ref_epoch = 32'd0);
+  input wire logic [31:0] prefetch_addr = 32'd0,
+  input wire logic prefetch_window_index_valid = 1'b0,
+  input wire logic [31:0] prefetch_window_index = 32'd0,
+  input wire logic [31:0] prefetch_window_epoch = 32'd0,
+  input wire logic [31:0] prefetch_window_retire = 32'hffff_ffff,
+  input wire logic prefetch_next_fragment = 1'b0,
+  input wire logic prefetch_ref_valid = 1'b0,
+  input wire logic [31:0] prefetch_ref_addr = 32'd0,
+  input wire logic prefetch_ref_index_valid = 1'b0,
+  input wire logic [31:0] prefetch_ref_index = 32'd0,
+  input wire logic [31:0] prefetch_ref_epoch = 32'd0);
   localparam int p_read_bytes = READ_WIDTH / 8;
   localparam int p_read_shift = $clog2(p_read_bytes);
   localparam logic [31:0] INF=32'hffff_ffff;
@@ -825,6 +825,7 @@ module conv_windowed_cache #(
   (* keep = "true" *) logic select_victim_conflict;
   logic select_request_set_match, select_hint_busy;
   logic select_prefetch_blocked, select_demand_blocked;
+  wire metadata_fill;
 
   // 请求组号、提示冲突和命中结果并行准备，需求接收只在最后一级参与选择。
   // 预取同时检查同组访问和需求缺失，普通填充只检查同组访问。
@@ -1023,7 +1024,7 @@ module conv_windowed_cache #(
 
   wire metadata_enable=!(cfg_valid && cfg_ready);
   wire metadata_hit=req_fire && lookup_range && lookup_hit;
-  wire metadata_fill=fill_state==F_DATA && span_rsp_valid && span_rsp_ready && span_last;
+  assign metadata_fill=fill_state==F_DATA && span_rsp_valid && span_rsp_ready && span_last;
   wire metadata_fill_good=metadata_fill && !(fill_bad || span_error);
 `ifndef SYNTHESIS
   wire metadata_fill_bad=metadata_fill && (fill_bad || span_error);

@@ -30,48 +30,48 @@ module ia_loader #(
     // DMA 仲裁预留经过寄存级，控制器只使用当前预留对应的外部授予。
     parameter bit p_register_dma_request = 1'b0
 ) (
-    input logic clk,
-    input logic rst_n,
+    input wire logic clk,
+    input wire logic rst_n,
 
     // ---- 配置与控制 ----
-    input  logic init_cfg,
+    input  wire logic init_cfg,
     // Select a matrix-block request generated from the original image by DMA.
     // This loader does not own image geometry, an input cache or an AXI path.
-    input  logic cfg_im2col = 1'b0,
-    input  logic cfg_tile_packed = 1'b0,
-    input  logic cfg_compact = 1'b0,
-    input  logic signed [REG_WIDTH-1:0] cfg_compact_offset = '0,
-    input  logic [31:0] cfg_cache_blocks = 32'd0,
-    input  logic cfg_preserve_cache = 1'b0,
-    input  logic cache_flush = 1'b0,
-    input  logic [REG_WIDTH-1:0] cfg_p0_base = '0,
-    input  logic [REG_WIDTH-1:0] cfg_q0_base = '0,
-    input  logic [REG_WIDTH-1:0] cfg_cache_slot_base = '0,
-    input  logic cfg_prefetch_enable = 1'b0,
-    input  logic [REG_WIDTH-1:0] cfg_global_reduction = '0,
+    input  wire logic cfg_im2col = 1'b0,
+    input  wire logic cfg_tile_packed = 1'b0,
+    input  wire logic cfg_compact = 1'b0,
+    input  wire logic signed [REG_WIDTH-1:0] cfg_compact_offset = '0,
+    input  wire logic [31:0] cfg_cache_blocks = 32'd0,
+    input  wire logic cfg_preserve_cache = 1'b0,
+    input  wire logic cache_flush = 1'b0,
+    input  wire logic [REG_WIDTH-1:0] cfg_p0_base = '0,
+    input  wire logic [REG_WIDTH-1:0] cfg_q0_base = '0,
+    input  wire logic [REG_WIDTH-1:0] cfg_cache_slot_base = '0,
+    input  wire logic cfg_prefetch_enable = 1'b0,
+    input  wire logic [REG_WIDTH-1:0] cfg_global_reduction = '0,
     output logic prefetch_idle,
     output logic load_ia_req,
-    input  logic load_ia_granted,
-    input  logic send_ia_trigger,
+    input  wire logic load_ia_granted,
+    input  wire logic send_ia_trigger,
 
     // ---- 矩阵尺寸（init_cfg 高时须稳定）----
-    input logic        [REG_WIDTH-1:0] k,
-    input logic        [REG_WIDTH-1:0] n,
-    input logic        [REG_WIDTH-1:0] m,
-    input logic        [REG_WIDTH-1:0] lhs_base,
-    input logic        [REG_WIDTH-1:0] lhs_row_stride_b,
-    input logic signed [REG_WIDTH-1:0] lhs_zp,
-    input logic                        use_16bits,
-    input logic                        bias_by_row_mode,
-    input logic                        bias_at_end = 1'b0,
+    input wire logic        [REG_WIDTH-1:0] k,
+    input wire logic        [REG_WIDTH-1:0] n,
+    input wire logic        [REG_WIDTH-1:0] m,
+    input wire logic        [REG_WIDTH-1:0] lhs_base,
+    input wire logic        [REG_WIDTH-1:0] lhs_row_stride_b,
+    input wire logic signed [REG_WIDTH-1:0] lhs_zp,
+    input wire logic                        use_16bits,
+    input wire logic                        bias_by_row_mode,
+    input wire logic                        bias_at_end = 1'b0,
 
     // ---- 复用控制（init_cfg 高时须稳定）----
-    input logic [REG_WIDTH-1:0] ia_reuse_num,  // R
-    input logic [REG_WIDTH-1:0] w_reuse_num,   // W
-    input logic [REG_WIDTH-1:0] row_groups,
-    input logic [REG_WIDTH-1:0] row_tail_tiles,
-    input logic [REG_WIDTH-1:0] col_groups,
-    input logic [REG_WIDTH-1:0] col_tail_tiles,
+    input wire logic [REG_WIDTH-1:0] ia_reuse_num,  // R
+    input wire logic [REG_WIDTH-1:0] w_reuse_num,   // W
+    input wire logic [REG_WIDTH-1:0] row_groups,
+    input wire logic [REG_WIDTH-1:0] row_tail_tiles,
+    input wire logic [REG_WIDTH-1:0] col_groups,
+    input wire logic [REG_WIDTH-1:0] col_tail_tiles,
 
     // ---- 共享 AXI block_dma 客户端接口 ----
     output logic                                   ext_dma_start,
@@ -88,14 +88,14 @@ module ia_loader #(
     output logic        [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] ext_dma_slot_id,
     output logic                                   ext_dma_use_16bits,
     output logic signed [           REG_WIDTH-1:0] ext_dma_lhs_zp,
-    input  logic                                   ext_dma_busy,
-    input  logic                                   ext_dma_done,
-    input  logic        [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] ext_dma_wr_slot,
-    input  logic        [        $clog2(SIZE)-1:0] ext_dma_wr_row,
-    input  logic        [        $clog2(SIZE)-1:0] ext_dma_wr_col_base,
-    input  logic signed [          DATA_WIDTH-1:0] ext_dma_wr_data         [DMA_LANES],
-    input  logic                                   ext_dma_wr_valid        [DMA_LANES],
-    input  logic                                   ext_dma_wr_use_16bits,
+    input  wire logic                                   ext_dma_busy,
+    input  wire logic                                   ext_dma_done,
+    input  wire logic        [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] ext_dma_wr_slot,
+    input  wire logic        [        $clog2(SIZE)-1:0] ext_dma_wr_row,
+    input  wire logic        [        $clog2(SIZE)-1:0] ext_dma_wr_col_base,
+    input  wire logic signed [          DATA_WIDTH-1:0] ext_dma_wr_data         [DMA_LANES],
+    input  wire logic                                   ext_dma_wr_valid        [DMA_LANES],
+    input  wire logic                                   ext_dma_wr_use_16bits,
 
     output logic [1:0] ram_port_wr_en,
     output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_wr_addr [0:1],
@@ -104,7 +104,7 @@ module ia_loader #(
     output logic [127:0] ram_shared_wr_data,
     output logic [1:0] ram_port_rd_en,
     output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_rd_addr [0:1],
-    input  logic [127:0] ram_port_rd_data [0:1] = '{default:'0},
+    input  wire logic [127:0] ram_port_rd_data [0:1] = '{default:'0},
 
     // ---- 输出到脉动阵列（SIZE 维数据 + 最后一列指示信号）----
     output logic signed [DATA_WIDTH-1:0] ia_out         [SIZE],
@@ -125,7 +125,6 @@ module ia_loader #(
     output logic                         bias_last_loop,
     output logic                         ia_l1_switch
 );
-
     // =======================================================================
     // 局部参数
     // =======================================================================

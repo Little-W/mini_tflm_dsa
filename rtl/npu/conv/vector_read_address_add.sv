@@ -5,10 +5,10 @@
 module vector_read_address_add #(
   parameter bit p_preserve_groups = 1'b1
 ) (
-  input logic clk,
-  input logic [31:0] i_base,
-  input logic [31:0] i_offset,
-  input logic [15:0] i_channel,
+  input wire logic clk,
+  input wire logic [31:0] i_base,
+  input wire logic [31:0] i_offset,
+  input wire logic [15:0] i_channel,
   output logic [31:0] o_address,
   output logic [1:0] o_carry
 );

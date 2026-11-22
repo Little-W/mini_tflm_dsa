@@ -6,14 +6,14 @@ module conv_cache_rank_table #(
   parameter int p_depth = 128,
   parameter int p_addr_width = $clog2(p_depth)
 ) (
-  input logic clk,
-  input logic i_clear_en,
-  input logic [p_addr_width-1:0] i_clear_addr,
-  input logic i_write_en,
-  input logic i_fill_valid, i_hint_valid, i_hit_valid,
-  input logic [p_addr_width-1:0] i_fill_addr, i_hint_addr, i_hit_addr,
-  input logic i_read_en,
-  input logic [p_addr_width-1:0] i_read_addr,
+  input wire logic clk,
+  input wire logic i_clear_en,
+  input wire logic [p_addr_width-1:0] i_clear_addr,
+  input wire logic i_write_en,
+  input wire logic i_fill_valid, i_hint_valid, i_hit_valid,
+  input wire logic [p_addr_width-1:0] i_fill_addr, i_hint_addr, i_hit_addr,
+  input wire logic i_read_en,
+  input wire logic [p_addr_width-1:0] i_read_addr,
   output logic [1:0] o_read_data
 );
   logic [2:0] bank_i_wr_en;

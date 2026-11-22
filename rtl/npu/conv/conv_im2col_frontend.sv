@@ -24,7 +24,7 @@ module conv_im2col_frontend #(
   input wire logic clk, rst_n,
   input wire logic cfg_valid,
   output logic cfg_ready,
-  input conv_im2col_pkg::conv_cfg_t cfg,
+  input wire conv_im2col_pkg::conv_cfg_t cfg,
   // Native IA scheduler context. Zero groups disables the geometry policy for
   // standalone clients that do not promise the native descriptor order.
   input wire logic [31:0] cfg_sched_r = 32'd0,

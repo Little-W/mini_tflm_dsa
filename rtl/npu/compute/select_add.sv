@@ -23,7 +23,7 @@ module select_add #(
 
     // 分通道模式的四个十二位结果各自截断进位。
     generate
-    begin : g_generic
+    if (1) begin : g_generic
         assign selected_rhs = i_rhs_select ? i_rhs1 : i_rhs0;
         if ((p_width == 48) && p_split_12bit) begin : g_parallel
             for (genvar lane = 0; lane < 4; lane++) begin : g_lane

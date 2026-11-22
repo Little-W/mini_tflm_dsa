@@ -3,10 +3,10 @@
 
 // 两级有符号右移保留三十四位商、保护位和舍弃位，支持最近偶数舍入。
 module requant_shift_pipeline (
-    input  logic clk,
-    input  logic i_en,
-    input  logic signed [63:0] i_product,
-    input  logic [6:0] i_amount,
+    input  wire logic clk,
+    input  wire logic i_en,
+    input  wire logic signed [63:0] i_product,
+    input  wire logic [6:0] i_amount,
     output logic signed [33:0] o_quotient,
     output logic o_increment
 );

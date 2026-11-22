@@ -7,12 +7,12 @@ module vector_weight_store #(
     parameter int p_depth = 49,
     parameter int p_address_width = (p_depth < 2) ? 1 : $clog2(p_depth)
 ) (
-    input logic clk,
-    input logic i_wr_en,
-    input logic [31:0] i_wr_tap,
-    input logic [p_channels-1:0] i_wr_mask,
-    input logic [8*p_channels-1:0] i_wr_data,
-    input logic [31:0] i_rd_tap,
+    input wire logic clk,
+    input wire logic i_wr_en,
+    input wire logic [31:0] i_wr_tap,
+    input wire logic [p_channels-1:0] i_wr_mask,
+    input wire logic [8*p_channels-1:0] i_wr_data,
+    input wire logic [31:0] i_rd_tap,
     output logic [8*p_channels-1:0] o_rd_data
 );
     //! 0. 存储端口和读取状态

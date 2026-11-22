@@ -53,92 +53,92 @@ module npu_top #(
     parameter int unsigned OA_FIFO_BANKS_MAX = 0  // 0 表示按最大输入分组选择容量。
 ) (
     //==== 时钟与复位 ====
-    input logic clk,   // 系统时钟
-    input logic rst_n, // 异步复位，低有效
+    input wire logic clk,   // 系统时钟
+    input wire logic rst_n, // 异步复位，低有效
 
     //==== 外部控制接口 ====
-    input logic cfg_operand_fetch64, // 0：16 字节扇区；1：64 字节读取范围。
-    input logic cfg_lhs_tile_packed = 1'b0,
-    input logic cfg_rhs_tile_packed = 1'b0,
-    input logic cfg_conv_enable = 1'b0,
-    input conv_im2col_pkg::conv_cfg_t cfg_conv = '0,
-    input logic cfg_vector_enable = 1'b0,
-    input vector_engine_pkg::vector_engine_cfg_t cfg_vector = '0,
-    input logic calc_start,  // 计算开始信号
-    input logic cfg_16bits_ia,  // 使用16位IA数据
-    input logic cfg_16x8,  // TFLM 16 位激活、8 位权重、32 位偏置和 16 位输出。
-    input logic cfg_dataflow_mode,  // 0: WS, 1: IS
-    input  logic [REG_WIDTH-1:0] cfg_ia_reuse_num,  // IA L1 组复用深度，ABI 2: 外部写入最终生效值，0 非法
-    input  logic [REG_WIDTH-1:0] cfg_w_reuse_num,   // W 侧复用窗口，ABI 2: 外部写入最终生效值，0 非法
-    input logic [REG_WIDTH-1:0] cfg_row_groups,
-    input logic [REG_WIDTH-1:0] cfg_row_tail_tiles,
-    input logic [REG_WIDTH-1:0] cfg_col_groups,
-    input logic [REG_WIDTH-1:0] cfg_col_tail_tiles,
-    input logic [31:0] cfg_ps_control = 32'd0,
-    input logic [31:0] cfg_shared_ia_banks = 32'd0,
+    input wire logic cfg_operand_fetch64, // 0：16 字节扇区；1：64 字节读取范围。
+    input wire logic cfg_lhs_tile_packed = 1'b0,
+    input wire logic cfg_rhs_tile_packed = 1'b0,
+    input wire logic cfg_conv_enable = 1'b0,
+    input wire conv_im2col_pkg::conv_cfg_t cfg_conv = '0,
+    input wire logic cfg_vector_enable = 1'b0,
+    input wire vector_engine_pkg::vector_engine_cfg_t cfg_vector = '0,
+    input wire logic calc_start,  // 计算开始信号
+    input wire logic cfg_16bits_ia,  // 使用16位IA数据
+    input wire logic cfg_16x8,  // TFLM 16 位激活、8 位权重、32 位偏置和 16 位输出。
+    input wire logic cfg_dataflow_mode,  // 0: WS, 1: IS
+    input wire logic [REG_WIDTH-1:0] cfg_ia_reuse_num,  // IA L1 组复用深度，ABI 2: 外部写入最终生效值，0 非法
+    input wire logic [REG_WIDTH-1:0] cfg_w_reuse_num,   // W 侧复用窗口，ABI 2: 外部写入最终生效值，0 非法
+    input wire logic [REG_WIDTH-1:0] cfg_row_groups,
+    input wire logic [REG_WIDTH-1:0] cfg_row_tail_tiles,
+    input wire logic [REG_WIDTH-1:0] cfg_col_groups,
+    input wire logic [REG_WIDTH-1:0] cfg_col_tail_tiles,
+    input wire logic [31:0] cfg_ps_control = 32'd0,
+    input wire logic [31:0] cfg_shared_ia_banks = 32'd0,
     output logic sa_ready,  // 系统就绪信号
 
     //==== 完成握手接口 ====
     output logic       done_valid,  // 任务完成有效信号
-    input logic       done_ready,  // 任务完成接收就绪信号
+    input wire logic       done_ready,  // 任务完成接收就绪信号
     output logic [1:0] err_code,  // 完成状态码
 
     // 张量起始地址
-    input logic [REG_WIDTH-1:0] lhs_base,  // A 起始地址（MULT_LHS_PTR）
-    input logic [REG_WIDTH-1:0] rhs_base,  // B 起始地址（MULT_RHS_PTR），8 位数据按 N × K 行优先存储。
-    input logic [REG_WIDTH-1:0] dst_base,  // C 起始地址（MULT_DST_PTR）
-    input logic [REG_WIDTH-1:0] bias_base, // 32 位偏置起始地址，0 表示不使用偏置（MULT_BIAS_PTR）。
+    input wire logic [REG_WIDTH-1:0] lhs_base,  // A 起始地址（MULT_LHS_PTR）
+    input wire logic [REG_WIDTH-1:0] rhs_base,  // B 起始地址（MULT_RHS_PTR），8 位数据按 N × K 行优先存储。
+    input wire logic [REG_WIDTH-1:0] dst_base,  // C 起始地址（MULT_DST_PTR）
+    input wire logic [REG_WIDTH-1:0] bias_base, // 32 位偏置起始地址，0 表示不使用偏置（MULT_BIAS_PTR）。
 
     // 量化参数和零点
-    input logic signed [REG_WIDTH-1:0] lhs_zp,          // A 零点（MULT_LHS_OFFSET）
-    input logic signed [REG_WIDTH-1:0] rhs_zp,          // B 零点（MULT_RHS_OFFSET）
-    input logic signed [REG_WIDTH-1:0] dst_zp,          // C 零点（MULT_DST_OFFSET）
-    input logic signed [REG_WIDTH-1:0] q_mult_pt,       // 逐张量量化乘数（MULT_DST_MULT）
-    input logic signed [REG_WIDTH-1:0] q_shift_pt,      // 逐张量量化移位量
+    input wire logic signed [REG_WIDTH-1:0] lhs_zp,          // A 零点（MULT_LHS_OFFSET）
+    input wire logic signed [REG_WIDTH-1:0] rhs_zp,          // B 零点（MULT_RHS_OFFSET）
+    input wire logic signed [REG_WIDTH-1:0] dst_zp,          // C 零点（MULT_DST_OFFSET）
+    input wire logic signed [REG_WIDTH-1:0] q_mult_pt,       // 逐张量量化乘数（MULT_DST_MULT）
+    input wire logic signed [REG_WIDTH-1:0] q_shift_pt,      // 逐张量量化移位量
     // MULT_DST_SHIFT：正值表示右移位数。
-    input logic                        use_per_channel, // 1：逐通道量化；0：逐张量量化。
+    input wire logic                        use_per_channel, // 1：逐通道量化；0：逐张量量化。
 
     // 矩阵尺寸
-    input logic [REG_WIDTH-1:0] k,  // IA矩阵行数
-    input logic [REG_WIDTH-1:0] n,  // IA矩阵列数 = W矩阵行数
-    input logic [REG_WIDTH-1:0] m,  // W矩阵列数
+    input wire logic [REG_WIDTH-1:0] k,  // IA矩阵行数
+    input wire logic [REG_WIDTH-1:0] n,  // IA矩阵列数 = W矩阵行数
+    input wire logic [REG_WIDTH-1:0] m,  // W矩阵列数
 
     // 行列步长，单位均为字节。
-    input logic [REG_WIDTH-1:0] lhs_row_stride_b,  // A 行步长（MULT_LHS_COLS_OFFSET）
-    input logic [REG_WIDTH-1:0] dst_row_stride_b,  // C 行步长（MULT_ROW_ADDR_OFFSET）
-    input logic [REG_WIDTH-1:0] rhs_col_stride_b,  // 转置后 B 的列步长（MULT_RHS_ROW_STRIDE）
+    input wire logic [REG_WIDTH-1:0] lhs_row_stride_b,  // A 行步长（MULT_LHS_COLS_OFFSET）
+    input wire logic [REG_WIDTH-1:0] dst_row_stride_b,  // C 行步长（MULT_ROW_ADDR_OFFSET）
+    input wire logic [REG_WIDTH-1:0] rhs_col_stride_b,  // 转置后 B 的列步长（MULT_RHS_ROW_STRIDE）
 
     // 激活范围
-    input logic signed [REG_WIDTH-1:0] act_min,  // (MULT_ACT_MIN)
-    input logic signed [REG_WIDTH-1:0] act_max,  // (MULT_ACT_MAX)
+    input wire logic signed [REG_WIDTH-1:0] act_min,  // (MULT_ACT_MIN)
+    input wire logic signed [REG_WIDTH-1:0] act_max,  // (MULT_ACT_MAX)
 
     //==== AXI4 master 接口 ====
     output logic                   m_axi_arvalid,
-    input  logic                   m_axi_arready,
+    input wire logic                   m_axi_arready,
     output logic [  REG_WIDTH-1:0] m_axi_araddr,
     output logic [            7:0] m_axi_arlen,
     output logic [            2:0] m_axi_arsize,
     output logic [            1:0] m_axi_arburst,
-    input  logic                   m_axi_rvalid,
+    input wire logic                   m_axi_rvalid,
     output logic                   m_axi_rready,
-    input  logic [  BUS_WIDTH-1:0] m_axi_rdata,
-    input  logic [            1:0] m_axi_rresp,
-    input  logic                   m_axi_rlast,
+    input wire logic [  BUS_WIDTH-1:0] m_axi_rdata,
+    input wire logic [            1:0] m_axi_rresp,
+    input wire logic                   m_axi_rlast,
 
     output logic                   m_axi_awvalid,
-    input  logic                   m_axi_awready,
+    input wire logic                   m_axi_awready,
     output logic [  REG_WIDTH-1:0] m_axi_awaddr,
     output logic [            7:0] m_axi_awlen,
     output logic [            2:0] m_axi_awsize,
     output logic [            1:0] m_axi_awburst,
     output logic                   m_axi_wvalid,
-    input  logic                   m_axi_wready,
+    input wire logic                   m_axi_wready,
     output logic [  BUS_WIDTH-1:0] m_axi_wdata,
     output logic [BUS_WIDTH/8-1:0] m_axi_wstrb,
     output logic                   m_axi_wlast,
-    input  logic                   m_axi_bvalid,
+    input wire logic                   m_axi_bvalid,
     output logic                   m_axi_bready,
-    input  logic [            1:0] m_axi_bresp
+    input wire logic [            1:0] m_axi_bresp
 );
 
 `ifdef GEMMORA_INT8_PROFILE

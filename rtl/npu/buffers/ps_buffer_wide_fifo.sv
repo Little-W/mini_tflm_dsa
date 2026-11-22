@@ -8,13 +8,13 @@ module ps_buffer_wide_fifo #(
     parameter int unsigned FRAME_COUNT = 1,
     parameter int unsigned MAX_FRAME_LEN = DEPTH
 ) (
-    input  logic                  clk,
-    input  logic                  rst_n,
-    input  logic [DATA_WIDTH-1:0] data_in,
-    input  logic                  input_valid_i,
-    input  logic                  ia_l1_switch_i,
-    input  logic                  send_ia_trigger_i,
-    input  logic                  replay_enable_i,
+    input  wire logic                  clk,
+    input  wire logic                  rst_n,
+    input  wire logic [DATA_WIDTH-1:0] data_in,
+    input  wire logic                  input_valid_i,
+    input  wire logic                  ia_l1_switch_i,
+    input  wire logic                  send_ia_trigger_i,
+    input  wire logic                  replay_enable_i,
     output logic [DATA_WIDTH-1:0] data_out,
     output logic capacity_fault,
     output logic replay_ready
