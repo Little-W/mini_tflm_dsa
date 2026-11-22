@@ -14,9 +14,9 @@ module parallel_prefix_add #(
     parameter bit p_infer_dsp = 1'b0
 `endif
 ) (
-    input  logic [p_width-1:0] i_a,
-    input  logic [p_width-1:0] i_b,
-    input  logic               i_carry,
+    input  wire logic [p_width-1:0] i_a,
+    input  wire logic [p_width-1:0] i_b,
+    input  wire logic               i_carry,
     output logic [p_width-1:0] o_sum,
     output logic               o_carry
 );

@@ -12,8 +12,8 @@ module unsigned_compare #(
     parameter bit p_use_dsp = 1'b0
 `endif
 ) (
-    input  logic [p_width-1:0] i_a,
-    input  logic [p_width-1:0] i_b,
+    input  wire logic [p_width-1:0] i_a,
+    input  wire logic [p_width-1:0] i_b,
     output logic o_less,
     output logic o_equal
 );

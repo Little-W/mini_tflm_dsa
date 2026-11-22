@@ -51,7 +51,7 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_root dma cache conv_sdp_ram.sv] \
         [file join $project_export_dir rtl fpga_top.sv] \
         [file join $project_export_dir rtl clk_wiz_0_sim_stub.sv] \
-        [file join $pico_root picorv32.v] \
+        [file join $soc_root soc picorv32_npu.v] \
         [file join $pico_root picosoc simpleuart.v] \
         [file join $soc_root axi_top npu_axil_reg_if.sv] \
         [file join $soc_root axi_top npu_axil_top.sv] \

@@ -7,25 +7,25 @@ module vector_writeback #(
   parameter int COUNT_WIDTH=$clog2(4*TILE+1),
   parameter bit p_coalesce_bytes_only=1'b0
 )(
-  input logic clk, rst_n,
-  input logic request_valid,
+  input wire logic clk, rst_n,
+  input wire logic request_valid,
   output logic request_ready,
-  input logic [31:0] request_address,
-  input logic [COUNT_WIDTH-1:0] request_bytes,
-  input logic request_byte_output,
-  input logic [32*TILE-1:0] result_words,
-  input logic request_coalesce = 1'b0,
-  input logic request_last = 1'b1,
-  input logic flush = 1'b0,
+  input wire logic [31:0] request_address,
+  input wire logic [COUNT_WIDTH-1:0] request_bytes,
+  input wire logic request_byte_output,
+  input wire logic [32*TILE-1:0] result_words,
+  input wire logic request_coalesce = 1'b0,
+  input wire logic request_last = 1'b1,
+  input wire logic flush = 1'b0,
   output logic busy, done, error,
   output logic wr_req, wr_start,
-  input logic wr_granted,
+  input wire logic wr_granted,
   output logic [31:0] wr_base_addr, wr_row_stride, wr_rows_to_write,
   output logic [7:0] wr_burst_len_m1,
   output logic [BUS_WIDTH-1:0] src_wdata,
   output logic [BUS_WIDTH/8-1:0] src_wmask,
   output logic src_wvalid,
-  input logic src_wready, wr_done, wr_error
+  input wire logic src_wready, wr_done, wr_error
 );
   //! 0. 队列存储与事务状态
   //! -----------------------
