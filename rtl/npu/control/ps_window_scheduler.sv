@@ -75,7 +75,8 @@ module ps_window_scheduler #(
     logic [ROW_PART_W:0] next_row_part;
     logic [ID_W:0] opened, target;
     logic [FRAME_COUNT-1:0] cursor_mask;
-    logic [ID_W:0] opened_after_init, active_after_frame;
+    (* keep = "true" *) logic [ID_W:0] opened_after_init;
+    logic [ID_W:0] active_after_frame;
     logic [FRAME_COUNT-1:0] live;
     logic [TILE_W-1:0] frame_k [FRAME_COUNT];
     logic [TILE_W-1:0] active_frame_k, frame_k_after_command;

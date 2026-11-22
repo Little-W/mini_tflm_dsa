@@ -1,0 +1,175 @@
+{
+  "passed": true,
+  "reference_commit": "8aa34632",
+  "source_sha256": {
+    "rtl/npu/control/ps_window_scheduler.sv": "c52857fbf2714b609a4bedff6e18ddb6684ca8f7cdbbdbb2c1da9b11dad163a4"
+  },
+  "source_identity": {
+    "path": "/tmp/timing_analysis_control_r16/scheduler_source_identity.json",
+    "sha256": "9218e0bf3634920d4d04a12aa7b29aa3f294de10816d743d4fbd4aa2a9d8626e"
+  },
+  "four_state": {
+    "profiles": [
+      {
+        "passed": true,
+        "checks": 83448,
+        "four_state_cycles": 28624,
+        "SIZE": 4,
+        "FRAME_COUNT": 2,
+        "MAX_REUSE_TILES": 0,
+        "mode": "XILINX_FPGA"
+      },
+      {
+        "passed": true,
+        "checks": 83448,
+        "four_state_cycles": 28624,
+        "SIZE": 4,
+        "FRAME_COUNT": 2,
+        "MAX_REUSE_TILES": 0,
+        "mode": "ASIC_SYNTHESIS"
+      },
+      {
+        "passed": true,
+        "checks": 88786,
+        "four_state_cycles": 28624,
+        "SIZE": 8,
+        "FRAME_COUNT": 4,
+        "MAX_REUSE_TILES": 1,
+        "mode": "XILINX_FPGA"
+      },
+      {
+        "passed": true,
+        "checks": 88786,
+        "four_state_cycles": 28624,
+        "SIZE": 8,
+        "FRAME_COUNT": 4,
+        "MAX_REUSE_TILES": 1,
+        "mode": "ASIC_SYNTHESIS"
+      },
+      {
+        "passed": true,
+        "checks": 78898,
+        "four_state_cycles": 28624,
+        "SIZE": 16,
+        "FRAME_COUNT": 8,
+        "MAX_REUSE_TILES": 16,
+        "mode": "XILINX_FPGA"
+      },
+      {
+        "passed": true,
+        "checks": 78898,
+        "four_state_cycles": 28624,
+        "SIZE": 16,
+        "FRAME_COUNT": 8,
+        "MAX_REUSE_TILES": 16,
+        "mode": "ASIC_SYNTHESIS"
+      },
+      {
+        "passed": true,
+        "checks": 82060,
+        "four_state_cycles": 28624,
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32,
+        "mode": "XILINX_FPGA"
+      },
+      {
+        "passed": true,
+        "checks": 82060,
+        "four_state_cycles": 28624,
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32,
+        "mode": "ASIC_SYNTHESIS"
+      }
+    ],
+    "checks": 666384,
+    "four_state_cycles": 228992,
+    "report": {
+      "path": "/tmp/timing_analysis_control_r16/scheduler_opened_four_state/summary.json",
+      "sha256": "6d0e3552b4675d9c531d4d21124101b16afd709f45775b630c43d3eef8c91fec"
+    }
+  },
+  "functional": {
+    "cases": 975,
+    "commands": 182426,
+    "independent_scheduler_model": true,
+    "undefined_behavior_sanitizer": true,
+    "report": {
+      "path": "/tmp/timing_analysis_control_r16/scheduler_opened_numeric/summary.json",
+      "sha256": "8f4cba47b066bd5ea2f775c7b4ac8361745d1f90c3d369d65289b209aaf9b8f4"
+    }
+  },
+  "measurement": {
+    "reference": {
+      "SIZE": 16,
+      "FRAME_COUNT": 16,
+      "MAX_REUSE_TILES": 32,
+      "nominal_lut": 1217,
+      "flip_flops": 917,
+      "dsp": 13,
+      "ramb36": 2,
+      "ramb18": 0,
+      "max_register_path": 9,
+      "graph_complete": true,
+      "opened_to_endpoint": {
+        "dut.u_frame_metadata.i_rd_en [1]": 8,
+        "ready": 8,
+        "dut.phase [1]": 8,
+        "done_valid": 8,
+        "dut.prediction_column_s0 [0]": 8,
+        "dut.prediction_reads_frame_s0": 8,
+        "dut.u_prediction_after.i_eligible [0]": 8,
+        "dut.u_prediction_eligible.i_eligible [0]": 8,
+        "dut.candidate_exists": 8,
+        "dut.prediction_q_s0 [4]": 8,
+        "dut.cursor_mask [0]": 7,
+        "dut.resume_valid": 6,
+        "dut.frame_open [1]": 6,
+        "dut.command_buffer_valid": 5,
+        "count_k [0]": 5
+      },
+      "report": {
+        "path": "/tmp/timing_analysis_control_r16/measure/scheduler_reference/scheduler/metrics.json",
+        "sha256": "7d92c9dcdc6bc7029bb0f1d85b6535fa4033aba400b8f086dc90640bac06bbcb"
+      }
+    },
+    "current": {
+      "SIZE": 16,
+      "FRAME_COUNT": 16,
+      "MAX_REUSE_TILES": 32,
+      "nominal_lut": 1208,
+      "flip_flops": 917,
+      "dsp": 13,
+      "ramb36": 2,
+      "ramb18": 0,
+      "max_register_path": 9,
+      "graph_complete": true,
+      "opened_to_endpoint": {
+        "dut.u_frame_metadata.i_rd_en [1]": 8,
+        "dut.prediction_column_s0 [0]": 8,
+        "dut.prediction_reads_frame_s0": 8,
+        "dut.candidate_exists": 8,
+        "dut.prediction_q_s0 [4]": 8,
+        "ready": 7,
+        "dut.phase [1]": 7,
+        "done_valid": 7,
+        "dut.cursor_mask [14]": 7,
+        "dut.u_prediction_after.i_eligible [0]": 7,
+        "dut.u_prediction_eligible.i_eligible [0]": 7,
+        "dut.frame_open [13]": 6,
+        "dut.command_buffer_valid": 5,
+        "count_k [0]": 5,
+        "cols [0]": 5
+      },
+      "report": {
+        "path": "/tmp/timing_analysis_control_r16/measure/scheduler_opened_keep/scheduler/metrics.json",
+        "sha256": "bd6482d6bd0e6ca154cba33b6e29a570b6031d61a42c9c8346f30081487ff0be"
+      }
+    },
+    "target_paths": {
+      "path": "/tmp/timing_analysis_control_r16/scheduler_opened_target_paths.json",
+      "sha256": "4888c0e452370f9897e7574cc73e7c9b58b01f1a3af0b9b9b5ec60ecc2ea41d7"
+    }
+  }
+}
