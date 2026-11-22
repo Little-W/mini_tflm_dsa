@@ -1,0 +1,49 @@
+{
+  "01_elaborate": {
+    "elapsed_seconds": 9.05,
+    "peak_process_tree_rss_bytes": 458301440,
+    "memory_sample_interval_seconds": 0.2,
+    "script": "01_elaborate.ys",
+    "log": "01_elaborate.log",
+    "script_sha256": "19ded790cea911c4c8a8868f28e2342418adc63e46a3f483055b0bc2d8a58e8f",
+    "output_sha256": "d3361325f05ff394e986758d4694a7f9dc92f588d64d16121f9d257696ae3d4a"
+  },
+  "02a_pre_alu": {
+    "elapsed_seconds": 311.33,
+    "peak_process_tree_rss_bytes": 1629589504,
+    "memory_sample_interval_seconds": 0.2,
+    "script": "02a_pre_alu.ys",
+    "log": "02a_pre_alu.log",
+    "script_sha256": "94a601697046c88e2fedc98b972f8fcb3449549dd6ffc8934ada3e8f0dcc1b81",
+    "output_sha256": "acffbd5667b592ff2a258927744869b4f194d4e96e8e5421ff308886e2756329"
+  },
+  "02b_map_alu": {
+    "elapsed_seconds": 4.03,
+    "peak_process_tree_rss_bytes": 377978880,
+    "memory_sample_interval_seconds": 0.2,
+    "script": "02b_map_alu.command.json",
+    "log": "02b_map_alu.log",
+    "script_sha256": "5201a055e81a0b381dc6816f450b664c0c7cdc3589a5a6184618b82c58b82c08",
+    "output_sha256": "a474eb430074cd9c724b82e35cb1a37fa2279c54dd44e0db4ab1c635ca3d05e0",
+    "automatic_name_counter_sha256": "43362ce6f6edb6020ab5282267c5990cb1af20abcad7f7cd645c09157db31a7e"
+  },
+  "02_pre_lut": {
+    "elapsed_seconds": 86.45,
+    "peak_process_tree_rss_bytes": 1481293824,
+    "memory_sample_interval_seconds": 0.2,
+    "script": "02_pre_lut.ys",
+    "log": "02_pre_lut.log",
+    "script_sha256": "8c61d42c4f2c34ac8a42b116d6c42ceabee0f6d386cf5dec8ed4c5f97373b321",
+    "output_sha256": "1cbb4443d70818e9e6fb991e4d4fd7d0b23a027b1c302f588eb2a0777b091f44"
+  },
+  "03_map_lut": {
+    "elapsed_seconds": 145.77,
+    "peak_process_tree_rss_bytes": 2146553856,
+    "memory_sample_interval_seconds": 0.2,
+    "script": "03_map_lut.ys",
+    "log": "03_map_lut.log",
+    "script_sha256": "8e45c37fa59628f3f5a88380787105a60bb57afb6c51d27ec5a6c0540d863fd0",
+    "output_sha256": "1c80324cb045ee8af88271eceb02f60c9eb3ddf0d36e8c70fb7d9cdcc657fea9",
+    "mapped_verilog_sha256": "ab87d0becce0619872b276f1d8e7d636062bc206a0a8f1dfd88b60a555287cb7"
+  }
+}

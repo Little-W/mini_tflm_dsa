@@ -2,63 +2,69 @@
 
 ## 当前版本
 
-本版本包含 NPU、PicoRV32、256 KiB CPU RAM、AXI 互连和 UART。生产配置采用 16×16 阵列、64 位总线、8 个向量 PE、7 个 8192 字节共享存储块，以及 4096 字节 im2col 缓存。
+当前测量使用 R16 固定源码 `7c932a9e9ec5e48ab119f0227bb894763872157f`，导入起点为 GitHub 上游提交 `48f28649b274851a4768ee60ddb5c6c9e75de295`。完整源码摘要、功能结果、资源和组合路径保存在 [R16 测量目录](rtl_checkpoint_20261122_r16/README.md)。
 
-目标器件为 `xc7a200tfbg484-3`，目标为总 Slice LUT 不超过 50,000、150 MHz 时序通过，以及完整 SoC 最长寄存器间组合路径不超过 14 个组合单元。
+完整 `soc_top` 包含 NPU、PicoRV32、256 KiB CPU RAM、AXI 互连和 UART。生产配置采用 16 × 16 阵列、64 位总线、8 个向量 PE、7 个 8,192 字节共享存储块、4,096 字节 im2col 缓存及 16 个 PS 帧。
 
-生产 RTL 使用可综合算术、布尔运算和数组描述硬件。LUT、BRAM 和 DSP 由综合工具推断；FPGA 门控采用 BUFGCE，通用门控采用低电平锁存使能结构。新增 RTL 注释使用中文。
+目标器件为 `xc7a200tfbg484-3`，目标为 Vivado 总 Slice LUT 不超过 **50,000**、完整连接图中最长寄存器间组合路径不超过 **10 个组合单元**，并在 **150 MHz** 下满足建立时间和保持时间。
+
+生产 RTL 使用可综合算术、布尔运算和数组描述硬件。LUT、BRAM 和 DSP 由综合工具推断；FPGA 门控采用 BUFGCE，通用门控采用低电平锁存使能结构。说明性 RTL 注释使用中文。
 
 ## 完整 SoC 开源综合
 
-固定源码使用 Yosys 0.71+40、xc7 器件系列和完整 `soc_top` 进行综合。完整连接图统计从时钟控制的存储输出到同步数据或控制输入，包含跨模块路径。
+Yosys 与 ABC9 使用生产配置和完整 `soc_top` 完成综合。算术映射使用 RTL 的 `use_dsp` 属性，DSP 总预算为 740。连接图分析包含跨模块路径、同步存储的数据与控制输入，以及 DSP 的实际内部寄存器边界。
 
-| 项目 | 当前结果 |
+| 项目 | R16 结果 |
 | --- | ---: |
-| 逻辑 LUT | 67,029 |
-| 触发器 | 44,495 |
-| DSP | 333 |
-| RAMB36 | 99 |
-| RAMB18 | 73 |
-| 最长寄存器间组合单元数 | 15 |
+| 逻辑 LUT | 48,701 |
+| 分布式 RAM 的 LUT 位置 | 940 |
+| SRL 的 LUT 位置 | 24 |
+| 布局前 LUT 合计 | **49,665** |
+| 触发器 | 42,203 |
+| DSP | 713 |
+| RAMB36 / RAMB18 | 164 / 66 |
+| 最长寄存器间组合路径 | **13 级** |
+| 超过 10 级的路径组 / 端点 | 126 / 1,026 |
 | 连接图完整性 | 完整 |
 
-当前最长路径为 15 级。两种独立完整 DMA 配置的最长寄存器路径均为 14 级。完整 SoC 使用上表的直接测量结果。
+布局前 LUT 合计低于 50,000。最长路径仍超过 10 级目标。本版本尚未执行 Vivado 布局布线，物理 Slice LUT 数量与 150 MHz 时序状态未确认。目标状态分别记录在 [status.json](rtl_checkpoint_20261122_r16/status.json) 中。
 
-开源工具记录布局前逻辑 LUT 数量；50,000 的目标按 Vivado 总 Slice LUT 检查，包含逻辑、分布式 RAM 和 SRL。当前版本的 Vivado 资源及 150 MHz 布线后时序等待实际测量。完整参数、源码散列和路径结果见 [SoC 测量数据](data/npu_soc_optimization_20261121.json)。
-
-## 已完成验证
+## 功能与算术验证
 
 | 检查 | 结果 |
 | --- | --- |
-| PE8 共享存储向量引擎 | 1,031 个场景，308,441 个输出元素通过 |
-| PE16 共享量化向量引擎 | 1,031 个场景，308,748 个输出元素通过 |
-| 操作数读取完成与任务恢复 | 5 个任务通过，覆盖响应等待、完成背压和同拍故障处理 |
-| DMA 中止与恢复 | 16 个事务边界场景及 16 次后续恢复通过 |
-| 时钟门控 | 通用分支与官方 BUFGCE 模型分支通过 |
+| 完整生产 NPU | 86 项任务、216,348 个 INT32 数值检查通过 |
+| 帧输入位置与准备周期 | 1,860 项位置检查通过，每帧准备 11 个周期 |
+| 完整 CPU 模式 0 | 6,272 个输出通过，49,272,702 个周期 |
+| 完整 CPU 模式 1 | 6,272 个输出通过，2,781,063 个周期 |
+| CPU 内存边界 | 两种模式的边界错误计数均为零 |
+| 实际选中的 DSP 算术映射 | 379 个算术单元、94 组参数的组合等价检查通过 |
 
-完整生产 NPU 的功能通过状态尚未确认。各模块目录保存当前算术等价、实际控制更新、四态检查与数值回归的结果。上述完整向量及控制回归均使用相同的固定 RTL，详见 [RTL 验证数据](data/npu_rtl_verification_20261121.json)。
+AXI 占用状态、PS 长度比较、调度器帧计数和 FIFO 释放选择分别保存形式证明、四态检查和数值任务的结果。各模块检查及完整构建输入见 [R16 验证说明](rtl_checkpoint_20261122_r16/README.md#功能与状态检查)。
 
-## Vivado 运行入口
+## 重复运行
 
-在仓库根目录执行；已有仓库保留 `picorv32` 子模块，首次克隆后执行 `git submodule update --init picorv32`。
+在仓库根目录执行完整 NPU 与开源综合：
 
 ```bash
-NPU_CONFIG="$PWD/config/npu_fpga.mk" \
-VIVADO_SYNTH_STRATEGY=Flow_AreaOptimized_high \
-VIVADO_SYNTH_DIRECTIVE=AreaOptimized_high \
-VIVADO_RUN_IMPL=0 VIVADO_JOBS=8 \
+python3 test/frame_address/run_npu.py --source-root . \
+  --out build/r16_npu --verilator verilator --jobs 1
+
+python3 scripts/fpga/open_fpga_synth.py --source-root . --cases soc_top \
+  --out build/r16_soc --rtl-dsp-attributes --wide-alu-dsp-budget 740 \
+  --max-register-path-cells 10 --require-register-path-limit
+```
+
+综合入口在完整路径超过 10 级时返回非零状态，同时保存全部已完成的综合和测量报告。
+
+Vivado 板级综合与布局布线入口如下。首次克隆后先执行 `git submodule update --init picorv32`。
+
+```bash
 vivado -mode batch -source scripts/fpga/vivado_synth_fpga.tcl \
-  -tclargs build/vivado_150mhz xc7a200tfbg484-3 16 4 65536 0
+  -tclargs build/vivado_fpga_150
+
+VIVADO_RUN_IMPL=1 vivado -mode batch -source scripts/fpga/vivado_synth_fpga.tcl \
+  -tclargs build/vivado_fpga_150_impl
 ```
 
-核心时钟默认 150 MHz。脚本调用 Python 3 记录源码和参数清单，并生成资源及时序摘要。综合报告位于 `build/vivado_150mhz/reports/`。如需布局布线，将 `VIVADO_RUN_IMPL` 设为 `1` 并使用新的工程目录，布线后的报告位于对应 `reports/routed/`。
-
-## 完整连接图复现
-
-```bash
-python scripts/fpga/open_fpga_synth.py --cases soc_top \
-  --max-register-path-cells 14 --require-register-path-limit \
-  --out build/open_soc_150mhz
-```
-
-入口检查完整连接图，任一路径超过指定阈值时返回非零状态，同时保留综合及路径报告。
+器件参数、实际引脚约束、资源报告及建立和保持时间检查见 [完整 SoC 器件测量](fpga_150mhz_measurement.md)。

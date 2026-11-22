@@ -1,0 +1,233 @@
+{
+  "passed": true,
+  "source_commit": "7c932a9e9ec5e48ab119f0227bb894763872157f",
+  "tasks": 86,
+  "int32_checks": 216348,
+  "suites": [
+    {
+      "suite": "functional",
+      "passed": true,
+      "tasks": 38,
+      "int32_checks": 11118
+    },
+    {
+      "suite": "capacity",
+      "passed": true,
+      "tasks": 21,
+      "int32_checks": 173642
+    },
+    {
+      "suite": "output",
+      "passed": true,
+      "tasks": 15,
+      "int32_checks": 11392
+    },
+    {
+      "suite": "packed",
+      "passed": true,
+      "tasks": 12,
+      "int32_checks": 20196
+    }
+  ],
+  "frame_start_delay_cycles": 11,
+  "frame_cache_slot_checks": 1860,
+  "coverage": [
+    {
+      "log": "capacity/capacity.log",
+      "accepted": 1578,
+      "started": 1578,
+      "cancelled": 0,
+      "prepare_cycles": 17358,
+      "ws_frames": 759,
+      "is_frames": 819,
+      "packed_frames": 0,
+      "wide_frames": 60,
+      "context_cycles": 622479,
+      "context_consumptions": 3156,
+      "cache_slot_checks": 1578
+    },
+    {
+      "log": "fpga/npu/s16/batch_group_commands.log",
+      "accepted": 0,
+      "started": 0,
+      "cancelled": 0,
+      "prepare_cycles": 0,
+      "ws_frames": 0,
+      "is_frames": 0,
+      "packed_frames": 0,
+      "wide_frames": 0,
+      "context_cycles": 0,
+      "context_consumptions": 0,
+      "cache_slot_checks": 0
+    },
+    {
+      "log": "fpga/npu/s16/bypass_fixed.log",
+      "accepted": 0,
+      "started": 0,
+      "cancelled": 0,
+      "prepare_cycles": 0,
+      "ws_frames": 0,
+      "is_frames": 0,
+      "packed_frames": 0,
+      "wide_frames": 0,
+      "context_cycles": 0,
+      "context_consumptions": 0,
+      "cache_slot_checks": 0
+    },
+    {
+      "log": "fpga/npu/s16/cache_fixed.log",
+      "accepted": 0,
+      "started": 0,
+      "cancelled": 0,
+      "prepare_cycles": 0,
+      "ws_frames": 0,
+      "is_frames": 0,
+      "packed_frames": 0,
+      "wide_frames": 0,
+      "context_cycles": 0,
+      "context_consumptions": 0,
+      "cache_slot_checks": 0
+    },
+    {
+      "log": "fpga/npu/s16/dense_dataflows.log",
+      "accepted": 0,
+      "started": 0,
+      "cancelled": 0,
+      "prepare_cycles": 0,
+      "ws_frames": 0,
+      "is_frames": 0,
+      "packed_frames": 0,
+      "wide_frames": 0,
+      "context_cycles": 0,
+      "context_consumptions": 0,
+      "cache_slot_checks": 0
+    },
+    {
+      "log": "fpga/npu/s16/error_recovery.log",
+      "accepted": 0,
+      "started": 0,
+      "cancelled": 0,
+      "prepare_cycles": 0,
+      "ws_frames": 0,
+      "is_frames": 0,
+      "packed_frames": 0,
+      "wide_frames": 0,
+      "context_cycles": 0,
+      "context_consumptions": 0,
+      "cache_slot_checks": 0
+    },
+    {
+      "log": "fpga/npu/s16/geometry.log",
+      "accepted": 0,
+      "started": 0,
+      "cancelled": 0,
+      "prepare_cycles": 0,
+      "ws_frames": 0,
+      "is_frames": 0,
+      "packed_frames": 0,
+      "wide_frames": 0,
+      "context_cycles": 0,
+      "context_consumptions": 0,
+      "cache_slot_checks": 0
+    },
+    {
+      "log": "fpga/npu/s16/input_precision.log",
+      "accepted": 0,
+      "started": 0,
+      "cancelled": 0,
+      "prepare_cycles": 0,
+      "ws_frames": 0,
+      "is_frames": 0,
+      "packed_frames": 0,
+      "wide_frames": 0,
+      "context_cycles": 0,
+      "context_consumptions": 0,
+      "cache_slot_checks": 0
+    },
+    {
+      "log": "fpga/npu/s16/mixed_conv_gemm.log",
+      "accepted": 0,
+      "started": 0,
+      "cancelled": 0,
+      "prepare_cycles": 0,
+      "ws_frames": 0,
+      "is_frames": 0,
+      "packed_frames": 0,
+      "wide_frames": 0,
+      "context_cycles": 0,
+      "context_consumptions": 0,
+      "cache_slot_checks": 0
+    },
+    {
+      "log": "fpga/npu/s16/smoke.log",
+      "accepted": 0,
+      "started": 0,
+      "cancelled": 0,
+      "prepare_cycles": 0,
+      "ws_frames": 0,
+      "is_frames": 0,
+      "packed_frames": 0,
+      "wide_frames": 0,
+      "context_cycles": 0,
+      "context_consumptions": 0,
+      "cache_slot_checks": 0
+    },
+    {
+      "log": "output/fifo_modes.log",
+      "accepted": 30,
+      "started": 30,
+      "cancelled": 0,
+      "prepare_cycles": 330,
+      "ws_frames": 24,
+      "is_frames": 6,
+      "packed_frames": 0,
+      "wide_frames": 0,
+      "context_cycles": 17611,
+      "context_consumptions": 60,
+      "cache_slot_checks": 30
+    },
+    {
+      "log": "packed.log",
+      "accepted": 252,
+      "started": 252,
+      "cancelled": 0,
+      "prepare_cycles": 2772,
+      "ws_frames": 144,
+      "is_frames": 108,
+      "packed_frames": 252,
+      "wide_frames": 126,
+      "context_cycles": 122093,
+      "context_consumptions": 504,
+      "cache_slot_checks": 252
+    }
+  ],
+  "configuration": {
+    "path": "config/npu_fpga.mk",
+    "sha256": "39e60e26a3236abb0d50cdecdec3f4a41739629845e005d05813d2bcf5a43ecc",
+    "values": {
+      "PCR_ENGINE": "1",
+      "SIZE": "16",
+      "NPU_AXI_DATA_WIDTH": "64",
+      "IM2COL_CACHE_BYTES": "4096",
+      "SHARED_BANK_BYTES": "8192",
+      "SHARED_BANK_COUNT": "7",
+      "IA_CACHE_BLOCKS": "4",
+      "PS_FRAME_COUNT": "16",
+      "AXI_READ_OUTSTANDING": "4",
+      "PS_POOL_BYTES": "49152",
+      "PS_FORCE_RAW": "1",
+      "CAPACITY_BUDGET_BYTES": "131072",
+      "CAPACITY_BUDGET_SCOPE": "buffer-ram",
+      "CAPACITY_REPRESENTATION": "raw32"
+    },
+    "defines": [
+      "SYNTHESIS=1",
+      "XILINX_FPGA=1",
+      "XILINX_CLK_WIZ_IP=1",
+      "GEMPACT_PS_COMPRESS=1",
+      "GEMMORA_PS_POOL_BYTES=49152",
+      "GEMMORA_PS_FORCE_RAW=1"
+    ]
+  },
+  "original_report_sha256": "dde774e21082243fed9314e66ddfb2a169f7079b5187ea0c5a45fcf112f79180"
+}

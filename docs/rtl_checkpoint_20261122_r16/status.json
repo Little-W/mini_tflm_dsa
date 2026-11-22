@@ -1,0 +1,46 @@
+{
+  "upstream_commit": "48f28649b274851a4768ee60ddb5c6c9e75de295",
+  "validation_source_commit": "7c932a9e9ec5e48ab119f0227bb894763872157f",
+  "date": "2026-11-22",
+  "top": "soc_top",
+  "part": "xc7a200tfbg484-3",
+  "targets": {
+    "lut_sites_maximum": 50000,
+    "combinational_cells_maximum": 10,
+    "clock_frequency_mhz": 150,
+    "clock_period_ns": 6.666666666666667
+  },
+  "observed": {
+    "lut_sites_before_packing": 49665,
+    "logic_luts": 48701,
+    "lut_ram_sites": 940,
+    "srl_sites": 24,
+    "flip_flops": 42203,
+    "dsp": 713,
+    "ramb36": 164,
+    "ramb18": 66,
+    "maximum_combinational_cells": 13,
+    "over_limit_path_groups": 126,
+    "over_limit_endpoint_ports": 1026
+  },
+  "checks": {
+    "prepacking_lut_target_met": true,
+    "connected_path_target_met": false,
+    "connected_graph_complete": true,
+    "production_npu_passed": true,
+    "cpu_firmware_passed": true,
+    "selected_arithmetic_equivalence_passed": true,
+    "routed_timing_150mhz_confirmed": null,
+    "placed_slice_lut_target_confirmed": null
+  },
+  "mapping": {
+    "rtl_dsp_attributes": true,
+    "total_dsp_budget": 740,
+    "selected_arithmetic_cells": 379,
+    "proved_parameter_profiles": 94
+  },
+  "source_manifest_sha256": "f9e86ed38b5e7e73741960972e7e686be85c4addf723f8c17241e4a06b66636e",
+  "synthesis_manifest_sha256": "8b93ba828c8e281d431a856ed7592f667833481570aaf3fde0ae9c08eac7e2c8",
+  "full_paths_sha256": "f557077e4786d7b5b0abb5f17b8972f80f0eb630d622fccf4ee587b4e8e9de34",
+  "physical_timing_status": "本版本尚未执行 Vivado 布局布线，150 MHz 状态未确认。"
+}
