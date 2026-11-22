@@ -2,7 +2,7 @@
 
 目标器件为 `xc7a200tfbg484-3`。生产配置包括 16×16 计算阵列、8 个向量处理单元、64 位 AXI、7 个 8,192 字节共享存储银行、4,096 字节 im2col 缓存、16 个 PS 帧和 512 行量化输入缓存。
 
-设计目标为 Vivado 报告的 **Slice LUTs 不超过 45,000**，在 **6.667 ns** 时钟周期下满足建立时间和保持时间。组合级数仅作诊断，不是强制门槛。面积统计包含逻辑 LUT 和存储 LUT。`RAMB36 + RAMB18 / 2` 表示使用的 Block RAM Tile 数量。
+设计目标为 Vivado 报告的 **Slice LUTs 不超过 50,000**，完整连接图中寄存器间组合路径不超过 **10 个组合单元**，并在 **6.667 ns** 时钟周期下满足建立时间和保持时间。面积统计包含逻辑 LUT、存储 LUT 和 SRL。`RAMB36 + RAMB18 / 2` 表示使用的 Block RAM Tile 数量。
 
 ## 板级 fpga_top 测量
 
@@ -54,7 +54,7 @@ vivado -mode batch -source scripts/fpga/vivado_synth_soc.tcl \
 
 报告生成后重新检查全部输入文件的内容。如果运行期间修改了任一输入，脚本终止结果汇总，避免将多个源码版本的内容记录为同一次测量。
 
-综合与布线后记录计算阵列的 B 端口连接、实际 `BREG`、`BCASCREG`、`B_INPUT` 属性与网络连接，并保存完整 DSP 参数表。级联长度不作为时序硬性门槛；时序验收以布线后的 setup 和 hold 为准。
+综合与布线后记录计算阵列的 B 端口连接、实际 `BREG`、`BCASCREG`、`B_INPUT` 属性与网络连接，并保存完整 DSP 参数表。连接图分析依据这些寄存器参数确定组合边界；时序检查使用布线后的 setup 和 hold 报告。
 
 ## 从同一 RTL 执行布局布线
 
@@ -71,9 +71,9 @@ vivado -mode batch -source scripts/fpga/vivado_synth_soc.tcl \
 
 ## 结果解释
 
-`measurement.json` 中的 `slice_luts` 直接读取原生 Vivado 利用率报告，包含逻辑和存储两部分。TNS 与失败端点数量来自 Vivado 原生时序汇总；端点 TSV 是有界诊断样本，不是全量端点集合。
+`measurement.json` 中的 `slice_luts` 直接读取原生 Vivado 利用率报告，包含逻辑和存储两部分。TNS 与失败端点数量来自 Vivado 原生时序汇总；端点 TSV 保存有界诊断样本。
 
-`maximum_observed_logic_levels` 表示所枚举端点最差时序路径中的最大逻辑级数。一个端点还可能有其他组合路径，因此 `all_connected_paths_within_nine_levels` 保持未确认，直到完成同一网表的全部连接路径检查。建立时间和保持时间还包含器件单元及布线延迟，最终频率状态由布线后的实现检查确定。
+`maximum_observed_logic_levels` 表示所枚举端点最差时序路径中的最大逻辑级数。完整深度条件由同一网表的全部连接路径检查产生，保存在 `all_connected_paths_within_limit`；连接图不完整时该条件保持未确认。建立时间和保持时间还包含器件单元及布线延迟，最终频率状态由布线后的实现检查确定。
 
 综合结果的 `timing_150mhz_confirmed` 为未确认。布线结果同时保存实际实现检查状态。资源条件、观察到的逻辑级数条件和频率条件分别记录，便于明确每项目标的测量状态。
 
