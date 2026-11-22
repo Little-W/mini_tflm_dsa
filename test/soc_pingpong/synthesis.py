@@ -15,7 +15,7 @@ SOURCE = Path("rtl/soc/soc_axi_pingpong_buffer.sv")
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--reference", default="2f06471c")
+    parser.add_argument("--reference", default="8aa34632c9cb0d1a8ea047a76d53e28dfee0006f")
     parser.add_argument("--out", type=Path, default=ROOT / "build/soc_pingpong_synthesis")
     args = parser.parse_args()
     out = args.out.resolve()

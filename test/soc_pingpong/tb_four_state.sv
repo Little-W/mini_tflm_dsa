@@ -25,7 +25,7 @@ module pingpong_compare #(
     // 包括无效周期的数据输出，以及两个数据寄存器和全部控制状态。
     task check;
         if ({r_ready, r_valid, r_data, r.data0_q, r.data1_q, r.rd_sel_q, r.wr_sel_q, r.count_q} !==
-            {c_ready, c_valid, c_data, c.data0_q, c.data1_q, c.rd_sel_q, c.wr_sel_q, c.count_q}) begin
+            {c_ready, c_valid, c_data, c.data0_q, c.data1_q, c.rd_sel_q, c.wr_sel_q, ({1'b0, c.full_q} + {1'b0, c.occupied_q})}) begin
             $fatal(1, "Pingpong mismatch width=%0d check=%0d", WIDTH, checks);
         end
         checks = checks + 1;

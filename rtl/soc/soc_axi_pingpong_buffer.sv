@@ -20,7 +20,8 @@ module soc_axi_pingpong_chan #(
     logic [WIDTH-1:0] data1_q;
     logic             rd_sel_q;
     logic             wr_sel_q;
-    logic [1:0]       count_q;
+    logic             occupied_q;
+    logic             full_q;
     logic             push;
     logic             pop;
 
@@ -33,14 +34,15 @@ module soc_axi_pingpong_chan #(
     //! 2. 数据与状态更新
     //! ------------------
 
-    // 两项缓冲保存完整数据；同周期接收和发送保持占用计数并推进读写位置。
+    // 两项缓冲直接保存非空与满状态，同周期接收和发送保持占用状态。
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             data0_q <= '0;
             data1_q <= '0;
             rd_sel_q <= 1'b0;
             wr_sel_q <= 1'b0;
-            count_q <= 2'd0;
+            occupied_q <= 1'b0;
+            full_q <= 1'b0;
         end else begin
             if (push) begin
                 if (wr_sel_q) begin
@@ -54,8 +56,14 @@ module soc_axi_pingpong_chan #(
                 rd_sel_q <= ~rd_sel_q;
             end
             case ({push, pop})
-                2'b10: count_q <= count_q + 2'd1;
-                2'b01: count_q <= count_q - 2'd1;
+                2'b10: begin
+                    occupied_q <= 1'b1;
+                    full_q <= occupied_q;
+                end
+                2'b01: begin
+                    occupied_q <= full_q;
+                    full_q <= 1'b0;
+                end
                 default: begin end
             endcase
         end
@@ -64,8 +72,9 @@ module soc_axi_pingpong_chan #(
     //! 3. 输出生成
     //! ------------
 
-    assign s_ready = count_q != 2'd2;
-    assign m_valid = count_q != 2'd0;
+    // 输出资格由占用状态直接产生，响应有效信号无需经过计数译码。
+    assign s_ready = !full_q;
+    assign m_valid = occupied_q;
 
     // 读位置选择当前发送项，数据在等待接收期间保持稳定。
     assign m_data = rd_sel_q ? data1_q : data0_q;
