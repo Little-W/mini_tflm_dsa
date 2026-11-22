@@ -204,8 +204,10 @@ module vec_s8_to_fifo_full #(
     assign next_write_bank_mask = {write_bank_mask_q[BANKS-2:0], write_bank_mask_q[BANKS-1]};
   end
   // 写入银行同时保存独热位置，相邻银行的阻塞判断只需并行选择与归并。
-  wire write_bank_blocked = |(bank_ready & write_bank_mask_q);
-  wire next_write_bank_blocked = |(bank_ready & next_write_bank_mask);
+  logic [BANKS-1:0] bank_ready_next, write_bank_mask_next, next_bank_mask_next;
+  logic write_bank_blocked_q, next_write_bank_blocked_q;
+  wire write_bank_blocked = write_bank_blocked_q;
+  wire next_write_bank_blocked = next_write_bank_blocked_q;
 `ifdef NPU_SIM_ASSERT
   if (BANKS > 32) begin : g_check_write_capacity
     initial forever @(posedge clk) begin
@@ -222,6 +224,27 @@ module vec_s8_to_fifo_full #(
     if (!rst_n) write_bank_mask_q <= {{(BANKS-1){1'b0}}, 1'b1};
     else if (finish_write_bank && !write_bank_blocked)
       write_bank_mask_q <= next_write_bank_mask;
+  end
+  // 银行状态和写入位置共同更新时保存阻塞资格，外部控制直接读取寄存结果。
+  always_comb begin
+    write_bank_mask_next = write_bank_mask_q;
+    if (finish_write_bank && !write_bank_blocked) begin
+      write_bank_mask_next = next_write_bank_mask;
+    end
+  end
+  if (BANKS == 1) begin : g_single_next_mask
+    assign next_bank_mask_next = 1'b1;
+  end else begin : g_rotated_next_mask
+    assign next_bank_mask_next = {write_bank_mask_next[BANKS-2:0], write_bank_mask_next[BANKS-1]};
+  end
+  always_ff @(posedge clk) begin
+    if (!rst_n) begin
+      write_bank_blocked_q <= 1'b0;
+      next_write_bank_blocked_q <= 1'b0;
+    end else begin
+      write_bank_blocked_q <= |(bank_ready_next & write_bank_mask_next);
+      next_write_bank_blocked_q <= |(bank_ready_next & next_bank_mask_next);
+    end
   end
   wire [COUNT_WIDTH-1:0] write_rows_next =
       in_valid ? (COUNT_WIDTH'(write_ptr) + COUNT_WIDTH'(1)) : COUNT_WIDTH'(write_ptr);
@@ -284,9 +307,9 @@ module vec_s8_to_fifo_full #(
   end
 
   wire [COUNT_WIDTH-1:0] active_read_count = active_read_count_q;
+  logic [COUNT_WIDTH-1:0] transpose_row_count_q;
   wire [COUNT_WIDTH-1:0] output_row_count =
-      transpose_mode_tmp ? (COUNT_WIDTH'(vec_valid_num_row_tmp) + COUNT_WIDTH'(1))
-                         : active_read_count;
+      transpose_mode_tmp ? transpose_row_count_q : active_read_count;
   wire [COUNT_WIDTH-1:0] output_col_count =
       transpose_mode_tmp ? active_read_count
                          : (COUNT_WIDTH'(vec_valid_num_col_tmp) + COUNT_WIDTH'(1));
@@ -318,8 +341,26 @@ module vec_s8_to_fifo_full #(
   wire output_fire = output_ready && output_valid;
   wire last_beat_in_row = output_fire &&
                           (COUNT_WIDTH'(beat_idx) == last_beat_idx_cur);
-  wire last_row_in_bank = last_beat_in_row &&
-                          ((COUNT_WIDTH'(read_ptr) + COUNT_WIDTH'(1)) >= output_row_count);
+  logic [COUNT_WIDTH-1:0] read_row_limit_q;
+  logic [PTR_WIDTH-1:0] read_ptr_increment;
+  assign read_ptr_increment = read_ptr + PTR_WIDTH'(1);
+  // 行范围比较独立完成，输出握手只参与最终释放条件。
+  (* keep = 1 *) logic read_row_count_last;
+  (* keep = 1 *) logic read_normal_row_last, read_transpose_row_last;
+  assign read_normal_row_last = read_row_limit_q >= active_read_count;
+  assign read_transpose_row_last = read_row_limit_q >= transpose_row_count_q;
+  always_comb begin
+    read_row_count_last = read_row_limit_q >= output_row_count;
+    case (transpose_mode_tmp)
+      1'b0: begin
+        read_row_count_last = read_normal_row_last;
+      end
+      1'b1: begin
+        read_row_count_last = read_transpose_row_last;
+      end
+    endcase
+  end
+  wire last_row_in_bank = last_beat_in_row && read_row_count_last;
   wire start_stream = start_permitted && !stream_active && read_bank_ready;
   wire stream_has_next = output_fire && !last_row_in_bank;
   assign output_valid = coalesce_enable ? (co_active && co_data_valid) : (stream_active && data_valid);
@@ -479,17 +520,24 @@ module vec_s8_to_fifo_full #(
         write_bank == BANK_WIDTH'(bank);
     assign group_release = coalesce_enable && co_finish &&
         (((bank + BANKS - int'(read_bank)) % BANKS) < int'(co_tiles));
-    assign stream_release = !coalesce_enable && output_fire && last_row_in_bank &&
+    assign stream_release = !coalesce_enable && output_ready && stream_active && data_valid &&
+        (COUNT_WIDTH'(beat_idx) == last_beat_idx_cur) && read_row_count_last &&
         read_bank == BANK_WIDTH'(bank);
     assign bank_write_complete[bank] = write_complete;
     assign bank_release[bank] = group_release || stream_release;
+    always_comb begin
+      bank_ready_next[bank] = bank_ready[bank];
+      if (group_release || stream_release) begin
+        bank_ready_next[bank] = 1'b0;
+      end else if (write_complete) begin
+        bank_ready_next[bank] = 1'b1;
+      end
+    end
     always_ff @(posedge clk) begin
       if (!rst_n) begin
         bank_ready[bank] <= 1'b0;
-      end else if (group_release || stream_release) begin
-        bank_ready[bank] <= 1'b0;
-      end else if (write_complete) begin
-        bank_ready[bank] <= 1'b1;
+      end else begin
+        bank_ready[bank] <= bank_ready_next[bank];
       end
     end
   end
@@ -500,12 +548,14 @@ module vec_s8_to_fifo_full #(
       read_bank    <= '0;
       write_ptr    <= '0;
       read_ptr     <= '0;
+      read_row_limit_q <= COUNT_WIDTH'(1);
       co_active <= 0; co_data_valid <= 0; co_current_bank <= 0; co_row <= 0; co_col <= 0; co_beat <= 0;
       stream_active <= 1'b0;
       data_valid   <= 1'b0;
       beat_idx     <= '0;
       vec_valid_num_col_tmp <= '0;
       vec_valid_num_row_tmp <= '0;
+      transpose_row_count_q <= COUNT_WIDTH'(1);
       transpose_mode_tmp <= 1'b0;
       oa_fifo_req  <= 1'b0;
       ready_bank_count_q <= '0;
@@ -551,22 +601,26 @@ module vec_s8_to_fifo_full #(
         data_valid    <= 1'b1;
         beat_idx      <= '0;
         read_ptr      <= '0;
+        read_row_limit_q <= COUNT_WIDTH'(1);
         active_read_count_q <= read_bank_count;
         last_beat_idx_q <= last_beat_index(transpose_mode_eff, read_bank_count, vec_valid_num_col);
         vec_valid_num_col_tmp <= vec_valid_num_col;
         vec_valid_num_row_tmp <= vec_valid_num_row;
+        transpose_row_count_q <= COUNT_WIDTH'(vec_valid_num_row) + COUNT_WIDTH'(1);
         transpose_mode_tmp <= transpose_mode_eff;
 
       end else if (stream_active && (read_ptr == '0) && (beat_idx == '0) && !output_ready) begin
         last_beat_idx_q <= last_beat_index(transpose_mode_eff, active_read_count_q, vec_valid_num_col);
         vec_valid_num_col_tmp <= vec_valid_num_col;
         vec_valid_num_row_tmp <= vec_valid_num_row;
+        transpose_row_count_q <= COUNT_WIDTH'(vec_valid_num_row) + COUNT_WIDTH'(1);
         transpose_mode_tmp <= transpose_mode_eff;
       end else if (output_fire) begin
         if (last_row_in_bank) begin
           stream_active <= 1'b0;
           data_valid    <= 1'b0;
           read_ptr      <= '0;
+          read_row_limit_q <= COUNT_WIDTH'(1);
           beat_idx      <= '0;
           active_read_count_q <= '0;
           last_beat_idx_q <= last_beat_index(transpose_mode_tmp, '0, vec_valid_num_col_tmp);
@@ -576,7 +630,8 @@ module vec_s8_to_fifo_full #(
           end
         end else if (last_beat_in_row) begin
           beat_idx <= '0;
-          read_ptr <= read_ptr + 1'b1;
+          read_ptr <= read_ptr_increment;
+          read_row_limit_q <= COUNT_WIDTH'(read_ptr_increment) + COUNT_WIDTH'(1);
         end else begin
           beat_idx <= beat_idx + 1'b1;
         end
