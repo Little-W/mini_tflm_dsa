@@ -1,0 +1,145 @@
+{
+  "passed": true,
+  "reference_commit": "8aa34632",
+  "source_sha256": {
+    "rtl/npu/ps_compact/ps_frame_store.sv": "cde65703e3bdc845764cad92ef1c6a52bd88574c41d0fbcd6f71a99ca5a483b1"
+  },
+  "reference_source_sha256": "3c7502588ac6a315a804575346dcf303520b82260c4140acb8ff03319b467359",
+  "qualification_proof": {
+    "unconstrained_inputs": true,
+    "unchanged_outside_request_qualification": true,
+    "profiles": [
+      {
+        "passed": true,
+        "checks": 13698,
+        "unknown_checks": 9472,
+        "MAX_FRAME_ROWS": 1,
+        "FRAME_COUNT": 1,
+        "input_bits": 37
+      },
+      {
+        "passed": true,
+        "checks": 16002,
+        "unknown_checks": 11776,
+        "MAX_FRAME_ROWS": 3,
+        "FRAME_COUNT": 3,
+        "input_bits": 46
+      },
+      {
+        "passed": true,
+        "checks": 43906,
+        "unknown_checks": 39680,
+        "MAX_FRAME_ROWS": 47,
+        "FRAME_COUNT": 16,
+        "input_bits": 155
+      },
+      {
+        "passed": true,
+        "checks": 61314,
+        "unknown_checks": 57088,
+        "MAX_FRAME_ROWS": 512,
+        "FRAME_COUNT": 16,
+        "input_bits": 223
+      },
+      {
+        "passed": true,
+        "checks": 115074,
+        "unknown_checks": 110848,
+        "MAX_FRAME_ROWS": 1024,
+        "FRAME_COUNT": 32,
+        "input_bits": 433
+      }
+    ],
+    "comparisons": 249994,
+    "unknown_comparisons": 228864,
+    "report": {
+      "path": "/tmp/timing_analysis_control_r16/ps_length_formal/summary.json",
+      "sha256": "dfcd906459defb03f59499a8d69c78e388beb7f80bfd3811575dbac825920a1a"
+    }
+  },
+  "functional": {
+    "all_public_outputs_compared_each_cycle": true,
+    "independent_memory_model": true,
+    "undefined_behavior_sanitizer": true,
+    "profiles": [
+      {
+        "MAX_FRAME_ROWS": 16,
+        "FRAME_COUNT": 4,
+        "commands": 818,
+        "int32_values": 89648,
+        "cycles": 18501,
+        "report": {
+          "path": "/tmp/timing_analysis_control_r16/ps_length_numeric/summary.json",
+          "sha256": "df11884ef2d99248561b24b898d43739ad7e38bb2ae7347a360efaa6edbcb0d0"
+        }
+      },
+      {
+        "MAX_FRAME_ROWS": 256,
+        "FRAME_COUNT": 4,
+        "commands": 15,
+        "int32_values": 30720,
+        "cycles": 3990,
+        "report": {
+          "path": "/tmp/timing_analysis_control_r16/ps_length_numeric_large/summary.json",
+          "sha256": "9f10ec01763aa5945aaf3e8a7a78b7259a9a245def5406e49be897847c817556"
+        }
+      }
+    ],
+    "commands": 833,
+    "int32_values": 120368,
+    "cycles": 22491
+  },
+  "measurement": {
+    "reference": {
+      "MAX_FRAME_ROWS": 512,
+      "FRAME_COUNT": 16,
+      "nominal_lut": 173,
+      "flip_flops": 224,
+      "dsp": 0,
+      "ramb36": 0,
+      "ramb18": 0,
+      "max_register_path": 6,
+      "graph_complete": true,
+      "field_to_valid": {
+        "frame_rows": 6,
+        "frame_id": 3,
+        "frame_init": 6,
+        "lengths": 6
+      },
+      "report": {
+        "path": "/tmp/timing_analysis_control_r16/measure/ps_length_reference/qualification/metrics.json",
+        "sha256": "6932bc13f7202cb17b69b556d794282d666ca3637cb148c0c9a9e11dc2419d9e"
+      }
+    },
+    "current": {
+      "MAX_FRAME_ROWS": 512,
+      "FRAME_COUNT": 16,
+      "nominal_lut": 127,
+      "flip_flops": 224,
+      "dsp": 0,
+      "ramb36": 0,
+      "ramb18": 0,
+      "max_register_path": 5,
+      "graph_complete": true,
+      "field_to_valid": {
+        "frame_rows": 5,
+        "frame_id": 3,
+        "frame_init": 4,
+        "lengths": 5
+      },
+      "report": {
+        "path": "/tmp/timing_analysis_control_r16/measure/ps_length_current/qualification/metrics.json",
+        "sha256": "3d6a7566ef837680fc840531611287f70c742cc4f0438920329acc3205f6ea38"
+      }
+    },
+    "target_path_report": {
+      "path": "/tmp/timing_analysis_control_r16/ps_length_target_paths.json",
+      "sha256": "1bdf56a181eb976815caf3bdc52fe917015607a02dd96077d185498bb6dacee4"
+    }
+  },
+  "verification_scripts": {
+    "test/ps_request_ranges/run_formal.py": "80036e19402d99389a7c46b87b2e494b4ebc34c6014ae160bb77533204871fc0",
+    "test/ps_request_ranges/run_numeric.py": "453c3a4eb6ac3996d9b07b3a4f3794cdedb8d68186f7fdd145bbf615e5d81d03",
+    "test/ps_frame_selection/synthesis_cases.json": "ae5392e922f08a4dbf2c61c8ae10336e4223b82679a28cac214c206f272edac7"
+  }
+}
