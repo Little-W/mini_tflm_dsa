@@ -1,0 +1,216 @@
+{
+  "passed": true,
+  "reference_revision": "cfcc1a95",
+  "source_sha256": {
+    "rtl/npu/loaders/kernel_loader.sv": "79d607d1197e1219addaa1c347a3c81bc4340cdb588bb8d4b78a8d5c551608e5",
+    "rtl/npu/loaders/kernel_loader_ctrl.sv": "00ba15c7c0e9d63bb4822026ae285b7e32cb99f271888714b750bc95e695a504"
+  },
+  "reference_sha256": {
+    "rtl/npu/loaders/kernel_loader.sv": "3f5ce2f659074b97d9a6d58be4de0565c1cd2df9cf7bda1f8e40ad882e2d7625",
+    "rtl/npu/loaders/kernel_loader_ctrl.sv": "1647b76db08869e7e168b71e0d104c4a713546f39dfe97b69cb6176eed1ea5e1"
+  },
+  "formal": {
+    "passed": true,
+    "profiles": [
+      {
+        "profile": "16:29:64",
+        "passed": true,
+        "common_state_bits": 15216,
+        "additional_state_bits": 1,
+        "reset_state_bits": 2174,
+        "unreset_state_bits": 13042,
+        "report": "/tmp/timing_analysis_kernel_accept_r13/public_formal/16_29_64/symbolic/summary.json",
+        "report_sha256": "10a1ce2b0ee43aaf14cd056342322df2121312b464e835258fa3e528dc2f6d5d"
+      }
+    ],
+    "invariant_report": "/tmp/timing_analysis_kernel_accept_r13/public_formal/invariant/summary.json",
+    "invariant_report_sha256": "67c72152aea0fd9332eaca297bae34526497b54105548155e6e346b21a32d234",
+    "all_reference_state_bits_and_public_outputs": true,
+    "external_inputs_constrained": false
+  },
+  "invariant": {
+    "passed": true,
+    "profiles": [
+      {
+        "SIZE": 16,
+        "REG_WIDTH": 32,
+        "COUNT_WIDTH": 29,
+        "passed": true,
+        "log_sha256": "c72166c7321429d5ea17ab8ec3f57d3be45a9f24b8ab38235ec444b1d12dd55f"
+      },
+      {
+        "SIZE": 1,
+        "REG_WIDTH": 8,
+        "COUNT_WIDTH": 1,
+        "passed": true,
+        "log_sha256": "8633dedad56fb4ecf79834f62c4a7d9c1dbe446e5d06b5705f172adeafe0147e"
+      },
+      {
+        "SIZE": 4,
+        "REG_WIDTH": 16,
+        "COUNT_WIDTH": 16,
+        "passed": true,
+        "log_sha256": "531bbdf913b5adf5feab76b02d867a8449bd34a6e1fb55cdf6ef860465773707"
+      },
+      {
+        "SIZE": 16,
+        "REG_WIDTH": 32,
+        "COUNT_WIDTH": 33,
+        "passed": true,
+        "log_sha256": "8c7d6cd9e4b51f5dd1c3aa05e6491cfa35e3ef37f5d50c2e401dfd81dc3d2821"
+      }
+    ],
+    "source_sha256": "00ba15c7c0e9d63bb4822026ae285b7e32cb99f271888714b750bc95e695a504",
+    "report": "/tmp/timing_analysis_kernel_accept_r13/public_formal/invariant/summary.json",
+    "report_sha256": "67c72152aea0fd9332eaca297bae34526497b54105548155e6e346b21a32d234"
+  },
+  "control": {
+    "passed": true,
+    "profiles": 2,
+    "checks": 143624,
+    "report": "/tmp/timing_analysis_kernel_accept_r13/public_control/summary.json",
+    "report_sha256": "2b58b40d69b43ec9e24aa89d906fe28e35cb58b610cfe683f316db9bc305e136"
+  },
+  "row_assembly": {
+    "passed": true,
+    "profiles": 7,
+    "checks": 57344,
+    "report": "/tmp/timing_analysis_kernel_accept_r13/public_rows/summary.json",
+    "report_sha256": "2ea4f2cec3e48adf2c67bf5c2aa7c9f2d99ebf6cb14b3f8c8af8ba3e8685cd59"
+  },
+  "numeric": [
+    {
+      "cycles": 45050,
+      "checked_values": 72960,
+      "dma_starts": 319,
+      "dma_completions": 319,
+      "logical_loads": 285,
+      "tiles_sent": 285,
+      "max_valid_slots": 2,
+      "max_dma_contexts": 2,
+      "dma_send_overlap_cycles": 1670,
+      "undefined_behavior_sanitizer": true,
+      "BUS_WIDTH": 32,
+      "report": "/tmp/timing_analysis_kernel_accept_r13/numeric_pending_32/summary.json",
+      "report_sha256": "8a2276edca440bab4cb159e5821351c077c208f0b4bfd3df197ea4b39198f033"
+    },
+    {
+      "cycles": 29443,
+      "checked_values": 72960,
+      "dma_starts": 312,
+      "dma_completions": 312,
+      "logical_loads": 285,
+      "tiles_sent": 285,
+      "max_valid_slots": 2,
+      "max_dma_contexts": 2,
+      "dma_send_overlap_cycles": 1649,
+      "undefined_behavior_sanitizer": true,
+      "BUS_WIDTH": 64,
+      "report": "/tmp/timing_analysis_kernel_accept_r13/numeric_pending_64/summary.json",
+      "report_sha256": "42d756edcb0495f8cdd914cd5e6e60bf61ed65801c5fcb79721fdb36e8e33e5b"
+    },
+    {
+      "cycles": 21204,
+      "checked_values": 72960,
+      "dma_starts": 310,
+      "dma_completions": 310,
+      "logical_loads": 285,
+      "tiles_sent": 285,
+      "max_valid_slots": 2,
+      "max_dma_contexts": 2,
+      "dma_send_overlap_cycles": 1608,
+      "undefined_behavior_sanitizer": true,
+      "BUS_WIDTH": 128,
+      "report": "/tmp/timing_analysis_kernel_accept_r13/numeric_pending_128/summary.json",
+      "report_sha256": "7eb163133d33884b39fb3c3e05f84a14bd1de7671df1334bfa3a71eee12c2fe6"
+    }
+  ],
+  "measurement": [
+    {
+      "variant": "reference",
+      "resources": {
+        "logic_lut_cells": 3407,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 3407,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 2333,
+        "dsp48e1": 24,
+        "ramb36e1": 64,
+        "ramb18e1": 0,
+        "carry4": 93,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 93,
+          "DSP48E1": 24,
+          "FDCE": 1828,
+          "FDPE": 16,
+          "FDRE": 487,
+          "FDSE": 2,
+          "INV": 28,
+          "LUT2": 904,
+          "LUT3": 918,
+          "LUT4": 322,
+          "LUT5": 948,
+          "LUT6": 315,
+          "RAMB36E1": 64
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "maximum_register_path": 12,
+      "graph_complete": true,
+      "report": "/tmp/timing_analysis_kernel_candidate_r12/full_measure/leaf/metrics.json",
+      "report_sha256": "025555bbc094c21ff161fe3d20e354bb5205e8e0041d1b5ed31293aa701e2df1"
+    },
+    {
+      "variant": "current",
+      "resources": {
+        "logic_lut_cells": 3436,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 3436,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 2334,
+        "dsp48e1": 24,
+        "ramb36e1": 64,
+        "ramb18e1": 0,
+        "carry4": 93,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 93,
+          "DSP48E1": 24,
+          "FDCE": 1829,
+          "FDPE": 16,
+          "FDRE": 487,
+          "FDSE": 2,
+          "INV": 28,
+          "LUT2": 1008,
+          "LUT3": 878,
+          "LUT4": 350,
+          "LUT5": 883,
+          "LUT6": 317,
+          "MUXF7": 6,
+          "MUXF8": 3,
+          "RAMB36E1": 64
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "maximum_register_path": 10,
+      "graph_complete": true,
+      "report": "/tmp/timing_analysis_kernel_accept_r13/pending_measure/current/metrics.json",
+      "report_sha256": "c4c905b996b5138fde817fc6a06aa434d95e6b6d370d6f90c85598023669aa7b"
+    }
+  ],
+  "state_mapping_archive": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_request_state/results/full_state_mapping.json.gz",
+  "state_mapping_sha256": "10a1ce2b0ee43aaf14cd056342322df2121312b464e835258fa3e528dc2f6d5d",
+  "test_sha256": {
+    "test/kernel_request_state/README.md": "651c6b7a6369187532f49145f9fce15deb3dc339f4503fea51f796140c277c2b",
+    "test/kernel_request_state/check_control.py": "8273d430c8ac66c3716eeaa0ab7cdb159b0f8663b789d5d2cdcd4d88bd4e6a6f",
+    "test/kernel_request_state/check_rows.py": "89b4969a06171e6a483ae52ab30653583750d3d3524e97ce5e41f42fb9cb1adf",
+    "test/kernel_request_state/prepare_models.py": "93fb7ce23ade13b1d0a3c247839424e28ce7a39f0a26b54786f69f6ff82e7089",
+    "test/kernel_request_state/prove_invariant.py": "7f2fcf112aa2e12932d6768fbf514266411b3af9c9030460fbd88787c3eead08",
+    "test/kernel_request_state/prove_symbolic.py": "cd7c6996e16cd5fd8d1c6bae19c8f9ef72522dfac532734bbe956bdb964d7085",
+    "test/kernel_request_state/run_formal.py": "2b91aa7255fbdac00b2bfc4be8fd115149b07f205ab36d3e970e80b6dc652891",
+    "test/kernel_request_state/synthesis_cases.json": "dc682c37b1a663eadb00586bac3b6795dcbb62d21e9dfd35564713a9f49087ba"
+  }
+}

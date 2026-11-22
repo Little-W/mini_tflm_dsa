@@ -63,6 +63,7 @@ module kernel_loader_ctrl #(
   typedef enum logic [1:0] {S_IDLE, S_INIT, S_RUN, S_DONE} state_t;
 
   state_t state;
+  logic load_pending_q;
 
   count_t tile_rows_total;
   count_t tile_cols_total;
@@ -358,7 +359,7 @@ module kernel_loader_ctrl #(
     tile_col_dbg = REG_WIDTH'(load_tile_col);
     repeat_dbg   = REG_WIDTH'(load_repeat);
 
-    load_weight_req = !clear && (state == S_RUN) && !all_loads_issued && buf_load_ready;
+    load_weight_req = !clear && load_pending_q && buf_load_ready;
     dma_start       = load_weight_req && load_weight_granted;
     buf_load_start  = dma_start;
     buf_send_start  = !clear && (state == S_RUN) && send_weight_trigger && buf_weight_data_valid;
@@ -433,6 +434,7 @@ module kernel_loader_ctrl #(
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       state               <= S_IDLE;
+      load_pending_q      <= 1'b0;
       load_tile_row       <= '0;
       load_repeat         <= '0;
       load_l2             <= '0;
@@ -463,11 +465,13 @@ module kernel_loader_ctrl #(
       // Configuration invalidates the current traversal. Address registers
       // remain unused until S_IDLE captures the next descriptor.
       state<=S_IDLE;
+      load_pending_q<=1'b0;
       all_loads_done<=1'b0;
       all_loads_issued<=1'b0;
     end else begin
       case (state)
         S_IDLE: begin
+          load_pending_q <= 1'b0;
           if (cfg_valid) begin
             load_tile_row       <= '0;
             load_repeat         <= '0;
@@ -504,6 +508,8 @@ module kernel_loader_ctrl #(
           current_group_width <= first_group_width;
           group_base_addr     <= base_addr_reg;
           state               <= S_RUN;
+          // 进入运行状态时保存待发资格，接收处直接读取这一位状态。
+          load_pending_q      <= !all_loads_issued;
         end
 
         S_RUN: begin
@@ -525,8 +531,10 @@ module kernel_loader_ctrl #(
           end
           if (dma_start) begin
             issued_count <= issued_count_next;
-            if (last_col_in_group && last_tile_row && last_l2_group && last_repeat)
+            if (last_col_in_group && last_tile_row && last_l2_group && last_repeat) begin
               all_loads_issued <= 1'b1;
+              load_pending_q <= 1'b0;
+            end
             if (!last_col_in_group) begin
               load_col_in_group <= traversal_o_next[0];
               col_addr_offset <= column_offset_increment;
@@ -564,17 +572,22 @@ module kernel_loader_ctrl #(
           if (buf_weight_sending_done) begin
             if (load_complete_after && sent_count_covers_loads) begin
               state <= S_DONE;
+              load_pending_q <= 1'b0;
             end
           end
         end
 
         S_DONE: begin
+          load_pending_q <= 1'b0;
           if (!cfg_valid) begin
             state <= S_IDLE;
           end
         end
 
-        default: state <= S_IDLE;
+        default: begin
+          state <= S_IDLE;
+          load_pending_q <= 1'b0;
+        end
       endcase
     end
   end

@@ -92,7 +92,13 @@ module kernel_loader #(
 
   logic                        dma_start;
   logic                        ctrl_dma_start, ctrl_load_req, ctrl_load_granted;
-  logic                        ctrl_buf_load_start, ctrl_buf_load_ready;
+  logic ctrl_o_request_pending;
+  (* keep = "true" *) logic ctrl_i_request_accept;
+  logic managed_demand_available, unmanaged_demand_available;
+  logic prefetch_available;
+  // 需求接收独立完成，控制器状态更新只使用该接收结果。
+  (* keep = "true" *) logic managed_demand_granted;
+  logic                        ctrl_buf_load_start, ctrl_i_request_open;
   logic [REG_WIDTH-1:0]        dma_p0, dma_q0, dma_group;
   logic [REG_WIDTH-1:0]        dma_tile_base_addr;
   logic [REG_WIDTH-1:0] ctrl_o_column_group_base;
@@ -161,9 +167,10 @@ module kernel_loader #(
   logic demand_issue, prefetch_issue, demand_dma_start, prefetch_dma_start;
   logic cache_data_available, demand_data_available;
   (* keep = "true" *) logic managed_request_available, selected_request_available;
-  (* keep = "true" *) logic managed_prefetch_available, selected_prefetch;
+  logic managed_prefetch_available;
+  (* keep = "true" *) logic selected_prefetch;
   logic request_permitted;
-  (* keep = "true" *) logic managed_grant_ready, unmanaged_grant_ready;
+  logic managed_grant_ready, unmanaged_grant_ready;
   logic cache_hit_fire, cache_hit_done, discard_fire;
   logic [1:0] response_slots_active;
   logic response_accept;
@@ -306,7 +313,12 @@ module kernel_loader #(
       .i_a(address_equal_i_a), .i_b(address_equal_i_b), .i_c(address_equal_i_c),
       .i_target(address_equal_i_target), .o_equal(address_equal_o_equal)
   );
-  assign ctrl_buf_load_ready = managed_mode ? !demand_confirmed : buf_load_ready;
+  // 控制器提供未发起的需求，槽位与模式资格在加载器接收处独立合并。
+  assign ctrl_i_request_open = 1'b1;
+  assign ctrl_load_req = ctrl_o_request_pending &&
+      (managed_mode ? !demand_confirmed : buf_load_ready);
+  assign managed_demand_available = ctrl_o_request_pending && !demand_confirmed;
+  assign unmanaged_demand_available = ctrl_o_request_pending && buf_load_ready;
   assign cache_hit_fire = managed_mode && ctrl_load_req && comparison_stored_ready && comparison_match_q &&
       (prefetch_state == PF_CACHED || (prefetch_state == PF_LOADING && buf_load_commit)) &&
       !cache_flush && !init_cfg;
@@ -316,14 +328,40 @@ module kernel_loader #(
   assign demand_issue = managed_mode && ctrl_load_req && !transfer_active && !ext_dma_busy &&
       buf_load_ready && (prefetch_state == PF_EMPTY || prefetch_state == PF_PENDING) &&
       !cache_flush && !init_cfg;
-  assign prefetch_issue = managed_mode && prefetch_state == PF_PENDING && !command_waiting &&
-      !ctrl_load_req && !transfer_active && !ext_dma_busy && buf_load_ready && !cache_flush && !init_cfg;
-  // 传输类型与后台资格提前选择，配置和清除只参与最后的请求屏蔽。
+  // 预取窗口与需求接收分别检查，需求更新不经过预取选择的归并。
+  assign prefetch_available = prefetch_state == PF_PENDING && !command_waiting &&
+      !managed_demand_available && !transfer_active && !ext_dma_busy && buf_load_ready;
   assign managed_prefetch_available = prefetch_state == PF_PENDING && !command_waiting &&
       !ctrl_load_req && !transfer_active && !ext_dma_busy && buf_load_ready;
-  assign managed_request_available = (ctrl_load_req && demand_data_available) || managed_prefetch_available;
-  assign selected_request_available = managed_mode ? managed_request_available : ctrl_load_req;
-  assign selected_prefetch = managed_mode && managed_prefetch_available;
+  assign managed_request_available = (managed_demand_available && demand_data_available) || prefetch_available;
+  always_comb begin
+    case (managed_mode)
+      1'b0: begin
+        selected_request_available = unmanaged_demand_available;
+      end
+      1'b1: begin
+        selected_request_available = managed_request_available;
+      end
+      default: begin
+        selected_request_available = managed_mode ?
+            ((ctrl_load_req && demand_data_available) || managed_prefetch_available) : ctrl_load_req;
+      end
+    endcase
+  end
+  // 待发预取状态已包含管理模式资格，选择不再经过需求请求的模式选择。
+  always_comb begin
+    case (^prefetch_state)
+      1'b0, 1'b1: begin
+        selected_prefetch = prefetch_available;
+        prefetch_issue = prefetch_available && !cache_flush && !init_cfg;
+      end
+      default: begin
+        selected_prefetch = managed_mode && managed_prefetch_available;
+        prefetch_issue = managed_mode && prefetch_state == PF_PENDING && !command_waiting &&
+            !ctrl_load_req && !transfer_active && !ext_dma_busy && buf_load_ready && !cache_flush && !init_cfg;
+      end
+    endcase
+  end
   assign request_permitted = !cache_flush && (!managed_mode || !init_cfg);
   always_comb begin
     load_weight_req = selected_request_available && request_permitted;
@@ -345,6 +383,16 @@ module kernel_loader #(
   assign unmanaged_grant_ready = load_weight_granted && !managed_mode;
   assign ctrl_load_granted = !cache_flush &&
       (unmanaged_grant_ready || (managed_grant_ready && !init_cfg));
+  assign managed_demand_granted = managed_demand_available &&
+      (cache_data_available || (load_weight_granted && demand_data_available));
+  // 已完成需求资格的接收事件直接驱动控制器，控制器仍保留原有配置和清除优先级。
+  always_comb begin
+    case (managed_mode)
+      1'b0: ctrl_i_request_accept = !cache_flush && unmanaged_demand_available && load_weight_granted;
+      1'b1: ctrl_i_request_accept = !cache_flush && !init_cfg && managed_demand_granted;
+      default: ctrl_i_request_accept = ctrl_load_req && ctrl_load_granted;
+    endcase
+  end
   assign dma_start = load_idle_o_start;
   always_comb begin
     prefetch_dma_start = dma_start && selected_prefetch;
@@ -611,13 +659,13 @@ module kernel_loader #(
     .cfg_row_tail_tiles (row_tail_tiles),
     .cfg_col_groups (col_groups),
     .cfg_col_tail_tiles (col_tail_tiles),
-    .load_weight_granted   (ctrl_load_granted),
+    .load_weight_granted   (ctrl_i_request_accept),
     .send_weight_trigger    (send_weight_trigger),
     .buf_weight_data_valid  (weight_data_valid),
     .buf_weight_sending_done(weight_sending_done),
-    .buf_load_ready          (ctrl_buf_load_ready),
+    .buf_load_ready          (ctrl_i_request_open),
     .load_done               (dma_done),
-    .load_weight_req       (ctrl_load_req),
+    .load_weight_req       (ctrl_o_request_pending),
     .dma_start             (ctrl_dma_start),
     .dma_p0                (dma_p0),
     .dma_q0                (dma_q0),
@@ -679,7 +727,7 @@ module kernel_loader #(
     logic row_clear, row_finish;
     // 相隔一个总线通道组的列使用同一输入数据，只计算一组循环选择结果。
     assign row_clear = cache_flush || (managed_mode && transfer_discard);
-    assign row_finish = beat_valid && last_ext_beat;
+    assign row_finish = last_ext_beat;
     for (genvar lane = 0; lane < DMA_LANES; lane++) begin : g_rotate
       logic [p_lane_bits-1:0] source_lane;
       assign source_lane = p_lane_bits'(lane) - p_lane_bits'(ext_dma_wr_col_base);
@@ -694,8 +742,17 @@ module kernel_loader #(
         assign column_in_beat = int'(ext_dma_wr_col_base) <= column &&
           int'(ext_dma_wr_col_base) > column-DMA_LANES;
       end
-      assign column_update = beat_valid && column_in_beat && rotated_valid[column % DMA_LANES] &&
-        REG_WIDTH'(column) < ext_dma_valid_cols_r[ext_dma_wr_slot];
+      // 每列只检查对应通道，返回资格与列范围并行形成。
+      always_comb begin
+        case (^ext_dma_wr_col_base)
+          1'b0, 1'b1: column_update = response_accept && column_in_beat &&
+              rotated_valid[column % DMA_LANES] &&
+              REG_WIDTH'(column) < ext_dma_valid_cols_r[ext_dma_wr_slot];
+          default: column_update = beat_valid && column_in_beat &&
+              rotated_valid[column % DMA_LANES] &&
+              REG_WIDTH'(column) < ext_dma_valid_cols_r[ext_dma_wr_slot];
+        endcase
+      end
       assign column_logical = REG_WIDTH'(column) < ext_dma_logical_cols_r[ext_dma_wr_slot];
       // 每列独立选择接收、填零或保留；最后一次传输清空累积状态。
       assign row_emit_n[column] = column_update ?

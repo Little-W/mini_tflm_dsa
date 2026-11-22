@@ -1,0 +1,27 @@
+{
+  "current": {
+    "top": "kernel_loader",
+    "options": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1",
+      "-GSIZE=16",
+      "-GREG_WIDTH=32",
+      "-GCOUNT_WIDTH=29",
+      "-GDATA_WIDTH=16",
+      "-GBUS_WIDTH=64"
+    ],
+    "parameters": {
+      "SIZE": 16,
+      "REG_WIDTH": 32,
+      "COUNT_WIDTH": 29,
+      "DATA_WIDTH": 16,
+      "BUS_WIDTH": 64
+    },
+    "configuration": "生产权重加载器的完整请求、预取比较与行存储",
+    "sources": [
+      "rtl/npu/loaders/kernel_loader.sv",
+      "rtl/npu/loaders/kernel_loader_ctrl.sv",
+      "rtl/npu/loaders/kernel_loader_buffer.sv"
+    ]
+  }
+}
