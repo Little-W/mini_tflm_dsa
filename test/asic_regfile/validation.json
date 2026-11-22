@@ -1,0 +1,465 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+    "rtl/npu/writeback/vec_requant.sv": "682709b3df7f7c0df3ae95d86f317b70fca8287a2c2a3125961031b661cdf3e4",
+    "asic/rtl/smic40_sram_1r1w.sv": "841b5894b63e0a67eb8484034a1aed92ae9dfdc5f96095012900521440694b0b",
+    "test/asic_regfile/sram_model.sv": "4fc274be34a817c4ffb5c660aa8cfc93fe9e474dd01a1b2af701cf293f50fd55",
+    "test/asic_regfile/tb_regfile_asic.sv": "4de1cda7d388d1346ee9ed380b3ecc83bd11e7c1f4f6e8f86149a8ce93e84cb3",
+    "test/asic_regfile/run.py": "e3558992826a911a1f1f239dfd489ae2d4fd442e0c28a0f9821ecd00ecbcc936",
+    "test/asic_regfile/run_formal.py": "05a2954dca3a5e9d842b4ee15315229e561fe5cb8eb31a729cf38679dc6f2386",
+    "test/asic_regfile/run_parameter_outputs.py": "3399a38e0ba957faa19bb5f6eda66c02b59814deaee44600086c54638f28cb19"
+  },
+  "public_read_latency_cycles": 1,
+  "read_during_write": "read_before_write",
+  "production_parameter_output": false,
+  "regfile_four_state": {
+    "passed": true,
+    "profiles": [
+      {
+        "width": 16,
+        "depth": 48,
+        "unit": 16,
+        "ports": 1,
+        "sync": 1,
+        "checks": 12056,
+        "collisions": 696,
+        "held": 3833,
+        "unknown": 1144,
+        "invalid": 1960,
+        "passed": true,
+        "macro_instances": {
+          "RAMTP128X16": 1
+        },
+        "logical_storage_bits": 768,
+        "physical_storage_bits": 2048
+      },
+      {
+        "width": 64,
+        "depth": 512,
+        "unit": 8,
+        "ports": 1,
+        "sync": 1,
+        "checks": 12520,
+        "collisions": 1799,
+        "held": 3847,
+        "unknown": 1144,
+        "invalid": 0,
+        "passed": true,
+        "macro_instances": {
+          "RAMTP1024X16": 8
+        },
+        "logical_storage_bits": 32768,
+        "physical_storage_bits": 131072
+      },
+      {
+        "width": 32,
+        "depth": 256,
+        "unit": 32,
+        "ports": 1,
+        "sync": 1,
+        "checks": 12264,
+        "collisions": 807,
+        "held": 3871,
+        "unknown": 1144,
+        "invalid": 0,
+        "passed": true,
+        "macro_instances": {
+          "RAMTP128X16": 4
+        },
+        "logical_storage_bits": 8192,
+        "physical_storage_bits": 8192
+      },
+      {
+        "width": 7,
+        "depth": 256,
+        "unit": 7,
+        "ports": 1,
+        "sync": 1,
+        "checks": 12264,
+        "collisions": 807,
+        "held": 3871,
+        "unknown": 1144,
+        "invalid": 0,
+        "passed": true,
+        "macro_instances": {
+          "RAMTP128X16": 2
+        },
+        "logical_storage_bits": 1792,
+        "physical_storage_bits": 4096
+      },
+      {
+        "width": 32,
+        "depth": 256,
+        "unit": 32,
+        "ports": 2,
+        "sync": 1,
+        "checks": 24528,
+        "collisions": 1697,
+        "held": 7603,
+        "unknown": 1575,
+        "invalid": 0,
+        "passed": true,
+        "macro_instances": {
+          "RAMTP128X16": 8
+        },
+        "logical_storage_bits": 8192,
+        "physical_storage_bits": 16384
+      },
+      {
+        "width": 16,
+        "depth": 384,
+        "unit": 16,
+        "ports": 1,
+        "sync": 1,
+        "checks": 12392,
+        "collisions": 679,
+        "held": 3835,
+        "unknown": 1144,
+        "invalid": 1944,
+        "passed": true,
+        "macro_instances": {
+          "RAMTP128X16": 3
+        },
+        "logical_storage_bits": 6144,
+        "physical_storage_bits": 6144
+      },
+      {
+        "width": 16,
+        "depth": 385,
+        "unit": 16,
+        "ports": 1,
+        "sync": 1,
+        "checks": 12393,
+        "collisions": 675,
+        "held": 3883,
+        "unknown": 1144,
+        "invalid": 1852,
+        "passed": true,
+        "macro_instances": {
+          "RAMTP1024X16": 1
+        },
+        "logical_storage_bits": 6160,
+        "physical_storage_bits": 16384
+      },
+      {
+        "width": 16,
+        "depth": 1100,
+        "unit": 16,
+        "ports": 1,
+        "sync": 1,
+        "checks": 13108,
+        "collisions": 467,
+        "held": 3830,
+        "unknown": 1144,
+        "invalid": 3500,
+        "passed": true,
+        "macro_instances": {
+          "RAMTP1024X16": 2
+        },
+        "logical_storage_bits": 17600,
+        "physical_storage_bits": 32768
+      },
+      {
+        "width": 19,
+        "depth": 128,
+        "unit": 19,
+        "ports": 1,
+        "sync": 1,
+        "checks": 12136,
+        "collisions": 839,
+        "held": 3758,
+        "unknown": 1144,
+        "invalid": 0,
+        "passed": true,
+        "macro_instances": {
+          "RAMTP128X16": 2
+        },
+        "logical_storage_bits": 2432,
+        "physical_storage_bits": 4096
+      },
+      {
+        "width": 32,
+        "depth": 256,
+        "unit": 8,
+        "ports": 1,
+        "sync": 1,
+        "checks": 12264,
+        "collisions": 1628,
+        "held": 3871,
+        "unknown": 1144,
+        "invalid": 0,
+        "passed": true,
+        "macro_instances": {
+          "RAMTP128X16": 8
+        },
+        "logical_storage_bits": 8192,
+        "physical_storage_bits": 16384
+      },
+      {
+        "width": 8,
+        "depth": 130,
+        "unit": 8,
+        "ports": 1,
+        "sync": 1,
+        "checks": 12138,
+        "collisions": 440,
+        "held": 3856,
+        "unknown": 1144,
+        "invalid": 3674,
+        "passed": true,
+        "macro_instances": {},
+        "logical_storage_bits": 1040,
+        "physical_storage_bits": 0
+      },
+      {
+        "width": 1,
+        "depth": 128,
+        "unit": 1,
+        "ports": 7,
+        "sync": 1,
+        "checks": 84952,
+        "collisions": 6490,
+        "held": 27009,
+        "unknown": 3730,
+        "invalid": 0,
+        "passed": true,
+        "macro_instances": {},
+        "logical_storage_bits": 128,
+        "physical_storage_bits": 0
+      },
+      {
+        "width": 32,
+        "depth": 64,
+        "unit": 8,
+        "ports": 1,
+        "sync": 1,
+        "checks": 12072,
+        "collisions": 1752,
+        "held": 3822,
+        "unknown": 1144,
+        "invalid": 0,
+        "passed": true,
+        "macro_instances": {},
+        "logical_storage_bits": 2048,
+        "physical_storage_bits": 0
+      },
+      {
+        "width": 64,
+        "depth": 512,
+        "unit": 8,
+        "ports": 1,
+        "sync": 0,
+        "checks": 12520,
+        "collisions": 1799,
+        "held": 3847,
+        "unknown": 1144,
+        "invalid": 0,
+        "passed": true,
+        "macro_instances": {},
+        "logical_storage_bits": 32768,
+        "physical_storage_bits": 0
+      }
+    ],
+    "profile_count": 14,
+    "totals": {
+      "checks": 257607,
+      "collisions": 20575,
+      "held": 80736,
+      "unknown": 19033,
+      "invalid": 12930
+    },
+    "summary_sha256": "435bebb82fd50fbb1099cfba45e169f26b2070f4cd906149b693cbf4af4877c7",
+    "macro_model": "同步功能模型，物理端口同址读写立即报告失败"
+  },
+  "regfile_induction": {
+    "passed": true,
+    "profile_count": 10,
+    "profiles": [
+      {
+        "width": 16,
+        "depth": 48,
+        "unit": 16,
+        "ports": 1,
+        "passed": true
+      },
+      {
+        "width": 64,
+        "depth": 512,
+        "unit": 8,
+        "ports": 1,
+        "passed": true
+      },
+      {
+        "width": 32,
+        "depth": 256,
+        "unit": 32,
+        "ports": 1,
+        "passed": true
+      },
+      {
+        "width": 7,
+        "depth": 256,
+        "unit": 7,
+        "ports": 1,
+        "passed": true
+      },
+      {
+        "width": 32,
+        "depth": 256,
+        "unit": 32,
+        "ports": 2,
+        "passed": true
+      },
+      {
+        "width": 16,
+        "depth": 384,
+        "unit": 16,
+        "ports": 1,
+        "passed": true
+      },
+      {
+        "width": 16,
+        "depth": 385,
+        "unit": 16,
+        "ports": 1,
+        "passed": true
+      },
+      {
+        "width": 16,
+        "depth": 1100,
+        "unit": 16,
+        "ports": 1,
+        "passed": true
+      },
+      {
+        "width": 19,
+        "depth": 128,
+        "unit": 19,
+        "ports": 1,
+        "passed": true
+      },
+      {
+        "width": 32,
+        "depth": 256,
+        "unit": 8,
+        "ports": 1,
+        "passed": true
+      }
+    ],
+    "properties": [
+      "任意逻辑地址的存储内容与写入缓冲叠加关系",
+      "全部读取端口的原有采样周期和保持行为",
+      "物理宏无同址读写冲突"
+    ],
+    "production_inputs_constrained": false,
+    "symbolic_address": "任意固定合法地址，保留该地址全部存储位和所有读取端口",
+    "initialization": "二态证明使用相同初值，未初始化存储另由四态比较检查",
+    "formal_macro_model_sha256": "663b4ce48f7c56f44bf11503a02420aebcba03d590f8fa7d2497afb348f17d21",
+    "summary_sha256": "c485899c3123b84bde5e9566198fe3d8569ac8b47948652e8806cca2f7ba833a"
+  },
+  "requant_interface_equivalence": {
+    "passed": true,
+    "profile_count": 8,
+    "equivalent_bits": 97938,
+    "profiles": [
+      {
+        "vlen": 16,
+        "bus_width": 64,
+        "compute_lanes": 2,
+        "reuse": 32,
+        "parameter_output": false,
+        "passed": true,
+        "equivalent_bits": 8571,
+        "memories": 5
+      },
+      {
+        "vlen": 16,
+        "bus_width": 64,
+        "compute_lanes": 2,
+        "reuse": 32,
+        "parameter_output": true,
+        "passed": true,
+        "equivalent_bits": 11083,
+        "memories": 9
+      },
+      {
+        "vlen": 16,
+        "bus_width": 64,
+        "compute_lanes": 16,
+        "reuse": 32,
+        "parameter_output": false,
+        "passed": true,
+        "equivalent_bits": 23875,
+        "memories": 4
+      },
+      {
+        "vlen": 16,
+        "bus_width": 64,
+        "compute_lanes": 16,
+        "reuse": 32,
+        "parameter_output": true,
+        "passed": true,
+        "equivalent_bits": 26387,
+        "memories": 8
+      },
+      {
+        "vlen": 8,
+        "bus_width": 32,
+        "compute_lanes": 1,
+        "reuse": 8,
+        "parameter_output": false,
+        "passed": true,
+        "equivalent_bits": 4365,
+        "memories": 5
+      },
+      {
+        "vlen": 8,
+        "bus_width": 32,
+        "compute_lanes": 1,
+        "reuse": 8,
+        "parameter_output": true,
+        "passed": true,
+        "equivalent_bits": 6389,
+        "memories": 5
+      },
+      {
+        "vlen": 4,
+        "bus_width": 128,
+        "compute_lanes": 4,
+        "reuse": 2,
+        "parameter_output": false,
+        "passed": true,
+        "equivalent_bits": 8162,
+        "memories": 16
+      },
+      {
+        "vlen": 4,
+        "bus_width": 128,
+        "compute_lanes": 4,
+        "reuse": 2,
+        "parameter_output": true,
+        "passed": true,
+        "equivalent_bits": 9106,
+        "memories": 24
+      }
+    ],
+    "reference_commit": "ef0dc75342997721bdc4110b2841445df962018e",
+    "reference_file": "rtl/npu/writeback/vec_requant.sv",
+    "reference_sha256": "47ea9af7976df50795560364e516baafcd80a21465fc954e38a41315b9e03013",
+    "comparison": "全部运算输出、控制状态及存储器读写端口",
+    "inputs_constrained": false,
+    "memory_read_data_constrained": false,
+    "summary_sha256": "f1c569d8ab28fb504c3da37793dfb5e54712e1e383729765ecee7b640a33a8ea"
+  },
+  "fpga_regfile_preprocessing": {
+    "same_normalized_text": true,
+    "reference_sha256": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+    "normalized_preprocessed_sha256": "7d06be9143b395789b9adaa059c6c3648c9856d5fce739cfdc672f1cf3a630f3"
+  },
+  "integration_validation": {
+    "kernel_storage": "test/kernel_asic_storage/validation.json"
+  },
+  "dc_synthesis_performed": false,
+  "macro_timing_model_used": false
+}

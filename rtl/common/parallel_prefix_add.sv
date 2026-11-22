@@ -20,7 +20,18 @@ module parallel_prefix_add #(
     output logic [p_width-1:0] o_sum,
     output logic               o_carry
 );
-    if (p_infer_dsp && (p_width >= 24) && (p_width <= 47)) begin : g_inferred_dsp
+    localparam bit p_standard_cell_arithmetic =
+`ifdef ASIC_SYNTHESIS
+        1'b1;
+`else
+        1'b0;
+`endif
+
+    if (p_standard_cell_arithmetic) begin : g_standard_cells
+        // 标准单元综合直接优化完整定宽加法，同时保留最高进位。
+        assign {o_carry, o_sum} = {1'b0, i_a} + {1'b0, i_b} +
+            (p_width+1)'(i_carry);
+    end else if (p_infer_dsp && (p_width >= 24) && (p_width <= 47)) begin : g_inferred_dsp
         // 宽加法保留全部结果和最高进位，由综合工具选择 DSP 算术单元。
         (* use_dsp = "yes" *) logic [p_width:0] arithmetic_result;
 

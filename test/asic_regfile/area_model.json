@@ -1,0 +1,431 @@
+{
+  "model_type": "现有 DC 面积与当前存储几何的分项代入计算",
+  "area_unit": "与输入 DC 报告及所用库的面积单位一致",
+  "dc_synthesis_performed_for_current_rtl": false,
+  "source_report": {
+    "name": "dc_r16_150_linked",
+    "design": "npu_top_h_316_242_272",
+    "total_cell_area": 4188765.246236,
+    "combinational_area": 1299435.121733,
+    "sequential_area": 864393.933096,
+    "macro_area": 2024936.191406,
+    "source_sha256": {
+      "npu_top_area.rpt": "a96f906904a28141fe9a9cb57f14342c8f62bcda2d2cd517333a2197046e0619",
+      "area_complete_parsed.json": "b56f8122aea132a1c6ad8ef0b0b4e8f593d842b8f59e1205108e4b0e068cd5d2",
+      "npu_top_sram_instances.rpt": "6202b4b1fd0fbda541ce8b292cb81304511784b5fecd92f7504fdf718392fd3d"
+    },
+    "hierarchical_rows": 1927,
+    "area_row_precision_decimal_places": 4
+  },
+  "current_configuration": {
+    "SIZE": 16,
+    "VECTOR_PE_COUNT": 16,
+    "ws_systolic_cells": 256,
+    "BUS_WIDTH": 64,
+    "shared_banks": 7,
+    "bytes_per_shared_bank": 8192,
+    "requant_group_buffer_rows": 512,
+    "requant_compute_lanes": 2,
+    "kernel_matrix_slots": 3,
+    "p_parameter_output": false
+  },
+  "macro_unit_area": {
+    "RAMTP128X16": {
+      "area": 4852.7666,
+      "calculation": "9705.5332 / 2",
+      "source_row": {
+        "name": "u_block_dma_arbiter/u_dma/g_im2col_u_frontend/u_cache/g_window_u_window/g_data_way_0__u_data/g_bank_0__u_storage",
+        "total": 9727.2388,
+        "percent": 0.2,
+        "combinational": 21.7056,
+        "sequential": 0.0,
+        "macro": 9705.5332,
+        "design": "npu_top_smic40_sram_1r1w_DATA_WIDTH32_DEPTH128_ADDR_WIDTH7_0",
+        "line": 1255
+      },
+      "macro_count_in_source_row": 2
+    },
+    "RAMTP1024X16": {
+      "area": 17757.8438,
+      "calculation": "17757.8438 / 1",
+      "source_row": {
+        "name": "u_vec_s8_to_fifo/g_full_u_full/g_cyclic_storage_gen_fifo_ram_0__u_fifo_ram/u_storage",
+        "total": 17769.335,
+        "percent": 0.4,
+        "combinational": 11.4912,
+        "sequential": 0.0,
+        "macro": 17757.8438,
+        "design": "npu_top_smic40_sram_1r1w_s00000010_s00000200_s00000009_0",
+        "line": 3625
+      },
+      "macro_count_in_source_row": 1
+    }
+  },
+  "components": [
+    {
+      "name": "is_parameter_observation",
+      "geometry": "原始 IS multiplier/shift 表仅连接到关闭的参数观察输出",
+      "original_report_rows": [
+        {
+          "name": "u_vec_requant/g_full_u_full/gen_is_parameter_bank_0__u_multiplier",
+          "total": 68109.301,
+          "percent": 1.6,
+          "combinational": 28886.0041,
+          "sequential": 39223.2969,
+          "macro": 0.0,
+          "design": "npu_top_regfile_32_256_8_32_0_0",
+          "line": 3573
+        },
+        {
+          "name": "u_vec_requant/g_full_u_full/gen_is_parameter_bank_0__u_shift",
+          "total": 68109.301,
+          "percent": 1.6,
+          "combinational": 28886.0041,
+          "sequential": 39223.2969,
+          "macro": 0.0,
+          "design": "npu_top_regfile_32_256_8_32_0_3",
+          "line": 3579
+        },
+        {
+          "name": "u_vec_requant/g_full_u_full/gen_is_parameter_bank_1__u_multiplier",
+          "total": 68109.301,
+          "percent": 1.6,
+          "combinational": 28886.0041,
+          "sequential": 39223.2969,
+          "macro": 0.0,
+          "design": "npu_top_regfile_32_256_8_32_0_2",
+          "line": 3581
+        },
+        {
+          "name": "u_vec_requant/g_full_u_full/gen_is_parameter_bank_1__u_shift",
+          "total": 68109.301,
+          "percent": 1.6,
+          "combinational": 28886.0041,
+          "sequential": 39223.2969,
+          "macro": 0.0,
+          "design": "npu_top_regfile_32_256_8_32_0_1",
+          "line": 3587
+        }
+      ],
+      "replaced_area_column": "total",
+      "original_replaced_area": 272437.204,
+      "current_macro_instances": {
+        "RAMTP128X16": 0,
+        "RAMTP1024X16": 0
+      },
+      "current_macro_area": 0.0,
+      "arithmetic_reduction": 272437.204,
+      "current_non_macro_area_in_model": 0,
+      "area_not_measured": "这些观察表不展开"
+    },
+    {
+      "name": "is_arithmetic_parameters",
+      "geometry": "2 组，每组 32×256 multiplier 和 7×256 amount",
+      "original_report_rows": [
+        {
+          "name": "u_vec_requant/g_full_u_full/gen_is_parameter_bank_0__u_product_amount",
+          "total": 15429.809,
+          "percent": 0.4,
+          "combinational": 6816.1968,
+          "sequential": 8613.6122,
+          "macro": 0.0,
+          "design": "npu_top_regfile_7_256_8_7_1_block_0",
+          "line": 3575
+        },
+        {
+          "name": "u_vec_requant/g_full_u_full/gen_is_parameter_bank_0__u_product_multiplier",
+          "total": 68336.2522,
+          "percent": 1.6,
+          "combinational": 28959.7393,
+          "sequential": 39376.5129,
+          "macro": 0.0,
+          "design": "npu_top_regfile_32_256_8_32_1_0",
+          "line": 3577
+        },
+        {
+          "name": "u_vec_requant/g_full_u_full/gen_is_parameter_bank_1__u_product_amount",
+          "total": 15429.809,
+          "percent": 0.4,
+          "combinational": 6816.1968,
+          "sequential": 8613.6122,
+          "macro": 0.0,
+          "design": "npu_top_regfile_7_256_8_7_1_block_1",
+          "line": 3583
+        },
+        {
+          "name": "u_vec_requant/g_full_u_full/gen_is_parameter_bank_1__u_product_multiplier",
+          "total": 68336.2522,
+          "percent": 1.6,
+          "combinational": 28959.7393,
+          "sequential": 39376.5129,
+          "macro": 0.0,
+          "design": "npu_top_regfile_32_256_8_32_1_1",
+          "line": 3585
+        }
+      ],
+      "replaced_area_column": "total",
+      "original_replaced_area": 167532.1224,
+      "current_macro_instances": {
+        "RAMTP128X16": 12,
+        "RAMTP1024X16": 0
+      },
+      "current_macro_area": 58233.1992,
+      "arithmetic_reduction": 109298.9232,
+      "current_non_macro_area_in_model": 0,
+      "area_not_measured": "新增写入缓冲、读取转发、地址译码和宏选择控制的标准单元面积"
+    },
+    {
+      "name": "bias_storage",
+      "geometry": "64×512，8 位写入分段，单个同步读取端口",
+      "original_report_rows": [
+        {
+          "name": "u_bias_loader/u_buffer/u_storage",
+          "total": 274966.5446,
+          "percent": 6.6,
+          "combinational": 117766.9251,
+          "sequential": 157199.6195,
+          "macro": 0.0,
+          "design": "regfile_p_data_width64_p_depth512_p_addr_width9_p_write_unit8",
+          "line": 838
+        }
+      ],
+      "replaced_area_column": "total",
+      "original_replaced_area": 274966.5446,
+      "current_macro_instances": {
+        "RAMTP128X16": 0,
+        "RAMTP1024X16": 8
+      },
+      "current_macro_area": 142062.7504,
+      "arithmetic_reduction": 132903.7942,
+      "current_non_macro_area_in_model": 0,
+      "area_not_measured": "新增写入缓冲、读取转发和地址控制的标准单元面积"
+    },
+    {
+      "name": "kernel_storage",
+      "geometry": "16 列，每列 16×48，保留 3 个矩阵槽位",
+      "original_report_rows": [
+        {
+          "name": "u_kernel_loader/u_buf",
+          "total": 121606.2636,
+          "percent": 2.9,
+          "combinational": 59936.8222,
+          "sequential": 61669.4414,
+          "macro": 0.0,
+          "design": "kernel_loader_buffer_00000010_00000010",
+          "line": 3358
+        }
+      ],
+      "replaced_area_column": "total",
+      "original_replaced_area": 121606.2636,
+      "current_macro_instances": {
+        "RAMTP128X16": 16,
+        "RAMTP1024X16": 0
+      },
+      "current_macro_area": 77644.2656,
+      "arithmetic_reduction": 43961.998,
+      "current_non_macro_area_in_model": 0,
+      "area_not_measured": "整个 kernel_loader_buffer 的当前控制、读取选择和寄存器面积"
+    },
+    {
+      "name": "requant_group_buffer",
+      "geometry": "513×512，33 个 16 位宽宏",
+      "original_report_rows": [
+        {
+          "name": "u_vec_requant/g_full_u_full/g_serial_arithmetic_u_group_buffer/u_rows",
+          "total": 643211.0402,
+          "percent": 15.4,
+          "combinational": 2636.2728,
+          "sequential": 9.576,
+          "macro": 640565.1914,
+          "design": "smic40_sram_1r1w_513_s00000200_9_128",
+          "line": 3563
+        }
+      ],
+      "replaced_area_column": "macro",
+      "original_replaced_area": 640565.1914,
+      "current_macro_instances": {
+        "RAMTP128X16": 0,
+        "RAMTP1024X16": 33
+      },
+      "current_macro_area": 586008.8454,
+      "arithmetic_reduction": 54556.346,
+      "current_non_macro_area_in_model": "保留原报告中该范围的全部非宏面积",
+      "area_not_measured": "当前控制面积与原报告保留控制面积之差"
+    },
+    {
+      "name": "shared_storage",
+      "geometry": "7 个银行，每个 128×512，8 个 16 位宽宏",
+      "original_report_rows": [
+        {
+          "name": "g_shared_ia_ps_g_rotating_u_ram/g_bank_0__u_ram",
+          "total": 155962.6816,
+          "percent": 3.7,
+          "combinational": 664.5744,
+          "sequential": 9.576,
+          "macro": 155288.5312,
+          "design": "npu_top_smic40_sram_1r1w_DATA_WIDTH128_DEPTH512_ADDR_WIDTH9_MACRO_DEPTH128_0",
+          "line": 204
+        },
+        {
+          "name": "g_shared_ia_ps_g_rotating_u_ram/g_bank_1__u_ram",
+          "total": 155962.6816,
+          "percent": 3.7,
+          "combinational": 664.5744,
+          "sequential": 9.576,
+          "macro": 155288.5312,
+          "design": "npu_top_smic40_sram_1r1w_DATA_WIDTH128_DEPTH512_ADDR_WIDTH9_MACRO_DEPTH128_6",
+          "line": 206
+        },
+        {
+          "name": "g_shared_ia_ps_g_rotating_u_ram/g_bank_2__u_ram",
+          "total": 155962.6816,
+          "percent": 3.7,
+          "combinational": 664.5744,
+          "sequential": 9.576,
+          "macro": 155288.5312,
+          "design": "npu_top_smic40_sram_1r1w_DATA_WIDTH128_DEPTH512_ADDR_WIDTH9_MACRO_DEPTH128_5",
+          "line": 208
+        },
+        {
+          "name": "g_shared_ia_ps_g_rotating_u_ram/g_bank_3__u_ram",
+          "total": 155962.6816,
+          "percent": 3.7,
+          "combinational": 664.5744,
+          "sequential": 9.576,
+          "macro": 155288.5312,
+          "design": "npu_top_smic40_sram_1r1w_DATA_WIDTH128_DEPTH512_ADDR_WIDTH9_MACRO_DEPTH128_4",
+          "line": 210
+        },
+        {
+          "name": "g_shared_ia_ps_g_rotating_u_ram/g_bank_4__u_ram",
+          "total": 155962.6816,
+          "percent": 3.7,
+          "combinational": 664.5744,
+          "sequential": 9.576,
+          "macro": 155288.5312,
+          "design": "npu_top_smic40_sram_1r1w_DATA_WIDTH128_DEPTH512_ADDR_WIDTH9_MACRO_DEPTH128_3",
+          "line": 212
+        },
+        {
+          "name": "g_shared_ia_ps_g_rotating_u_ram/g_bank_5__u_ram",
+          "total": 155962.6816,
+          "percent": 3.7,
+          "combinational": 664.5744,
+          "sequential": 9.576,
+          "macro": 155288.5312,
+          "design": "npu_top_smic40_sram_1r1w_DATA_WIDTH128_DEPTH512_ADDR_WIDTH9_MACRO_DEPTH128_2",
+          "line": 214
+        },
+        {
+          "name": "g_shared_ia_ps_g_rotating_u_ram/g_bank_6__u_ram",
+          "total": 155962.6816,
+          "percent": 3.7,
+          "combinational": 664.5744,
+          "sequential": 9.576,
+          "macro": 155288.5312,
+          "design": "npu_top_smic40_sram_1r1w_DATA_WIDTH128_DEPTH512_ADDR_WIDTH9_MACRO_DEPTH128_1",
+          "line": 216
+        }
+      ],
+      "replaced_area_column": "macro",
+      "original_replaced_area": 1087019.7184,
+      "current_macro_instances": {
+        "RAMTP128X16": 0,
+        "RAMTP1024X16": 56
+      },
+      "current_macro_area": 994439.2528,
+      "arithmetic_reduction": 92580.4656,
+      "current_non_macro_area_in_model": "保留原报告中该范围的全部非宏面积",
+      "area_not_measured": "当前控制面积与原报告保留控制面积之差"
+    }
+  ],
+  "current_macro_distribution": {
+    "im2col_cache": {
+      "RAMTP128X16": 16,
+      "RAMTP1024X16": 0
+    },
+    "shared_storage": {
+      "RAMTP128X16": 0,
+      "RAMTP1024X16": 56
+    },
+    "requant_group_buffer": {
+      "RAMTP128X16": 0,
+      "RAMTP1024X16": 33
+    },
+    "requant_arithmetic_parameters": {
+      "RAMTP128X16": 12,
+      "RAMTP1024X16": 0
+    },
+    "bias_storage": {
+      "RAMTP128X16": 0,
+      "RAMTP1024X16": 8
+    },
+    "kernel_storage": {
+      "RAMTP128X16": 16,
+      "RAMTP1024X16": 0
+    },
+    "s8_output_fifo": {
+      "RAMTP128X16": 0,
+      "RAMTP1024X16": 8
+    },
+    "s16_output_fifo": {
+      "RAMTP128X16": 16,
+      "RAMTP1024X16": 0
+    }
+  },
+  "current_macro_count_from_geometry": {
+    "RAMTP128X16": 60,
+    "RAMTP1024X16": 105
+  },
+  "current_macro_total_from_geometry": 165,
+  "current_macro_area_from_geometry": 2155739.595,
+  "structure_validation": {
+    "regfile": "test/asic_regfile/validation.json",
+    "kernel": "test/kernel_asic_storage/validation.json",
+    "full_npu_report": "test/requant_group_buffer_npu",
+    "macro_counts_note": "宏总数由各模块确定的几何汇总；完整 NPU 展开记录由集成结构检查生成"
+  },
+  "reference_calculation": {
+    "reported_total_cell_area": 4188765.246236,
+    "sum_arithmetic_reductions": 705738.731,
+    "subtotal_before_unmeasured_logic": 3483026.515236,
+    "subtotal_rounded_to_integer": 3483027,
+    "area_target": 3500000,
+    "difference_to_target_before_unmeasured_logic": 16973.484764,
+    "equation": "4188765.246236 - 272437.2040 - 109298.9232 - 132903.7942 - 43961.9980 - 54556.3460 - 92580.4656 = 3483026.515236",
+    "completion_equation": "当前面积 = 参考值 + 新 IS 运算参数控制面积 + 新 bias 存储控制面积 + 当前 kernel 存储控制面积 + group 控制面积变化 + shared 控制面积变化 + 其他 RTL 面积变化",
+    "precision_note": "层次行与推导出的宏单价保留四位小数；参考值的小数位用于核对算式，结果按整数表示为 3483027"
+  },
+  "unmeasured_terms": [
+    {
+      "name": "is_parameter_control",
+      "sign": "nonnegative",
+      "description": "缓冲、地址译码、转发寄存器与数据选择"
+    },
+    {
+      "name": "bias_storage_control",
+      "sign": "nonnegative",
+      "description": "缓冲、地址译码、各写入分段的转发与数据选择"
+    },
+    {
+      "name": "kernel_buffer_control",
+      "sign": "nonnegative",
+      "description": "当前 kernel_loader_buffer 的所有非宏标准单元；结构检查记录 852 个寄存器位"
+    },
+    {
+      "name": "group_control_delta",
+      "sign": "signed",
+      "description": "当前量化组缓冲控制面积减去报告中已保留的非宏面积"
+    },
+    {
+      "name": "shared_control_delta",
+      "sign": "signed",
+      "description": "当前共享存储控制面积减去报告中已保留的非宏面积"
+    },
+    {
+      "name": "other_rtl_delta",
+      "sign": "signed",
+      "description": "同批次其他 RTL 变化引起的实际标准单元面积变化"
+    }
+  ]
+}

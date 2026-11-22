@@ -16,6 +16,7 @@ RTL = ROOT / 'rtl/common/parallel_prefix_add.sv'
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--asic', action='store_true', help='检查标准单元加法分支')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -35,14 +36,15 @@ def main():
     assign o_equal = {carry, sum} == ({1'b0,i_a} + {1'b0,i_b} + i_carry);
 endmodule
 ''')
-    report = {'inputs_constrained': False, 'latency_cycles': 0,
+    report = {'inputs_constrained': False, 'latency_cycles': 0, 'asic': args.asic,
               'source_sha256': hashlib.sha256(RTL.read_bytes()).hexdigest(), 'runs': []}
     for width, infer_dsp in ((width, mode) for width in (1, 2, 3, 4, 5, 8, 17, 23, 24, 32, 33, 47, 48, 64)
                             for mode in (0, 1)):
         folder = out / f'w{width}_dsp{infer_dsp}'
         folder.mkdir(exist_ok=True)
         script, log = folder / 'run.ys', folder / 'formal.log'
-        script.write_text(f'read_slang --top prefix_add_formal -Gp_width={width} -Gp_infer_dsp={infer_dsp} ' +
+        defines = '-DASIC_SYNTHESIS=1 ' if args.asic else ''
+        script.write_text(f'read_slang --top prefix_add_formal {defines}-Gp_width={width} -Gp_infer_dsp={infer_dsp} ' +
                           shlex.join(map(str, (RTL, formal))) + '\n' +
                           'prep -top prefix_add_formal -flatten\ncheck -assert\n' +
                           'sat -verify -prove o_equal 1 -show-inputs -show-outputs\n')

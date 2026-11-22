@@ -1,0 +1,177 @@
+{
+  "inputs_constrained": false,
+  "latency_cycles": 0,
+  "asic": true,
+  "source_sha256": "e302438e05d73bb8859ca288c91fec89791e9cb97067fbbf575a8daf4fbb6221",
+  "runs": [
+    {
+      "width": 1,
+      "infer_dsp": false,
+      "passed": true,
+      "input_bits": 3
+    },
+    {
+      "width": 1,
+      "infer_dsp": true,
+      "passed": true,
+      "input_bits": 3
+    },
+    {
+      "width": 2,
+      "infer_dsp": false,
+      "passed": true,
+      "input_bits": 5
+    },
+    {
+      "width": 2,
+      "infer_dsp": true,
+      "passed": true,
+      "input_bits": 5
+    },
+    {
+      "width": 3,
+      "infer_dsp": false,
+      "passed": true,
+      "input_bits": 7
+    },
+    {
+      "width": 3,
+      "infer_dsp": true,
+      "passed": true,
+      "input_bits": 7
+    },
+    {
+      "width": 4,
+      "infer_dsp": false,
+      "passed": true,
+      "input_bits": 9
+    },
+    {
+      "width": 4,
+      "infer_dsp": true,
+      "passed": true,
+      "input_bits": 9
+    },
+    {
+      "width": 5,
+      "infer_dsp": false,
+      "passed": true,
+      "input_bits": 11
+    },
+    {
+      "width": 5,
+      "infer_dsp": true,
+      "passed": true,
+      "input_bits": 11
+    },
+    {
+      "width": 8,
+      "infer_dsp": false,
+      "passed": true,
+      "input_bits": 17
+    },
+    {
+      "width": 8,
+      "infer_dsp": true,
+      "passed": true,
+      "input_bits": 17
+    },
+    {
+      "width": 17,
+      "infer_dsp": false,
+      "passed": true,
+      "input_bits": 35
+    },
+    {
+      "width": 17,
+      "infer_dsp": true,
+      "passed": true,
+      "input_bits": 35
+    },
+    {
+      "width": 23,
+      "infer_dsp": false,
+      "passed": true,
+      "input_bits": 47
+    },
+    {
+      "width": 23,
+      "infer_dsp": true,
+      "passed": true,
+      "input_bits": 47
+    },
+    {
+      "width": 24,
+      "infer_dsp": false,
+      "passed": true,
+      "input_bits": 49
+    },
+    {
+      "width": 24,
+      "infer_dsp": true,
+      "passed": true,
+      "input_bits": 49
+    },
+    {
+      "width": 32,
+      "infer_dsp": false,
+      "passed": true,
+      "input_bits": 65
+    },
+    {
+      "width": 32,
+      "infer_dsp": true,
+      "passed": true,
+      "input_bits": 65
+    },
+    {
+      "width": 33,
+      "infer_dsp": false,
+      "passed": true,
+      "input_bits": 67
+    },
+    {
+      "width": 33,
+      "infer_dsp": true,
+      "passed": true,
+      "input_bits": 67
+    },
+    {
+      "width": 47,
+      "infer_dsp": false,
+      "passed": true,
+      "input_bits": 95
+    },
+    {
+      "width": 47,
+      "infer_dsp": true,
+      "passed": true,
+      "input_bits": 95
+    },
+    {
+      "width": 48,
+      "infer_dsp": false,
+      "passed": true,
+      "input_bits": 97
+    },
+    {
+      "width": 48,
+      "infer_dsp": true,
+      "passed": true,
+      "input_bits": 97
+    },
+    {
+      "width": 64,
+      "infer_dsp": false,
+      "passed": true,
+      "input_bits": 129
+    },
+    {
+      "width": 64,
+      "infer_dsp": true,
+      "passed": true,
+      "input_bits": 129
+    }
+  ],
+  "passed": true
+}
