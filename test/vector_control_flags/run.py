@@ -18,6 +18,7 @@ STATES = {
     'state_dw_finish': 'DW_FINISH', 'state_pool_store': 'POOL_STORE',
     'state_dw_execute': 'DW_EXECUTE',
     'state_weight_read_phase': 'OUTPUT_INIT',
+    'state_weight_zero_address': 'OUTPUT_INIT',
 }
 
 
@@ -83,6 +84,7 @@ def main():
     functions = (old_function+'\n'+function).replace('input state_t next_state', 'input logic [5:0] next_state')
     state_expressions={name:'(next_state=='+value+')' for name,value in STATES.items()}
     state_expressions['state_weight_read_phase']='(next_state==OUTPUT_INIT || next_state==DW_EXECUTE || next_state==DW_FINISH)'
+    state_expressions['state_weight_zero_address']='(next_state==OUTPUT_INIT || next_state==DW_FINISH)'
     expected = '{' + ','.join(state_expressions[name] for name in extra) + '}'
     saved_expected = expected.replace('next_state', 'selected_saved[5:0]')
     model = out / 'control_word.sv'
