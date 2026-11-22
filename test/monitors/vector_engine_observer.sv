@@ -371,8 +371,11 @@ module vector_control_datapath_observer #(
         assert (32'(vector_engine.reduce_index) < p_tile);
         assert (vector_engine.reduce_alu_i_rhs == vector_engine.acc_buf[vector_engine.reduce_index]);
         assert (previous_valid && (previous_state == p_vector_next || previous_state == p_reduce));
-        if (previous_state == p_vector_next) assert (vector_engine.reduce_index == 0);
-        else assert (32'(vector_engine.reduce_index) == previous_reduce_index + 1);
+        if (previous_state == p_vector_next) begin
+          assert (vector_engine.reduce_index == 0);
+        end else begin
+          assert (32'(vector_engine.reduce_index) == previous_reduce_index + 1);
+        end
         reduce_cycles <= reduce_cycles + 1;
       end
     end
