@@ -1,0 +1,78 @@
+{
+  "passed": true,
+  "source": "rtl/npu/writeback/vec_s8_to_fifo.sv",
+  "source_sha256": "e19544d68e85f5f1f3934c8509b5213f60b373623de402b5bff808466d40b063",
+  "reference_revision": "8aa34632c9cb0d1a8ea047a76d53e28dfee0006f",
+  "reference_source_sha256": "b295a330ba0e1a45ed118156078b1c6e97d4fe58f0a3468bc51d630bf0d9e0c0",
+  "formal": {
+    "fpga_profiles": 10,
+    "generic_profiles": 10,
+    "non_precomputed_watermark_profiles": 1,
+    "induction_steps_each": 1,
+    "initial_reset_cycle": 1,
+    "functional_inputs_constrained": false,
+    "saved_state_invariants_proved_against_one": 6,
+    "scope": "完整公开输出、共同寄存器状态、存储命令、有效银行计数和独热写入位置"
+  },
+  "four_state": {
+    "modes": 2,
+    "profiles_per_mode": 11,
+    "cycles_per_profile": 1024,
+    "comparisons": 1849100,
+    "source_model": "完整控制与共同数据 RAM 返回输入；两份事件模型使用相同敏感列表转换"
+  },
+  "numeric": {
+    "numeric32": {
+      "bus_width": 32,
+      "cases": 81,
+      "checked_bytes": 12392,
+      "compared_cycles": 7196,
+      "cycle_difference": 0
+    },
+    "numeric64": {
+      "bus_width": 64,
+      "cases": 81,
+      "checked_bytes": 12392,
+      "compared_cycles": 4522,
+      "cycle_difference": 0
+    }
+  },
+  "measurement_sha256": "b6c27a130f2b49713f1e5cef96a0553e04e5d5b1d513101b81026c23700f3d91",
+  "reports": {
+    "formal_fpga": {
+      "file": "results/formal_fpga.json",
+      "sha256": "dc6dd5ed6e9846735f5c6cef5acd64372feee819efd59831449ff46278e9e607"
+    },
+    "formal_generic": {
+      "file": "results/formal_generic.json",
+      "sha256": "bdfcaefa4fdb1376adc0a54e41d7834aaa3e844178ecea312a53066892992f98"
+    },
+    "formal_watermark": {
+      "file": "results/formal_watermark.json",
+      "sha256": "3b34ec0378e664a1120771722e39e3846504d3bff3863aaec6e918816e14d48d"
+    },
+    "numeric32": {
+      "file": "results/numeric32.json",
+      "sha256": "639122cbbda71c231deeb89d771c65e81fe623194e1a95b07435aaeb21b3d7a8"
+    },
+    "numeric64": {
+      "file": "results/numeric64.json",
+      "sha256": "6b6fd104eee2b748606b7fb38064307817bd31e2f7769cc21168d51d29fa4d9e"
+    },
+    "four_state": {
+      "file": "results/four_state.json",
+      "sha256": "f34f28ad5f15a2d15279c4cc0e949ee864928e4c3c3b5dcd09341965b6515420"
+    }
+  },
+  "test_sources_sha256": {
+    "run_formal.py": "64a21114cb7f7ca76acc92693cce2404057745fd5429429a456406ab6dace558",
+    "measure_paths.py": "2eb1e72bb7ffad5c71119d769707e8f7a6b921f3839a1aeb9b03851dbe49e2c9"
+  },
+  "existing_helpers_sha256": {
+    "test/fifo_write_blocked/run_formal.py": "80bd593f0e68ab61476c7372a94d4ad45cf2697a9235774f1a6d2518dfc3ff4b",
+    "test/fifo_read_qualification/run_formal.py": "b92ab92cc575e74381d1abc8c042ff668e6c9db07e9aaa40816f1b3efa232c2e",
+    "test/fifo_read_qualification/run_cycle.py": "b4acbb6f5c3a98cfbbccc09d2be37f104fb33443a601c6c63bbdf10aba9dac96",
+    "test/fifo_write_blocked/run_four_state.py": "9b7b7be862cfc57ad3449dc52bb546da32d002fd33283ccea4533590fb4a9d24",
+    "test/fifo_count_storage/run_formal.py": "f2a60129762da885b1ca51a209e6e2c4c6361f8bfa52de758f50c5f2b04d0032"
+  }
+}

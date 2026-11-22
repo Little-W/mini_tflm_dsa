@@ -1,0 +1,18 @@
+{
+  "current": {
+    "top": "vec_s8_to_fifo",
+    "configuration": "完整 INT8 输出 FIFO，16 路向量、32 个银行、64 位总线",
+    "options": [
+      "-D",
+      "XILINX_FPGA=1",
+      "-GVLEN=16",
+      "-GBANKS=32",
+      "-GBUS_WIDTH=64",
+      "-Gp_cyclic_storage=1",
+      "-Gp_precomputed_watermark=1"
+    ],
+    "sources": [
+      "rtl/npu/writeback/vec_s8_to_fifo.sv"
+    ]
+  }
+}

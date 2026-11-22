@@ -269,15 +269,6 @@ module vec_s8_to_fifo_full #(
   end else begin : g_rotated_next_mask
     assign next_bank_mask_next = {write_bank_mask_next[BANKS-2:0], write_bank_mask_next[BANKS-1]};
   end
-  always_ff @(posedge clk) begin
-    if (!rst_n) begin
-      write_bank_blocked_q <= 1'b0;
-      next_write_bank_blocked_q <= 1'b0;
-    end else begin
-      write_bank_blocked_q <= |(bank_ready_next & write_bank_mask_next);
-      next_write_bank_blocked_q <= |(bank_ready_next & next_bank_mask_next);
-    end
-  end
   wire [COUNT_WIDTH-1:0] write_rows_next =
       in_valid ? (COUNT_WIDTH'(write_ptr) + COUNT_WIDTH'(1)) : COUNT_WIDTH'(write_ptr);
   assign co_selected_row_last = co_row_limit_q >= co_bank_count;
@@ -575,6 +566,56 @@ module vec_s8_to_fifo_full #(
       end
     end
   endgenerate
+
+  if (p_count_storage) begin : g_selected_write_state
+    logic [BANK_WIDTH-1:0] selected_bank [2];
+    logic [1:0] selected_blocked;
+    always_comb begin
+      selected_bank[0] = write_bank;
+      if (finish_write_bank && !write_bank_blocked) begin
+        selected_bank[0] = next_bank(write_bank);
+      end
+      selected_bank[1] = next_bank(selected_bank[0]);
+    end
+    // 先选定下周期的两个写入位置，再独立判断释放，合并块数无需经过银行状态归并。
+    for (genvar position = 0; position < 2; position++) begin : g_position
+      wire [BANKS-1:0] selected_mask = position == 0 ? write_bank_mask_next : next_bank_mask_next;
+      wire selected_group_release = coalesce_enable && co_finish &&
+          (((int'(selected_bank[position]) + BANKS - int'(read_bank)) % BANKS) < int'(co_tiles));
+      wire selected_stream_release = !coalesce_enable && output_ready && stream_active && data_valid &&
+          (COUNT_WIDTH'(beat_idx) == last_beat_idx_cur) && read_row_count_last &&
+          read_bank == selected_bank[position];
+      wire selected_write_complete = finish_write_bank && !write_bank_blocked &&
+          write_bank == selected_bank[position];
+      always_comb begin
+        selected_blocked[position] = |(bank_ready & selected_mask);
+        if (selected_group_release || selected_stream_release) begin
+          selected_blocked[position] = 1'b0;
+        end else if (selected_write_complete) begin
+          selected_blocked[position] = 1'b1;
+        end
+      end
+    end
+    always_ff @(posedge clk) begin
+      if (!rst_n) begin
+        write_bank_blocked_q <= 1'b0;
+        next_write_bank_blocked_q <= 1'b0;
+      end else begin
+        write_bank_blocked_q <= selected_blocked[0];
+        next_write_bank_blocked_q <= selected_blocked[1];
+      end
+    end
+  end else begin : g_parallel_write_state
+    always_ff @(posedge clk) begin
+      if (!rst_n) begin
+        write_bank_blocked_q <= 1'b0;
+        next_write_bank_blocked_q <= 1'b0;
+      end else begin
+        write_bank_blocked_q <= |(bank_ready_next & write_bank_mask_next);
+        next_write_bank_blocked_q <= |(bank_ready_next & next_bank_mask_next);
+      end
+    end
+  end
 
   // 各银行独立计算写入与释放条件，释放在同周期写入完成时保持较高优先级。
   for (genvar bank = 0; bank < BANKS; bank++) begin : g_bank_state

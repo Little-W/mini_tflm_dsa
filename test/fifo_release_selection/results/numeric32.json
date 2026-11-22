@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "bus_width": 32,
+  "banks": 32,
+  "cyclic": 1,
+  "precomputed_watermark": 1,
+  "fpga": true,
+  "cases": 81,
+  "checked_bytes": 12392,
+  "compared_cycles": 7196,
+  "cycle_difference": 0,
+  "source_sha256": "e19544d68e85f5f1f3934c8509b5213f60b373623de402b5bff808466d40b063",
+  "reference_sha256": "b295a330ba0e1a45ed118156078b1c6e97d4fe58f0a3468bc51d630bf0d9e0c0",
+  "sources_sha256": {
+    "/tmp/npu_fifo_release_select/final_validation/numeric32/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+    "/tmp/npu_fifo_release_select/final_validation/numeric32/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+    "/tmp/npu_fifo_release_select/final_validation/numeric32/vec_s16_to_fifo.sv": "2f17154307a112d4f1f69decc9eaeedfe323bf58d14889b90c6b50756156159e",
+    "/tmp/npu_fifo_release_select/final_validation/numeric32/current.sv": "e19544d68e85f5f1f3934c8509b5213f60b373623de402b5bff808466d40b063",
+    "/tmp/npu_fifo_release_select/final_validation/numeric32/reference.sv": "5718874d3508207f9ae49aca152fd3f0cf2709e29cdf495fb4c60794a5f59e59",
+    "/tmp/npu_fifo_release_select/final_validation/numeric32/vec_s16_to_fifo_ref.sv": "c28f5f93a93c16fe2666d613adf9f34e9cf5837e13a42f9fdc0847176cd13874",
+    "/tmp/npu_fifo_release_select/final_validation/numeric32/tb.sv": "097b78332aec8950513d1b120747157eb44da7cfd140d74da1a03d83c980bd3a"
+  },
+  "original_testbench_sha256": "ce0ba669a948508845b54511c921a959bb5ac2e292e8a8e928e8b48929ba5b47",
+  "log_sha256": "5ede1b950fc25978d0beb1d7d9f6a3baf52472b2b4538faaebe263565a2b5d14",
+  "executable_sha256": "c1e8f74a81b84f28eeccfc761c4821f607333b2beeee608fe8f2cd1d5c1d1bc6"
+}

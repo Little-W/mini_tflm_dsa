@@ -1,0 +1,111 @@
+{
+  "reference": "8aa34632",
+  "source_sha256": {
+    "/tmp/npu_fifo_release_select/handoff/rtl/npu/writeback/vec_s8_to_fifo.sv": "e19544d68e85f5f1f3934c8509b5213f60b373623de402b5bff808466d40b063",
+    "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+    "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c"
+  },
+  "reference_sha256": "b295a330ba0e1a45ed118156078b1c6e97d4fe58f0a3468bc51d630bf0d9e0c0",
+  "functional_inputs_constrained": false,
+  "initial_reset_cycle": 1,
+  "subsequent_reset_unconstrained": true,
+  "data_ram_inputs_constrained": false,
+  "data_storage_implementation_identical": true,
+  "precomputed_watermark": 1,
+  "fpga": true,
+  "compared": "全部公开输出、数据存储地址和使能、存储写数据、有效银行计数及银行非空状态",
+  "method": "保留完整时序逻辑，同时比较公开输出、共同寄存状态和非空关系，执行复位后的时序归纳证明",
+  "runs": [
+    {
+      "vlen": 16,
+      "banks": 1,
+      "bus_width": 64,
+      "cyclic": 1,
+      "induction_steps": 1,
+      "passed": true,
+      "log_sha256": "fe4040f02d2f8cba6a9cdfd2acc769098c321915e70a8abc9906776d92bbf003"
+    },
+    {
+      "vlen": 16,
+      "banks": 2,
+      "bus_width": 32,
+      "cyclic": 1,
+      "induction_steps": 1,
+      "passed": true,
+      "log_sha256": "8b04767304ab18a7a24782564344d327f66e8601fc11bb0b647396ec51414fb3"
+    },
+    {
+      "vlen": 16,
+      "banks": 3,
+      "bus_width": 64,
+      "cyclic": 1,
+      "induction_steps": 1,
+      "passed": true,
+      "log_sha256": "dfa0b3a3af8993e4ad852f0a8ab94f8caba6d0996ad58c5af7cb6a274da48379"
+    },
+    {
+      "vlen": 16,
+      "banks": 8,
+      "bus_width": 32,
+      "cyclic": 1,
+      "induction_steps": 1,
+      "passed": true,
+      "log_sha256": "edca9076a513e319cdfe4f75ce29e00687931901a98563f2b538ec1b70893fb1"
+    },
+    {
+      "vlen": 16,
+      "banks": 16,
+      "bus_width": 64,
+      "cyclic": 1,
+      "induction_steps": 1,
+      "passed": true,
+      "log_sha256": "7538d97b6f5bb4420739d9e061d1f353e91c6ff310b10c8130688b3796af5388"
+    },
+    {
+      "vlen": 16,
+      "banks": 32,
+      "bus_width": 32,
+      "cyclic": 1,
+      "induction_steps": 1,
+      "passed": true,
+      "log_sha256": "ad7d2f95ccf3ecc115a6fa0ce6f5aef0bca41e3a82f846f4722bfb45d62cd471"
+    },
+    {
+      "vlen": 16,
+      "banks": 32,
+      "bus_width": 64,
+      "cyclic": 1,
+      "induction_steps": 1,
+      "passed": true,
+      "log_sha256": "0b55b3339351bc64425584ae87e69de6406856c9747f004410c8008bb7e2b0d3"
+    },
+    {
+      "vlen": 16,
+      "banks": 64,
+      "bus_width": 64,
+      "cyclic": 1,
+      "induction_steps": 1,
+      "passed": true,
+      "log_sha256": "ac6c3fa828a44d528d7f9de14a1f546a2243daacca750873ec8e11e455b66f77"
+    },
+    {
+      "vlen": 16,
+      "banks": 32,
+      "bus_width": 64,
+      "cyclic": 0,
+      "induction_steps": 1,
+      "passed": true,
+      "log_sha256": "362f1835724bf3d88a6620fd5f13da6a13d110285bd2d08afcf69fb419708768"
+    },
+    {
+      "vlen": 8,
+      "banks": 8,
+      "bus_width": 32,
+      "cyclic": 0,
+      "induction_steps": 1,
+      "passed": true,
+      "log_sha256": "8245046b3005acb498cb8f688ca7c240cd92db575fe534fda6e57c62073fbbf4"
+    }
+  ],
+  "passed": true
+}
