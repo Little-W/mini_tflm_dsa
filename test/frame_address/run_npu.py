@@ -57,13 +57,16 @@ def packed_cases(out: Path) -> list[Path]:
 
 
 def main() -> None:
+    global ROOT
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--source-root', type=Path, default=ROOT)
     parser.add_argument('--verilator', default='verilator')
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--build-timeout', type=int, default=7200)
     parser.add_argument('--sim', type=Path)
     args = parser.parse_args()
+    ROOT = args.source_root.resolve()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     verilator = shutil.which(args.verilator)
@@ -110,6 +113,8 @@ def main() -> None:
                                  **{key:int(value) for key,value in re.findall(r'(\w+)=(\d+)',line)}})
     if not any(row['ws_frames'] and row['is_frames'] and row['packed_frames'] and row['wide_frames'] for row in coverage):
         raise RuntimeError('Frame mode and layout coverage incomplete')
+    if not coverage or any(row.get('cache_slot_checks', 0) != row['started'] for row in coverage):
+        raise RuntimeError('Frame cache slot checks do not cover every executed frame')
     if hashes != {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in tracked}:
         raise RuntimeError('Sources changed during production validation')
     summary = {'passed':True,'source_sha256':hashes,'simulator_manifest':str(sim/'build.json'),

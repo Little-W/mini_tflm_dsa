@@ -8,6 +8,12 @@ module frame_address_npu_observer #(parameter int p_size = 16);
     longint unsigned ws_frames = 0, is_frames = 0, packed_frames = 0, wide_frames = 0;
     longint unsigned prepare_cycles = 0;
     longint unsigned context_cycles = 0, context_consumptions = 0;
+    longint unsigned cache_slot_checks = 0;
+    logic [31:0] expected_cache_slot;
+    wire [31:0] requested_output_reserve = npu_top.ia_reuse_num_eff +
+        (npu_top.direct_final_stream ? 32'(npu_top.DIRECT_OUTPUT_EXTRA_BANKS) : 32'd0);
+    wire [31:0] expected_output_reserve = requested_output_reserve >= 32'(npu_top.OA_FIFO_BANKS) ?
+        32'(npu_top.OA_FIFO_BANKS) : requested_output_reserve;
 
     function automatic logic [31:0] operand_address(
         input logic [31:0] base, row0, depth0, stride, total_depth,
@@ -27,9 +33,7 @@ module frame_address_npu_observer #(parameter int p_size = 16);
             pending <= 0;
             age <= 0;
         end else begin
-            assert(npu_top.output_reserve_banks ==
-                   32'(npu_top.ia_reuse_num_eff +
-                       (npu_top.direct_final_stream ? 32'(npu_top.DIRECT_OUTPUT_EXTRA_BANKS) : 32'd0)))
+            assert(npu_top.output_reserve_banks == expected_output_reserve)
                 else $fatal(1,"Output reservation differs");
             if (npu_top.frame_command_active) begin
                 assert({npu_top.frame_exec_rows, npu_top.frame_exec_cols,
@@ -52,12 +56,30 @@ module frame_address_npu_observer #(parameter int p_size = 16);
                     else $fatal(1,"Frame context consumed without an active command");
                 context_consumptions <= context_consumptions + 1;
             end
+            if (npu_top.frame_mode_q && npu_top.init_cfg_ia) begin
+                assert(npu_top.frame_command_active &&
+                       npu_top.frame_cache_slot_base_q ==
+                       npu_top.IA_CACHE_SLOT_W'(expected_cache_slot) &&
+                       npu_top.frame_cache_slot_base_q ==
+                       npu_top.IA_CACHE_SLOT_W'(
+                           ((npu_top.frame_command_p0 >> p_shift) +
+                            (npu_top.frame_command_q0 >> p_shift) * npu_top.ia_reuse_num_eff) &
+                           ((npu_top.run_compact ? npu_top.active_ia_cache_blocks << 1 :
+                             npu_top.active_ia_cache_blocks) - 32'd1)))
+                    else $fatal(1,"Frame input cache slot differs");
+                cache_slot_checks <= cache_slot_checks + 1;
+            end
             if (npu_top.frame_command_start) begin
                 assert(!pending && !npu_top.frame_execution_started)
                     else $fatal(1,"Frame preparation accepted overlapping work");
                 pending <= 1;
                 age <= 1;
                 accepted <= accepted + 1;
+                expected_cache_slot <=
+                    ((npu_top.frame_command_p0 >> p_shift) +
+                     (npu_top.frame_command_q0 >> p_shift) * npu_top.ia_reuse_num_eff) &
+                    ((npu_top.run_compact ? npu_top.active_ia_cache_blocks << 1 :
+                      npu_top.active_ia_cache_blocks) - 32'd1);
                 expected_ia <= operand_address(npu_top.ia_base_eff,npu_top.frame_command_p0,npu_top.frame_command_q0,
                     npu_top.ia_stride_eff,npu_top.run_n,npu_top.is_mode ? npu_top.run_rhs_tile_packed : npu_top.run_lhs_tile_packed,
                     npu_top.ia_use_16bits_eff);
@@ -89,9 +111,9 @@ module frame_address_npu_observer #(parameter int p_size = 16);
             end
         end
     end
-    final $display("FRAME_ADDRESS_NPU_PASS accepted=%0d started=%0d cancelled=%0d prepare_cycles=%0d ws_frames=%0d is_frames=%0d packed_frames=%0d wide_frames=%0d context_cycles=%0d context_consumptions=%0d",
+    final $display("FRAME_ADDRESS_NPU_PASS accepted=%0d started=%0d cancelled=%0d prepare_cycles=%0d ws_frames=%0d is_frames=%0d packed_frames=%0d wide_frames=%0d context_cycles=%0d context_consumptions=%0d cache_slot_checks=%0d",
         accepted,started,cancelled,prepare_cycles,ws_frames,is_frames,packed_frames,wide_frames,
-        context_cycles,context_consumptions);
+        context_cycles,context_consumptions,cache_slot_checks);
 endmodule
 
 bind npu_top frame_address_npu_observer #(.p_size(SIZE)) u_frame_address_observer();

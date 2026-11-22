@@ -43,7 +43,7 @@ def main():
     actual = out / 'scheduler_context.sv'
     actual.write_text(modified)
     files = [actual, ROOT / 'rtl/common/onehot_check.sv', ROOT / 'rtl/common/regfile.v',
-             ROOT / 'rtl/common/parallel_prefix_add.sv']
+             ROOT / 'rtl/common/parallel_prefix_add.sv', ROOT / 'rtl/common/unsigned_compare.sv']
     digest = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     report = dict(source_sha256={str(p.relative_to(ROOT)):digest(p) for p in (top, scheduler, *files[1:])},
                   extracted_sha256=digest(actual), inputs_constrained=False,

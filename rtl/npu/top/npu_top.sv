@@ -1022,6 +1022,19 @@ module npu_top #(
         // 更大银行配置保留全并行量化，使可寻址缓冲容量继续满足原有预算。
         localparam int unsigned p_requant_compute_lanes =
             REQUANT_COMPUTE_LANES;
+        logic [IA_CACHE_SLOT_W-1:0] frame_cache_slot_base_q;
+        logic [31:0] frame_cache_slot_base_calc;
+        // 帧命令接收时保存物理缓存槽号，输入准备阶段直接使用寄存结果。
+        assign frame_cache_slot_base_calc =
+            ((frame_command_p0 >> SIZE_SHIFT) +
+             (frame_command_q0 >> SIZE_SHIFT) * ia_reuse_num_eff) &
+            ((run_compact ? active_ia_cache_blocks << 1 : active_ia_cache_blocks) - 32'd1);
+        always_ff @(posedge clk or negedge core_rst_n) begin
+            if (!core_rst_n) frame_cache_slot_base_q <= '0;
+            else if (frame_command_start)
+                frame_cache_slot_base_q <= IA_CACHE_SLOT_W'(frame_cache_slot_base_calc);
+        end
+
         logic [31:0] frame_exec_rows, frame_exec_cols, frame_exec_p0, frame_exec_column;
         logic frame_exec_init, frame_exec_final;
 
@@ -2244,10 +2257,7 @@ module npu_top #(
         .cache_flush(operand_loader_flush_q),
         .cfg_p0_base(frame_mode_q ? frame_command_p0 : 32'd0),
         .cfg_q0_base(frame_mode_q ? frame_command_q0 : 32'd0),
-        .cfg_cache_slot_base(frame_mode_q ?
-            (((frame_command_p0 >> SIZE_SHIFT) +
-              (frame_command_q0 >> SIZE_SHIFT) * ia_reuse_num_eff) &
-             ((run_compact ? active_ia_cache_blocks << 1 : active_ia_cache_blocks) - 32'd1)) : 32'd0),
+        .cfg_cache_slot_base(frame_mode_q ? 32'(frame_cache_slot_base_q) : 32'd0),
         .load_ia_req     (load_ia_req),
         .load_ia_granted (load_ia_granted),
             .send_ia_trigger (send_ia_trigger),
