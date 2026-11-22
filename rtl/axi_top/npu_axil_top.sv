@@ -309,7 +309,7 @@ module npu_axil_top #(
                 if (npu_clk_req_q) begin
                     npu_start_warmup_q <= 1'b0;
                 end
-                if (npu_core_calc_start) begin
+                if (npu_core_calc_start && npu_sa_ready) begin
                     npu_start_pending_q <= 1'b0;
                 end
                 if (npu_done_fire) begin
@@ -325,8 +325,13 @@ module npu_axil_top #(
         end
     end
 
+    // 唤醒完成后保持启动请求，计算单元接收时清除待处理状态。
     assign npu_core_calc_start = (ENABLE_CLOCK_GATING != 0)
-                               ? (npu_start_pending_q && !npu_start_warmup_q && npu_sa_ready)
+                               ? (npu_start_pending_q && !npu_start_warmup_q
+`ifdef GEMMORA_INT8_PROFILE
+                                  && npu_sa_ready
+`endif
+                                 )
                                : calc_start_pulse;
 
     generate

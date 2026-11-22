@@ -1,0 +1,45 @@
+{
+  "passed": true,
+  "proofs": [
+    {
+      "profile": 0,
+      "clock_gating": 0,
+      "equivalent_bits": 16,
+      "passed": true
+    },
+    {
+      "profile": 0,
+      "clock_gating": 1,
+      "equivalent_bits": 16,
+      "passed": true
+    },
+    {
+      "profile": 1,
+      "clock_gating": 0,
+      "equivalent_bits": 16,
+      "passed": true
+    },
+    {
+      "profile": 1,
+      "clock_gating": 1,
+      "equivalent_bits": 16,
+      "passed": true
+    }
+  ],
+  "four_state_cycles": 200006,
+  "four_state_output_comparisons": 7200216,
+  "inputs_constrained": false,
+  "reference": "6f70ce67",
+  "runner_sha256": "208e9ca4152803f8580ddec99bb0989b04fbcb478f82468ebe9caef0f2208506",
+  "source_sha256": {
+    "reference": "66d20352c7df07bac6535fff88fb9a28b3b8a5ada805c62c0b6e3c282501871e",
+    "current": "a30ee11fce0ae931271dac1647587e63c3862eb98648cfced727dc1157a6ad49"
+  },
+  "clock_gate": {
+    "passed": true,
+    "observed_edges": 41,
+    "child_interfaces_only": true,
+    "testbench_sha256": "5178efd1a34d9e41d718aa6ea1cf8a974f7fe61f2a1be007eccbe54a71bc39b0",
+    "simulation_log_sha256": "44cc697296b24847cf9eaff4e2c328453dbfdd8fe113a23457179bc887c9abc2"
+  }
+}

@@ -81,6 +81,28 @@ module tb_clock_gate_reset;
     force dut.npu_axi_idle=1;
     repeat (4) @(negedge clk); #1;
     if (dut.npu_clk_gate_en !== 0) $fatal(1,"completion did not close gate");
+    // 就绪延迟时保持启动请求；接收边沿只消费一次，时钟等待应答完成。
+    force dut.npu_sa_ready=0;
+    force dut.calc_start_pulse=1;
+    @(posedge clk); #1;
+    force dut.calc_start_pulse=0;
+    repeat (4) begin
+      @(posedge clk); #1;
+      if (!dut.npu_start_pending_q || !dut.npu_core_calc_start || !dut.npu_clk_gate_en)
+        $fatal(1,"start request was not held while the core was busy");
+    end
+    @(negedge clk); #1;
+    force dut.npu_sa_ready=1;
+    @(posedge clk); #1;
+    if (dut.npu_start_pending_q || dut.npu_core_calc_start)
+      $fatal(1,"accepted start request remained pending");
+    force dut.npu_done_valid=1;
+    force dut.npu_done_ready=1;
+    @(posedge clk); #1;
+    force dut.npu_done_valid=0;
+    force dut.npu_done_ready=0;
+    repeat (4) @(negedge clk); #1;
+    if (dut.npu_clk_gate_en !== 0) $fatal(1,"delayed start completion did not close gate");
     $display("CLOCK_GATE_RESET_PASS edges=%0d",edges);
     $finish;
   end
