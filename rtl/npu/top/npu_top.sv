@@ -1024,11 +1024,6 @@ module npu_top #(
             REQUANT_COMPUTE_LANES;
         logic [IA_CACHE_SLOT_W-1:0] frame_cache_slot_base_q;
         logic [31:0] frame_cache_slot_base_calc;
-        // 帧命令接收时保存物理缓存槽号，输入准备阶段直接使用寄存结果。
-        assign frame_cache_slot_base_calc =
-            ((frame_command_p0 >> SIZE_SHIFT) +
-             (frame_command_q0 >> SIZE_SHIFT) * ia_reuse_num_eff) &
-            ((run_compact ? active_ia_cache_blocks << 1 : active_ia_cache_blocks) - 32'd1);
         always_ff @(posedge clk or negedge core_rst_n) begin
             if (!core_rst_n) frame_cache_slot_base_q <= '0;
             else if (frame_command_start)
@@ -1686,6 +1681,11 @@ module npu_top #(
         logic [REG_WIDTH-1:0] stream_m;
         logic [REG_WIDTH-1:0] ia_reuse_num_eff;
         logic [REG_WIDTH-1:0] w_reuse_num_eff;
+        // 使用已保存的任务配置计算物理槽号，帧命令接收时保存计算结果。
+        assign frame_cache_slot_base_calc =
+            ((frame_command_p0 >> SIZE_SHIFT) +
+             (frame_command_q0 >> SIZE_SHIFT) * ia_reuse_num_eff) &
+            ((run_compact ? active_ia_cache_blocks << 1 : active_ia_cache_blocks) - 32'd1);
         // 输出预留覆盖阵列尾部、计算输出寄存和十二级量化流水。
         localparam int unsigned p_compute_output_stages = 1;
         localparam int unsigned DIRECT_OUTPUT_EXTRA_BANKS =
