@@ -68,7 +68,8 @@ def main():
         raise RuntimeError('Cursor width coverage')
     text=ctrl.read_text()
     start=text.index('    always_ff',text.index('begin : g_saved_load_boundary'))
-    stop=text.index('    assign load_last_equal_o_regular',start)
+    marker='    localparam int p_boundary_groups' if '    localparam int p_boundary_groups' in text else '    assign load_last_equal_o_regular'
+    stop=text.index(marker,start)
     normalized=out/'normalized_ctrl.sv'
     normalized.write_text(text[:start]+"    assign cursor_after_q = load_ia_cursor_cnt + LOAD_CNT_W'(1);\n"+text[stop:])
     original_paths={label:list(values)for label,values in paths.items()}

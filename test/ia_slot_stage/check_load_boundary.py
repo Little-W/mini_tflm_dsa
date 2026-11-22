@@ -3,20 +3,21 @@
 import argparse,hashlib,json,re,shlex,subprocess,sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
-p=argparse.ArgumentParser();p.add_argument('--source-root',type=Path,required=True);p.add_argument('--out',type=Path,required=True);a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
+p=argparse.ArgumentParser();p.add_argument('--tool-root',type=Path,default=ROOT);p.add_argument('--source-root',type=Path,required=True);p.add_argument('--out',type=Path,required=True);a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
 source=a.source_root/'rtl/npu/loaders/ia_loader_ctrl.sv';text=source.read_text();digest=hashlib.sha256(source.read_bytes()).hexdigest();runs=[]
 def between(start,end):
  i=text.index(start);return text[i:text.index(end,i)]
 def proof(name,content,opts,commands):
  sv=a.out/(name+'.sv');ys=a.out/(name+'.ys');log=a.out/(name+'.log');sv.write_text(content)
  ys.write_text('read_slang --top proof -DSYNTHESIS=1 -DXILINX_FPGA=1 '+opts+' '+shlex.quote(str(sv))+'\nprep -top proof -flatten\nasync2sync\nopt\ncheck -assert\n'+commands)
- with log.open('w')as f:r=subprocess.run([sys.executable,str(ROOT/'scripts/fpga/open_fpga_synth.py'),'--worker',str(ys)],stdout=f,stderr=subprocess.STDOUT,timeout=90)
+ with log.open('w')as f:r=subprocess.run([sys.executable,str(a.tool_root.resolve()/'scripts/fpga/open_fpga_synth.py'),'--worker',str(ys)],stdout=f,stderr=subprocess.STDOUT,timeout=90)
  if r.returncode or 'SUCCESS!'not in log.read_text():raise RuntimeError(str(log))
  runs.append({'name':name,'passed':True,'source_sha256':hashlib.sha256(sv.read_bytes()).hexdigest(),'log_sha256':hashlib.sha256(log.read_bytes()).hexdigest()})
 start=text.index('  // load_ia_cursor 与 load_tiles_done 管理');start=text.index('  always_ff',start);stop=text.index('  // slot 指针管理',start);counter=text[start:stop];counter=counter[:counter.rfind('  // =====================================================================')]
 for target in ('load_cursor_row_base','load_cursor_p0','load_l2_is_last'):
  counter=re.sub(r'\b'+target+r'\s*<=.*?;','',counter)
-look=between('    logic [LOAD_CNT_W-1:0] cursor_after_q;','    assign load_last_equal_o_regular')
+look_end='    localparam int p_boundary_groups' if '    localparam int p_boundary_groups' in text else '    assign load_last_equal_o_regular'
+look=between('    logic [LOAD_CNT_W-1:0] cursor_after_q;',look_end)
 module='''module proof #(parameter int LOAD_CNT_W=7)(
  input logic clk,rst_n,retirement_l1,prefetch_active,prefetch_entering,tl_tile_done,
  input logic[2:0]state,output logic equivalent);

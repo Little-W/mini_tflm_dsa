@@ -517,9 +517,22 @@ module ia_loader_ctrl #(
       else if ((state == S_LOAD || state == S_SEND) && tl_tile_done)
         cursor_after_q <= load_ia_cursor_cnt + LOAD_CNT_W'(2);
     end
-    assign load_last_equal_o_regular = cursor_after_q == load_last_equal_i_regular;
-    assign load_last_equal_o_tail = cursor_after_q == load_last_equal_i_tail;
-    assign load_last_equal_o_prefetch = cursor_after_q == load_last_equal_i_prefetch;
+    localparam int p_boundary_groups = (LOAD_CNT_W + 2) / 3;
+    logic [2:0][LOAD_CNT_W-1:0] boundary_limit;
+    (* keep = 1 *) logic [2:0][p_boundary_groups-1:0] boundary_group_equal;
+    assign boundary_limit = {load_last_equal_i_prefetch, load_last_equal_i_tail, load_last_equal_i_regular};
+    // 每组独立比较三对计数位，运行模式只选择完整的边界结果。
+    for (genvar source = 0; source < 3; source++) begin : g_source
+      for (genvar group_index = 0; group_index < p_boundary_groups; group_index++) begin : g_group
+        localparam int p_first = group_index * 3;
+        localparam int p_width = LOAD_CNT_W - p_first < 3 ? LOAD_CNT_W - p_first : 3;
+        assign boundary_group_equal[source][group_index] =
+            cursor_after_q[p_first +: p_width] == boundary_limit[source][p_first +: p_width];
+      end
+    end
+    assign load_last_equal_o_regular = &boundary_group_equal[0];
+    assign load_last_equal_o_tail = &boundary_group_equal[1];
+    assign load_last_equal_o_prefetch = &boundary_group_equal[2];
   end else begin : g_current_load_boundary
   add_equal #(.p_width(LOAD_CNT_W)) u_regular (
       .i_a(load_ia_cursor_cnt), .i_b(load_last_equal_i_zero),
@@ -537,9 +550,17 @@ module ia_loader_ctrl #(
       .o_equal(load_last_equal_o_prefetch)
   );
   end
-  assign load_is_last_row_tile = load_l2_is_last &&
-      (prefetch_active ? load_last_equal_o_prefetch :
-       (is_last_l2_group ? load_last_equal_o_tail : load_last_equal_o_regular));
+  if (p_saved_load_boundary) begin : g_selected_load_boundary
+    (* keep = 1 *) logic [2:0] selected_last;
+    assign selected_last[0] = !prefetch_active && !is_last_l2_group && load_last_equal_o_regular;
+    assign selected_last[1] = !prefetch_active && is_last_l2_group && load_last_equal_o_tail;
+    assign selected_last[2] = prefetch_active && load_last_equal_o_prefetch;
+    assign load_is_last_row_tile = load_l2_is_last && (|selected_last);
+  end else begin : g_direct_load_boundary
+    assign load_is_last_row_tile = load_l2_is_last &&
+        (prefetch_active ? load_last_equal_o_prefetch :
+         (is_last_l2_group ? load_last_equal_o_tail : load_last_equal_o_regular));
+  end
   logic load_is_last_col_tile;
   assign load_is_last_col_tile = prefetch_active ?
     (next_l1_idx == last_col_tile_idx) :
@@ -901,9 +922,19 @@ module ia_loader_ctrl #(
   assign request_group = REG_WIDTH'(prefetch_active ? next_w_group_idx : w_group_idx);
   // 两种候选行数先并行比较，尾行选择只合并一位结果。
   if (p_saved_load_boundary) begin : g_parallel_rows_match
+    localparam int p_row_groups = (ROW_CNT_W + 2) / 3;
     (* keep = 1 *) logic normal_equal, tail_equal;
+    (* keep = 1 *) logic [p_row_groups-1:0] tail_group_equal;
+    logic [ROW_CNT_W-1:0] tail_rows;
+    assign tail_rows = ROW_CNT_W'(rsp_rows_last_tile);
     assign normal_equal = request_rows_target == ROW_CNT_W'(REG_WIDTH'(SIZE));
-    assign tail_equal = request_rows_target == ROW_CNT_W'(rsp_rows_last_tile);
+    for (genvar group_index = 0; group_index < p_row_groups; group_index++) begin : g_group
+      localparam int p_first = group_index * 3;
+      localparam int p_width = ROW_CNT_W - p_first < 3 ? ROW_CNT_W - p_first : 3;
+      assign tail_group_equal[group_index] =
+          request_rows_target[p_first +: p_width] == tail_rows[p_first +: p_width];
+    end
+    assign tail_equal = &tail_group_equal;
     assign request_rows_matches = load_is_last_row_tile ? tail_equal : normal_equal;
   end else begin : g_current_rows_match
     assign request_rows_matches = request_rows_target == load_rows_cur[ROW_CNT_W-1:0];

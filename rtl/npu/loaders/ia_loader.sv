@@ -25,7 +25,9 @@ module ia_loader #(
     // 使用生产 DMA 的 S8 列排列和 S16 有效通道范围。
     parameter bit p_dma_source_layout = 1'b0,
     // 共享块写数据与原写命令在同一寄存级产生。
-    parameter bit p_shared_write_stage = 1'b0
+    parameter bit p_shared_write_stage = 1'b0,
+    // DMA 仲裁预留经过寄存级，控制器只使用当前预留对应的外部授予。
+    parameter bit p_register_dma_request = 1'b0
 ) (
     input logic clk,
     input logic rst_n,
@@ -522,6 +524,7 @@ module ia_loader #(
     endfunction
 
     logic ctrl_load_req, ctrl_load_granted, ctrl_request_valid;
+    logic request_offer, request_permission;
     logic [REG_WIDTH-1:0] request_base_addr, request_p0, request_q0;
     logic [REG_WIDTH-1:0] demand_p0_q, demand_q0_q;
     logic [CACHE_SLOT_W-1:0] demand_slot_q, demand_slot_next;
@@ -722,7 +725,7 @@ module ia_loader #(
     wire dma_available = !fill_pending && !ext_dma_busy && !tl_start && !prefetch_start;
     wire prefetch_request = prefetch_pending && prefetch_lookup_ready && !prefetch_cached && dma_available &&
         !ctrl_load_req && !cache_hit_done && !init_cfg && !cache_flush;
-    wire prefetch_issue = prefetch_request && load_ia_granted;
+    wire prefetch_issue = prefetch_request && request_permission;
     wire prefetch_advance = prefetch_pending &&
         (prefetch_done || (!prefetch_inflight && prefetch_cached && !init_cfg && !cache_flush));
 
@@ -738,12 +741,24 @@ module ia_loader #(
         ctrl_load_req;
     assign prefetch_grant_enabled = ctrl_load_req && !tl_busy && !init_cfg && !cache_flush;
     assign grant_without_lookup = !ctrl_request_valid &&
-        (prefetch_enable_q ? prefetch_grant_enabled : load_ia_granted);
+        (prefetch_enable_q ? prefetch_grant_enabled : request_permission);
     assign grant_with_lookup = prefetch_enable_q ?
-        (prefetch_grant_enabled && (request_cache_eligible || (dma_available && load_ia_granted))) :
-        load_ia_granted;
-    assign load_ia_req = request_without_lookup || (request_lookup_ready && request_with_lookup) ||
-                             (prefetch_enable_q && ext_dma_start);
+        (prefetch_grant_enabled && (request_cache_eligible || (dma_available && request_permission))) :
+        request_permission;
+    assign request_offer = request_without_lookup || (request_lookup_ready && request_with_lookup) ||
+        (prefetch_enable_q && ext_dma_start);
+    if (p_register_dma_request) begin : g_registered_dma_request
+        // 预留有效位跨越仲裁边界；配置切换和缓存清除撤销尚未提交的预留。
+        always_ff @(posedge clk or negedge rst_n) begin
+            if (!rst_n) load_ia_req <= 1'b0;
+            else if (init_cfg || cache_flush) load_ia_req <= 1'b0;
+            else load_ia_req <= request_offer;
+        end
+        assign request_permission = load_ia_granted && load_ia_req;
+    end else begin : g_direct_dma_request
+        assign load_ia_req = request_offer;
+        assign request_permission = load_ia_granted;
+    end
     assign ctrl_load_granted = grant_without_lookup || (request_lookup_ready && grant_with_lookup);
     assign prefetch_idle = !prefetch_pending && !prefetch_inflight;
 

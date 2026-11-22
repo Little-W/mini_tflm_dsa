@@ -2236,6 +2236,7 @@ module npu_top #(
                 .COMPACT_S8(IA_COMPACT_ENABLE),
                 .EXTERNAL_RAM(SHARED_RAM_ENABLED),
                 .ORDERED_JOB(1'b1),
+                .p_register_dma_request(1'b1),
                 // 输入来自双模式 DMA，使用其固定的列位置和有效通道排列。
                 .p_dma_source_layout(1'b1),
                 .p_shared_write_stage(SHARED_RAM_ENABLED && p_fixed_ps_channels),
