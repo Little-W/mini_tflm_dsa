@@ -5,6 +5,7 @@
  * Active slots must hold two groups of ia_reuse_num tiles. A preserved slot is
  * reusable only after its complete DMA request has finished successfully.
  */
+`default_nettype none
 
 module ia_loader #(
     parameter int unsigned DATA_WIDTH   = 16,
@@ -169,7 +170,7 @@ module ia_loader #(
     // =======================================================================
     // 配置寄存器（init_cfg 锁存）
     // =======================================================================
-    logic [REG_WIDTH-1:0] cfg_k, cfg_n, cfg_m;
+    logic [REG_WIDTH-1:0] cfg_k, cfg_n;
     logic signed [REG_WIDTH-1:0] cfg_lhs_zp;
     logic [REG_WIDTH-1:0] cfg_lhs_row_stride_b, cfg_lhs_base;
     logic                 cfg_use_16bits;
@@ -322,8 +323,6 @@ module ia_loader #(
     // =======================================================================
     // 派生参数计算通路（使用连续赋值）
     // =======================================================================
-    logic [REG_WIDTH-1:0] vtn_tmp;
-    logic [REG_WIDTH-1:0] r_mod;
     logic [REG_WIDTH-1:0] ia_reuse_num_safe;
     logic [REG_WIDTH-1:0] w_reuse_num_safe;
     logic [REG_WIDTH-1:0] ia_reuse_num_act_comb;
@@ -335,11 +334,9 @@ module ia_loader #(
     logic [REG_WIDTH-1:0] last_cols_comb;
     logic [REG_WIDTH-1:0] rsp_beats_per_row_last_comb;
 
-    logic [REG_WIDTH-1:0] tmp_col_rem;
     logic [REG_WIDTH-1:0] rsp_rows_last_tile_comb;
 
     // 基于输入参数计算派生值
-    assign vtn_tmp = (k + SIZE - 1) >> LOG2_SIZE;
     assign ia_reuse_num_safe = (ia_reuse_num == 0) ? REG_WIDTH'(1) : ia_reuse_num;
     assign w_reuse_num_safe = (w_reuse_num == 0) ? REG_WIDTH'(1) : w_reuse_num;
     assign ia_reuse_num_act_comb = row_tail_tiles;
@@ -356,12 +353,13 @@ module ia_loader #(
         assign rsp_rows_last_tile_comb = (k[LOG2_SIZE-1:0] == '0) ?
             REG_WIDTH'(SIZE) : REG_WIDTH'(k[LOG2_SIZE-1:0]);
     end else begin : g_general_tail
+        logic [REG_WIDTH-1:0] tmp_col_rem;
+        assign tmp_col_rem = (((k + SIZE - 1) >> LOG2_SIZE) << LOG2_SIZE) - k;
         assign last_cols_comb = SIZE - ((((n + SIZE - 1) >> LOG2_SIZE) << LOG2_SIZE) - n);
         assign rsp_rows_last_tile_comb = SIZE - tmp_col_rem;
     end
     assign rsp_beats_per_row_last_comb = ((last_cols_comb << (use_16bits ? 1 : 0)) + BYTE_PER_BEAT - 1) >> LOG2_BYTE_PER_BEAT;
 
-    assign tmp_col_rem = (((k + SIZE - 1) >> LOG2_SIZE) << LOG2_SIZE) - k;
 
     // 尾组行数与原始配置在同一边沿保存，完整保留计数位宽和三十二位回绕。
     assign frame_last_tiles = p_frame_count_width'(ia_reuse_num_act_comb);
@@ -384,7 +382,6 @@ module ia_loader #(
         if (!rst_n) begin
             cfg_k                    <= '0;
             cfg_n                    <= '0;
-            cfg_m                    <= '0;
             cfg_lhs_zp               <= '0;
             cfg_lhs_row_stride_b     <= '0;
             cfg_lhs_base             <= '0;
@@ -414,7 +411,6 @@ module ia_loader #(
         end else if (state == IDLE && init_cfg) begin
             cfg_k <= k;
             cfg_n <= n;
-            cfg_m <= m;
             cfg_lhs_zp <= lhs_zp;
             cfg_lhs_row_stride_b <= lhs_row_stride_b;
             cfg_lhs_base <= lhs_base;
@@ -458,7 +454,6 @@ module ia_loader #(
     logic        [           REG_WIDTH-1:0] tl_rows_to_read;
     logic        [           REG_WIDTH-1:0] tl_valid_cols;
     logic        [                     7:0] tl_burst_len_m1;
-	    logic        [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] tl_slot_id;
     logic                                   tl_use_16bits;
     logic signed [           REG_WIDTH-1:0] tl_lhs_zp;
     logic                                   tl_busy;
@@ -529,8 +524,8 @@ module ia_loader #(
     logic [REG_WIDTH-1:0] demand_p0_q, demand_q0_q;
     logic [CACHE_SLOT_W-1:0] demand_slot_q, demand_slot_next;
     logic [CACHE_SLOT_W-1:0] demand_slot_base_next, demand_slot_mask_next;
-    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] demand_p0_nxt, demand_q0_nxt;
-    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] request_p0_absolute, request_q0_absolute;
+     logic [REG_WIDTH-1:0] demand_p0_nxt, demand_q0_nxt;
+     logic [REG_WIDTH-1:0] request_p0_absolute, request_q0_absolute;
     logic unused_demand_p0_carry, unused_demand_q0_carry;
     logic [REG_WIDTH-1:0] request_group, request_rows, request_cols;
     logic [7:0] request_burst_len_m1;
@@ -547,7 +542,6 @@ module ia_loader #(
     logic [CACHE_TAG_W-1:0] request_lookup_q, prefetch_lookup_q;
     logic [CACHE_SLOT_W-1:0] request_lookup_slot_q, prefetch_lookup_slot_q;
     logic request_lookup_valid, prefetch_lookup_valid;
-    logic request_lookup_match;
     logic request_q0_matches;
     logic request_rows_matches;
     logic request_lookup_ready;
@@ -610,7 +604,7 @@ module ia_loader #(
         end
     end
 
-    (* use_dsp = "yes" *) logic [CACHE_SLOT_W-1:0] request_slot_sum;
+     logic [CACHE_SLOT_W-1:0] request_slot_sum;
 
     // 完整槽号模加独立完成，后续掩码与查询比较共用同一结果。
     assign request_slot_sum = request_slot + cache_slot_base_q;
@@ -652,20 +646,14 @@ module ia_loader #(
     // 有序任务并行比较坐标高位与行数，低位进位和首个高位等式共同完成。
     if (ORDERED_JOB) begin : g_ordered_request_match
         localparam int unsigned p_coord_width = REG_WIDTH - LOG2_SIZE;
-        localparam int unsigned p_rows_width = $clog2(SIZE + 1);
         logic [REG_WIDTH-1:0] request_p0_equal_i_a_full, request_p0_equal_i_b_full;
-        logic [REG_WIDTH-1:0] request_q0_equal_i_a_full, request_q0_equal_i_b_full;
         logic [p_coord_width-1:0] request_p0_equal_i_target;
-        logic [p_coord_width-1:0] request_q0_equal_i_target;
         (* keep = 1 *) logic request_p0_equal_o_equal;
         (* keep = 1 *) logic request_q0_equal_o_equal;
 
         assign request_p0_equal_i_a_full = request_p0;
         assign request_p0_equal_i_b_full = p0_base_q;
-        assign request_q0_equal_i_a_full = request_q0;
-        assign request_q0_equal_i_b_full = q0_base_q;
         assign request_p0_equal_i_target = request_lookup_q[CACHE_TAG_W-1 -: p_coord_width];
-        assign request_q0_equal_i_target = request_lookup_q[p_rows_width +: p_coord_width];
         ia_ordered_coordinate_equal #(
             .p_width(REG_WIDTH), .p_low_width(LOG2_SIZE)
         ) u_request_p0_equal (
@@ -682,9 +670,9 @@ module ia_loader #(
         assign request_rows_match = request_rows_matches;
         assign request_slot_match = (request_lookup_slot_q == request_descriptor.slot);
         assign request_filter_ready = request_lookup_valid && request_rows_match && request_slot_match;
-        assign request_lookup_match = request_p0_equal_o_equal && request_q0_equal_o_equal && request_rows_match;
         assign request_lookup_ready = request_filter_ready && request_p0_equal_o_equal && request_q0_equal_o_equal;
     end else begin : g_generic_request_match
+        logic request_lookup_match;
         assign request_lookup_match = (request_lookup_q == descriptor_tag(request_descriptor));
         assign request_lookup_ready = request_lookup_valid &&
             (request_lookup_slot_q == request_descriptor.slot) && request_lookup_match;
@@ -714,10 +702,33 @@ module ia_loader #(
     logic request_cache_eligible;
     assign request_cache_eligible = preserve_cache_q &&
         cache_tags_valid[request_descriptor.slot] && request_tag_match;
-    wire cache_hit_event = tl_start && preserve_cache_q && request_lookup_valid &&
-        (request_lookup_slot_q == demand_descriptor.slot) &&
-        (request_lookup_q == descriptor_tag(demand_descriptor)) && cache_tags_valid[request_lookup_slot_q] &&
-        request_tag_match && !cache_flush && !init_cfg;
+    logic demand_lookup_match;
+    if (ORDERED_JOB) begin : g_saved_demand_lookup
+        logic [CACHE_TAG_W-1:0] demand_lookup_tag_d;
+        logic demand_lookup_match_q;
+        // 请求标记与需求坐标在同一边沿保存，比较结果随同一请求进入启动阶段。
+        // 配置同拍更新时使用需求坐标和物理槽号的实际下一值。
+        assign demand_lookup_tag_d = CACHE_TAG_W'({
+            demand_p0_nxt[REG_WIDTH-1:LOG2_SIZE],
+            demand_q0_nxt[REG_WIDTH-1:LOG2_SIZE],
+            request_rows[$clog2(SIZE + 1)-1:0]});
+        always_ff @(posedge clk or negedge rst_n) begin
+            if (!rst_n) demand_lookup_match_q <= 1'b0;
+            else demand_lookup_match_q <=
+                (request_descriptor.slot == demand_slot_next) &&
+                (descriptor_tag(request_descriptor) == demand_lookup_tag_d);
+        end
+        assign demand_lookup_match = demand_lookup_match_q;
+    end else begin : g_current_demand_lookup
+        assign demand_lookup_match = (request_lookup_slot_q == demand_descriptor.slot) &&
+            (request_lookup_q == descriptor_tag(demand_descriptor));
+    end
+    (* keep = 1 *) logic demand_hit_allowed;
+    // 请求启动资格与标记比较并行计算，命中结果只归并已经完成的条件。
+    assign demand_hit_allowed = tl_start && preserve_cache_q && request_lookup_valid &&
+        demand_lookup_match && !cache_flush && !init_cfg;
+    (* keep = 1 *) wire cache_hit_event = demand_hit_allowed &&
+        cache_tags_valid[request_lookup_slot_q] && request_tag_match;
     wire prefetch_cached = prefetch_lookup_ready && cache_tags_valid[prefetch_descriptor.slot] &&
         (prefetch_tag_q == prefetch_lookup_q);
     wire prefetch_inflight = (fill_pending && fill_is_prefetch) || prefetch_start;
@@ -819,17 +830,17 @@ module ia_loader #(
            (context_equal[1] ? CACHE_SLOT_W'(0) :
              CACHE_SLOT_W'(ia_reuse_num))) & incoming_slot_mask) == prefetch_group_slot);
 `endif
-    (* use_dsp = "yes" *) wire [REG_WIDTH-1:0] next_q0 = q0_base_q + REG_WIDTH'(SIZE);
+     wire [REG_WIDTH-1:0] next_q0 = q0_base_q + REG_WIDTH'(SIZE);
     wire [REG_WIDTH-1:0] next_beats =
         (((tile_packed_q ? REG_WIDTH'(SIZE) : next_cols) << cfg_use_16bits) +
          REG_WIDTH'(BYTE_PER_BEAT - 1)) >> LOG2_BYTE_PER_BEAT;
-    (* use_dsp = "yes" *) wire [REG_WIDTH-1:0] packed_prefetch_k_tiles =
+     wire [REG_WIDTH-1:0] packed_prefetch_k_tiles =
         (global_reduction_q >> LOG2_SIZE) +
         REG_WIDTH'((global_reduction_q & REG_WIDTH'(SIZE-1)) != 0);
     wire [REG_WIDTH-1:0] prefetch_next_k_bytes = REG_WIDTH'(SIZE) <<
         ((tile_packed_q ? LOG2_SIZE : 0) + (cfg_use_16bits ? 1 : 0));
 
-    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] prefetch_advanced_base, prefetch_first_base;
+     logic [REG_WIDTH-1:0] prefetch_advanced_base, prefetch_first_base;
     assign prefetch_advanced_base = prefetch_descriptor.base_addr +
         (prefetch_descriptor.tile_packed ?
          (packed_prefetch_k_tiles << (2*LOG2_SIZE + (prefetch_descriptor.use16 ? 1 : 0))) :
@@ -1059,7 +1070,7 @@ module ia_loader #(
         .tl_rows_to_read(tl_rows_to_read),
         .tl_valid_cols  (tl_valid_cols),
         .tl_burst_len_m1(tl_burst_len_m1),
-        .tl_slot_id     (tl_slot_id),
+        .tl_slot_id     (),
         .tl_use_16bits  (tl_use_16bits),
         .tl_lhs_zp      (tl_lhs_zp),
         .tl_busy        (tl_busy),
@@ -1112,19 +1123,11 @@ module ia_loader #(
     // =======================================================================
     // DMA 接入：通过 npu_top 的共享 AXI block_dma 写入本地 cache
     // =======================================================================
-    logic [REG_WIDTH-1:0] active_valid_cols;
     localparam int p_column_values = 1 << LOG2_SIZE;
     localparam int p_valid_mask_width = p_column_values + DMA_LANES - 1;
     localparam int p_element_width = $clog2(p_valid_mask_width);
     logic [p_valid_mask_width-1:0] active_column_mask;
 
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            active_valid_cols <= REG_WIDTH'(SIZE);
-        end else if (ext_dma_start) begin
-            active_valid_cols <= (dma_descriptor.cols == '0) ? REG_WIDTH'(SIZE) : dma_descriptor.cols;
-        end
-    end
 
     if (REG_WIDTH >= p_element_width) begin : g_column_mask
         // 描述符接收时保存所有可到达列的有效位，写入周期直接选择对应列。
@@ -1139,6 +1142,14 @@ module ia_loader #(
             end
         end
     end else begin : g_narrow_column_mask
+        logic [REG_WIDTH-1:0] active_valid_cols;
+        always_ff @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+                active_valid_cols <= REG_WIDTH'(SIZE);
+            end else if (ext_dma_start) begin
+                active_valid_cols <= (dma_descriptor.cols == '0) ? REG_WIDTH'(SIZE) : dma_descriptor.cols;
+            end
+        end
         assign active_column_mask = '0;
     end
 
@@ -1156,8 +1167,6 @@ module ia_loader #(
     generate
         for (genvar dma_i = 0; dma_i < DMA_LANES; dma_i++) begin : gen_ext_wr
             localparam int unsigned DMA_I = dma_i;
-            wire [REG_WIDTH-1:0] elem_col =
-                REG_WIDTH'(ext_dma_wr_col_base) + REG_WIDTH'(DMA_I);
             logic elem_in_tile, elem_valid;
             if (REG_WIDTH >= p_element_width) begin : g_direct_column
                 logic [p_column_values-1:0] lane_valid_columns;
@@ -1171,8 +1180,10 @@ module ia_loader #(
                     assign elem_in_tile = 1'b0;
                 end
             end else begin : g_wrapped_column
+                wire [REG_WIDTH-1:0] elem_col =
+                    REG_WIDTH'(ext_dma_wr_col_base) + REG_WIDTH'(DMA_I);
                 assign elem_in_tile = elem_col < REG_WIDTH'(SIZE);
-                assign elem_valid = elem_col < active_valid_cols;
+                assign elem_valid = elem_col < g_narrow_column_mask.active_valid_cols;
             end
             assign tl_wr_data[dma_i] = elem_valid ? ext_dma_wr_data[dma_i] : '0;
             assign tl_wr_valid[dma_i] = ext_dma_wr_valid[dma_i] && elem_in_tile;
@@ -1240,78 +1251,4 @@ module ia_loader #(
 
 endmodule
 
-// 比较坐标加法结果的高位，结果保留 p_width 位。
-module ia_ordered_coordinate_equal #(
-    parameter int unsigned p_width = 32,
-    parameter int unsigned p_low_width = 4,
-`ifdef ASIC_SYNTHESIS
-    parameter bit p_use_lut = 1'b0
-`elsif XILINX_FPGA
-    parameter bit p_use_lut = 1'b1
-`else
-    parameter bit p_use_lut = 1'b0
-`endif
-) (
-    input  logic [p_width-1:0] i_a,
-    input  logic [p_width-1:0] i_b,
-    input  logic [p_width-p_low_width-1:0] i_target,
-    output logic o_equal
-);
-    //! 0. 辅助定义
-    //! -----------
-
-    localparam int unsigned p_high_width = p_width - p_low_width;
-`ifdef ASIC_SYNTHESIS
-    localparam bit p_complete_sum = 1'b0;
-`elsif SYNTHESIS
-`ifdef XILINX_FPGA
-    localparam bit p_complete_sum = p_use_lut && p_width >= 17 && p_width <= 47;
-`else
-    localparam bit p_complete_sum = 1'b0;
-`endif
-`else
-    localparam bit p_complete_sum = 1'b0;
-`endif
-
-    if (p_complete_sum) begin : g_complete_sum
-        // 低位进位包含在完整模加中，高位结果按三对输入位并行比较。
-        localparam int unsigned p_groups = (p_high_width + 2) / 3;
-        (* use_dsp = "yes" *) logic [p_width-1:0] arithmetic_result;
-        (* keep = 1 *) logic [p_groups-1:0] group_equal;
-        assign arithmetic_result = i_a + i_b;
-        for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_compare
-            localparam int unsigned p_first = group_index * 3;
-            localparam int unsigned p_bits = p_high_width - p_first < 3 ? p_high_width - p_first : 3;
-            assign group_equal[group_index] =
-                arithmetic_result[p_low_width+p_first +: p_bits] == i_target[p_first +: p_bits];
-        end
-        assign o_equal = &group_equal;
-    end else begin : g_grouped_expression
-        logic carry_in;
-
-        //! 1. 计算坐标进位条件
-        //! -------------------
-
-        if (p_low_width > 0) begin : g_low_carry
-            logic [p_low_width-1:0] unused_low_sum;
-            // 只消费低位进位，分组生成条件避免先计算完整低位和值。
-            parallel_prefix_add #(
-                .p_width(p_low_width), .p_group_width(3), .p_preserve_groups(1'b1)
-            ) u_low_carry (
-                .i_a(i_a[p_low_width-1:0]), .i_b(i_b[p_low_width-1:0]), .i_carry(1'b0),
-                .o_sum(unused_low_sum), .o_carry(carry_in)
-            );
-        end else begin : g_no_low_carry
-            assign carry_in = 1'b0;
-        end
-        //! 2. 生成坐标比较结果
-        //! -------------------
-
-        // 相邻两位的进位一致性并行计算，公共比较器保留每位实际计算结果。
-        add_equal #(.p_width(p_high_width), .p_use_lut(p_use_lut)) u_high_equal (
-            .i_a(i_a[p_width-1:p_low_width]), .i_b(i_b[p_width-1:p_low_width]),
-            .i_target(i_target), .i_carry_in(carry_in), .o_equal(o_equal)
-        );
-    end
-
-endmodule
+`default_nettype wire

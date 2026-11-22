@@ -234,10 +234,12 @@ module axi_linear_block_dma #(
     logic [REG_WIDTH-1:0] rd_rsp_valid_cols;
     logic [BYTE_PER_BEAT-1:0] rd_rsp_lane_in_data_r, rd_rsp_lane_in_data_comb;
     logic rd_done_r, rd_response_error, rd_completed_error;
+`ifndef SYNTHESIS
     logic [BEAT_CNT_W-1:0] rsp_last_equal_i_a, rsp_last_equal_i_b;
     logic [BEAT_CNT_W-1:0] rsp_last_equal_i_target;
     logic rsp_last_equal_i_carry_in;
     logic rsp_last_equal_o_equal;
+`endif
     logic [ROW_CNT_W-1:0] rsp_row_equal_i_a, rsp_row_equal_i_b;
     logic [ROW_CNT_W-1:0] rsp_row_equal_i_target;
     logic rsp_row_equal_i_carry_in;
@@ -256,20 +258,25 @@ module axi_linear_block_dma #(
     // 两种字节排列分别判断最后一拍，行地址低位只选择已经完成的比较结果。
     // 线性读取对应一个有效字，跨字读取再接收一拍以组成完整数据。
     // 加一结果的各位进位条件并行比较，末拍和末行判断共用相同的算术结构。
+`ifndef SYNTHESIS
     assign rsp_last_equal_i_a = beat_count_t'(rd_head.burst_len_m1);
     assign rsp_last_equal_i_b = beat_count_t'(1);
     assign rsp_last_equal_i_target = rd_rsp_beat_cnt;
     assign rsp_last_equal_i_carry_in = 1'b0;
+`endif
     assign rsp_row_equal_i_a = rd_rsp_row_cnt;
     assign rsp_row_equal_i_b = row_count_t'(1);
     assign rsp_row_equal_i_target = rd_head.rows;
     assign rsp_row_equal_i_carry_in = 1'b0;
 
-    add_equal #(.p_width(BEAT_CNT_W), .p_use_lut(1'b0)) u_rsp_last_equal (
+`ifndef SYNTHESIS
+    add_equal #(.p_width(BEAT_CNT_W)) u_rsp_last_equal (
         .i_a(rsp_last_equal_i_a), .i_b(rsp_last_equal_i_b),
         .i_target(rsp_last_equal_i_target), .i_carry_in(rsp_last_equal_i_carry_in),
         .o_equal(rsp_last_equal_o_equal)
     );
+
+`endif
 
     add_equal #(.p_width(ROW_CNT_W)) u_rsp_row_equal (
         .i_a(rsp_row_equal_i_a), .i_b(rsp_row_equal_i_b),
@@ -309,12 +316,16 @@ module axi_linear_block_dma #(
             rd_head.cross_last[p_first +: p_bits];
     end
     // 跨字末拍序号随描述符保存，响应阶段直接比较当前拍数。
+`ifdef SYNTHESIS
+    assign rd_rsp_cross_equal = &rd_rsp_cross_equal_group;
+`else
     always_comb begin
         case (^{rd_head.burst_len_m1, rd_head.cross_last, rd_rsp_beat_cnt})
             1'b0, 1'b1: rd_rsp_cross_equal = &rd_rsp_cross_equal_group;
             default: rd_rsp_cross_equal = rsp_last_equal_o_equal;
         endcase
     end
+`endif
     assign rd_rsp_last_with_cross = rd_head.linear_read ?
         rd_rsp_count_one : rd_rsp_cross_equal;
     // 末拍和末行条件并行准备，地址低位只选择对应的完成结果。
@@ -467,10 +478,10 @@ module axi_linear_block_dma #(
     logic [12:0] rd_plan_page_beats;
     logic rd_plan_page_limited, rd_plan_burst_limited;
     beat_count_t rd_plan_limited;
-    (* use_dsp = "yes" *) logic [REG_WIDTH:0] rd_plan_next_addr_sum;
-    (* use_dsp = "yes" *) logic [REG_WIDTH:0] rd_cmd_start_addr_sum;
-    (* use_dsp = "yes" *) logic [REG_WIDTH:0] rd_cmd_next_addr_sum;
-    (* use_dsp = "yes" *) logic [REG_WIDTH:0] rd_rsp_next_addr_sum;
+     logic [REG_WIDTH:0] rd_plan_next_addr_sum;
+     logic [REG_WIDTH:0] rd_cmd_start_addr_sum;
+     logic [REG_WIDTH:0] rd_cmd_next_addr_sum;
+     logic [REG_WIDTH:0] rd_rsp_next_addr_sum;
     logic [REG_WIDTH-1:0] merge_i_stride_a, merge_i_stride_b, merge_i_stride_target;
     logic merge_i_carry, merge_o_stride_equal;
     logic [REG_WIDTH-1:0] rd_merged_beats;
@@ -669,7 +680,7 @@ module axi_linear_block_dma #(
     assign rd_raw_col_base = rd_rsp_col_base_r;
     for (genvar lane = 0; lane < BYTE_PER_BEAT; lane++) begin : g_unpack_lane
         logic [15:0] lane_data;
-        (* use_dsp = "yes" *) logic [DATA_WIDTH-1:0] adjusted_data;
+         logic [DATA_WIDTH-1:0] adjusted_data;
         logic lane_enabled;
         logic lane_in_tile;
         logic lane_in_data;
@@ -766,9 +777,9 @@ module axi_linear_block_dma #(
     logic [BUS_WIDTH-1:0] wr_abort_hold_data;
     logic [BUS_WIDTH/8-1:0] wr_abort_hold_mask;
 
-    (* use_dsp = "yes" *) logic [REG_WIDTH:0] wr_cmd_next_addr_sum;
+     logic [REG_WIDTH:0] wr_cmd_next_addr_sum;
     assign wr_cmd_next_addr_sum = {1'b0, wr_cmd_row_addr_cur} + {1'b0, wr_cfg_row_stride};
-    (* use_dsp = "yes" *) logic [REG_WIDTH:0] wr_data_next_addr_sum;
+     logic [REG_WIDTH:0] wr_data_next_addr_sum;
     assign wr_data_next_addr_sum = {1'b0, wr_data_row_addr_cur} + {1'b0, wr_cfg_row_stride};
 
     // Preserve a stalled W beat across abort. Subsequent accepted AW bursts
@@ -815,10 +826,10 @@ module axi_linear_block_dma #(
     wire wr_row_end = wr_row_cross ? wr_cross_row_end : wr_plain_row_end;
     wire [BEAT_CNT_W-1:0] wr_cmd_row_beats = wr_cfg_burst_len_ext + beat_count_t'(1)
         + beat_count_t'(wr_cmd_row_offset != '0);
-    (* use_dsp = "yes" *) wire [REG_WIDTH-1:0] wr_cmd_segment_addr =
+     wire [REG_WIDTH-1:0] wr_cmd_segment_addr =
         {wr_cmd_row_addr_cur[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}}
         + (REG_WIDTH'(wr_cmd_beat_cnt) << ADDR_LSB);
-    (* use_dsp = "yes" *) wire [REG_WIDTH-1:0] wr_data_segment_addr =
+     wire [REG_WIDTH-1:0] wr_data_segment_addr =
         {wr_data_row_addr_cur[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}}
         + (REG_WIDTH'(wr_beat_cnt) << ADDR_LSB);
     logic [REG_WIDTH-1:0] wr_segment_addr [2];

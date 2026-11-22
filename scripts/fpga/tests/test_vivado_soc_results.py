@@ -125,14 +125,14 @@ class ResultsTests(unittest.TestCase):
         manifest.write_text(json.dumps(dict(inputs=[], metadata={}, git={})))
         (self.work / 'soc_top_endpoints.tsv').write_text(
             'delay_type\tclock\tstartpoint\tendpoint\tslack_ns\tlogic_levels\n')
-        for count in (49999, 50000, 50001):
+        for count in (44999, 45000, 45001):
             with self.subTest(count=count):
                 report = UTILIZATION.replace('58,210', str(count)).replace(
                     '56,075', str(count - 2135))
                 (self.work / 'soc_top_utilization.rpt').write_text(report)
                 value = results.summarize(manifest, self.work, 'synthesized')
-                self.assertEqual(value['requirements']['slice_luts_maximum'], 50000)
-                self.assertEqual(value['status']['slice_luts_within_limit'], count <= 50000)
+                self.assertEqual(value['requirements']['slice_luts_maximum'], 45000)
+                self.assertEqual(value['status']['slice_luts_within_limit'], count <= 45000)
                 self.assertIsNone(value['status']['timing_150mhz_confirmed'])
         custom = results.summarize(manifest, self.work, 'synthesized', max_slice_luts=60000)
         self.assertTrue(custom['status']['slice_luts_within_limit'])

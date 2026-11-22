@@ -69,3 +69,7 @@ report_timing -delay_type max -nworst 1 -max_paths 100 -sort_by slack \
     -nets -input_pins -transition_time -capacitance -significant_digits 6 \
     > ${PROJ_TEMP}/${DESIGN_TOP}_top100_slack.rpt
 puts "Ranked $rank paths by data-path delay from [sizeof_collection $paths] candidate paths"
+
+if {[getenv_default DESIGN_EXTENDED_REPORTS 0]} {
+    source [file join $PROJ_PATH scripts 8_endpoint_paths.tcl]
+}

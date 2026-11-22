@@ -3,23 +3,7 @@
 `default_nettype none
 module vector_round_shift #(
   parameter bit REGISTER_MIDDLE = 1'b0,
-  parameter bit REGISTER_INPUT = 1'b0,
-`ifdef ASIC_SYNTHESIS
-  parameter bit p_use_dsp = 1'b0,
-`elsif XILINX_FPGA
-  parameter bit p_use_dsp = 1'b1,
-`else
-  parameter bit p_use_dsp = 1'b0,
-`endif
-`ifdef ASIC_SYNTHESIS
-  parameter bit p_use_lut = 1'b0
-`elsif XILINX_FPGA
-  parameter bit p_use_lut = 1'b1
-`elsif SYNTHESIS
-  parameter bit p_use_lut = 1'b1
-`else
-  parameter bit p_use_lut = 1'b0
-`endif
+  parameter bit REGISTER_INPUT = 1'b0
 ) (
   input wire logic clk,
   input wire logic signed [63:0] value,
@@ -120,10 +104,10 @@ module vector_round_shift #(
   end
 
   // 每个字节独立计算加一结果，舍入进位只选择已经完成的数值。
-  // 可选的综合属性作用于同一八位加法表达式，保持各字节的四态算术语义。
+  // 各字节保持完整的四态加法传播，进位未知时沿用定宽算术表达式。
   for (genvar part = 0; part < 8; part++) begin : g_increment8
     logic [7:0] byte_result;
-    (* use_dsp = p_use_dsp ? "yes" : "no" *) logic [7:0] incremented_byte;
+    logic [7:0] incremented_byte;
     assign incremented_byte = floor_value[part*8+:8] + 8'd1;
     assign result[part*8+:8] = byte_result;
     always_comb begin

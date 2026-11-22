@@ -5,15 +5,7 @@
 module frame_address_prepare #(
     parameter int p_size = 16,
     parameter bit p_ready_mask_abort = 1'b1,
-`ifdef ASIC_SYNTHESIS
-    parameter bit p_use_dsp = 1'b0
-`elsif XILINX_FPGA
-    parameter bit p_use_dsp = 1'b1
-`elsif SYNTHESIS
-    parameter bit p_use_dsp = 1'b1
-`else
-    parameter bit p_use_dsp = 1'b0
-`endif
+    parameter bit p_pipeline_products = 1'b1
 ) (
     input  wire logic clk,
     input  wire logic rst_n,
@@ -64,8 +56,12 @@ module frame_address_prepare #(
     logic [31:0] addend;
     logic unused_addend_carry;
     logic addend_i_carry;
-    logic signed [17:0] multiply_a, multiply_b;
-    logic [47:0] accumulated;
+    logic [16:0] multiply_a, multiply_b;
+    logic [31:0] accumulated;
+    logic product_valid_q, execute_en, finish_capture;
+    logic [1:0] execute_operation, execute_phase;
+    logic [31:0] execute_product, execute_addend;
+    logic [33:0] partial_product;
     logic [16:0] result_low;
 
     //! 1. 接收帧地址上下文
@@ -125,21 +121,56 @@ module frame_address_prepare #(
                 selected_base = base[2];
                 selected_offset = offset[2];
             end
+            default: begin end
         endcase
     end
-    // 组间进位并行计算，使地址选择、基址加法和乘加输入处于同一短组合阶段。
+    // 基址与偏移先相加，在部分积累加阶段加入地址结果。
     assign addend_i_carry = 1'b0;
     parallel_prefix_add #(.p_width(32)) u_addend (
         .i_a(selected_base), .i_b(selected_offset), .i_carry(addend_i_carry),
         .o_sum(addend), .o_carry(unused_addend_carry)
     );
-    assign multiply_a = (phase == 2'd2) ? $signed({{3{selected_a[31]}}, selected_a[31:17]}) : $signed({1'b0, selected_a[16:0]});
-    assign multiply_b = (phase == 2'd1) ? $signed({{3{selected_b[31]}}, selected_b[31:17]}) : $signed({1'b0, selected_b[16:0]});
+    // 地址按模 2^32 计算，交叉项只贡献低十五位，乘数统一使用十七位无符号数。
+    assign multiply_a = (phase == 2'd2) ? {2'b00, selected_a[31:17]} : selected_a[16:0];
+    assign multiply_b = (phase == 2'd1) ? {2'b00, selected_b[31:17]} : selected_b[16:0];
+    assign partial_product = multiply_a * multiply_b;
+    assign finish_capture = (c_st == FINISH) && !product_valid_q;
+
+    // 乘积可单独寄存，操作号、相位及基址加数随数据经过同一边沿。
+    if (p_pipeline_products) begin : g_product_stage
+        logic [31:0] product_q, addend_q;
+        logic [1:0] operation_q, phase_q;
+        always_ff @(posedge clk or negedge rst_n) begin
+            if (!rst_n) product_valid_q <= 1'b0;
+            else if (i_abort) product_valid_q <= 1'b0;
+            else product_valid_q <= multiply_en;
+        end
+        always_ff @(posedge clk) begin
+            if (multiply_en) begin
+                product_q <= partial_product[31:0];
+                operation_q <= operation;
+                phase_q <= phase;
+                if (phase == 2'd0) addend_q <= addend;
+            end
+        end
+        assign execute_en = product_valid_q && !i_abort;
+        assign execute_operation = operation_q;
+        assign execute_phase = phase_q;
+        assign execute_product = product_q;
+        assign execute_addend = addend_q;
+    end else begin : g_direct_product
+        assign product_valid_q = 1'b0;
+        assign execute_en = multiply_en;
+        assign execute_operation = operation;
+        assign execute_phase = phase;
+        assign execute_product = partial_product[31:0];
+        assign execute_addend = addend;
+    end
 
     //! 2. 依次计算并保存地址
     //! ---------------------
 
-    // 状态机：接收后执行九次乘加，第十个边沿保存最后结果，随后等待接收。
+    // 九个部分积连续发射；有效流水排空后保存最后地址，再等待结果接收。
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             c_st <= IDLE;
@@ -163,7 +194,7 @@ module frame_address_prepare #(
                 end
             end
             FINISH: begin
-                n_st = RESULT;
+                if (finish_capture) n_st = RESULT;
             end
             RESULT: begin
                 if (i_result_rdy) begin
@@ -193,37 +224,31 @@ module frame_address_prepare #(
         end
     end
 
-    // 参数保留以兼容原有实例；乘加寄存器与原 PREG 一样无复位并受使能控制。
-    generate
-        begin : g_generic
-            logic signed [35:0] partial_product;
-            logic signed [47:0] feedback;
-            assign partial_product = multiply_a * multiply_b;
-            assign feedback = (phase == 2'd0) ? $signed({16'd0, addend}) :
-                ((phase == 2'd1) ? ($signed(accumulated) >>> 17) : $signed(accumulated));
-            always_ff @(posedge clk) begin
-                if (multiply_en) begin
-                    accumulated <= 48'(partial_product) + feedback;
-                end
-            end
-        end
-    endgenerate
+    // 累加器只保存地址有效位；低段结果单独保留，交叉项使用逻辑右移后的高十五位。
+    logic [31:0] feedback;
+    logic [31:0] accumulated_next;
+    assign feedback = (execute_phase == 2'd0) ? execute_addend :
+        ((execute_phase == 2'd1) ? {17'd0, accumulated[31:17]} : accumulated);
+    assign accumulated_next = execute_product + feedback;
+    always_ff @(posedge clk) begin
+        if (execute_en) accumulated <= accumulated_next;
+    end
 
     // 低十七位在第二次乘加前保存；下一地址开始时收集上一地址的完整三十二位。
     always_ff @(posedge clk) begin
         if (!i_abort) begin
-            if (multiply_en && (phase == 2'd1)) begin
+            if (execute_en && (execute_phase == 2'd1)) begin
                 result_low <= accumulated[16:0];
             end
-            if ((c_st == PRODUCT) && (phase == 2'd0)) begin
-                if (operation == 2'd1) begin
+            if (execute_en && (execute_phase == 2'd0)) begin
+                if (execute_operation == 2'd1) begin
                     o_ia_base <= {accumulated[14:0], result_low};
                 end
-                if (operation == 2'd2) begin
+                if (execute_operation == 2'd2) begin
                     o_weight_base <= {accumulated[14:0], result_low};
                 end
             end
-            if (c_st == FINISH) begin
+            if (finish_capture) begin
                 o_dst_base <= {accumulated[14:0], result_low};
             end
         end

@@ -1,3 +1,4 @@
+
 `default_nettype none
 
 module kernel_loader_ctrl #(
@@ -93,7 +94,7 @@ module kernel_loader_ctrl #(
   count_t load_l2;
   count_t load_col_in_group;
   count_t group_base_col;
-  (* use_dsp = "yes" *) count_t load_tile_col;
+   count_t load_tile_col;
   total_count_t loaded_count;
   total_count_t sent_count;
   logic [1:0] pending_loads;
@@ -173,10 +174,10 @@ module kernel_loader_ctrl #(
   end
 
   logic [3:0][CNT_W-1:0] traversal_i_value;
-  (* use_dsp = "yes" *) logic [3:0][CNT_W-1:0] traversal_o_next;
-  (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] column_offset_increment;
-  (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] row_offset_increment, group_address_increment;
-  (* use_dsp = "yes" *) count_t group_column_increment;
+   logic [3:0][CNT_W-1:0] traversal_o_next;
+   logic [REG_WIDTH-1:0] column_offset_increment;
+   logic [REG_WIDTH-1:0] row_offset_increment, group_address_increment;
+   count_t group_column_increment;
   // 地址和分组递增在接收条件之前并行计算，保留完整模宽。
   assign column_offset_increment = col_addr_offset + col_addr_step;
   assign row_offset_increment = row_addr_offset + row_addr_step;
@@ -657,121 +658,6 @@ module kernel_loader_ctrl #(
   assign sent_count_covers_loads = (sends_wrap != loads_wrap) ? sends_wrap :
       (remaining_sends <= remaining_loads);
 
-endmodule
-
-// 五位分组和六组聚合形成并行进位，各结果位独立计算翻转条件。
-module kernel_count_increment #(
-    parameter int p_width = 48
-) (
-    input  wire logic [p_width-1:0] i_value,
-    output logic [p_width-1:0] o_next
-);
-    localparam int p_chunk_bits = 5;
-    localparam int p_block_chunks = 6;
-    localparam int p_chunks = (p_width + p_chunk_bits - 1) / p_chunk_bits;
-    localparam int p_blocks = (p_chunks + p_block_chunks - 1) / p_block_chunks;
-    (* keep *) logic [p_chunks-1:0] chunk_all;
-    (* keep *) logic [p_blocks-1:0] block_all;
-
-    for (genvar block_index = 0; block_index < p_blocks; block_index++) begin : g_block
-        localparam int p_low_chunk = block_index * p_block_chunks;
-        localparam int p_block_width = p_chunks - p_low_chunk < p_block_chunks ?
-            p_chunks - p_low_chunk : p_block_chunks;
-        assign block_all[block_index] = &chunk_all[p_low_chunk +: p_block_width];
-    end
-    for (genvar chunk = 0; chunk < p_chunks; chunk++) begin : g_chunk
-        localparam int p_low = chunk * p_chunk_bits;
-        localparam int p_chunk_width = p_width - p_low < p_chunk_bits ?
-            p_width - p_low : p_chunk_bits;
-        localparam int p_block = chunk / p_block_chunks;
-        localparam int p_inner = chunk % p_block_chunks;
-        logic chunk_carry;
-        assign chunk_all[chunk] = &i_value[p_low +: p_chunk_width];
-        if (chunk == 0) begin : g_first
-            assign chunk_carry = 1'b1;
-        end else if (p_block == 0) begin : g_first_block
-            assign chunk_carry = &chunk_all[chunk-1:0];
-        end else if (p_inner == 0) begin : g_block_start
-            assign chunk_carry = &block_all[p_block-1:0];
-        end else begin : g_inside_block
-            assign chunk_carry = (&block_all[p_block-1:0]) &&
-                (&chunk_all[p_block*p_block_chunks +: p_inner]);
-        end
-        for (genvar bit_index = 0; bit_index < p_chunk_width; bit_index++) begin : g_bit
-            if (bit_index == 0) begin : g_low
-                assign o_next[p_low] = i_value[p_low] ^ chunk_carry;
-            end else begin : g_high
-                assign o_next[p_low+bit_index] = i_value[p_low+bit_index] ^
-                    (chunk_carry && (&i_value[p_low +: bit_index]));
-            end
-        end
-    end
-endmodule
-
-// 分块无符号比较并组合各块结果。
-module kernel_count_compare #(
-    parameter int p_width = 48,
-    parameter int p_chunk_width = 8
-) (
-    input  wire logic [p_width-1:0] i_lhs,
-    input  wire logic [p_width-1:0] i_rhs,
-    output logic o_ge
-);
-    localparam int p_compare_width = p_chunk_width;
-    localparam int p_chunks = (p_width + p_compare_width - 1) / p_compare_width;
-    localparam int p_leaves = 1 << $clog2(p_chunks);
-    // 保留相邻区间的比较节点，完整层次合并时仍按平衡树计算。
-    (* keep = 1 *) logic [2*p_leaves-1:1] equal_tree;
-    (* keep = 1 *) logic [2*p_leaves-1:1] greater_tree;
-
-    for (genvar part = 0; part < p_leaves; part++) begin : g_compare
-        if (part < p_chunks) begin : g_value
-            localparam int p_low = part * p_compare_width;
-            localparam int p_part_width = ((p_width - p_low) < p_compare_width) ?
-                p_width - p_low : p_compare_width;
-            assign equal_tree[p_leaves + part] =
-                i_lhs[p_low +: p_part_width] == i_rhs[p_low +: p_part_width];
-            assign greater_tree[p_leaves + part] =
-                i_lhs[p_low +: p_part_width] > i_rhs[p_low +: p_part_width];
-        end else begin : g_padding
-            assign equal_tree[p_leaves + part] = 1'b1;
-            assign greater_tree[p_leaves + part] = 1'b0;
-        end
-    end
-    for (genvar node = 1; node < p_leaves; node++) begin : g_merge
-        assign equal_tree[node] = equal_tree[2*node+1] && equal_tree[2*node];
-        assign greater_tree[node] = greater_tree[2*node+1] ||
-            (equal_tree[2*node+1] && greater_tree[2*node]);
-    end
-    assign o_ge = greater_tree[1] || equal_tree[1];
-endmodule
-
-// 完整模宽的加一边界比较，包含最大计数回绕至零的情况。
-module kernel_count_next_reaches #(
-    parameter int unsigned p_width = 32
-) (
-    input wire logic [p_width-1:0] i_value,
-    input wire logic [p_width-1:0] i_limit,
-    output logic o_reaches
-);
-    logic value_less, unused_value_equal, next_equal, reaches_binary;
-
-    unsigned_compare #(.p_width(p_width)) u_current_compare (
-        .i_a(i_value), .i_b(i_limit),
-        .o_less(value_less), .o_equal(unused_value_equal)
-    );
-    add_equal #(.p_width(p_width)) u_next_equal (
-        .i_a(i_value), .i_b({p_width{1'b0}}), .i_target(i_limit),
-        .i_carry_in(1'b1), .o_equal(next_equal)
-    );
-    assign reaches_binary = (i_limit == '0) ||
-        ((!(&i_value)) && (!value_less || next_equal));
-    always_comb begin
-        case (^{i_value, i_limit})
-            1'b0, 1'b1: o_reaches = reaches_binary;
-            default: o_reaches = (i_value + p_width'(1)) >= i_limit;
-        endcase
-    end
 endmodule
 
 `default_nettype wire

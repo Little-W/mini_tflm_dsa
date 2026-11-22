@@ -1,4 +1,6 @@
 // 调度物理输出帧，并保存每一帧沿 K 维度的执行进度。
+`default_nettype none
+
 module ps_window_scheduler #(
     parameter int unsigned SIZE = 16,
     parameter int unsigned FRAME_COUNT = 16,
@@ -54,7 +56,6 @@ module ps_window_scheduler #(
     assign incoming_window_invalid = window_frames == 0 || incoming_window_oversized;
     assign incoming_reuse_invalid = reuse_rows == 0 || (reuse_rows >> (32-SHIFT)) != 0 ||
         (MAX_REUSE_TILES != 0 && incoming_reuse_oversized);
-    logic [31:0] cfg_stream, cfg_reduction;
     logic [ROW_COUNT_W-1:0] cfg_rows, cfg_slice_rows;
     logic [ID_W:0] cfg_window;
     logic [31:0] final_q0, final_column0;
@@ -94,7 +95,7 @@ module ps_window_scheduler #(
     logic [ID_W-1:0] protected_id, resume_id, active_id;
     logic active_init, active_final;
     logic [31:0] active_q0, active_column, active_row, active_rows;
-    (* use_dsp = "yes" *) logic [31:0] active_q_next, reduction_last, stationary_rows_last;
+     logic [31:0] active_q_next, reduction_last, stationary_rows_last;
     // 预测和终止位置共享完整模宽算术，状态选择仅选择已计算的结果。
     assign active_q_next = active_q0 + 32'(SIZE);
     assign reduction_last = reduction - 32'd1;
@@ -122,7 +123,6 @@ module ps_window_scheduler #(
     wire candidate_ready = candidate_found && selected_id_valid;
     logic [FRAME_COUNT-1:0] frame_open;
     logic [FRAME_COUNT-1:0] candidate_eligible, candidate_after_cursor;
-    logic [FRAME_COUNT-1:0] candidate_select;
     logic candidate_exists, candidate_after_exists;
     logic [FRAME_COUNT-1:0] candidate_live_after, candidate_open_after;
     logic [ID_W-1:0] eligible_first_id, after_first_id;
@@ -326,7 +326,7 @@ module ps_window_scheduler #(
     );
     assign remaining_columns = remaining_columns_o_sum;
     assign group_parts = prepare_parts;
-    assign reserve_rows = minimum(cfg_slice_rows, current_rows);
+    assign reserve_rows = minimum(32'(cfg_slice_rows), 32'(current_rows));
     assign ready = phase == IDLE;
     assign done_valid = phase == COMPLETE;
 
@@ -365,7 +365,6 @@ module ps_window_scheduler #(
         if (slice_tiles == 0) initial_slice_shift = SLICE_SHIFT_W'(SHIFT);
         initial_slice_rows = (slice_tiles == 0) ? (reuse_rows << SHIFT) : (slice_tiles << SHIFT);
         candidate_found = 1'b0;
-        candidate_select = '0;
         candidate_id = selected_id_q;
         scanned_id = '0;
         candidate_init = selected_init_q;
@@ -376,7 +375,6 @@ module ps_window_scheduler #(
             candidate_found = 1'b1;
             scanned_id = protected_id;
         end else if (phase == SWEEPING) begin
-            candidate_select = candidate_after_exists ? candidate_after_cursor : candidate_eligible;
             candidate_found = candidate_exists;
             scanned_id = candidate_after_exists ? after_first_id : eligible_first_id;
         end
@@ -446,12 +444,14 @@ module ps_window_scheduler #(
     (* keep = "true" *) logic [ID_W-1:0] prediction_eligible_frame, prediction_after_frame;
     (* keep = "true" *) logic prediction_eligible_is_active, prediction_after_is_active;
     logic prediction_is_active;
-    logic prediction_reads_frame_s0;
+    // 帧元数据读取条件分别随请求接收和帧选择阶段保存。
+    logic prediction_reads_frame_q [2];
     logic [31:0] prediction_direct_q, prediction_direct_column;
-    logic prediction_reads_frame_q, prediction_is_active_q;
+    logic prediction_is_active_q;
     logic [ID_W-1:0] prediction_frame_q;
-    logic [31:0] prediction_q_s0, prediction_column_s0, prediction_q_direct_s1, prediction_column_direct_s1;
-    logic [31:0] prediction_q_s1, prediction_column_s1;
+    // 直接位置、选择准备和帧位置分别保存在三个已有流水阶段。
+    logic [31:0] prediction_depth_q [3];
+    logic [31:0] prediction_column_q [3];
     always_comb begin : select_lookahead
         logic [FRAME_COUNT-1:0] future_live;
         logic [FRAME_COUNT-1:0] future_eligible, future_after_start;
@@ -540,30 +540,30 @@ module ps_window_scheduler #(
         if (prediction_request) begin
             prediction_eligible_q <= prediction_eligible;
             prediction_after_start_q <= prediction_after_start;
-            prediction_reads_frame_s0 <= prediction_reads_frame;
-            prediction_q_s0 <= prediction_direct_q;
-            prediction_column_s0 <= prediction_direct_column;
+            prediction_reads_frame_q[0] <= prediction_reads_frame;
+            prediction_depth_q[0] <= prediction_direct_q;
+            prediction_column_q[0] <= prediction_direct_column;
         end
         if (prediction_valid[0]) begin
             prediction_frame_q <= prediction_frame;
-            prediction_reads_frame_q <= prediction_reads_frame_s0;
+            prediction_reads_frame_q[1] <= prediction_reads_frame_q[0];
             prediction_is_active_q <= prediction_is_active;
-            prediction_q_direct_s1 <= prediction_q_s0;
-            prediction_column_direct_s1 <= prediction_column_s0;
+            prediction_depth_q[1] <= prediction_depth_q[0];
+            prediction_column_q[1] <= prediction_column_q[0];
         end
         if (prediction_valid[1]) begin
-            prediction_q_s1 <= prediction_reads_frame_q ?
+            prediction_depth_q[2] <= prediction_reads_frame_q[1] ?
                 (prediction_is_active_q ? active_q_next :
-                    32'(frame_k[prediction_frame_q]) << SHIFT) : prediction_q_direct_s1;
-            prediction_column_s1 <= prediction_reads_frame_q ?
+                    32'(frame_k[prediction_frame_q]) << SHIFT) : prediction_depth_q[1];
+            prediction_column_q[2] <= prediction_reads_frame_q[1] ?
                 (prediction_is_active_q ? active_column :
-                    32'(predicted_column) << SHIFT) : prediction_column_direct_s1;
+                    32'(predicted_column) << SHIFT) : prediction_column_q[1];
         end
         if (prediction_valid[2]) begin
-            lookahead_q0 <= prediction_q_s1;
-            lookahead_column <= prediction_column_s1;
-            lookahead_cols <= prediction_column_s1 == final_column0 ? 32'(final_column_count) : 32'(SIZE);
-            lookahead_count_k <= prediction_q_s1 == final_q0 ? 32'(final_k_count) : 32'(SIZE);
+            lookahead_q0 <= prediction_depth_q[2];
+            lookahead_column <= prediction_column_q[2];
+            lookahead_cols <= prediction_column_q[2] == final_column0 ? 32'(final_column_count) : 32'(SIZE);
+            lookahead_count_k <= prediction_depth_q[2] == final_q0 ? 32'(final_k_count) : 32'(SIZE);
         end
     end
 
@@ -627,7 +627,6 @@ module ps_window_scheduler #(
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             phase <= IDLE;
-            cfg_stream <= '0; cfg_reduction <= '0;
             column_tiles <= SHIFT == 0 ? '0 : ((TILE_W+1)'(1) << TILE_W);
             cfg_rows <= '0; cfg_window <= '0; cfg_slice_rows <= '0;
             slice_shift <= SLICE_SHIFT_W'(SHIFT); sliced <= 1'b0;
@@ -646,9 +645,7 @@ module ps_window_scheduler #(
 
         end else begin
             if (phase == IDLE && start) begin
-                cfg_stream <= stream_rows;
                 column_tiles <= incoming_column_tiles;
-                cfg_reduction <= reduction;
                 cfg_rows <= ROW_COUNT_W'(reuse_rows << SHIFT);
                 cfg_window <= (ID_W+1)'(window_frames);
                 cfg_slice_rows <= ROW_COUNT_W'(initial_slice_rows);
@@ -673,8 +670,11 @@ module ps_window_scheduler #(
                     err_code <= '0;
                     phase <= PREPARING;
                 end
-            end else if (phase == COMPLETE && done_ready) begin
-                phase <= IDLE;
+            end else if (phase == COMPLETE) begin
+                // 完成阶段保持全部任务状态，仅在接收通知后返回空闲。
+                if (done_ready) begin
+                    phase <= IDLE;
+                end
             end else if (command_active && command_complete) begin
                 command_active <= 1'b0;
 
@@ -702,12 +702,12 @@ module ps_window_scheduler #(
                 end else if (phase == DRAINING && active_final) begin
                     phase <= SWEEPING;
                     for (int unsigned frame_index = 0; frame_index < FRAME_COUNT; frame_index++)
-                        cursor_mask[frame_index] <= frame_index >= (resume_valid ? (ID_W+1)'(resume_id) : '0);
+                        cursor_mask[frame_index] <= frame_index >= (resume_valid ? 32'(resume_id) : 32'd0);
                     resume_valid <= 1'b0;
 
                 end else if (phase == SWEEPING) begin
                     for (int unsigned frame_index = 0; frame_index < FRAME_COUNT; frame_index++)
-                        cursor_mask[frame_index] <= frame_index >= ((active_after_frame == opened) ? '0 : active_after_frame);
+                        cursor_mask[frame_index] <= frame_index >= ((active_after_frame == opened) ? 32'd0 : 32'(active_after_frame));
                 end
             end else if (phase == PREPARING) begin
                 phase <= sliced ? PREPARE_PARTS : PREPARE_CAPS;
@@ -775,6 +775,16 @@ module ps_window_scheduler #(
     end
 
 `ifdef NPU_SIM_ASSERT
+    logic [31:0] cfg_stream, cfg_reduction;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            cfg_stream <= '0;
+            cfg_reduction <= '0;
+        end else if (phase == IDLE && start) begin
+            cfg_stream <= stream_rows;
+            cfg_reduction <= reduction;
+        end
+    end
     initial forever @(posedge clk) if (rst_n) begin
         if (command_complete) assert(command_active);
         if (command_valid && command_ready) begin
@@ -785,128 +795,4 @@ module ps_window_scheduler #(
 `endif
 endmodule
 
-// 六输入归并树：每一级仅依赖前一级的六个结果。
-module ps_scheduler_any #(
-    parameter int p_width = 16,
-    parameter bit p_use_lut =
-`ifdef ASIC_SYNTHESIS
-        1'b0
-`elsif XILINX_FPGA
-        1'b1
-`elsif SYNTHESIS
-        1'b1
-`else
-        1'b0
-`endif
-) (
-    input  logic [p_width-1:0] i_value,
-    output logic o_any
-);
-    localparam int p_groups = (p_width + 5) / 6;
-    localparam int p_levels = $clog2(p_groups) + 1;
-
-    for (genvar level = 0; level <= p_levels; level++) begin : g_level
-        localparam int p_span = 6 ** level;
-        localparam int p_nodes = (p_width + p_span - 1) / p_span;
-        localparam int p_previous_span = level > 0 ? 6 ** (level - 1) : 1;
-        localparam int p_previous_nodes = (p_width + p_previous_span - 1) / p_previous_span;
-
-        for (genvar node = 0; node < p_width; node++) begin : g_node
-            logic any_set;
-
-            if (level == 0) begin : g_input
-                assign any_set = i_value[node];
-            end else if (node == 0 && p_previous_nodes == 1) begin : g_pass
-                assign any_set = g_level[level-1].g_node[0].any_set;
-            end else if (node < p_nodes) begin : g_reduce
-                logic [5:0] any_i_value;
-                logic any_o_value;
-
-                for (genvar child = 0; child < 6; child++) begin : g_child
-                    if (6 * node + child < p_previous_nodes) begin : g_present
-                        assign any_i_value[child] = g_level[level-1].g_node[6*node+child].any_set;
-                    end else begin : g_empty
-                        assign any_i_value[child] = 1'b0;
-                    end
-                end
-                assign any_o_value = |any_i_value;
-                assign any_set = any_o_value;
-            end else begin : g_unused
-                assign any_set = 1'b0;
-            end
-        end
-    end
-    assign o_any = g_level[p_levels].g_node[0].any_set;
-endmodule
-
-// 四帧组内编码与组间选择并行计算，保留实际的分组归并节点。
-module ps_scheduler_priority #(
-    parameter int p_frames = 16,
-    parameter int p_id_width = (p_frames <= 1) ? 1 : $clog2(p_frames)
-) (
-    input wire [p_frames-1:0] i_eligible,
-    output logic [p_id_width-1:0] o_id
-);
-    localparam int p_group_width = 4;
-    localparam int p_groups = (p_frames + p_group_width - 1) / p_group_width;
-    logic [p_groups-1:0] group_any, group_first;
-    logic [p_id_width-1:0] group_id [p_groups];
-    logic [p_id_width-1:0] grouped_id, flat_id;
-    logic [p_frames-1:0] flat_first;
-
-    for (genvar group = 0; group < p_groups; group++) begin : g_group
-        localparam int p_first = group * p_group_width;
-        localparam int p_bits = (p_frames - p_first < p_group_width) ?
-            p_frames - p_first : p_group_width;
-        logic [p_bits-1:0] local_first;
-        if (p_bits == 1) begin : g_single
-            assign group_any[group] = i_eligible[p_first];
-        end else begin : g_many
-            (* keep = "true" *) logic found;
-            assign found = |i_eligible[p_first +: p_bits];
-            assign group_any[group] = found;
-        end
-        if (group == 0) begin : g_first_group
-            assign group_first[group] = group_any[group];
-        end else begin : g_later_group
-            (* keep = "true" *) logic selected;
-            assign selected = group_any[group] && !(|group_any[group-1:0]);
-            assign group_first[group] = selected;
-        end
-        for (genvar frame = 0; frame < p_bits; frame++) begin : g_frame
-            if (frame == 0) begin : g_first
-                assign local_first[frame] = i_eligible[p_first];
-            end else begin : g_later
-                assign local_first[frame] = i_eligible[p_first+frame] &&
-                    !(|i_eligible[p_first +: frame]);
-            end
-        end
-        always_comb begin
-            group_id[group] = '0;
-            for (int frame = 0; frame < p_bits; frame++) begin
-                group_id[group] |= p_id_width'(p_first+frame) & {p_id_width{local_first[frame]}};
-            end
-        end
-    end
-    for (genvar frame = 0; frame < p_frames; frame++) begin : g_flat
-        if (frame == 0) begin : g_first
-            assign flat_first[frame] = i_eligible[frame];
-        end else begin : g_later
-            assign flat_first[frame] = i_eligible[frame] && !(|i_eligible[frame-1:0]);
-        end
-    end
-    always_comb begin
-        grouped_id = '0;
-        for (int group = 0; group < p_groups; group++) begin
-            grouped_id |= group_id[group] & {p_id_width{group_first[group]}};
-        end
-        flat_id = '0;
-        for (int frame = 0; frame < p_frames; frame++) begin
-            flat_id |= p_id_width'(frame) & {p_id_width{flat_first[frame]}};
-        end
-        case (^i_eligible)
-            1'b0, 1'b1: o_id = grouped_id;
-            default: o_id = flat_id;
-        endcase
-    end
-endmodule
+`default_nettype wire

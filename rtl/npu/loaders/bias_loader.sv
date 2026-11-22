@@ -151,7 +151,7 @@ module bias_loader #(
 	        end
 	    endgenerate
 
-    (* use_dsp = "yes" *) wire [REG_WIDTH-1:0] load_word_row =
+     wire [REG_WIDTH-1:0] load_word_row =
         REG_WIDTH'(dma_wr_row) + REG_WIDTH'(ctrl_dma_row_offset);
 
     bias_loader_buffer #(.BUS_WIDTH(BUS_WIDTH),

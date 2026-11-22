@@ -3,15 +3,7 @@
 `default_nettype none
 module onehot_check #(
     parameter int p_width = 32,
-    parameter bit p_allow_zero = 1'b0,
-    parameter bit p_use_lut =
-`ifdef ASIC_SYNTHESIS
-        1'b0
-`elsif XILINX_FPGA
-        1'b1
-`else
-        1'b0
-`endif
+    parameter bit p_allow_zero = 1'b0
 ) (
     input  wire logic [p_width-1:0] i_value,
     output logic o_valid

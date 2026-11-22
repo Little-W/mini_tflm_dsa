@@ -225,7 +225,8 @@ module ia_loader_cache_mgr #(
       for(int port_index=0;port_index<2;port_index++) begin
         if(write_en[port_index]) begin
           ram_port_wr_addr[port_index]<=write_addr[port_index];
-          ram_port_wr_mask[port_index]<=write_mask[port_index];
+          if (!(p_shared_write_stage && SIZE == 16 && DATA_WIDTH == 16))
+            ram_port_wr_mask[port_index]<=write_mask[port_index];
         end
       end
     end
@@ -261,6 +262,14 @@ module ia_loader_cache_mgr #(
         column_q <= wr_col_base;
         empty_byte_q <= compact_empty_byte;
         compact_q <= compact_mode;
+      end
+      // 字节掩码与数据共同使用本拍保存的原始通道和列位置。
+      // ram_port_wr_en 指定有效写命令，两个物理端口在同一周期接收掩码和数据。
+      for (genvar lane = 0; lane < 8; lane++) begin : g_byte_mask
+        assign ram_port_wr_mask[0][lane*2 +: 2] = compact_q ?
+            row_mask[lane*2 +: 2] : {2{row_mask[lane]}};
+        assign ram_port_wr_mask[1][lane*2 +: 2] =
+            {2{row_mask[lane+8] && !compact_q}};
       end
       assign wide_row = wide_source << (int'(column_q) * 16);
       assign row_mask = input_mask_q << column_q;
@@ -416,7 +425,8 @@ module ia_loader_cache_mgr #(
     // 行外通道不参与编码，任意有效掩码均保留相同的最后写入列。
     for (genvar lane = 0; lane < DMA_LANES; lane++) begin : g_lane
       assign lane_extent[lane] = {1'b0, wr_col_base} + p_extent_width'(lane + 1);
-      assign eligible_lane[lane] = wr_valid[lane] && lane_extent[lane] <= p_extent_width'(SIZE);
+      // 通道是否位于当前行直接比较起点，结束列加法与接收条件并行计算。
+      assign eligible_lane[lane] = wr_valid[lane] && wr_col_base <= LOG2_SIZE'(SIZE-1-lane);
       if (lane + 1 < DMA_LANES) begin : g_has_later_lane
         assign last_lane[lane] = eligible_lane[lane] && !(|eligible_lane[DMA_LANES-1:lane+1]);
       end else begin : g_final_lane

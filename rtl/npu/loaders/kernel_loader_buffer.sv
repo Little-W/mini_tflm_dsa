@@ -36,7 +36,12 @@ module kernel_loader_buffer #(
     localparam int p_row_width = DATA_WIDTH * SIZE;
     localparam int p_depth = p_storage_slots * SIZE;
     localparam int p_addr_width = $clog2(p_depth);
+`ifdef ASIC_SYNTHESIS
+    // 列存储每周期写入一个元素，独立同步读端口保持阵列所需的输出顺序。
+    localparam bit p_row_storage = 1'b0;
+`else
     localparam bit p_row_storage = SIZE > 1 && (SIZE & (SIZE-1)) == 0;
+`endif
 
     logic wr_slot, rd_slot;
     logic [p_slot_count-1:0] slot_reserved, slot_loaded;
@@ -67,9 +72,6 @@ module kernel_loader_buffer #(
     logic [DATA_WIDTH-1:0] column_i_wr_data [SIZE];
     logic column_i_wr_mask;
     logic [DATA_WIDTH-1:0] column_o_rd_data [SIZE];
-    logic [DATA_WIDTH-1:0] row_storage_data [SIZE];
-    logic [p_index_width-1:0] saved_read_column;
-    logic [p_index_width-1:0] row_output_index [SIZE];
 
     //! 1. 输入与发送地址
     //! --------------------
@@ -101,10 +103,7 @@ module kernel_loader_buffer #(
         assign output_bank[column] = (output_bank_ext[column] >= (p_index_width+1)'(SIZE)) ?
             p_index_width'(output_bank_ext[column] - (p_index_width+1)'(SIZE)) :
             p_index_width'(output_bank_ext[column]);
-        if (p_row_storage) begin : g_row_output
-            assign row_output_index[column] = p_index_width'(column) + (output_column_q - saved_read_column);
-            assign weight_out[column] = output_lane_valid_q[column] ? $signed(row_storage_data[row_output_index[column]]) : '0;
-        end else begin : g_column_output
+        if (!p_row_storage) begin : g_column_output
             assign weight_out[column] = output_lane_valid_q[column] ?
                 $signed(column_o_rd_data[output_bank[column]]) : '0;
         end
@@ -237,6 +236,8 @@ module kernel_loader_buffer #(
     assign discard_ready = weight_data_valid;
 
     if (p_row_storage) begin : g_row_storage
+        logic [DATA_WIDTH-1:0] row_storage_data [SIZE];
+        logic [p_index_width-1:0] saved_read_column;
         // 保存实际存储器读取位置，保持读取使能含未知值时的输出选择语义。
         always_ff @(posedge clk) begin
             if (!rst_n || cache_flush) begin
@@ -259,6 +260,10 @@ module kernel_loader_buffer #(
             logic [DATA_WIDTH-1:0] read_data;
             logic [p_index_width-1:0] read_element;
             logic [p_addr_width-1:0] read_address;
+            logic [p_index_width-1:0] row_output_index;
+            assign row_output_index = p_index_width'(row_index) + (output_column_q - saved_read_column);
+            assign weight_out[row_index] = output_lane_valid_q[row_index] ?
+                $signed(row_storage_data[row_output_index]) : '0;
             assign row_storage_data[row_index] = read_data;
             assign row_write_en = column_i_wr_en && row_idx_q == p_index_width'(row_index);
             assign read_element = read_column + p_index_width'(row_index);

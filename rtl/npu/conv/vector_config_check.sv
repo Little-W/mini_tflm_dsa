@@ -20,8 +20,8 @@ module vector_config_check #(
   logic [2:0] phase,range_index;
   logic [31:0] input_pixels,multiply_a;
   logic [15:0] multiply_b;
-  (* use_dsp="yes" *) logic [31:0] multiply_low,multiply_high;
-  (* use_dsp="yes" *) logic [31:0] product_upper;
+  logic [31:0] multiply_low,multiply_high;
+  logic [31:0] product_upper;
   wire [47:0] product_q={product_upper,multiply_low[15:0]};
   logic [15:0] range_dimension, range_padding;
   logic [15:0] range_dimension_saved, range_padding_saved;
@@ -38,7 +38,7 @@ module vector_config_check #(
   logic [63:0] selected_bytes,range_bytes_q;
   logic selected_enable,range_enable_q,range_size_ok;
   logic [32:0] range_end_q,output_end_q;
-  (* use_dsp = "yes" *) logic [33:0] range_output_distance, output_range_distance;
+  logic [33:0] range_output_distance, output_range_distance;
   logic range_before_output, output_before_range;
   // 扩展后的无符号差值保留完整借位，范围端点寄存后并行比较两种地址次序。
   assign range_output_distance = {2'b00,cfg.output_base} - {1'b0,range_end_q};
@@ -47,7 +47,7 @@ module vector_config_check #(
   assign output_before_range = !output_range_distance[33];
   logic [7:0] range_end_low;
   logic range_end_carry;
-  (* use_dsp="yes" *) logic [24:0] range_end_high;
+  logic [24:0] range_end_high;
   assign product_upper = multiply_high + {16'd0,multiply_low[31:16]};
   assign range_end_high = {1'b0, range_base_q[31:8]} +
       {1'b0, range_bytes_q[31:8]} + range_end_carry;
@@ -183,10 +183,6 @@ module vector_config_check #(
       CALCULATE: begin
         // 核尺寸乘积已在前一阶段保存，提前记录配置上限检查结果。
         if (phase==3'd1) kernel_limit_ok_q <= (kernel_count <= 32'(depthwise ? MAX_TAPS : POOL_MAX_TAPS));
-        range_dimension_saved<=range_dimension;
-        range_padding_saved<=range_padding;
-        multiply_low<=multiply_a[15:0]*multiply_b;
-        multiply_high<=multiply_a[31:16]*multiply_b;
         state<=CAPTURE;
       end
       CAPTURE: begin
@@ -197,8 +193,6 @@ module vector_config_check #(
           3: weight_bytes<={16'd0,product_q};
           4: input_bytes<={16'd0,product_q};
           5: output_bytes<={16'd0,product_q};
-          6: output_y_in_range<=output_coordinate_in_range;
-          7: output_x_in_range<=output_coordinate_in_range;
           default: ;
         endcase
         if (phase==7) state<=FIELDS;
@@ -207,12 +201,10 @@ module vector_config_check #(
       FIELDS: if (!fields_ok) begin error<=1;state<=COMPLETE;end
         else begin range_index<=0;state<=RANGE_SELECT;end
       RANGE_SELECT: begin
-        range_base_q<=selected_base;range_bytes_q<=selected_bytes;range_enable_q<=selected_enable;
+        range_enable_q<=selected_enable;
         state<=RANGE_ADD;
       end
       RANGE_ADD: begin
-        range_end_q[7:0] <= range_end_low;
-        range_end_q[32:8] <= range_end_high;
         range_size_ok<=range_bytes_q!=0 && range_bytes_q[63:32]==0;
         state<=RANGE_COMPARE;
       end
@@ -229,6 +221,37 @@ module vector_config_check #(
       COMPLETE: state<=IDLE;
       default: begin error<=1;state<=COMPLETE;end
     endcase
+  end
+
+  // 准备数据只在对应阶段接收，异步复位由状态和有效资格统一处理。
+  always_ff @(posedge clk) begin
+    if (!rst_n) begin
+    end else begin
+      case (state)
+        CALCULATE: begin
+          range_dimension_saved <= range_dimension;
+          range_padding_saved <= range_padding;
+          multiply_low <= multiply_a[15:0] * multiply_b;
+          multiply_high <= multiply_a[31:16] * multiply_b;
+        end
+        CAPTURE: begin
+          case (phase)
+            3'd6: output_y_in_range <= output_coordinate_in_range;
+            3'd7: output_x_in_range <= output_coordinate_in_range;
+            default: begin end
+          endcase
+        end
+        RANGE_SELECT: begin
+          range_base_q <= selected_base;
+          range_bytes_q <= selected_bytes;
+        end
+        RANGE_ADD: begin
+          range_end_q[7:0] <= range_end_low;
+          range_end_q[32:8] <= range_end_high;
+        end
+        default: begin end
+      endcase
+    end
   end
 
   // 选择范围时先完成低字节求和，高位在下一状态使用已保存的进位。

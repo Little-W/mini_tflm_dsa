@@ -30,7 +30,9 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
 
     set design_sources [list \
         [file join $npu_root conv conv_im2col_pkg.sv] \
+        [file join $npu_root conv conv_im2col_frontend_pkg.sv] \
         [file join $npu_root conv vector_engine_pkg.sv] \
+        [file join $npu_root conv vector_engine_control_pkg.sv] \
         [file join $npu_root conv vector_pe.sv] \
         [file join $npu_root conv vector_softmax.sv] \
         [file join $npu_root conv vector_config_check.sv] \
@@ -39,6 +41,9 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_root conv vector_scalar_multiplier.sv] \
         [file join $npu_root conv vector_quant_params.sv] \
         [file join $npu_root conv vector_engine.sv] \
+        [file join $npu_root conv vector_engine_control.sv] \
+        [file join $npu_root conv vector_engine_address.sv] \
+        [file join $npu_root conv vector_engine_operand_store.sv] \
         [file join $npu_root conv conv_axi_read_guard.sv] \
         [file join $npu_root conv conv_axi_read_mux.sv] \
         [file join $npu_root conv conv_axi_span_reader.sv] \
@@ -46,8 +51,14 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_root conv conv_ia_write_adapter.sv] \
         [file join $npu_root dma conv_window_queue.sv] \
         [file join $npu_root conv conv_im2col_frontend.sv] \
+        [file join $npu_root conv conv_im2col_geometry.sv] \
+        [file join $npu_root conv conv_im2col_descriptor.sv] \
+        [file join $npu_root conv conv_im2col_stream.sv] \
+        [file join $npu_root conv conv_im2col_prefetch.sv] \
+        [file join $npu_root conv conv_coordinate_step.sv] \
         [file join $npu_root dma cache conv_next_use_predictor.sv] \
         [file join $npu_root dma cache conv_read_cache.sv] \
+        [file join $npu_root dma cache conv_cache_metadata_way.sv] \
         [file join $npu_root dma cache conv_sdp_ram.sv] \
         [file join $project_export_dir rtl fpga_top.sv] \
         [file join $project_export_dir rtl clk_wiz_0_sim_stub.sv] \
@@ -79,9 +90,14 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_control_root ps_window_scheduler.sv] \
         [file join $npu_control_root ps_capacity_limits.sv] \
         [file join $npu_top_root frame_address_prepare.sv] \
+        [file join $npu_top_root npu_task_configuration.sv] \
+        [file join $npu_top_root npu_output_pipeline.sv] \
+        [file join $npu_top_root npu_matrix_engine.sv] \
+        [file join $npu_top_root npu_operand_cache_bridge.sv] \
         [file join $npu_top_root npu_top.sv] \
         [file join $npu_writeback_root oa_writer.sv] \
-        [file join $npu_root ps_compact ps_adaptive_codec.sv] \
+        [file join $npu_root ps_compact ps_adaptive_encoder.sv] \
+        [file join $npu_root ps_compact ps_adaptive_decoder.sv] \
         [file join $npu_root ps_compact ps_frame_store.sv] \
         [file join $npu_root dma operand_read_cache.sv] \
         [file join $npu_buffers_root ia_ps_shared_ram.sv] \
@@ -98,7 +114,6 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_writeback_root requant_compute_lane.sv] \
         [file join $npu_writeback_root requant_group_buffer.sv] \
         [file join $npu_writeback_root vec_requant.sv] \
-        [file join $npu_writeback_root vec_requant_s64.sv] \
         [file join $npu_writeback_root vec_s16_to_fifo.sv] \
         [file join $npu_writeback_root vec_s8_to_fifo.sv] \
         [file join $npu_compute_root ws_systolic_array.sv] \
@@ -116,10 +131,24 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $project_export_dir constraints tflm_ai_dsa_soc.xdc] \
     ]
 
-    # 公共模块按实际文件收集，保留已列出的编译顺序。
-    foreach source_file [lsort [glob -nocomplain -directory $common_root *.v *.sv]] {
+    # 各模块单独编译；先读取 package，随后保持主模块的显式排列顺序。
+    set package_sources [list \
+        [file join $npu_root conv conv_im2col_pkg.sv] \
+        [file join $npu_root conv conv_im2col_frontend_pkg.sv] \
+        [file join $npu_root conv vector_engine_pkg.sv] \
+        [file join $npu_root conv vector_engine_control_pkg.sv] \
+        [file join $npu_writeback_root requant_pkg.sv]]
+    foreach source_file [concat \
+        [glob -nocomplain -directory $common_root *.v *.sv] \
+        [glob -nocomplain -directory $npu_root */*.v */*.sv */*/*.v */*/*.sv] \
+        [glob -nocomplain -directory [file join $soc_root soc] *.v *.sv]] {
         if {$source_file ni $design_sources} { lappend design_sources $source_file }
     }
+    set module_sources [list]
+    foreach source_file $design_sources {
+        if {$source_file ni $package_sources} { lappend module_sources $source_file }
+    }
+    set design_sources [concat $package_sources $module_sources]
 
 }
 

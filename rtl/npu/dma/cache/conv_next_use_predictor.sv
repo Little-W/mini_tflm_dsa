@@ -54,10 +54,10 @@ module conv_next_use_predictor (
   logic cfg_product_done;
   logic [31:0] cfg_factor_a, cfg_factor_b, cfg_factor_a_q, cfg_factor_b_q;
   logic [15:0] cfg_partial_a, cfg_partial_b;
-  (* use_dsp="yes" *) logic [31:0] cfg_partial_product;
+   logic [31:0] cfg_partial_product;
   logic [63:0] cfg_product_accumulator, cfg_product;
   logic [47:0] cfg_accumulate_addend;
-  (* use_dsp = "yes" *) logic [47:0] cfg_accumulated_upper;
+   logic [47:0] cfg_accumulated_upper;
   wire cfg_product_start = cfg_phase>=1 && cfg_phase<=4 &&
       cfg_multiply_phase==0 && !cfg_product_done &&
       (cfg_phase!=1 || (cfg_basic_q && cfg_taps_q!=0 && cfg_taps_q<=25));
@@ -101,17 +101,20 @@ module conv_next_use_predictor (
   logic [31:0] best_q;
   logic [6:0] pipe_valid, pipe_last;
   logic [31:0] mul_y_s0, mul_x_s0;
-  logic [4:0] tap_s0, tap_s1;
+  // 同一字段按实际流水阶段编号保存，坐标截断前后的类型分别声明。
+  logic [4:0] tap_pipe [0:1];
   logic signed [33:0] ny_s0, nx_s0;
   logic [1:0][32:0] coordinate_pad;
   logic [1:0][31:0] coordinate_product;
   logic [1:0][33:0] coordinate_difference;
   logic [31:0] oy_s0, ox_s0;
-  logic coordinate_good_s0, coordinate_good_s1;
+  logic coordinate_good [0:2];
   logic [15:0] oy_s1, ox_s1;
   logic [31:0] position_s2, reduction_s2;
-  logic coordinate_good_s2, candidate_good_s3, candidate_good_s4, candidate_good_s5, candidate_good_s6;
-  logic [31:0] block_s3, local_s3, block_s4, group_s4, local_s4, local_s5;
+  logic candidate_good [3:6];
+  logic [31:0] block_pipe [3:4];
+  logic [31:0] local_pipe [3:5];
+  logic [31:0] group_s4;
   logic [31:0] product_block_s5, product_group_s5;
   logic [31:0] rank_s6;
   logic [31:0] best_next;
@@ -207,12 +210,12 @@ module conv_next_use_predictor (
   always_comb begin
     oy_s0 = 32'(ny_s0) >> h_shift_q;
     ox_s0 = 32'(nx_s0) >> w_shift_q;
-    coordinate_good_s0 = coordinate_before_limit[0] && coordinate_before_limit[1] &&
+    coordinate_good[0] = coordinate_before_limit[0] && coordinate_before_limit[1] &&
       ($unsigned(ny_s0) & 34'(h_mask_q))==34'd0 &&
       ($unsigned(nx_s0) & 34'(w_mask_q))==34'd0;
     last_tap = 16'(ky_q)==kh_q-16'd1 && 16'(kx_q)==kw_q-16'd1;
     // 候选比较与有效性判断并行，无效候选直接保留当前最早访问位置。
-    best_next = candidate_good_s6 && rank_s6<best_q ? rank_s6 : best_q;
+    best_next = candidate_good[6] && rank_s6<best_q ? rank_s6 : best_q;
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -293,45 +296,45 @@ module conv_next_use_predictor (
         pipe_last <= {pipe_last[5:0],!issue_complete && last_tap};
         if (!issue_complete) begin
           mul_y_s0<=32'(21'(ky_q)*21'(dh_q));mul_x_s0<=32'(21'(kx_q)*21'(dw_q));
-          tap_s0<=tap_index_q;tap_index_q<=tap_index_q+5'd1;
+          tap_pipe[0]<=tap_index_q;tap_index_q<=tap_index_q+5'd1;
           if (last_tap) issue_complete<=1;
           else if (16'(kx_q)==kw_q-16'd1) begin kx_q<=0;ky_q<=ky_q+5'd1;end
           else kx_q<=kx_q+5'd1;
         end
         if (pipe_valid[0]) begin
-          oy_s1<=oy_s0[15:0];ox_s1<=ox_s0[15:0];tap_s1<=tap_s0;
-          coordinate_good_s1<=coordinate_good_s0;
+          oy_s1<=oy_s0[15:0];ox_s1<=ox_s0[15:0];tap_pipe[1]<=tap_pipe[0];
+          coordinate_good[1]<=coordinate_good[0];
         end
         if (pipe_valid[1]) begin
           position_s2<=32'(oy_s1)*32'(ow_q)+32'(ox_s1);
-          reduction_s2<=32'(tap_s1)*32'(cg_q)+channel_q;
-          coordinate_good_s2<=coordinate_good_s1;
+          reduction_s2<=32'(tap_pipe[1])*32'(cg_q)+channel_q;
+          coordinate_good[2]<=coordinate_good[1];
         end
         if (pipe_valid[2]) begin
-          block_s3<=position_s2>>block_shift_q;
-          local_s3<=((reduction_s2>>4)<<block_shift_q) |
+          block_pipe[3]<=position_s2>>block_shift_q;
+          local_pipe[3]<=((reduction_s2>>4)<<block_shift_q) |
                     (position_s2 & (block_rows_q-32'd1));
-          candidate_good_s3<=coordinate_good_s2;
+          candidate_good[3]<=coordinate_good[2];
         end
         if (pipe_valid[3]) begin : group_stage
           logic [31:0] candidate_group;
           candidate_group=0;
-          if (block_s3==current_pb_q) begin
+          if (block_pipe[3]==current_pb_q) begin
             candidate_group=current_group_q;
-            if (local_s3<=current_local_q) candidate_group=candidate_group+32'd1;
+            if (local_pipe[3]<=current_local_q) candidate_group=candidate_group+32'd1;
           end
-          block_s4<=block_s3;local_s4<=local_s3;group_s4<=candidate_group;
-          candidate_good_s4<=candidate_good_s3 && block_s3>=current_pb_q &&
+          block_pipe[4]<=block_pipe[3];local_pipe[4]<=local_pipe[3];group_s4<=candidate_group;
+          candidate_good[4]<=candidate_good[3] && block_pipe[3]>=current_pb_q &&
                              candidate_group<groups_q;
         end
         if (pipe_valid[4]) begin
-          product_block_s5<=block_s4*block_span_q;
+          product_block_s5<=block_pipe[4]*block_span_q;
           product_group_s5<=group_s4*group_span_q;
-          local_s5<=local_s4;candidate_good_s5<=candidate_good_s4;
+          local_pipe[5]<=local_pipe[4];candidate_good[5]<=candidate_good[4];
         end
         if (pipe_valid[5]) begin
-          rank_s6<=product_block_s5+product_group_s5+local_s5;
-          candidate_good_s6<=candidate_good_s5;
+          rank_s6<=product_block_s5+product_group_s5+local_pipe[5];
+          candidate_good[6]<=candidate_good[5];
         end
         if (pipe_valid[6]) begin
           best_q<=best_next;
@@ -349,8 +352,8 @@ module conv_next_use_predictor (
         assert (current_group<groups_q && current_q[3:0]==0);
       end
     end
-    if (busy && pipe_valid[5] && candidate_good_s5)
-      assert (64'(product_block_s5)+64'(product_group_s5)+64'(local_s5)<64'hffff_ffff);
+    if (busy && pipe_valid[5] && candidate_good[5])
+      assert (64'(product_block_s5)+64'(product_group_s5)+64'(local_pipe[5])<64'hffff_ffff);
   end
 `endif
 endmodule

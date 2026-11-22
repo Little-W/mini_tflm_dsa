@@ -72,11 +72,10 @@ module requant_group_buffer #(
     end
 
 `ifdef ASIC_SRAM
-    // 每行数据和完成标志共用地址，128 行宏按宽度与深度扩展。
+    // 每行数据和完成标志共用地址，包装模块按逻辑深度选择存储尺寸。
     // 读取使能控制宏输出保持，最后一批发射时可同步读取下一行。
     smic40_sram_1r1w #(
-        .DATA_WIDTH(p_row_width), .DEPTH(p_rows), .ADDR_WIDTH(p_addr_width),
-        .MACRO_DEPTH(128)
+        .DATA_WIDTH(p_row_width), .DEPTH(p_rows), .ADDR_WIDTH(p_addr_width)
     ) u_rows (
         .clk(clk),
         .write_enable(storage_i_wr_en), .write_address(storage_i_wr_addr),

@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import runpy
 import shlex
 import shutil
 import subprocess
@@ -344,8 +345,6 @@ def main():
                         help='Stop after saving the requested synthesis checkpoint')
     parser.add_argument('--wide-alu-dsp-budget', type=int,
                         help='Map independent wide arithmetic cells to DSPs within this total DSP budget')
-    parser.add_argument('--rtl-dsp-attributes', action='store_true',
-                        help='Map only arithmetic results marked use_dsp=yes in RTL; requires a DSP budget')
     parser.add_argument('--wide-alu-dsp-reserve', type=int, default=0,
                         help='DSP capacity reserved beyond the mapped design')
     parser.add_argument('--wide-alu-minimum-width', type=int, default=24)
@@ -369,9 +368,6 @@ def main():
         parser.error('Invalid wide arithmetic DSP budget, reserve, or minimum width')
     if args.pack_small_alu and (args.wide_alu_dsp_budget is None or args.wide_alu_maximum_chain != 1):
         parser.error('--pack-small-alu requires a DSP budget and --wide-alu-maximum-chain 1')
-    if args.rtl_dsp_attributes and (args.wide_alu_dsp_budget is None or args.pack_small_alu
-                                    or args.wide_alu_maximum_chain != 1):
-        parser.error('--rtl-dsp-attributes requires a DSP budget and no automatic DSP selection options')
     ROOT = args.source_root.resolve()
     if args.out is None:
         args.out = ROOT / 'build/open_fpga_synth'
@@ -388,11 +384,16 @@ def main():
         CASES['vector_engine']['sources'].append(vector_parameters)
     if args.case_config:
         CASES.update(json.loads(args.case_config.read_text()))
-    for case in CASES.values():
-        case['sources'] = list(dict.fromkeys([name for name in case['sources'] if not name.startswith('rtl/common/')] + common))
     unknown_cases = set(args.cases) - CASES.keys()
     if unknown_cases:
         parser.error('Unknown cases: ' + ', '.join(sorted(unknown_cases)))
+    dependency_reader = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'rtl/source_files.py'))
+    for name in args.cases:
+        case = CASES[name]
+        case['sources'] = list(dict.fromkeys([name for name in case['sources'] if not name.startswith('rtl/common/')] + common))
+        sources = dependency_reader['with_dependencies']([ROOT / name for name in case['sources']], ROOT)
+        case['sources'] = [str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
+                           for path in sources]
     lock_handle = None
     if args.lock_file:
         import fcntl
@@ -470,8 +471,6 @@ def main():
                 command += ['--maximum-chain', str(args.wide_alu_maximum_chain)]
             if args.pack_small_alu:
                 command += ['--pack-small-alu']
-            if args.rtl_dsp_attributes:
-                command += ['--use-dsp-attributes']
             mapping_files = [mapping] + ([packed_mapping] if args.pack_small_alu else [])
             mapping_commands = ''.join(f'techmap -map {shlex.quote(str(path))}\n' for path in mapping_files)
             external_commands['02b_map_alu'] = command
@@ -498,8 +497,6 @@ def main():
                 'mapper_sha256': digest(mapper), 'techmap_sha256': digest(mapping),
                 'lut_dependencies_sha256': digest(helper_directory / 'lut_dependencies.py'),
             }
-            if args.rtl_dsp_attributes:
-                wide_alu_configuration['use_dsp_attributes'] = True
             if args.wide_alu_maximum_chain != 1:
                 wide_alu_configuration['maximum_selected_combinational_dsps'] = args.wide_alu_maximum_chain
             if args.pack_small_alu:

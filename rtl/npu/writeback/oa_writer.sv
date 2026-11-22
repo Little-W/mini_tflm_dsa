@@ -102,7 +102,6 @@ module oa_writer #(
     logic [VCOL_W-1:0]    vec_valid_num_col_r;
     logic [VCOL_W-1:0]    vec_valid_num_row_r;
     logic [VCOL_W:0]      rows_valid_cur_tile;
-    logic [VCOL_W:0]      cols_valid_cur_tile;
     logic [VCOL_W:0]      beats_per_row_cur_tile;
     logic [REG_WIDTH-1:0] tile_base_addr_cur;
     logic [REG_WIDTH-1:0] row_addr_step_cur;
@@ -114,7 +113,7 @@ module oa_writer #(
     logic [REG_WIDTH-1:0] column_base_addr;
     logic [REG_WIDTH-1:0] address_base, address_step;
     logic [REG_WIDTH-1:0] next_address_base, next_address_step;
-    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] next_address;
+    logic [REG_WIDTH-1:0] next_address;
     logic [ADDR_LOW_W-1:0] next_address_low;
     logic next_address_carry;
     logic unused_next_address_carry;
@@ -222,12 +221,12 @@ module oa_writer #(
 `endif
     end
 
-    (* use_dsp = "yes" *) count_t tile_row_inc;
-    (* use_dsp = "yes" *) count_t tile_col_inc;
-    (* use_dsp = "yes" *) count_t row_group_next_sum;
+    count_t tile_row_inc;
+    count_t tile_col_inc;
+    count_t row_group_next_sum;
     count_t tile_row_inc_q, tile_col_inc_q;
-    (* use_dsp = "yes" *) logic [CNT_W:0] row_total_difference, row_group_difference;
-    (* use_dsp = "yes" *) logic [CNT_W:0] column_total_difference, group_total_difference;
+    logic [CNT_W:0] row_total_difference, row_group_difference;
+    logic [CNT_W:0] column_total_difference, group_total_difference;
     logic row_inc_in_range_q, col_inc_in_range_q, group_inc_in_range_q;
     logic row_inc_is_last_q, col_inc_is_last_q;
     logic group_base_is_last_q, group_next_is_last_q;
@@ -261,14 +260,14 @@ module oa_writer #(
     logic [REG_WIDTH-1:0] init_row_addr_step;
     logic [REG_WIDTH-1:0] init_col_addr_step;
     logic [REG_WIDTH-1:0] init_group_row_addr_step;
-    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] init_group_step_25;
-    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] row_offset_next, col_offset_next;
-    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] co_next_col_offset;
+    logic [REG_WIDTH-1:0] init_group_step_25;
+    logic [REG_WIDTH-1:0] row_offset_next, col_offset_next;
+    logic [REG_WIDTH-1:0] co_next_col_offset;
     logic [2:0] init_group_shift;
     logic init_group_by_25;
-    (* use_dsp = "yes" *) logic [REG_WIDTH:0] co_initial_difference, co_next_difference;
+    logic [REG_WIDTH:0] co_initial_difference, co_next_difference;
     logic co_initial_is_short, co_next_is_short;
-    (* use_dsp = "yes" *) count_t row_tiles_decrement, col_tiles_decrement;
+    count_t row_tiles_decrement, col_tiles_decrement;
     logic co_contiguous_q;
     logic [2:0] co_row_div_shift_q;
     logic [8:0] co_rows_per_256;
@@ -276,7 +275,7 @@ module oa_writer #(
     logic [3:0] co_segment_aligned;
     logic [REG_WIDTH-1:0] co_rows_limit;
     logic [REG_WIDTH-1:0] co_initial_limit;
-    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] co_next_rows_remaining;
+    logic [REG_WIDTH-1:0] co_next_rows_remaining;
     logic [REG_WIDTH-1:0] co_next_rows_remaining_q, co_next_col_offset_q;
     logic [REG_WIDTH-1:0] co_chunk_bytes;
     logic [8:0] co_initial_rows;
@@ -516,16 +515,6 @@ module oa_writer #(
     assign co_wrap_group = (state == S_WRITE) && write_done &&
         !(cfg_coalesce && !cfg_is_mode) && next_tile_wrap_r;
     assign co_chunk_bytes = REG_WIDTH'(cfg_coalesce_cols) << 4;
-    logic [16:0] co_group_bytes;
-    always_comb begin
-        case (cfg_coalesce_cols)
-            5'd16: co_group_bytes = 17'(co_valid_rows) << 8;
-            5'd8:  co_group_bytes = 17'(co_valid_rows) << 7;
-            5'd4:  co_group_bytes = 17'(co_valid_rows) << 6;
-            5'd2:  co_group_bytes = 17'(co_valid_rows) << 5;
-            default: co_group_bytes = 17'(co_valid_rows) << 4;
-        endcase
-    end
     // 配置周期保存连续输出资格和每256字节对应的行数右移量。
     always_ff @(posedge clk) begin
         if (!rst_n) begin
@@ -697,7 +686,6 @@ module oa_writer #(
             vec_valid_num_col_r <= '0;
             vec_valid_num_row_r <= '0;
             rows_valid_cur_tile <= '0;
-            cols_valid_cur_tile <= '0;
             beats_per_row_cur_tile <= '0;
             tile_base_addr_cur <= '0;
             row_addr_step_cur <= '0;
@@ -735,7 +723,6 @@ module oa_writer #(
                 vec_valid_num_col_r <= '0;
                 vec_valid_num_row_r <= '0;
                 rows_valid_cur_tile <= '0;
-                cols_valid_cur_tile <= '0;
                 beats_per_row_cur_tile <= '0;
                 tile_base_addr_cur <= dst_base;
                 row_addr_step_cur <= init_row_addr_step;
@@ -775,7 +762,6 @@ module oa_writer #(
                     S_REQ: begin
                         if (write_oa_granted) begin
                             rows_valid_cur_tile <= rows_valid_calc;
-                            cols_valid_cur_tile <= cols_valid_calc;
                             beats_per_row_cur_tile <= beats_per_row_calc;
                             row_in_tile <= '0;
                             beats_in_row <= '0;

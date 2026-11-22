@@ -11,6 +11,7 @@
 ../../test/monitors/ia_loader_ctrl_observer.sv
 ../../test/monitors/kernel_loader_buffer_observer.sv
 ../../test/monitors/npu_controller_observer.sv
+../../test/monitors/npu_output_pipeline_observer.sv
 ../../test/monitors/npu_top_observer.sv
 ../../test/monitors/ps_window_scheduler_observer.sv
 ../../test/monitors/requant_group_buffer_observer.sv

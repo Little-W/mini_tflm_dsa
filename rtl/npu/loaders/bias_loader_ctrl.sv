@@ -156,7 +156,7 @@ module bias_loader_ctrl #(
                           (last_block_elems != count_t'(SIZE));
   logic [REG_WIDTH-1:0] load_rows_full;
   logic [REG_WIDTH-1:0] load_rows_without_tail;
-  (* use_dsp = "yes" *) count_t final_group_start;
+   count_t final_group_start;
   count_t final_row_offset;
   // 完整行数和扣除尾块后的行数并行计算，范围判断只选择最终结果。
   assign load_rows_full = REG_WIDTH'(load_blocks_count);

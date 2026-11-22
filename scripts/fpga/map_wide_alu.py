@@ -19,17 +19,6 @@ def integer(value):
     return value if isinstance(value, int) else int(value, 2)
 
 
-def attribute_text(value):
-    """读取字符串及常量表达式生成的 ASCII 位向量属性。"""
-    value = str(value).strip()
-    if re.fullmatch(r'(?:[01]{8})+', value):
-        try:
-            value = int(value, 2).to_bytes(len(value) // 8, 'big').decode('ascii')
-        except UnicodeDecodeError:
-            return value.lower()
-    return value.strip('\x00').strip().lower()
-
-
 def bits(cell, direction):
     return {bit for port, values in cell['connections'].items()
             if cell['port_directions'][port] == direction
@@ -64,42 +53,6 @@ def combinational_inputs(cell, output=None):
                    if cell['port_directions'][port] == 'output']
         return {bit for port in outputs for _, _, bit in lut_output_dependencies(cell, port)}
     return bits(cell, 'input')
-
-
-def select_attribute_cells(module, budget, reserve=0):
-    """按 RTL 算术结果的 use_dsp 属性选择单元，保留未标注的运算。"""
-    cells = module['cells']
-    existing = sum(cell['type'] == 'DSP48E1' for cell in cells.values())
-    marked_bits = collections.defaultdict(list)
-    for name, net in module.get('netnames', {}).items():
-        if attribute_text(net.get('attributes', {}).get('use_dsp', '')) != 'yes':
-            continue
-        for bit in net['bits']:
-            if isinstance(bit, int):
-                marked_bits[bit].append(name)
-    selected = []
-    for name, cell in sorted(cells.items()):
-        if cell['type'] != '$alu':
-            continue
-        signals = sorted({signal for bit in cell['connections']['Y']
-                          for signal in marked_bits.get(bit, [])})
-        cell_marked = attribute_text(cell.get('attributes', {}).get('use_dsp', '')) == 'yes'
-        if not signals and not cell_marked:
-            continue
-        width = integer(cell['parameters']['Y_WIDTH'])
-        if not 1 <= width <= 48:
-            raise ValueError(f'RTL DSP arithmetic width is outside 1..48: {name} ({width})')
-        selected.append({'cell': name, 'width': width, 'rtl_signals': signals,
-                         'cell_attribute': cell_marked})
-    if existing + len(selected) + reserve > budget:
-        raise ValueError(f'RTL DSP attributes require {existing + len(selected)} DSP cells '
-                         f'plus {reserve} reserved cells; budget is {budget}')
-    return {'dsp_budget': budget, 'dsp_reserve': reserve, 'existing_dsp_cells': existing,
-            'additional_dsp_cells': len(selected), 'resulting_dsp_cells': existing + len(selected),
-            'minimum_width': 1, 'maximum_width': 48, 'candidate_cells': len(selected),
-            'selected': selected, 'use_dsp_attributes': True,
-            'selection_rule': 'Select arithmetic cells whose result or cell has RTL use_dsp=yes; '
-                              'preserve all other arithmetic and report complete mapped paths'}
 
 
 def select_cells(module, budget, reserve=0, minimum_width=24, maximum_width=48,
@@ -407,8 +360,6 @@ def main():
     parser.add_argument('--reserve', type=int, default=0)
     parser.add_argument('--minimum-width', type=int, default=24)
     parser.add_argument('--maximum-chain', type=int, choices=(1, 2), default=1)
-    parser.add_argument('--use-dsp-attributes', action='store_true',
-                        help='仅转换 RTL 中 use_dsp=yes 的算术结果，不按面积分数选择其他运算')
     parser.add_argument('--pack-small-alu', action='store_true',
                         help='将最多四个相同 BI、独立且不超过十位的运算组合到一个 DSP')
     parser.add_argument('--selection-reference', type=Path,
@@ -422,16 +373,11 @@ def main():
         parser.error('--selection-reference and --keep-as-carry must be specified together')
     if args.pack_small_alu and (args.maximum_chain != 1 or args.keep_as_carry):
         parser.error('--pack-small-alu requires --maximum-chain 1 and no retained carry cells')
-    if args.use_dsp_attributes and (args.pack_small_alu or args.keep_as_carry or args.maximum_chain != 1):
-        parser.error('--use-dsp-attributes cannot be combined with automatic selection options')
     input_sha256 = hashlib.sha256(args.input.read_bytes()).hexdigest()
     design = json.loads(args.input.read_text())
     module = design['modules'][args.top]
-    if args.use_dsp_attributes:
-        report = select_attribute_cells(module, args.budget, args.reserve)
-    else:
-        report = select_cells(module, args.budget, args.reserve, args.minimum_width,
-                              maximum_chain=args.maximum_chain, pack_small_alu=args.pack_small_alu)
+    report = select_cells(module, args.budget, args.reserve, args.minimum_width,
+                          maximum_chain=args.maximum_chain, pack_small_alu=args.pack_small_alu)
     if args.selection_reference:
         reference = json.loads(args.selection_reference.read_text())
         if reference['input_sha256'] != input_sha256:

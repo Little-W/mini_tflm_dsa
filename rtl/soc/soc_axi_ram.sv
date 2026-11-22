@@ -315,7 +315,8 @@ module soc_axi_ram #(
         localparam int p_capacity_bits = ADDR_LSB + $clog2(DP);
         logic [7:0] lower_keep_mask;
         // 地址归约独立于突发选择，保留晚到控制信号之前的组合边界。
-        (* keep = 1 *) logic lower_carry, middle_carry;
+        (* keep = 1 *) logic lower_carry;
+        logic middle_carry;
         (* keep = 1 *) logic current_oob, upper_all_ones;
         logic next_oob, command_oob;
 
@@ -325,7 +326,7 @@ module soc_axi_ram #(
         assign lower_carry = &(rd_byte_addr_q[7:0] | ~lower_keep_mask);
         if (p_capacity_bits > 8) begin : g_middle
             localparam int p_middle_groups = (p_capacity_bits - 8 + 2) / 3;
-            (* keep = 1 *) logic [p_middle_groups-1:0] middle_full;
+            logic [p_middle_groups-1:0] middle_full;
             // 各组三位独立归约，再合并容量边界以下的连续进位条件。
             for (genvar group_index = 0; group_index < p_middle_groups; group_index++) begin : g_group
                 localparam int p_low = 8 + 3 * group_index;

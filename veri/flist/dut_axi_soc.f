@@ -1,8 +1,20 @@
 ../../rtl/soc/picorv32_npu.v
+../../rtl/soc/picorv32_regs.v
+../../rtl/soc/picorv32_pcpi_mul.v
+../../rtl/soc/picorv32_pcpi_fast_mul.v
+../../rtl/soc/picorv32_pcpi_div.v
+../../rtl/soc/picorv32_axi.v
+../../rtl/soc/picorv32_axi_adapter.v
+../../rtl/soc/picorv32_wb.v
 ../../picorv32/picosoc/simpleuart.v
 -f ../flist/dut_axil.f
 ../../rtl/soc/pico_native_to_axi.sv
 ../../rtl/soc/soc_axi_interconnect.sv
+../../rtl/soc/soc_axi_step_address.sv
+../../rtl/soc/soc_axi_pingpong_chan.sv
+../../rtl/soc/soc_axil_pingpong_buffer.sv
+../../rtl/soc/soc_axi_read_pingpong_buffer.sv
+../../rtl/soc/soc_axi_write_pingpong_buffer.sv
 ../../rtl/soc/soc_axi_pingpong_buffer.sv
 ../../test/models/soc_axi_ram.sv
 ../../rtl/soc/soc_axil_ctrl.sv

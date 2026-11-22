@@ -132,7 +132,7 @@ def main():
         help='Maximum generic cells per synthesis block in selected modules; zero disables grouping')
     parser.add_argument('--split-modules',nargs='+',default=[
         'vector_engine','bias_loader_buffer','ps_frame_store','ps_adaptive_encoder',
-        'ps_adaptive_decoder','vec_requant_full','vec_s8_to_fifo_full',
+        'ps_adaptive_decoder','vec_requant','vec_s8_to_fifo_full',
         'vec_s16_to_fifo','compute_core','npu_top'],
         help='RTL modules eligible for generic-cell grouping')
     args=parser.parse_args();started=time.monotonic();root=args.root.resolve();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)

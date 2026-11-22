@@ -68,7 +68,7 @@ module conv_ia_tile_path #(
     .tile_valid(state==ISSUE),.tile_ready(fe_tile_ready),.tile_p0(p0),.tile_q0(q0),
     .tile_rows(RW'(rows)),.tile_slot(slot),
     .wr_valid(fe_wr_valid),.wr_ready(fe_wr_ready),.wr_slot(fe_wr_slot),
-    .wr_row(fe_wr_row),.wr_col(fe_wr_col),.wr_data(fe_wr_data),.wr_mask(fe_wr_mask),
+    .wr_row(fe_wr_row),.wr_col(fe_wr_col),.wr_data(fe_wr_data),.wr_mask(fe_wr_mask),.wr_last(),
     .tile_done(fe_done),.tile_error(fe_tile_error),.error(fe_error),.busy(fe_busy),
     .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,.rresp,.rlast
   );

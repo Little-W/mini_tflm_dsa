@@ -154,7 +154,7 @@ def array_category(origin, name, ancestors, instance_path=""):
     if origin == "regfile" and name == "mem":
         if "requant_group_buffer" in ancestors:
             return "requant_input_rows"
-        if "vec_requant_full" in ancestors and ".g_ws_bank_write." in instance_path:
+        if "vec_requant" in ancestors and ".g_ws_bank_write." in instance_path:
             return None
         if "vector_engine" in ancestors and instance_path.rsplit(".", 1)[-1] == "u_bias_storage":
             return "vector_buffers"
@@ -175,7 +175,7 @@ def array_category(origin, name, ancestors, instance_path=""):
                 ("kernel_loader_buffer", "kernel_cache"),
                 ("bias_loader_buffer", "bias_cache"),
                 ("vector_quant_params", "vector_buffers"),
-                ("vec_requant_full", "requant_is_cache"),
+                ("vec_requant", "requant_is_cache"),
                 ("ps_frame_store", "ps_decoded_fifo"),
                 ("ps_buffer_exact_ram", "ps_payload")):
             if owner in ancestors:
@@ -196,7 +196,7 @@ def array_category(origin, name, ancestors, instance_path=""):
         return "kernel_cache"
     if origin == "bias_loader_buffer" and name in ("bank0_words", "bank1_words", "bias_words"):
         return "bias_cache"
-    if origin == "vec_requant_full" and name in ("ch_multiplier_is_r", "ch_shift_is_r",
+    if origin == "vec_requant" and name in ("ch_multiplier_is_r", "ch_shift_is_r",
                                                  "ch_lshift_is_r", "ch_rshift_is_r", "multiplier_mem",
                                                  "shift_mem", "left_mem", "right_mem",
                                                  "product_multiplier_mem", "product_amount_mem"):
@@ -245,9 +245,9 @@ def array_category(origin, name, ancestors, instance_path=""):
 
 def register_array_category(origin, name, ancestors=(), instance_path=""):
     if origin == "regfile" and name.rsplit(".", 1)[-1] == "mem" and \
-            "vec_requant_full" in ancestors and ".g_ws_bank_write." in instance_path:
+            "vec_requant" in ancestors and ".g_ws_bank_write." in instance_path:
         return "requant_ws_parameters"
-    if origin == "vec_requant_full" and name in (
+    if origin == "vec_requant" and name in (
             "ch_multiplier_lane_r", "ch_shift_lane_r", "ch_product_multiplier_lane_r",
             "ch_product_amount_lane_r"):
         return "requant_ws_parameters"

@@ -95,7 +95,7 @@ module vector_softmax #(
   logic signed [33:0] update_scaled;
   logic signed [31:0] update_saturated;
   logic [31:0] estimate_lhs, estimate_rhs, estimate_next;
-  (* use_dsp = "yes" *) logic [31:0] residual_next;
+  logic [31:0] residual_next;
   logic unused_estimate_carry;
   logic signed [32:0] reciprocal_scaled;
   logic signed [31:0] reciprocal_saturated;
@@ -214,6 +214,31 @@ module vector_softmax #(
       .o_sum      (sum_o_value)
   );
 
+  // 倒数舍入数据在乘法完成时保存，状态保证下一拍才使用该结果。
+  always_ff @(posedge clk) begin
+    if (!rst_n) begin
+    end else begin
+      case (c_st)
+        RECIP_INIT, RECIP_ERROR, RECIP_UPDATE: begin
+          if (MULTIPLIER_LATENCY == 0) begin
+            reciprocal_quotient_q <= reciprocal_input_quotient;
+            reciprocal_increment_q <= reciprocal_input_increment;
+          end
+        end
+        MULTIPLY_WAIT: begin
+          if (multiply_wait_count == MW'(1)) begin
+            if (multiply_output) begin
+            end else begin
+              reciprocal_quotient_q <= reciprocal_input_quotient;
+              reciprocal_increment_q <= reciprocal_input_increment;
+            end
+          end
+        end
+        default: begin end
+      endcase
+    end
+  end
+
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       c_st <= IDLE;
@@ -303,8 +328,6 @@ module vector_softmax #(
         RECIP_INIT: begin
           reciprocal_return <= RECIP_INIT_WAIT;
           if (MULTIPLIER_LATENCY == 0) begin
-            reciprocal_quotient_q <= reciprocal_input_quotient;
-            reciprocal_increment_q <= reciprocal_input_increment;
             c_st <= RECIP_ROUND;
           end else begin
             multiply_wait_count <= MW'(MULTIPLIER_LATENCY);
@@ -319,8 +342,6 @@ module vector_softmax #(
         RECIP_ERROR: begin
           reciprocal_return <= RECIP_ERROR_WAIT;
           if (MULTIPLIER_LATENCY == 0) begin
-            reciprocal_quotient_q <= reciprocal_input_quotient;
-            reciprocal_increment_q <= reciprocal_input_increment;
             c_st <= RECIP_ROUND;
           end else begin
             multiply_wait_count <= MW'(MULTIPLIER_LATENCY);
@@ -335,8 +356,6 @@ module vector_softmax #(
         RECIP_UPDATE: begin
           reciprocal_return <= RECIP_UPDATE_WAIT;
           if (MULTIPLIER_LATENCY == 0) begin
-            reciprocal_quotient_q <= reciprocal_input_quotient;
-            reciprocal_increment_q <= reciprocal_input_increment;
             c_st <= RECIP_ROUND;
           end else begin
             multiply_wait_count <= MW'(MULTIPLIER_LATENCY);
@@ -378,8 +397,6 @@ module vector_softmax #(
               output_shift_base_q <= output_input_value;
               c_st <= OUTPUT_STORE;
             end else begin
-              reciprocal_quotient_q <= reciprocal_input_quotient;
-              reciprocal_increment_q <= reciprocal_input_increment;
               c_st <= RECIP_ROUND;
             end
           end else begin
@@ -453,78 +470,6 @@ module vector_softmax #(
 `ifdef NPU_SIM_ASSERT
   initial if (MAX_DEPTH<1 || MAX_DEPTH>256) $fatal(1,"Softmax depth must be in [1,256]");
 `endif
-endmodule
-
-// 指数累加器先保存数据及舍入进位，再在下一边沿更新三十二位累计结果。
-module vector_softmax_accumulator #(
-`ifdef XILINX_FPGA
-    parameter bit p_use_dsp = 1'b1
-`else
-`ifdef SYNTHESIS
-`ifdef ASIC_SYNTHESIS
-    parameter bit p_use_dsp = 1'b0
-`else
-    parameter bit p_use_dsp = 1'b1
-`endif
-`else
-    parameter bit p_use_dsp = 1'b0
-`endif
-`endif
-) (
-    input  wire logic        clk,
-    input  wire logic        rst_n,
-    input  wire logic        i_clear,
-    input  wire logic        i_vld,
-    input  wire logic [19:0] i_value,
-    input  wire logic        i_increment,
-    output logic [31:0] o_sum
-);
-    //! 0. 辅助定义
-    //! -----------
-
-    logic add_pending;
-    logic sum_clear;
-
-    //! 1. 输入处理
-    //! -----------
-
-    assign sum_clear = !rst_n || i_clear;
-
-    //! 2. 保存输入与累计结果
-    //! ---------------------
-
-    // 任务初始化同时清除累计结果和待处理标志，新的有效数据不会跨任务保留。
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            add_pending <= 1'b0;
-        end else if (i_clear) begin
-            add_pending <= 1'b0;
-        end else begin
-            add_pending <= i_vld;
-        end
-    end
-
-    logic [19:0] value_stage;
-    logic increment_stage;
-    logic [31:0] sum;
-    logic [31:0] sum_next;
-    logic unused_sum_carry;
-
-    parallel_prefix_add #(.p_width(32)) u_accumulate (
-        .i_a(sum), .i_b({12'd0, value_stage}), .i_carry(increment_stage),
-        .o_sum(sum_next), .o_carry(unused_sum_carry)
-    );
-
-    always_ff @(posedge clk) begin
-        value_stage <= i_value;
-        increment_stage <= i_increment;
-        if (sum_clear) begin
-            sum <= '0;
-        end else if (add_pending) begin
-            sum <= sum_next;
-        end
-    end
-    assign o_sum = sum;
 endmodule
 
 `default_nettype wire

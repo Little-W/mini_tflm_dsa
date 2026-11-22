@@ -1,7 +1,6 @@
-`timescale 1ns/1ps
+// SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-// INT32 行按帧编号占用固定的共享存储位置。
 module ps_frame_store #(
     parameter integer MAX_FRAME_ROWS = 47,
     parameter integer FRAME_COUNT = 16,
@@ -63,6 +62,10 @@ module ps_frame_store #(
     reg command_present,command_accepted,input_ended,replay_armed,replay_active;
     reg [FRAME_ID_BITS-1:0] frame_id_q;
     reg [LENGTH_BITS-1:0] frame_rows_q,capture_count,commit_count,read_index,replay_index;
+    localparam int p_capture_width = LENGTH_BITS < 32 ? LENGTH_BITS + 1 : LENGTH_BITS;
+    logic [p_capture_width-1:0] capture_end_i_a, capture_end_i_b, capture_end_i_target;
+    logic capture_end_i_carry_in, capture_end_o_equal;
+    logic capture_length_match;
     reg frame_init_q,frame_final_q;
     localparam int p_cursor_bits = (EXTERNAL_RAM != 0 && p_fixed_ps_channels) ? RAM_ADDR_BITS : BANK_ADDR_BITS+1;
     logic [p_cursor_bits-1:0] read_cursor, write_cursor;
@@ -75,15 +78,16 @@ module ps_frame_store #(
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
             configuration_ready<=EXTERNAL_RAM==0;configuration_pending<=0;
-            pool_bank_words_q<=EXTERNAL_RAM==0 ? BANK_DEPTH : 0;
-            pool_bank_count_q<=EXTERNAL_RAM==0 ? BANKS : 0;
-            directory_stride_q<=MAX_FRAME_ROWS;
+            pool_bank_words_q<=(BANK_ADDR_BITS+1)'(EXTERNAL_RAM==0 ? BANK_DEPTH : 0);
+            pool_bank_count_q<=(ROTATION_BITS+1)'(EXTERNAL_RAM==0 ? BANKS : 0);
+            directory_stride_q<=LENGTH_BITS'(MAX_FRAME_ROWS);
         end else if(configure_start) begin
             configuration_ready<=EXTERNAL_RAM==0;configuration_pending<=EXTERNAL_RAM!=0;
         end else if(configuration_pending) begin
             configuration_pending<=0;configuration_ready<=configuration_valid;
-            pool_bank_words_q<=cfg_pool_bank_words;pool_bank_count_q<=cfg_pool_bank_count;
-            directory_stride_q<=cfg_directory_stride;
+            pool_bank_words_q<=(BANK_ADDR_BITS+1)'(cfg_pool_bank_words);
+            pool_bank_count_q<=(ROTATION_BITS+1)'(cfg_pool_bank_count);
+            directory_stride_q<=LENGTH_BITS'(cfg_directory_stride);
         end
     end
     localparam integer RAW_LINEAR_BITS=$clog2(FRAME_COUNT*MAX_FRAME_ROWS*4+1);
@@ -122,7 +126,7 @@ module ps_frame_store #(
             1'b0, 1'b1: request_valid = request_rows_high_valid && request_rows_low_valid && request_frame_valid;
             default: request_valid = 32'(frame_id) < FRAME_COUNT && frame_rows > 0 && frame_rows <= MAX_FRAME_ROWS &&
                 frame_rows <= directory_stride_q && (frame_init ? !frame_valid[frame_id] :
-                frame_valid[frame_id] && frame_lengths[frame_id] == frame_rows);
+                frame_valid[frame_id] && 32'(frame_lengths[frame_id]) == frame_rows);
         endcase
     end
     logic [RAW_LINEAR_BITS-3:0] capacity_i_initial_row;
@@ -182,6 +186,24 @@ module ps_frame_store #(
     end
     reg encoder_done;
     wire encoder_start=write_valid && command_accepted && !frame_final_q && !input_ended && !capacity_fault;
+    // 已接收行数和本拍继续接收一行的结束条件并行比较，接收事件仅选择结果。
+    // 额外一位保留窄计数器的加法进位，与完整表达式的数值范围一致。
+    assign capture_end_i_a = p_capture_width'(capture_count);
+    assign capture_end_i_b = '0;
+    assign capture_end_i_target = p_capture_width'(frame_rows_q);
+    assign capture_end_i_carry_in = 1'b1;
+    add_equal #(.p_width(p_capture_width)) u_capture_end (
+        .i_a(capture_end_i_a), .i_b(capture_end_i_b), .i_target(capture_end_i_target),
+        .i_carry_in(capture_end_i_carry_in), .o_equal(capture_end_o_equal)
+    );
+    always_comb begin
+        capture_length_match = capture_count + (encoder_start ? 1 : 0) == frame_rows_q;
+        case (^{capture_count, frame_rows_q, encoder_start})
+            1'b0, 1'b1: capture_length_match = encoder_start ?
+                capture_end_o_equal : capture_count == frame_rows_q;
+            default: ;
+        endcase
+    end
     reg [511:0] encode_commit_packet;
     wire encode_commit_valid=encoder_done && !capacity_fault;
     always @(posedge clk or negedge rst_n) begin
@@ -191,7 +213,6 @@ module ps_frame_store #(
             if(encoder_start) encode_commit_packet<=write_data;
         end
     end
-    reg decoded_first_mem [DECODE_FIFO_ROWS];
     reg [FIFO_PTR_BITS-1:0] decoded_write_pointer,decoded_read_pointer;
     logic decoded_i_wr_en, decoded_i_rd_en, decoded_i_wr_mask;
     logic [FIFO_PTR_BITS-1:0] decoded_i_wr_addr, decoded_i_rd_addr;
@@ -207,8 +228,8 @@ module ps_frame_store #(
         wire [ROTATION_BITS:0] wsum={1'b0,write_rotation}+(ROTATION_BITS+1)'(word);
         wire rwrap=32'(rsum)>=pool_bank_count_q;
         wire wwrap=32'(wsum)>=pool_bank_count_q;
-        wire [ROTATION_BITS-1:0] rb=ROTATION_BITS'(rwrap ? 32'(rsum)-pool_bank_count_q : 32'(rsum));
-        wire [ROTATION_BITS-1:0] wb=ROTATION_BITS'(wwrap ? 32'(wsum)-pool_bank_count_q : 32'(wsum));
+        wire [ROTATION_BITS-1:0] rb=ROTATION_BITS'(rwrap ? 32'(rsum)-32'(pool_bank_count_q) : 32'(rsum));
+        wire [ROTATION_BITS-1:0] wb=ROTATION_BITS'(wwrap ? 32'(wsum)-32'(pool_bank_count_q) : 32'(wsum));
         assign ram_read_en[word]=prefetch_fire;
         assign ram_write_en[word]=encode_commit_valid;
         assign ram_read_addr[word] = EXTERNAL_RAM != 0 && !p_fixed_ps_channels ?
@@ -266,11 +287,6 @@ module ps_frame_store #(
         !replay_armed && !replay_active && !encoder_done && !ram_read_valid && !decoder_done &&
         decoded_count==0 && decoder_inflight==0 && (frame_final_q || commit_count==frame_rows_q) &&
         (frame_init_q || replay_index==frame_rows_q);
-    always_ff @(posedge clk) begin
-        if (decoded_i_wr_en) begin
-            decoded_first_mem[decoded_write_pointer] <= ram_read_first;
-        end
-    end
     // 存储返回行直接写入队列，完成指示仍经过原有控制流水级。
     // 重放接收边沿同步读取下一行，读取结果与 replay_valid 在同一周期输出。
     // 预取最多占用深度减一行，连续读取与写入使用不同物理位置。
@@ -304,12 +320,14 @@ module ps_frame_store #(
             decoded_count<=0;decoder_inflight<=0;decoded_write_pointer<=0;decoded_read_pointer<=0;replay_valid<=0;
         end else begin
             frame_complete<=0;replay_valid<=replay_consume;
-            decoded_count<=decoded_count+(decoded_write_en ? 1'b1 : 1'b0)-(decoded_read_en ? 1'b1 : 1'b0);
-            decoder_inflight<=decoder_inflight+(prefetch_fire ? 1'b1 : 1'b0)-(decoder_done ? 1'b1 : 1'b0);
+            decoded_count<=decoded_count+(FIFO_PTR_BITS+1)'(decoded_write_en ? 1'b1 : 1'b0)-
+                (FIFO_PTR_BITS+1)'(decoded_read_en ? 1'b1 : 1'b0);
+            decoder_inflight<=decoder_inflight+(FIFO_PTR_BITS+1)'(prefetch_fire ? 1'b1 : 1'b0)-
+                (FIFO_PTR_BITS+1)'(decoder_done ? 1'b1 : 1'b0);
             if(frame_request && configuration_ready && !command_present && !request_valid)capacity_fault<=1;
             if(prepare_start)begin
                 command_present<=1;command_accepted<=0;input_ended<=0;
-                frame_id_q<=frame_id;frame_rows_q<=frame_rows;frame_init_q<=frame_init;frame_final_q<=frame_final;
+                frame_id_q<=frame_id;frame_rows_q<=LENGTH_BITS'(frame_rows);frame_init_q<=frame_init;frame_final_q<=frame_final;
                 replay_armed<=!frame_init;replay_active<=0;
                 capture_count<=0;commit_count<=0;read_index<=0;replay_index<=0;
                 read_cursor <= p_cursor_bits'(initial_row);
@@ -338,7 +356,7 @@ module ps_frame_store #(
                 end else read_rotation<=read_rotation+ROTATION_BITS'(4);
             end
             if(write_frame_end)begin
-                if(!command_accepted || replay_armed || (!frame_final_q && capture_count+(encoder_start ? 1 : 0)!=frame_rows_q))capacity_fault<=1;
+                if(!command_accepted || replay_armed || (!frame_final_q && !capture_length_match))capacity_fault<=1;
                 input_ended<=1;
             end
             if (decoded_i_wr_en) begin
@@ -360,107 +378,6 @@ module ps_frame_store #(
                 frame_valid[frame_id_q]<=!frame_final_q;frame_lengths[frame_id_q]<=frame_final_q ? 0 : frame_rows_q;
             end
         end
-    end
-endmodule
-
-// 用常数倒数计算商与余数，并通过一次有界修正得到精确地址。
-module ps_raw_address #(
-    parameter integer WIDTH=13,
-    parameter integer DIVISOR=5
-) (
-    input wire [WIDTH-1:0] linear,
-    output wire [WIDTH-1:0] quotient,
-    output wire [2:0] remainder
-);
-    localparam [WIDTH:0] RECIPROCAL=((64'd1<<WIDTH)+DIVISOR-1)/DIVISOR;
-    wire [2*WIDTH:0] product=linear*RECIPROCAL;
-    wire [WIDTH:0] estimate=product[2*WIDTH:WIDTH];
-    wire [WIDTH+3:0] scaled_estimate=estimate*(WIDTH+4)'(DIVISOR);
-    wire overshot=scaled_estimate>(WIDTH+4)'(linear);
-    wire [WIDTH+3:0] residual=(WIDTH+4)'(linear)-scaled_estimate+
-        (overshot ? (WIDTH+4)'(DIVISOR) : (WIDTH+4)'(0));
-    assign quotient=WIDTH'(estimate-overshot);
-    assign remainder=3'(residual);
-endmodule
-
-// 帧容量检查并行比较实际行数和预留行数，不增加寄存器或等待周期。
-module ps_frame_store_capacity #(
-    parameter int p_initial_row_width = 10,
-    parameter int p_bank_words_width = 10,
-    parameter int p_bank_count_width = 4
-) (
-    input  wire logic [p_initial_row_width-1:0] i_initial_row,
-    input  wire logic [31:0]                    i_frame_rows,
-    input  wire logic [31:0]                    i_reserve_rows,
-    input  wire logic [p_bank_words_width-1:0]   i_bank_words,
-    input  wire logic [p_bank_count_width-1:0]   i_bank_count,
-    output logic                           o_rows_fit
-);
-    localparam int p_pool_word_width = p_bank_words_width + p_bank_count_width;
-    localparam int p_rows_width = (p_initial_row_width > p_pool_word_width-2) ?
-        p_initial_row_width : p_pool_word_width-2;
-
-    if (p_rows_width < 32) begin : g_bounded_rows
-        logic [p_pool_word_width-1:0] pool_words;
-        logic [p_rows_width-1:0] pool_rows;
-        logic [1:0] request_fits;
-        logic [31:0] requested_rows [2];
-
-        // 每行占四个存储字，实际行数和预留行数分别检查。
-        assign pool_words = p_pool_word_width'(i_bank_words) * p_pool_word_width'(i_bank_count);
-        assign pool_rows = p_rows_width'((p_rows_width+2)'(pool_words) >> 2);
-        assign requested_rows[0] = i_frame_rows;
-        assign requested_rows[1] = i_reserve_rows;
-        for (genvar request = 0; request < 2; request++) begin : g_request
-            logic [p_rows_width:0] initial_row, row_count, inverted_capacity;
-            logic [p_rows_width:0] sum_bits, carry_bits, shifted_carry;
-            logic [p_rows_width:0] unused_row_sum;
-            logic unused_high_carry, exceeds_capacity;
-
-            assign initial_row = (p_rows_width+1)'(i_initial_row);
-            assign row_count = {1'b0, requested_rows[request][p_rows_width-1:0]};
-            assign inverted_capacity = ~{1'b0, pool_rows};
-            assign sum_bits = initial_row ^ row_count ^ inverted_capacity;
-            assign carry_bits = (initial_row & row_count) |
-                ((initial_row | row_count) & inverted_capacity);
-            assign {unused_high_carry, shifted_carry} = {carry_bits, 1'b0};
-`ifdef ASIC_SYNTHESIS
-            localparam bit p_capacity_dsp = 1'b0;
-`elsif SYNTHESIS
-`ifdef XILINX_FPGA
-            localparam bit p_capacity_dsp = p_rows_width >= 8;
-`else
-            localparam bit p_capacity_dsp = 1'b0;
-`endif
-`else
-            localparam bit p_capacity_dsp = 1'b0;
-`endif
-            if (p_capacity_dsp) begin : g_complete_sum
-                (* use_dsp = "yes" *) logic [p_rows_width+1:0] complete_sum;
-                // 容量条件使用完整进位结果，三操作数先形成并行和值及进位。
-                assign complete_sum = {1'b0, sum_bits} + {1'b0, shifted_carry};
-                assign {exceeds_capacity, unused_row_sum} = complete_sum;
-            end else begin : g_prefix_sum
-                parallel_prefix_add #(
-                    .p_width(p_rows_width+1), .p_group_width(4), .p_preserve_groups(1'b1)
-                ) u_end_compare (
-                    .i_a(sum_bits), .i_b(shifted_carry), .i_carry(1'b0),
-                    .o_sum(unused_row_sum), .o_carry(exceeds_capacity)
-                );
-            end
-            assign request_fits[request] = !(|requested_rows[request][31:p_rows_width]) &&
-                !exceeds_capacity;
-        end
-        assign o_rows_fit = &request_fits;
-    end else begin : g_wide_rows
-        logic [63:0] reserve_rows;
-        logic [63:0] initial_words, pool_words;
-
-        // 宽参数配置保留 64 位无符号容量运算。
-        assign reserve_rows = (i_reserve_rows > i_frame_rows) ? 64'(i_reserve_rows) : 64'(i_frame_rows);
-        assign initial_words = 64'(i_initial_row) << 2;
-        assign pool_words = 64'(i_bank_words) * 64'(i_bank_count);
-        assign o_rows_fit = initial_words + (reserve_rows << 2) <= pool_words;
     end
 endmodule
 

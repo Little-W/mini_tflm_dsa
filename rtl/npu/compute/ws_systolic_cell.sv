@@ -43,7 +43,7 @@ module ws_systolic_cell #(
         assign weight_prefetch_data = weight_in;
     end
 
-    (* use_dsp = "yes" *) logic signed [ACC_WIDTH-1:0] mac_result;
+    logic signed [ACC_WIDTH-1:0] mac_result;
     assign selected_weight = weight_active;
     assign mac_result = data_reg * selected_weight + sum_reg;
 

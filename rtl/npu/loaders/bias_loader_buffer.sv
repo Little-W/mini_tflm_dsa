@@ -176,22 +176,12 @@ module bias_loader_buffer #(
   // 通用缓冲区默认分别处理两个索引，集成控制器时可共享范围比较。
   assign load_request_idx = p_share_load_index ? current_block_idx : load_block_idx;
 
-  // 各请求独立计算末端位置，两个银行同时判断完整扩展范围。
+  // 请求起点、请求长度与银行末端先合并为两组位向量，再统一判断完整扩展范围。
   for (genvar request_i = 0; request_i < 2; request_i++) begin : g_range_request
     logic [RANGE_WIDTH-1:0] request_base;
     logic [RANGE_WIDTH-1:0] request_count;
     assign request_base = {1'b0, request_i == 0 ? load_request_idx : current_block_idx};
     assign request_count = {1'b0, group_blocks_needed};
-`ifdef SYNTHESIS
-    (* use_dsp = "yes" *) logic [RANGE_WIDTH-1:0] request_end;
-    // 请求末端与两个银行的扩展差值完整保留，借位直接表示范围越界。
-    assign request_end = request_base + request_count;
-    for (genvar bank_i = 0; bank_i < 2; bank_i++) begin : g_range_bank
-      (* use_dsp = "yes" *) logic [RANGE_WIDTH:0] end_difference;
-      assign end_difference = {1'b0, bank_end_q[bank_i]} - {1'b0, request_end};
-      assign window_end_valid[request_i][bank_i] = ~end_difference[RANGE_WIDTH];
-    end
-`else
     for (genvar bank_i = 0; bank_i < 2; bank_i++) begin : g_range_bank
       logic [RANGE_WIDTH-1:0] sum_bits;
       logic [RANGE_WIDTH-1:0] carry_bits;
@@ -211,18 +201,13 @@ module bias_loader_buffer #(
       );
       assign window_end_valid[request_i][bank_i] = ~range_overflow;
     end
-`endif
   end
   for (genvar b = 0; b < 2; b++) begin : gen_window_hit
-    (* use_dsp = "yes" *) logic [CNT_W:0] load_start_difference;
-    (* use_dsp = "yes" *) logic [CNT_W:0] current_start_difference;
-    // 扩展位保存无符号借位，两个银行同时计算请求起点是否处于驻留范围内。
-    assign load_start_difference = {1'b0, load_request_idx} - {1'b0, bank_block_idx[b]};
-    assign current_start_difference = {1'b0, current_block_idx} - {1'b0, bank_block_idx[b]};
+    // 两个银行同时比较完整请求范围，起点和末端条件独立计算。
     assign load_window_hit[b] = bank_loaded[b] &&
-        !load_start_difference[CNT_W] && window_end_valid[0][b];
+        (load_request_idx >= bank_block_idx[b]) && window_end_valid[0][b];
     assign current_window_hit[b] = bank_loaded[b] &&
-        !current_start_difference[CNT_W] && window_end_valid[1][b];
+        (current_block_idx >= bank_block_idx[b]) && window_end_valid[1][b];
   end
   assign resident_current = current_window_hit[active_bank];
   assign load_block_valid = |load_window_hit;

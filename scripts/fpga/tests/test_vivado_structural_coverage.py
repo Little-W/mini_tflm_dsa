@@ -96,7 +96,7 @@ class CoverageTests(unittest.TestCase):
         path.write_text(''.join('\t'.join(row) + '\n' for row in rows))
         return path
 
-    def prepare(self, depth=10, count=50000, pulse='0.250', period='6.667', precise=True):
+    def prepare(self, depth=10, count=45000, pulse='0.250', period='6.667', precise=True):
         self.write_graph(graph_records(depth))
         (self.work / 'manifest.json').write_text(json.dumps(dict(inputs=[], metadata={}, git={})))
         resources = [('Slice LUTs', count), ('LUT as Logic', count - 2000), ('LUT as Memory', 2000),
@@ -193,7 +193,7 @@ class CoverageTests(unittest.TestCase):
         self.prepare(depth=10)
         self.assertTrue(self.summary()['status']['all_targets_met'])
         self.assertEqual(self.summary()['requirements']['combinational_logic_levels_maximum'], 10)
-        self.prepare(depth=10, count=50001)
+        self.prepare(depth=10, count=45001)
         value = self.summary()['status']
         self.assertFalse(value['slice_luts_within_limit'])
         self.assertTrue(value['all_connected_paths_within_limit'])
@@ -223,13 +223,17 @@ class CoverageTests(unittest.TestCase):
         self.assertIsNone(value['all_targets_met'])
 
     def test_routed_cli_requires_every_target(self):
-        for depth, expected in ((10, 0), (11, 1)):
-            self.prepare(depth=depth)
+        for depth, count, expected in ((10, 44999, 0), (10, 45000, 0),
+                                       (10, 45001, 1), (11, 45000, 1)):
+            self.prepare(depth=depth, count=count)
             process = subprocess.run([sys.executable, str(HELPER), 'summarize', '--manifest',
                 str(self.work / 'manifest.json'), '--directory', str(self.work), '--stage', 'routed'],
                 capture_output=True, text=True, timeout=10)
             self.assertEqual(process.returncode, expected, process.stderr)
             self.assertTrue((self.work / 'measurement.json').is_file())
+            report = json.loads((self.work / 'measurement.json').read_text())
+            self.assertEqual(report['requirements']['slice_luts_maximum'], 45000)
+            self.assertEqual(report['status']['slice_luts_within_limit'], count <= 45000)
 
     def export_graph_model(self, *, board=False, unknown_inside=False, records=None, fail_export=False):
         script = self.work / 'export.tcl'

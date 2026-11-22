@@ -419,9 +419,9 @@ module ia_loader_ctrl #(
   end
 
   // 计数和末项索引形成完整模运算结果，在各自的更新边沿保存。
-  (* use_dsp = "yes" *) count_t l2_group_last_value, w_group_last_value, last_column_value;
-  (* use_dsp = "yes" *) count_t l1_index_advance, l1_next_index_advance, l2_tile_row_advance;
-  (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] load_cursor_p0_advance;
+   count_t l2_group_last_value, w_group_last_value, last_column_value;
+   count_t l1_index_advance, l1_next_index_advance, l2_tile_row_advance;
+   logic [REG_WIDTH-1:0] load_cursor_p0_advance;
   assign l2_group_last_value = count_t'(l2_group_num - REG_WIDTH'(1));
   assign w_group_last_value = count_t'(w_groups_total - REG_WIDTH'(1));
   assign last_column_value = count_t'(horizontal_tile_num - REG_WIDTH'(1));
@@ -599,7 +599,7 @@ module ia_loader_ctrl #(
   logic [REG_WIDTH-1:0] l2_row_base;
   logic                 l2_group_retire;
 
-  (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] l2_row_base_advanced;
+   logic [REG_WIDTH-1:0] l2_row_base_advanced;
   assign l2_row_base_advanced = l2_row_base + l2_group_row_step_b;
 
   assign l2_group_retire = (state == S_SEND || state == S_LOAD) && cache_tile_done &&
@@ -636,8 +636,8 @@ module ia_loader_ctrl #(
       next_l2_row_base = l2_row_base;
   end
 
-  (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] computed_tile_base;
-  (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] load_row_base_advanced;
+   logic [REG_WIDTH-1:0] computed_tile_base;
+   logic [REG_WIDTH-1:0] load_row_base_advanced;
   logic [REG_WIDTH-1:0] load_cursor_row_base;
   logic [REG_WIDTH-1:0] load_cursor_p0;
   assign load_cursor_p0_advance = load_cursor_p0 + REG_WIDTH'(SIZE);
