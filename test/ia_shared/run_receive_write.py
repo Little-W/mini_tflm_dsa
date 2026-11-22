@@ -9,7 +9,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = ('rtl/npu/loaders/ia_loader_cache_mgr.sv', 'rtl/npu/compute/select_add.sv',
-           'rtl/common/regfile.v', 'rtl/common/pseudo_dual_port_ram.v',
+           'rtl/common/regfile.v', 'rtl/common/pseudo_dual_port_ram.v', 'rtl/common/add_equal.sv',
            'test/ia_shared/receive_write_tb.sv')
 
 

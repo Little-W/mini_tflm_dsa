@@ -386,10 +386,10 @@ module ia_loader_cache_mgr #(
   localparam int SLOT_W = (SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS);
   localparam int ROW_CNT_W = $clog2(SIZE + 1);
   (* ram_style = "block" *) logic [ROW_CNT_W-1:0] slot_written_cols [SLOT_BLOCKS];
-  logic [ROW_CNT_W-1:0] write_extent, read_extent_q;
-  logic any_lane_write;
+  logic [ROW_CNT_W-1:0] write_extent, write_extent_physical, read_extent_q;
+  logic any_lane_write, physical_lane_write;
   logic [SIZE-1:0] write_last_column;
-  assign any_lane_write = |write_shifted_mask;
+  assign physical_lane_write = |write_shifted_mask;
   // 有效位已经排列到物理列，最高有效列直接编码本次写入范围。
   for (genvar col = 0; col < SIZE; col++) begin : g_write_extent_last
     if (col + 1 < SIZE) begin : g_has_later_column
@@ -404,7 +404,51 @@ module ia_loader_cache_mgr #(
     for (genvar col = 0; col < SIZE; col++) begin : g_column
       assign column_matches[col] = write_last_column[col] && (((col + 1) >> bit_index) & 1) != 0;
     end
-    assign write_extent[bit_index] = |column_matches;
+    assign write_extent_physical[bit_index] = |column_matches;
+  end
+  if (SIZE <= 32 && DMA_LANES < SIZE) begin : g_input_write_extent
+    localparam int p_extent_width = LOG2_SIZE + 1;
+    logic [DMA_LANES-1:0] eligible_lane, last_lane;
+    logic [DMA_LANES-1:0][p_extent_width-1:0] lane_extent;
+    logic [ROW_CNT_W-1:0] encoded_extent;
+
+    // 每个原始通道并行计算结束列，返回有效位仅选择最高有效通道。
+    // 行外通道不参与编码，任意有效掩码均保留相同的最后写入列。
+    for (genvar lane = 0; lane < DMA_LANES; lane++) begin : g_lane
+      assign lane_extent[lane] = {1'b0, wr_col_base} + p_extent_width'(lane + 1);
+      assign eligible_lane[lane] = wr_valid[lane] && lane_extent[lane] <= p_extent_width'(SIZE);
+      if (lane + 1 < DMA_LANES) begin : g_has_later_lane
+        assign last_lane[lane] = eligible_lane[lane] && !(|eligible_lane[DMA_LANES-1:lane+1]);
+      end else begin : g_final_lane
+        assign last_lane[lane] = eligible_lane[lane];
+      end
+    end
+    for (genvar bit_index = 0; bit_index < ROW_CNT_W; bit_index++) begin : g_bit
+      logic [DMA_LANES-1:0] lane_matches;
+      for (genvar lane = 0; lane < DMA_LANES; lane++) begin : g_lane
+        assign lane_matches[lane] = last_lane[lane] && lane_extent[lane][bit_index];
+      end
+      assign encoded_extent[bit_index] = |lane_matches;
+    end
+    // 已知列偏移直接使用原始通道编码，未知偏移保留完整移位表达式。
+    always_comb begin
+      write_extent = write_extent_physical;
+      any_lane_write = physical_lane_write;
+      case (5'(wr_col_base))
+        5'd0, 5'd1, 5'd2, 5'd3, 5'd4, 5'd5, 5'd6, 5'd7,
+        5'd8, 5'd9, 5'd10, 5'd11, 5'd12, 5'd13, 5'd14, 5'd15,
+        5'd16, 5'd17, 5'd18, 5'd19, 5'd20, 5'd21, 5'd22, 5'd23,
+        5'd24, 5'd25, 5'd26, 5'd27, 5'd28, 5'd29, 5'd30, 5'd31:
+          begin
+            write_extent = encoded_extent;
+            any_lane_write = |eligible_lane;
+          end
+        default: ;
+      endcase
+    end
+  end else begin : g_physical_write_extent
+    assign write_extent = write_extent_physical;
+    assign any_lane_write = physical_lane_write;
   end
   always_ff @(posedge clk) begin
     if (rst_n && any_lane_write && wr_row=='0)
