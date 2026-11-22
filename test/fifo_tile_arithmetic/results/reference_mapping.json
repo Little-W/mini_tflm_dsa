@@ -1,0 +1,133 @@
+{
+  "manifest": {
+    "top": "vec_s8_to_fifo",
+    "configuration": "完整 INT8 输出 FIFO，16 路向量、32 个银行、64 位总线",
+    "parameters": {},
+    "sources_sha256": {
+      "/tmp/npu_fifo_saved_blocked/case_inputs/current.sv": "198a8365845a46520b64f06b2115b91f734fa0356b5357ffabed8e6d52e9c7d8",
+      "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+      "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+      "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+      "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+      "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+      "rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7"
+    },
+    "options": [
+      "-D",
+      "XILINX_FPGA=1",
+      "-GVLEN=16",
+      "-GBANKS=32",
+      "-GBUS_WIDTH=64",
+      "-Gp_cyclic_storage=1",
+      "-Gp_precomputed_watermark=1"
+    ],
+    "build_configuration": null,
+    "primitive_models": {
+      "library_sha256": {
+        "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+        "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+      },
+      "primitives": [],
+      "model_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    "part": "xc7a200tfbg484-3",
+    "clock_period_ns": 6.666666666666667,
+    "wide_alu_mapping": {
+      "total_dsp_budget": 740,
+      "reserved_dsp_cells": 0,
+      "minimum_width": 24,
+      "maximum_width": 48,
+      "mapper_sha256": "b8aa2fe9c53b85ef692c5891ce7c119e91759aeaf32d25cb6ed9efa56b9a0f03",
+      "techmap_sha256": "407e7f5a9db2c53ccc8dfdb3a7756ce233b5984c848cd92e7478f21ce8fae1ae",
+      "lut_dependencies_sha256": "064560db8ee0e9466045a3e653eed2d77145ab3317f66ff482103eae03a01b88",
+      "use_dsp_attributes": true
+    }
+  },
+  "resources": {
+    "logic_lut_cells": 1170,
+    "distributed_ram_lut_sites_nominal": 60,
+    "shift_register_lut_sites_nominal": 0,
+    "lut_sites_nominal_before_packing": 1230,
+    "physical_lut_sites_after_placement": null,
+    "flip_flops": 173,
+    "dsp48e1": 0,
+    "ramb36e1": 0,
+    "ramb18e1": 8,
+    "carry4": 102,
+    "unclassified_distributed_ram_types": [],
+    "cell_counts": {
+      "CARRY4": 102,
+      "FDRE": 169,
+      "FDSE": 4,
+      "INV": 28,
+      "LUT2": 156,
+      "LUT3": 429,
+      "LUT4": 177,
+      "LUT5": 316,
+      "LUT6": 92,
+      "RAM32M": 15,
+      "RAMB18E1": 8
+    },
+    "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+  },
+  "longest_register_path_cells": 11,
+  "longest_combinational_path_cells": 13,
+  "longest_combinational_path": [
+    {
+      "cell": "$abc$65636$lut$aiger65635$3409",
+      "type": "LUT2"
+    },
+    {
+      "cell": "$abc$65636$lut$aiger65635$5037",
+      "type": "LUT5"
+    },
+    {
+      "cell": "$abc$65636$lut$aiger65635$5053",
+      "type": "LUT6"
+    },
+    {
+      "cell": "$abc$65636$lut$aiger$o1074",
+      "type": "LUT5"
+    },
+    {
+      "cell": "$abc$65636$lut$aiger$o1078",
+      "type": "LUT5"
+    },
+    {
+      "cell": "$auto$maccmap.cc:240:synth$9225.genblk1.slice[1].genblk1.carry4",
+      "type": "CARRY4"
+    },
+    {
+      "cell": "$abc$65636$lut$aiger$o1149",
+      "type": "LUT3"
+    },
+    {
+      "cell": "$1472.genblk1.slice[0].genblk1.carry4",
+      "type": "CARRY4"
+    },
+    {
+      "cell": "$abc$65636$lut$aiger$o2695",
+      "type": "LUT3"
+    },
+    {
+      "cell": "$abc$65636$lut$aiger65635$6575",
+      "type": "LUT6"
+    },
+    {
+      "cell": "$abc$65636$lut$aiger65635$6579",
+      "type": "LUT5"
+    },
+    {
+      "cell": "$abc$65636$lut$aiger65635$6584",
+      "type": "LUT6"
+    },
+    {
+      "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$65662",
+      "type": "LUT6"
+    }
+  ],
+  "mapped_json_sha256": "5c7d0d96f2e6e5e6350745227d095d11aa0df2521527b59d2c8fa60c996a05eb",
+  "metrics_sha256": "8a87b750160c58c054e46740434f2038f10caace57399104d936577eea139807"
+}

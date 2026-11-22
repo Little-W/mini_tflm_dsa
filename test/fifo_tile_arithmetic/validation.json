@@ -1,0 +1,178 @@
+{
+  "passed": true,
+  "source": {
+    "path": "rtl/npu/writeback/vec_s8_to_fifo.sv",
+    "sha256": "b295a330ba0e1a45ed118156078b1c6e97d4fe58f0a3468bc51d630bf0d9e0c0"
+  },
+  "reference": {
+    "revision": "24f5d6cde3e44ccc1ba6bbc92b708be2a257fb84",
+    "sha256": "198a8365845a46520b64f06b2115b91f734fa0356b5357ffabed8e6d52e9c7d8"
+  },
+  "combinational": {
+    "binary_all_input_widths": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32
+    ],
+    "binary_proofs": 64,
+    "four_state_comparisons": 6291460
+  },
+  "sequential_formal": {
+    "formal_fpga": {
+      "profiles": 10,
+      "induction_steps": 1,
+      "passed": true
+    },
+    "formal_generic": {
+      "profiles": 10,
+      "induction_steps": 1,
+      "passed": true
+    },
+    "formal_watermark": {
+      "profiles": 1,
+      "induction_steps": 1,
+      "passed": true
+    }
+  },
+  "numeric": [
+    {
+      "bus_width": 32,
+      "cases": 81,
+      "checked_bytes": 12392,
+      "compared_cycles": 7196,
+      "cycle_difference": 0,
+      "passed": true
+    },
+    {
+      "bus_width": 64,
+      "cases": 81,
+      "checked_bytes": 12392,
+      "compared_cycles": 4522,
+      "cycle_difference": 0,
+      "passed": true
+    }
+  ],
+  "cycle_four_state": {
+    "profiles_per_mode": 11,
+    "cycles_per_mode": 2048,
+    "comparisons": 3696396,
+    "modes": [
+      "fpga",
+      "generic"
+    ],
+    "coalesce_size_bits": 5,
+    "simulation_timeout_seconds": 900,
+    "passed": true
+  },
+  "mapped_fifo": {
+    "logic_lut_cells": 1173,
+    "lut_sites_nominal_before_packing": 1233,
+    "flip_flops": 173,
+    "dsp48e1": 1,
+    "ramb18e1": 8,
+    "longest_register_path_cells": 10,
+    "longest_combinational_path_cells": 10,
+    "graph_complete": true,
+    "use_rtl_dsp_attributes": true,
+    "vlen": 16,
+    "banks": 32,
+    "bus_width": 64,
+    "cyclic_storage": 1,
+    "precomputed_watermark": 1
+  },
+  "reports": {
+    "comb.json": {
+      "path": "test/fifo_tile_arithmetic/results/comb.json",
+      "sha256": "45eed62b6cc63c29c9da5f9adea1878b7cf91c304b9aa987b5185ad1fbc9773d"
+    },
+    "cycle_fpga.log": {
+      "path": "test/fifo_tile_arithmetic/results/cycle_fpga.log",
+      "sha256": "ce0fe587cff21c00865fa5342fb1d5538c03fa95ccdf7a53accd827be908af59"
+    },
+    "cycle_generic.log": {
+      "path": "test/fifo_tile_arithmetic/results/cycle_generic.log",
+      "sha256": "ce0fe587cff21c00865fa5342fb1d5538c03fa95ccdf7a53accd827be908af59"
+    },
+    "formal_fpga.json": {
+      "path": "test/fifo_tile_arithmetic/results/formal_fpga.json",
+      "sha256": "cfb45adf1d3bbac6126297489440420579875fabba2650d850ead75dbffb244f"
+    },
+    "formal_generic.json": {
+      "path": "test/fifo_tile_arithmetic/results/formal_generic.json",
+      "sha256": "b9271dc5a3c50e53c91e4ac5bec8f6697d1f427b984097bb38a92dff06aa6d91"
+    },
+    "formal_watermark.json": {
+      "path": "test/fifo_tile_arithmetic/results/formal_watermark.json",
+      "sha256": "9ae6d4c7ca8180bb0b847da981a1542e84ff09574d431ed7ea3a52c3e64d569f"
+    },
+    "four_state.json": {
+      "path": "test/fifo_tile_arithmetic/results/four_state.json",
+      "sha256": "0f1b875e13d5507b34f2f1dfd319b53c029595dd8cf46dd3176b32ac87494070"
+    },
+    "mapped_metrics.json": {
+      "path": "test/fifo_tile_arithmetic/results/mapped_metrics.json",
+      "sha256": "93f12efb3f8b6ea07e591a3ec03fcbf19d0b87bbf986758c65702ade837806f4"
+    },
+    "mapped_summary.json": {
+      "path": "test/fifo_tile_arithmetic/results/mapped_summary.json",
+      "sha256": "fccf100a92d03d9684e92c0bbdb170d70ff3877d91992e5a5011a64a6ad94655"
+    },
+    "numeric32.json": {
+      "path": "test/fifo_tile_arithmetic/results/numeric32.json",
+      "sha256": "41b25a64c8bc15592ace1bc0702f9367d364b44523ca5022131e3662c14b33ff"
+    },
+    "numeric32.log": {
+      "path": "test/fifo_tile_arithmetic/results/numeric32.log",
+      "sha256": "41b803cd52e22dbfc2b8b97e6c8bf0d88bdadfa6120441c7a7e06de6206fdddf"
+    },
+    "numeric64.json": {
+      "path": "test/fifo_tile_arithmetic/results/numeric64.json",
+      "sha256": "dd9ff3a0033272c688445a0add73f7198c4faa05d20625ab39001b1eae8d860a"
+    },
+    "numeric64.log": {
+      "path": "test/fifo_tile_arithmetic/results/numeric64.log",
+      "sha256": "a9a2458f268d57978cc81a973dc7e833499d2192ef3e1a4afd5a7405e7dd477d"
+    },
+    "product_four_state.log": {
+      "path": "test/fifo_tile_arithmetic/results/product_four_state.log",
+      "sha256": "ea1ce4ba71a7345f0501e0ee9531970dbc8a66fdeb250e6da27a925363e18b03"
+    },
+    "reference_mapping.json": {
+      "path": "test/fifo_tile_arithmetic/results/reference_mapping.json",
+      "sha256": "a6a5c71d89d7f9dba25d4ca9dc214178ca56e29d97d7396ca0585cbc98f17403"
+    },
+    "row_four_state.log": {
+      "path": "test/fifo_tile_arithmetic/results/row_four_state.log",
+      "sha256": "7fcfd4691fd008c7d75674aeb93b220d083eef45bd875b4c7c6c18d1da820032"
+    }
+  }
+}

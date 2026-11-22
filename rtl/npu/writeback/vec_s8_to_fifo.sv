@@ -91,7 +91,39 @@ module vec_s8_to_fifo_full #(
   logic [8:0] co_next_row;
   logic [4:0] co_next_col;
   logic [BEAT_WIDTH-1:0] co_next_beat;
-  wire [BANK_COUNT_WIDTH-1:0] co_tiles = BANK_COUNT_WIDTH'(coalesce_rows[4:0] * coalesce_cols[4:0]);
+  logic [BANK_COUNT_WIDTH-1:0] co_tiles;
+  logic [BANK_COUNT_WIDTH-1:0] co_tile_partial [0:4];
+  logic [BANK_COUNT_WIDTH-1:0] co_tile_sum [0:2];
+  logic [BANK_COUNT_WIDTH-1:0] co_tile_carry [0:2];
+  (* use_dsp = "yes" *) logic [BANK_COUNT_WIDTH-1:0] co_tile_product;
+  // 部分积在银行计数宽度内保留，进位保存归并只在最后一步传播进位。
+  for (genvar term = 0; term < 5; term++) begin : g_co_tile_partial
+    assign co_tile_partial[term] =
+        (BANK_COUNT_WIDTH'(coalesce_cols[4:0]) << term) &
+        {BANK_COUNT_WIDTH{coalesce_rows[term]}};
+  end
+  assign co_tile_sum[0] = co_tile_partial[0] ^ co_tile_partial[1] ^ co_tile_partial[2];
+  assign co_tile_carry[0] = ((co_tile_partial[0] & co_tile_partial[1]) |
+      (co_tile_partial[0] & co_tile_partial[2]) |
+      (co_tile_partial[1] & co_tile_partial[2])) << 1;
+  assign co_tile_sum[1] = co_tile_partial[3] ^ co_tile_partial[4] ^ co_tile_carry[0];
+  assign co_tile_carry[1] = ((co_tile_partial[3] & co_tile_partial[4]) |
+      (co_tile_partial[3] & co_tile_carry[0]) |
+      (co_tile_partial[4] & co_tile_carry[0])) << 1;
+  assign co_tile_sum[2] = co_tile_sum[0] ^ co_tile_sum[1] ^ co_tile_carry[1];
+  assign co_tile_carry[2] = ((co_tile_sum[0] & co_tile_sum[1]) |
+      (co_tile_sum[0] & co_tile_carry[1]) |
+      (co_tile_sum[1] & co_tile_carry[1])) << 1;
+  assign co_tile_product = co_tile_sum[2] + co_tile_carry[2];
+  // 已知输入使用归并结果，含未知位的输入保留乘法的四态传播语义。
+  always_comb begin
+    co_tiles = BANK_COUNT_WIDTH'(coalesce_rows[4:0] * coalesce_cols[4:0]);
+    case (^{coalesce_rows[4:0], coalesce_cols[4:0]})
+      1'b0, 1'b1: begin
+        co_tiles = co_tile_product;
+      end
+    endcase
+  end
   logic [4:0] co_nonzero_terms;
   // 截断乘积非零时，至少有一对置位输入的位序之和落在保留范围内。
   // 并行判断各行位可影响的列位，启动条件不等待完整乘法结果。
@@ -347,8 +379,39 @@ module vec_s8_to_fifo_full #(
   // 行范围比较独立完成，输出握手只参与最终释放条件。
   (* keep = 1 *) logic read_row_count_last;
   (* keep = 1 *) logic read_normal_row_last, read_transpose_row_last;
-  assign read_normal_row_last = read_row_limit_q >= active_read_count;
-  assign read_transpose_row_last = read_row_limit_q >= transpose_row_count_q;
+  if (COUNT_WIDTH > 3) begin : g_split_row_compare
+    (* keep = 1 *) logic normal_low_last, transpose_low_last;
+    logic normal_combined_last, transpose_combined_last;
+    // 低三位先比较，较高位的大小关系与低位结果在后一级合并。
+    assign normal_low_last = read_row_limit_q[2:0] >= active_read_count[2:0];
+    assign transpose_low_last = read_row_limit_q[2:0] >= transpose_row_count_q[2:0];
+    assign normal_combined_last =
+        (read_row_limit_q[COUNT_WIDTH-1:3] > active_read_count[COUNT_WIDTH-1:3]) ||
+        ((read_row_limit_q[COUNT_WIDTH-1:3] == active_read_count[COUNT_WIDTH-1:3]) &&
+         normal_low_last);
+    assign transpose_combined_last =
+        (read_row_limit_q[COUNT_WIDTH-1:3] > transpose_row_count_q[COUNT_WIDTH-1:3]) ||
+        ((read_row_limit_q[COUNT_WIDTH-1:3] == transpose_row_count_q[COUNT_WIDTH-1:3]) &&
+         transpose_low_last);
+    // 含未知位时保留整体比较语义，已知输入选择分段比较结果。
+    always_comb begin
+      read_normal_row_last = read_row_limit_q >= active_read_count;
+      case (^{read_row_limit_q, active_read_count})
+        1'b0, 1'b1: begin
+          read_normal_row_last = normal_combined_last;
+        end
+      endcase
+      read_transpose_row_last = read_row_limit_q >= transpose_row_count_q;
+      case (^{read_row_limit_q, transpose_row_count_q})
+        1'b0, 1'b1: begin
+          read_transpose_row_last = transpose_combined_last;
+        end
+      endcase
+    end
+  end else begin : g_short_row_compare
+    assign read_normal_row_last = read_row_limit_q >= active_read_count;
+    assign read_transpose_row_last = read_row_limit_q >= transpose_row_count_q;
+  end
   always_comb begin
     read_row_count_last = read_row_limit_q >= output_row_count;
     case (transpose_mode_tmp)

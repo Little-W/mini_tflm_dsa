@@ -1,0 +1,18 @@
+PROGRESS inputs=65536
+PROGRESS inputs=131072
+PROGRESS inputs=196608
+PROGRESS inputs=262144
+PROGRESS inputs=327680
+PROGRESS inputs=393216
+PROGRESS inputs=458752
+PROGRESS inputs=524288
+PROGRESS inputs=589824
+PROGRESS inputs=655360
+PROGRESS inputs=720896
+PROGRESS inputs=786432
+PROGRESS inputs=851968
+PROGRESS inputs=917504
+PROGRESS inputs=983040
+PROGRESS inputs=1048576
+ROW_FOUR_STATE_PASS inputs=1048580 comparisons=3145732
+/tmp/npu_fifo_saved_blocked/co_tiles_csa_split/final_validation/comb/row_compare_tb.sv:46: $finish called at 1048580 (1s)

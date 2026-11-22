@@ -1,0 +1,17 @@
+PROGRESS cycles=512
+PROGRESS cycles=1024
+PROGRESS cycles=1536
+PROGRESS cycles=2048
+PROFILE index=0 checks=168018 writes=170 releases=132 group_releases=1 simultaneous=0 blocked=1563 unknown_controls=910
+PROFILE index=1 checks=168018 writes=256 releases=178 group_releases=1 simultaneous=1 blocked=1345 unknown_controls=910
+PROFILE index=2 checks=168018 writes=299 releases=189 group_releases=2 simultaneous=4 blocked=1135 unknown_controls=910
+PROFILE index=3 checks=168018 writes=407 releases=192 group_releases=1 simultaneous=25 blocked=643 unknown_controls=910
+PROFILE index=4 checks=168018 writes=482 releases=218 group_releases=2 simultaneous=51 blocked=339 unknown_controls=910
+PROFILE index=5 checks=168018 writes=550 releases=199 group_releases=1 simultaneous=97 blocked=257 unknown_controls=910
+PROFILE index=6 checks=168018 writes=551 releases=223 group_releases=2 simultaneous=100 blocked=244 unknown_controls=910
+PROFILE index=7 checks=168018 writes=655 releases=223 group_releases=2 simultaneous=168 blocked=19 unknown_controls=910
+PROFILE index=8 checks=168018 writes=551 releases=223 group_releases=2 simultaneous=100 blocked=244 unknown_controls=910
+PROFILE index=9 checks=168018 writes=420 releases=214 group_releases=4 simultaneous=26 blocked=519 unknown_controls=910
+PROFILE index=10 checks=168018 writes=550 releases=212 group_releases=1 simultaneous=99 blocked=257 unknown_controls=910
+FIFO_BLOCKED_FOUR_STATE_PASS cycles=2048 profiles=11 comparisons=1848198
+/tmp/npu_fifo_saved_blocked/co_tiles_csa_split/final_validation/four_state/tb.sv:282: $finish called at 16396 (1s)

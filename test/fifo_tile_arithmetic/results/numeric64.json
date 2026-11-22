@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "bus_width": 64,
+  "banks": 32,
+  "cyclic": 1,
+  "precomputed_watermark": 1,
+  "fpga": true,
+  "cases": 81,
+  "checked_bytes": 12392,
+  "compared_cycles": 4522,
+  "cycle_difference": 0,
+  "source_sha256": "b295a330ba0e1a45ed118156078b1c6e97d4fe58f0a3468bc51d630bf0d9e0c0",
+  "reference_sha256": "198a8365845a46520b64f06b2115b91f734fa0356b5357ffabed8e6d52e9c7d8",
+  "sources_sha256": {
+    "/tmp/npu_fifo_saved_blocked/co_tiles_csa_split/final_validation/numeric64/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+    "/tmp/npu_fifo_saved_blocked/co_tiles_csa_split/final_validation/numeric64/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+    "/tmp/npu_fifo_saved_blocked/co_tiles_csa_split/final_validation/numeric64/vec_s16_to_fifo.sv": "2f17154307a112d4f1f69decc9eaeedfe323bf58d14889b90c6b50756156159e",
+    "/tmp/npu_fifo_saved_blocked/co_tiles_csa_split/final_validation/numeric64/current.sv": "b295a330ba0e1a45ed118156078b1c6e97d4fe58f0a3468bc51d630bf0d9e0c0",
+    "/tmp/npu_fifo_saved_blocked/co_tiles_csa_split/final_validation/numeric64/reference.sv": "2c95465907b15aba1d43b591ee18888b3c1ef25a7f504e4c6885659a7246c791",
+    "/tmp/npu_fifo_saved_blocked/co_tiles_csa_split/final_validation/numeric64/vec_s16_to_fifo_ref.sv": "c28f5f93a93c16fe2666d613adf9f34e9cf5837e13a42f9fdc0847176cd13874",
+    "/tmp/npu_fifo_saved_blocked/co_tiles_csa_split/final_validation/numeric64/tb.sv": "097b78332aec8950513d1b120747157eb44da7cfd140d74da1a03d83c980bd3a"
+  },
+  "original_testbench_sha256": "ce0ba669a948508845b54511c921a959bb5ac2e292e8a8e928e8b48929ba5b47",
+  "log_sha256": "a9a2458f268d57978cc81a973dc7e833499d2192ef3e1a4afd5a7405e7dd477d",
+  "executable_sha256": "775ca45ef7ad3271e8306c9108c06258e86d7d77b8ca90e870089b6abcda48f5"
+}

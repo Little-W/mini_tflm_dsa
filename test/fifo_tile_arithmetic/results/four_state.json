@@ -1,0 +1,440 @@
+{
+  "passed": true,
+  "reference": "24f5d6cd",
+  "source_sha256": "b295a330ba0e1a45ed118156078b1c6e97d4fe58f0a3468bc51d630bf0d9e0c0",
+  "reference_sha256": "198a8365845a46520b64f06b2115b91f734fa0356b5357ffabed8e6d52e9c7d8",
+  "runner_sha256": "9b7b7be862cfc57ad3449dc52bb546da32d002fd33283ccea4533590fb4a9d24",
+  "cycles_per_mode": 2048,
+  "simulation_timeout_seconds": 900,
+  "coalesce_size_bits": 5,
+  "initial_reset_cycles": 2,
+  "data_memory_return": "common generated four-state words repeated across memory lanes",
+  "combinational_process_sensitivity": "always_comb rendered as always @* for event simulation",
+  "complete_control_preserved": true,
+  "compared_state_fields": [
+    "bank_ready",
+    "ready_bank_count_q",
+    "active_read_count_q",
+    "last_beat_idx_q",
+    "write_bank",
+    "write_bank_mask_q",
+    "read_bank",
+    "write_ptr",
+    "read_ptr",
+    "stream_active",
+    "data_valid",
+    "beat_idx",
+    "vec_valid_num_col_tmp",
+    "vec_valid_num_row_tmp",
+    "transpose_mode_tmp",
+    "co_active",
+    "co_data_valid",
+    "co_row",
+    "co_col",
+    "co_beat",
+    "co_current_bank",
+    "co_last_col_q",
+    "co_last_tile_row_q",
+    "co_row_limit_q"
+  ],
+  "compared_ports": [
+    "oa_fifo_req",
+    "output_valid",
+    "output_row_switch",
+    "output_mask",
+    "output_data",
+    "fifo_full_flag",
+    "formal_ram_write_data",
+    "formal_ram_write_addr",
+    "formal_ram_read_addr",
+    "formal_ram_write_enable",
+    "formal_ram_read_enable",
+    "formal_bank_nonempty",
+    "formal_bank_counts"
+  ],
+  "saved_state_relations": 4,
+  "source_dependencies_sha256": {
+    "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+    "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c"
+  },
+  "generated_source_sha256": {
+    "reference.sv": "ebd7d8f18b220eb34e70908cb39321f009829a247d4d8de0fd171514a735fa5e",
+    "current.sv": "578b69d24c0375d7279a8b4dabb7cca9ccc9514f563ae9eb33f96776fc159667",
+    "tb.sv": "fdd2109e0f186805c205a80508de80c733e7f924171a3e6f9d2934f25181435a"
+  },
+  "runs": [
+    {
+      "mode": "fpga",
+      "passed": true,
+      "cycles": 2048,
+      "profiles": 11,
+      "comparisons": 1848198,
+      "coverage": [
+        {
+          "index": 0,
+          "checks": 168018,
+          "writes": 170,
+          "releases": 132,
+          "group_releases": 1,
+          "simultaneous": 0,
+          "blocked": 1563,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 1,
+            "bus_width": 64,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 1,
+          "checks": 168018,
+          "writes": 256,
+          "releases": 178,
+          "group_releases": 1,
+          "simultaneous": 1,
+          "blocked": 1345,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 2,
+            "bus_width": 32,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 2,
+          "checks": 168018,
+          "writes": 299,
+          "releases": 189,
+          "group_releases": 2,
+          "simultaneous": 4,
+          "blocked": 1135,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 3,
+            "bus_width": 64,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 3,
+          "checks": 168018,
+          "writes": 407,
+          "releases": 192,
+          "group_releases": 1,
+          "simultaneous": 25,
+          "blocked": 643,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 8,
+            "bus_width": 32,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 4,
+          "checks": 168018,
+          "writes": 482,
+          "releases": 218,
+          "group_releases": 2,
+          "simultaneous": 51,
+          "blocked": 339,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 16,
+            "bus_width": 64,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 5,
+          "checks": 168018,
+          "writes": 550,
+          "releases": 199,
+          "group_releases": 1,
+          "simultaneous": 97,
+          "blocked": 257,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 32,
+            "bus_width": 32,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 6,
+          "checks": 168018,
+          "writes": 551,
+          "releases": 223,
+          "group_releases": 2,
+          "simultaneous": 100,
+          "blocked": 244,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 32,
+            "bus_width": 64,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 7,
+          "checks": 168018,
+          "writes": 655,
+          "releases": 223,
+          "group_releases": 2,
+          "simultaneous": 168,
+          "blocked": 19,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 64,
+            "bus_width": 64,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 8,
+          "checks": 168018,
+          "writes": 551,
+          "releases": 223,
+          "group_releases": 2,
+          "simultaneous": 100,
+          "blocked": 244,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 32,
+            "bus_width": 64,
+            "cyclic_storage": 0
+          }
+        },
+        {
+          "index": 9,
+          "checks": 168018,
+          "writes": 420,
+          "releases": 214,
+          "group_releases": 4,
+          "simultaneous": 26,
+          "blocked": 519,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 8,
+            "banks": 8,
+            "bus_width": 32,
+            "cyclic_storage": 0
+          }
+        },
+        {
+          "index": 10,
+          "checks": 168018,
+          "writes": 550,
+          "releases": 212,
+          "group_releases": 1,
+          "simultaneous": 99,
+          "blocked": 257,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 32,
+            "banks": 32,
+            "bus_width": 64,
+            "cyclic_storage": 0
+          }
+        }
+      ],
+      "log_sha256": "ce0fe587cff21c00865fa5342fb1d5538c03fa95ccdf7a53accd827be908af59"
+    },
+    {
+      "mode": "generic",
+      "passed": true,
+      "cycles": 2048,
+      "profiles": 11,
+      "comparisons": 1848198,
+      "coverage": [
+        {
+          "index": 0,
+          "checks": 168018,
+          "writes": 170,
+          "releases": 132,
+          "group_releases": 1,
+          "simultaneous": 0,
+          "blocked": 1563,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 1,
+            "bus_width": 64,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 1,
+          "checks": 168018,
+          "writes": 256,
+          "releases": 178,
+          "group_releases": 1,
+          "simultaneous": 1,
+          "blocked": 1345,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 2,
+            "bus_width": 32,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 2,
+          "checks": 168018,
+          "writes": 299,
+          "releases": 189,
+          "group_releases": 2,
+          "simultaneous": 4,
+          "blocked": 1135,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 3,
+            "bus_width": 64,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 3,
+          "checks": 168018,
+          "writes": 407,
+          "releases": 192,
+          "group_releases": 1,
+          "simultaneous": 25,
+          "blocked": 643,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 8,
+            "bus_width": 32,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 4,
+          "checks": 168018,
+          "writes": 482,
+          "releases": 218,
+          "group_releases": 2,
+          "simultaneous": 51,
+          "blocked": 339,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 16,
+            "bus_width": 64,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 5,
+          "checks": 168018,
+          "writes": 550,
+          "releases": 199,
+          "group_releases": 1,
+          "simultaneous": 97,
+          "blocked": 257,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 32,
+            "bus_width": 32,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 6,
+          "checks": 168018,
+          "writes": 551,
+          "releases": 223,
+          "group_releases": 2,
+          "simultaneous": 100,
+          "blocked": 244,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 32,
+            "bus_width": 64,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 7,
+          "checks": 168018,
+          "writes": 655,
+          "releases": 223,
+          "group_releases": 2,
+          "simultaneous": 168,
+          "blocked": 19,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 64,
+            "bus_width": 64,
+            "cyclic_storage": 1
+          }
+        },
+        {
+          "index": 8,
+          "checks": 168018,
+          "writes": 551,
+          "releases": 223,
+          "group_releases": 2,
+          "simultaneous": 100,
+          "blocked": 244,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 16,
+            "banks": 32,
+            "bus_width": 64,
+            "cyclic_storage": 0
+          }
+        },
+        {
+          "index": 9,
+          "checks": 168018,
+          "writes": 420,
+          "releases": 214,
+          "group_releases": 4,
+          "simultaneous": 26,
+          "blocked": 519,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 8,
+            "banks": 8,
+            "bus_width": 32,
+            "cyclic_storage": 0
+          }
+        },
+        {
+          "index": 10,
+          "checks": 168018,
+          "writes": 550,
+          "releases": 212,
+          "group_releases": 1,
+          "simultaneous": 99,
+          "blocked": 257,
+          "unknown_controls": 910,
+          "parameters": {
+            "vlen": 32,
+            "banks": 32,
+            "bus_width": 64,
+            "cyclic_storage": 0
+          }
+        }
+      ],
+      "log_sha256": "ce0fe587cff21c00865fa5342fb1d5538c03fa95ccdf7a53accd827be908af59"
+    }
+  ],
+  "comparisons": 3696396
+}

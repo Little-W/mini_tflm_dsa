@@ -1,0 +1,6 @@
+WRITEBACK_BUS_PASS bus_width=32 cases=81 checked_bytes=12392
+- /tmp/npu_fifo_saved_blocked/co_tiles_csa_split/final_validation/numeric32/tb.sv:238: Verilog $finish
+FIFO_READ_CYCLE_PASS compared_cycles=7196
+- S i m u l a t i o n   R e p o r t: Verilator 5.054 2026-11-01
+- Verilator: $finish at 74us; walltime 0.041 s; speed 1.814 ms/s
+- Verilator: cpu 0.041 s on 1 threads; allocated 2 MB

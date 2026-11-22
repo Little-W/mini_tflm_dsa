@@ -71,8 +71,8 @@ def pair_source() -> str:
     wire coalesce_group_start=controls[5], output_ready=controls[6];
     wire [31:0] reserve_banks=controls[7] ? counts : 32'd1;
     wire [31:0] threshold=controls[7] ? {26'd0,counts[5:0]} : 32'(BANKS-1);
-    wire [31:0] coalesce_rows={28'd0,counts[19:16]};
-    wire [31:0] coalesce_cols={28'd0,counts[23:20]};
+    wire [31:0] coalesce_rows={27'd0,counts[28],counts[19:16]};
+    wire [31:0] coalesce_cols={27'd0,counts[29],counts[23:20]};
     wire [RW-1:0] vec_valid_num_col=counts[0+:RW];
     wire [RW-1:0] vec_valid_num_row=counts[8+:RW];
     wire [VLEN*8-1:0] in_vec_s8=(VLEN*8)'({8{data_word}});
@@ -183,7 +183,10 @@ module tb;
                 if (cycle%17==0) rst_n=four_symbol(4'(random_word()));
             end
             check_values();advance();
-            if (cycle%512==511) $display("PROGRESS cycles=%0d",cycle+1);
+            if (cycle%512==511) begin
+                $display("PROGRESS cycles=%0d",cycle+1);
+                $fflush();
+            end
         end
 '''
     for index in range(len(profiles)):
@@ -205,8 +208,12 @@ def main() -> None:
     parser.add_argument('--reference', default='cfcc1a95ddcd93625636efc15b8c2b2b1835730f')
     parser.add_argument('--reference-file', type=Path)
     parser.add_argument('--cycles', type=int, default=4096)
+    parser.add_argument('--timeout', type=int, default=900,
+                        help='每种模式的四态仿真执行上限，单位为秒')
     parser.add_argument('--profile', type=int, help='只运行指定序号的参数配置')
     args = parser.parse_args()
+    if args.timeout <= 0:
+        parser.error('--timeout 必须为正整数')
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     source_path = args.source_root.resolve() / SOURCE
@@ -229,6 +236,7 @@ def main() -> None:
               'source_sha256': digest(source_path),
               'reference_sha256': hashlib.sha256(reference.encode()).hexdigest(),
               'runner_sha256': digest(Path(__file__)), 'cycles_per_mode': args.cycles,
+              'simulation_timeout_seconds': args.timeout, 'coalesce_size_bits': 5,
               'initial_reset_cycles': 2, 'data_memory_return': 'common generated four-state words repeated across memory lanes',
               'combinational_process_sensitivity': 'always_comb rendered as always @* for event simulation',
               'complete_control_preserved': True, 'compared_state_fields': list(STATE_FIELDS),
@@ -243,7 +251,7 @@ def main() -> None:
                            stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=120)
         log = out / (name + '.log')
         with log.open('w') as stream:
-            subprocess.run(['vvp', str(binary)], stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=240)
+            subprocess.run(['vvp', str(binary)], stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=args.timeout)
         output = log.read_text()
         completed = re.search(r'FIFO_BLOCKED_FOUR_STATE_PASS cycles=(\d+) profiles=(\d+) comparisons=(\d+)', output)
         if completed is None:
