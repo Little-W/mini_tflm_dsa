@@ -58,6 +58,7 @@ module vector_shared_store #(
     localparam int p_banks = p_total_bytes / p_bank_bytes;
     localparam int p_rows = p_bank_bytes / 16;
     localparam int p_row_bits = $clog2(p_rows);
+    localparam int p_address_groups = (p_addr_width + 2) / 3;
 
     logic configured;
     logic [p_addr_width-1:0] ia_word_limit;
@@ -66,6 +67,7 @@ module vector_shared_store #(
     logic weight_read_range, weight_write_range;
     logic ps_read_range, ps_write_range;
     logic weight_collision, ps_collision;
+    (* keep = 1 *) logic [p_address_groups-1:0] weight_address_equal, ps_address_equal;
     logic weight_access_err, ps_access_err;
     logic weight_read_fire, weight_write_fire, ps_read_fire, ps_write_fire;
     logic weight_return_vld, ps_return_vld;
@@ -86,19 +88,57 @@ module vector_shared_store #(
     assign ps_read_range = i_ps_read_addr < p_addr_width'(p_rows);
     assign ps_write_range = i_ps_write_addr < p_addr_width'(p_rows);
 
+    // 地址比较按三对位并行求值，访问资格只参与最后的冲突判断。
+    for (genvar group_index = 0; group_index < p_address_groups; group_index++) begin : g_address_equal
+        localparam int p_low = group_index * 3;
+        localparam int p_width = (p_addr_width - p_low < 3) ? p_addr_width - p_low : 3;
+        assign weight_address_equal[group_index] =
+            i_weight_read_addr[p_low +: p_width] == i_weight_write_addr[p_low +: p_width];
+        assign ps_address_equal[group_index] =
+            i_ps_read_addr[p_low +: p_width] == i_ps_write_addr[p_low +: p_width];
+    end
+
     // 同地址读写由调用方分到不同周期。发生冲突时，相关空间的读写均不提交到 RAM。
-    assign weight_collision = i_weight_read_en && weight_write_req && (i_weight_read_addr == i_weight_write_addr);
-    assign ps_collision = i_ps_read_en && i_ps_write_en && (i_ps_read_addr == i_ps_write_addr);
+    assign weight_collision = i_weight_read_en && weight_write_req && (&weight_address_equal);
+    assign ps_collision = i_ps_read_en && i_ps_write_en && (&ps_address_equal);
     assign weight_access_err = (i_weight_read_en && !weight_read_range) ||
         (weight_write_req && !weight_write_range) || weight_collision;
     assign ps_access_err = (i_ps_read_en && !ps_read_range) ||
         (i_ps_write_en && !ps_write_range) || ps_collision;
     assign access_err_fire = i_enable && !i_cfg_valid && !i_flush && !o_error &&
         ((!configured && any_req) || (configured && (weight_access_err || ps_access_err)));
-    assign weight_read_fire = access_en && i_weight_read_en && !weight_access_err;
-    assign weight_write_fire = access_en && weight_write_req && !weight_access_err;
-    assign ps_read_fire = access_en && i_ps_read_en && !ps_access_err;
-    assign ps_write_fire = access_en && i_ps_write_en && !ps_access_err;
+    always_comb begin
+        weight_read_fire = access_en && i_weight_read_en && !weight_access_err;
+        case (i_weight_read_en)
+            1'b0: weight_read_fire = 1'b0;
+            1'b1: weight_read_fire = access_en && weight_read_range &&
+                !(weight_write_req && (!weight_write_range || (&weight_address_equal)));
+        endcase
+    end
+    always_comb begin
+        weight_write_fire = access_en && weight_write_req && !weight_access_err;
+        case (weight_write_req)
+            1'b0: weight_write_fire = 1'b0;
+            1'b1: weight_write_fire = access_en && weight_write_range &&
+                !(i_weight_read_en && (!weight_read_range || (&weight_address_equal)));
+        endcase
+    end
+    always_comb begin
+        ps_read_fire = access_en && i_ps_read_en && !ps_access_err;
+        case (i_ps_read_en)
+            1'b0: ps_read_fire = 1'b0;
+            1'b1: ps_read_fire = access_en && ps_read_range &&
+                !(i_ps_write_en && (!ps_write_range || (&ps_address_equal)));
+        endcase
+    end
+    always_comb begin
+        ps_write_fire = access_en && i_ps_write_en && !ps_access_err;
+        case (i_ps_write_en)
+            1'b0: ps_write_fire = 1'b0;
+            1'b1: ps_write_fire = access_en && ps_write_range &&
+                !(i_ps_read_en && (!ps_read_range || (&ps_address_equal)));
+        endcase
+    end
 
     //! 2. 配置保存与同步返回
     //! ----------------------
