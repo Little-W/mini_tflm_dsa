@@ -90,6 +90,7 @@ module ps_frame_store #(
     wire [RAW_LINEAR_BITS-1:0] initial_linear=RAW_LINEAR_BITS'(frame_id)*RAW_LINEAR_BITS'(directory_stride_q)<<2;
     (* keep = "true" *) logic request_rows_high_valid, request_rows_low_valid;
     (* keep = "true" *) logic request_frame_valid;
+    (* keep = "true" *) logic [FRAME_COUNT-1:0] request_frame_match;
     logic request_valid;
 
     // 高位范围与低位行数并行检查，范围结果不经过低位大小比较的进位逻辑。
@@ -101,9 +102,12 @@ module ps_frame_store #(
     assign request_rows_low_valid = LENGTH_BITS'(frame_rows) > 0 &&
         LENGTH_BITS'(frame_rows) <= LENGTH_BITS'(MAX_FRAME_ROWS) &&
         LENGTH_BITS'(frame_rows) <= directory_stride_q;
-    assign request_frame_valid = 32'(frame_id) < FRAME_COUNT &&
-        (frame_init ? !frame_valid[frame_id] : frame_valid[frame_id] &&
-         frame_lengths[frame_id] == LENGTH_BITS'(frame_rows));
+    // 各帧的初始化与长度资格并行形成，帧编号只选择最终的一位结果。
+    for (genvar frame = 0; frame < FRAME_COUNT; frame++) begin : g_request_frame_match
+        assign request_frame_match[frame] = frame_init ? !frame_valid[frame] :
+            frame_valid[frame] && frame_lengths[frame] == LENGTH_BITS'(frame_rows);
+    end
+    assign request_frame_valid = 32'(frame_id) < FRAME_COUNT && request_frame_match[frame_id];
     // 未确定行数字段保留完整四态比较，已确定字段共享实际行宽的范围结果。
     always_comb begin
         case (^frame_rows)

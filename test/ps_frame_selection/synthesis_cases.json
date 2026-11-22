@@ -1,0 +1,13 @@
+{
+  "qualification": {
+    "top": "ps_request_measure",
+    "sources": [
+      "test/ps_request/qualification.sv"
+    ],
+    "options": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1"
+    ],
+    "configuration": "16 帧、每帧最多 512 行的实际请求资格表达式"
+  }
+}

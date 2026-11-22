@@ -1,0 +1,113 @@
+{
+  "passed": true,
+  "reference_commit": "9d75f75a",
+  "source_sha256": {
+    "rtl/npu/ps_compact/ps_frame_store.sv": "3c7502588ac6a315a804575346dcf303520b82260c4140acb8ff03319b467359"
+  },
+  "reference_rtl_sha256": "53b33b6a92d455b164baf6493ab146cdc0bd4a9aab7a72abb84eef1d1fba53ae",
+  "qualification_proof": {
+    "inputs_constrained": false,
+    "unchanged_outside_request_qualification": true,
+    "profiles": [
+      {
+        "MAX_FRAME_ROWS": 1,
+        "FRAME_COUNT": 1,
+        "input_bits": 37
+      },
+      {
+        "MAX_FRAME_ROWS": 3,
+        "FRAME_COUNT": 3,
+        "input_bits": 46
+      },
+      {
+        "MAX_FRAME_ROWS": 47,
+        "FRAME_COUNT": 16,
+        "input_bits": 155
+      },
+      {
+        "MAX_FRAME_ROWS": 512,
+        "FRAME_COUNT": 16,
+        "input_bits": 223
+      },
+      {
+        "MAX_FRAME_ROWS": 1024,
+        "FRAME_COUNT": 32,
+        "input_bits": 433
+      }
+    ],
+    "comparisons": 249994,
+    "unknown_comparisons": 228864,
+    "report": {
+      "path": "/tmp/timing_analysis_control_r14a/ps_final_formal/summary.json",
+      "sha256": "53db3061286444775b6b18ada2baabff9a7298819e87291900b72fb3905d1e64"
+    }
+  },
+  "functional": {
+    "commands": 833,
+    "int32_values": 120368,
+    "cycles": 22491,
+    "cycle_comparison_of_all_public_outputs": true,
+    "independent_memory_model": true,
+    "undefined_behavior_sanitizer": true,
+    "profiles": [
+      {
+        "MAX_FRAME_ROWS": 16,
+        "FRAME_COUNT": 4,
+        "commands": 818,
+        "int32_values": 89648,
+        "cycles": 18501,
+        "report": {
+          "path": "/tmp/timing_analysis_control_r14a/ps_final_numeric/summary.json",
+          "sha256": "c8f3e220ad05379352dcee6e091175700d81dfbd8e4b7b9edda19600da461c27"
+        }
+      },
+      {
+        "MAX_FRAME_ROWS": 256,
+        "FRAME_COUNT": 4,
+        "commands": 15,
+        "int32_values": 30720,
+        "cycles": 3990,
+        "report": {
+          "path": "/tmp/timing_analysis_control_r14a/ps_final_numeric_large/summary.json",
+          "sha256": "4a3022b6804c6af8b551ac51fe6d81ff76e9c84884dc8b0a2142a7e77180bad7"
+        }
+      }
+    ]
+  },
+  "measurement": {
+    "MAX_FRAME_ROWS": 512,
+    "FRAME_COUNT": 16,
+    "reference": {
+      "nominal_lut": 108,
+      "flip_flops": 224,
+      "dsp": 0,
+      "ramb36": 0,
+      "ramb18": 0,
+      "max_register_path": 6,
+      "frame_id_to_valid": 6,
+      "graph_complete": true,
+      "report": {
+        "path": "/tmp/timing_analysis_control_r14a/measure/ps_reference/metrics.json",
+        "sha256": "140b9608dfee0b885f09325f8bfeeeecbae60f510f68e1464d6714a6f2669a29"
+      }
+    },
+    "current": {
+      "nominal_lut": 173,
+      "flip_flops": 224,
+      "dsp": 0,
+      "ramb36": 0,
+      "ramb18": 0,
+      "max_register_path": 6,
+      "frame_id_to_valid": 3,
+      "graph_complete": true,
+      "report": {
+        "path": "/tmp/timing_analysis_control_r14a/measure/ps_final/metrics.json",
+        "sha256": "ad343cf1ba3763c1d5a0b4808f7d91a198e4c42ec366bef36994d2073d421707"
+      }
+    },
+    "target_paths": {
+      "path": "/tmp/timing_analysis_control_r14a/measure/ps_release_selected_paths.json",
+      "sha256": "a3e879858f5a959a50abcdd838e1ef5376a4516ba24b71cc0734100c34b0b6af"
+    }
+  }
+}
