@@ -1,0 +1,682 @@
+{
+  "logic_lut_cells": 56964,
+  "module_resources": [
+    {
+      "rtl_source_or_group": "shared_between_modules",
+      "logic_lut_cells": 9890
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/buffers/ia_ps_channel_ram.sv",
+      "logic_lut_cells": 2518,
+      "carry4": 2,
+      "flip_flops": 9,
+      "ramb36e1": 26
+    },
+    {
+      "rtl_source_or_group": "rtl/common/parallel_prefix_add.sv",
+      "logic_lut_cells": 2332,
+      "carry4": 547
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/conv_im2col_frontend.sv",
+      "carry4": 109,
+      "logic_lut_cells": 2229,
+      "flip_flops": 2073
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/dma/cache/conv_windowed_cache.sv",
+      "logic_lut_cells": 1991,
+      "carry4": 29,
+      "flip_flops": 1265,
+      "ramb18e1": 22,
+      "distributed_ram_lut_sites_nominal": 44,
+      "ramb36e1": 1
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/vector_engine_operand_store.sv",
+      "carry4": 75,
+      "logic_lut_cells": 1837,
+      "flip_flops": 1705,
+      "distributed_ram_lut_sites_nominal": 152
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/vector_engine_control.sv",
+      "carry4": 37,
+      "logic_lut_cells": 1722,
+      "flip_flops": 1969
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/loaders/ia_loader_ctrl.sv",
+      "carry4": 133,
+      "logic_lut_cells": 1488,
+      "flip_flops": 707,
+      "distributed_ram_lut_sites_nominal": 20
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/conv_im2col_descriptor.sv",
+      "carry4": 101,
+      "logic_lut_cells": 1398,
+      "flip_flops": 947
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/top/npu_matrix_engine.sv",
+      "dsp48e1": 3,
+      "logic_lut_cells": 1374,
+      "carry4": 52,
+      "flip_flops": 1713
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/writeback/oa_writer.sv",
+      "dsp48e1": 2,
+      "carry4": 147,
+      "logic_lut_cells": 1356,
+      "flip_flops": 944
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/loaders/ia_loader.sv",
+      "carry4": 143,
+      "logic_lut_cells": 1338,
+      "flip_flops": 1501,
+      "ramb36e1": 2
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/conv_im2col_geometry.sv",
+      "carry4": 220,
+      "dsp48e1": 8,
+      "logic_lut_cells": 1267,
+      "flip_flops": 574,
+      "distributed_ram_lut_sites_nominal": 44
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/conv_axi_read_guard.sv",
+      "carry4": 153,
+      "logic_lut_cells": 1236,
+      "flip_flops": 392
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/dma/axi_linear_block_dma.sv",
+      "carry4": 148,
+      "logic_lut_cells": 1159,
+      "flip_flops": 776,
+      "dsp48e1": 1,
+      "ramb18e1": 1,
+      "distributed_ram_lut_sites_nominal": 60
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/conv_im2col_stream.sv",
+      "carry4": 120,
+      "logic_lut_cells": 1125,
+      "flip_flops": 93
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/loaders/kernel_loader.sv",
+      "carry4": 36,
+      "logic_lut_cells": 1069,
+      "flip_flops": 1236
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/top/npu_task_configuration.sv",
+      "carry4": 152,
+      "dsp48e1": 12,
+      "logic_lut_cells": 1053,
+      "flip_flops": 1546
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/loaders/kernel_loader_ctrl.sv",
+      "logic_lut_cells": 1033,
+      "carry4": 91,
+      "flip_flops": 660
+    },
+    {
+      "rtl_source_or_group": "rtl/soc/picorv32_npu.v",
+      "logic_lut_cells": 1019,
+      "carry4": 85,
+      "flip_flops": 520,
+      "distributed_ram_lut_sites_nominal": 48
+    },
+    {
+      "rtl_source_or_group": "rtl/axi_top/npu_axil_reg_if.sv",
+      "carry4": 2,
+      "logic_lut_cells": 924,
+      "flip_flops": 1356
+    },
+    {
+      "rtl_source_or_group": "rtl/soc/soc_axi_pingpong_chan.sv",
+      "logic_lut_cells": 920,
+      "flip_flops": 1616
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/vector_banked_writeback.sv",
+      "carry4": 44,
+      "logic_lut_cells": 898,
+      "flip_flops": 189,
+      "ramb18e1": 8
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/control/ps_window_scheduler.sv",
+      "carry4": 65,
+      "dsp48e1": 2,
+      "logic_lut_cells": 894,
+      "flip_flops": 908,
+      "distributed_ram_lut_sites_nominal": 56,
+      "ramb36e1": 2
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/writeback/vec_requant.sv",
+      "carry4": 75,
+      "logic_lut_cells": 863,
+      "flip_flops": 878,
+      "distributed_ram_lut_sites_nominal": 64,
+      "ramb18e1": 4
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/writeback/vec_s8_to_fifo_full.sv",
+      "carry4": 81,
+      "logic_lut_cells": 824,
+      "flip_flops": 157,
+      "distributed_ram_lut_sites_nominal": 8,
+      "ramb18e1": 8
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/vector_config_check.sv",
+      "carry4": 75,
+      "dsp48e1": 2,
+      "logic_lut_cells": 809,
+      "flip_flops": 580
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/conv_im2col_prefetch.sv",
+      "carry4": 66,
+      "dsp48e1": 3,
+      "logic_lut_cells": 686,
+      "flip_flops": 836
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/vector_engine_address.sv",
+      "carry4": 155,
+      "logic_lut_cells": 663,
+      "flip_flops": 243
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/compute/select_add.sv",
+      "logic_lut_cells": 655,
+      "carry4": 256
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/vector_engine.sv",
+      "carry4": 92,
+      "logic_lut_cells": 620,
+      "flip_flops": 640,
+      "distributed_ram_lut_sites_nominal": 24
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/registered_vector_pe.sv",
+      "logic_lut_cells": 612,
+      "flip_flops": 512
+    },
+    {
+      "rtl_source_or_group": "rtl/common/unsigned_compare.sv",
+      "carry4": 88,
+      "logic_lut_cells": 585
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/registered_multiplier_s32.sv",
+      "dsp48e1": 12,
+      "logic_lut_cells": 574,
+      "flip_flops": 192
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/loaders/bias_loader_ctrl.sv",
+      "carry4": 26,
+      "logic_lut_cells": 550,
+      "flip_flops": 459
+    },
+    {
+      "rtl_source_or_group": "rtl/soc/soc_axi_ram.sv",
+      "logic_lut_cells": 535,
+      "carry4": 15,
+      "flip_flops": 169,
+      "ramb36e1": 64,
+      "distributed_ram_lut_sites_nominal": 68
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/dma/axi_block_dma_arbiter.sv",
+      "logic_lut_cells": 496,
+      "flip_flops": 225
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/writeback/requant_shift_pipeline.sv",
+      "logic_lut_cells": 474,
+      "flip_flops": 160
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/vector_round_shift.sv",
+      "logic_lut_cells": 435,
+      "carry4": 16,
+      "flip_flops": 136
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/writeback/requant_compute_lane.sv",
+      "carry4": 50,
+      "logic_lut_cells": 427,
+      "flip_flops": 139,
+      "shift_register_lut_sites_nominal": 14
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/top/frame_address_prepare.sv",
+      "dsp48e1": 1,
+      "logic_lut_cells": 363,
+      "flip_flops": 534
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/loaders/bias_loader_buffer.sv",
+      "carry4": 13,
+      "logic_lut_cells": 351,
+      "flip_flops": 768,
+      "ramb36e1": 1
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/writeback/requant_group_buffer.sv",
+      "logic_lut_cells": 321,
+      "carry4": 9,
+      "flip_flops": 39,
+      "ramb18e1": 15
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/compute/ws_systolic_cell.sv",
+      "logic_lut_cells": 307,
+      "flip_flops": 7680,
+      "dsp48e1": 256
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/loaders/ia_loader_cache_mgr.sv",
+      "logic_lut_cells": 279,
+      "carry4": 38,
+      "flip_flops": 217,
+      "ramb18e1": 1
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/vector_softmax.sv",
+      "carry4": 26,
+      "logic_lut_cells": 278,
+      "flip_flops": 281
+    },
+    {
+      "rtl_source_or_group": "unclassified",
+      "logic_lut_cells": 276,
+      "flip_flops": 47,
+      "carry4": 141,
+      "ramb18e1": 1
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/writeback/vec_s8_to_fifo.sv",
+      "logic_lut_cells": 257,
+      "flip_flops": 5,
+      "distributed_ram_lut_sites_nominal": 48
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/ps_compact/ps_frame_store.sv",
+      "carry4": 28,
+      "dsp48e1": 1,
+      "logic_lut_cells": 252,
+      "flip_flops": 808,
+      "ramb18e1": 15
+    },
+    {
+      "rtl_source_or_group": "rtl/soc/picorv32_pcpi_div.v",
+      "logic_lut_cells": 236,
+      "carry4": 33,
+      "flip_flops": 200
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/vector_pe.sv",
+      "carry4": 16,
+      "logic_lut_cells": 225,
+      "dsp48e1": 8
+    },
+    {
+      "rtl_source_or_group": "rtl/soc/picorv32_pcpi_mul.v",
+      "logic_lut_cells": 203,
+      "carry4": 17,
+      "flip_flops": 255
+    },
+    {
+      "rtl_source_or_group": "picorv32/picosoc/simpleuart.v",
+      "carry4": 26,
+      "logic_lut_cells": 169,
+      "flip_flops": 131
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/conv_axi_span_reader.sv",
+      "carry4": 27,
+      "logic_lut_cells": 141,
+      "flip_flops": 89
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/vector_interval_bound.sv",
+      "logic_lut_cells": 136,
+      "carry4": 40
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/top/npu_output_pipeline.sv",
+      "logic_lut_cells": 134,
+      "carry4": 16,
+      "flip_flops": 109
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/dma/dma_register_buffer.sv",
+      "logic_lut_cells": 123,
+      "flip_flops": 230
+    },
+    {
+      "rtl_source_or_group": "rtl/soc/soc_axi_interconnect.sv",
+      "logic_lut_cells": 110,
+      "carry4": 4,
+      "flip_flops": 137
+    },
+    {
+      "rtl_source_or_group": "rtl/soc/soc_axil_ctrl.sv",
+      "logic_lut_cells": 105,
+      "flip_flops": 139
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/dma/axi_write_page_guard.sv",
+      "logic_lut_cells": 99,
+      "carry4": 24,
+      "flip_flops": 61
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/loaders/kernel_loader_buffer.sv",
+      "logic_lut_cells": 93,
+      "carry4": 8,
+      "flip_flops": 327,
+      "ramb36e1": 64
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/writeback/vec_s16_to_fifo.sv",
+      "logic_lut_cells": 90,
+      "carry4": 6,
+      "flip_flops": 69,
+      "ramb36e1": 4
+    },
+    {
+      "rtl_source_or_group": "rtl/soc/pico_native_to_axi.sv",
+      "logic_lut_cells": 69,
+      "flip_flops": 114
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/dma/cache/conv_cache_metadata_way.sv",
+      "logic_lut_cells": 64,
+      "flip_flops": 2
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/dma/cache/conv_cache_rank_table.sv",
+      "logic_lut_cells": 52,
+      "flip_flops": 4,
+      "distributed_ram_lut_sites_nominal": 24
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/control/npu_controller.sv",
+      "logic_lut_cells": 50,
+      "flip_flops": 20
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/dma/axi_dual_block_dma.sv",
+      "carry4": 4,
+      "logic_lut_cells": 47,
+      "flip_flops": 189
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/control/ps_capacity_limits.sv",
+      "carry4": 4,
+      "logic_lut_cells": 43
+    },
+    {
+      "rtl_source_or_group": "rtl/soc/soc_axil_simpleuart.sv",
+      "logic_lut_cells": 42,
+      "flip_flops": 77
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/writeback/requant_pkg.sv",
+      "carry4": 36,
+      "logic_lut_cells": 36
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/dma/conv_window_queue.sv",
+      "logic_lut_cells": 30,
+      "carry4": 1,
+      "flip_flops": 89,
+      "ramb18e1": 3,
+      "distributed_ram_lut_sites_nominal": 4
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/top/npu_top.sv",
+      "logic_lut_cells": 28,
+      "flip_flops": 337
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/vector_reduce_alu.sv",
+      "carry4": 8,
+      "logic_lut_cells": 27
+    },
+    {
+      "rtl_source_or_group": "rtl/axi_top/npu_axil_top.sv",
+      "logic_lut_cells": 8,
+      "flip_flops": 6
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/loaders/bias_loader.sv",
+      "logic_lut_cells": 7,
+      "carry4": 8
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/buffers/vector_shared_store.sv",
+      "logic_lut_cells": 6,
+      "flip_flops": 6
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/compute/compute_core.sv",
+      "logic_lut_cells": 6,
+      "flip_flops": 564
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/conv_axi_read_mux.sv",
+      "logic_lut_cells": 6,
+      "flip_flops": 5
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/buffers/ps_buffer.sv",
+      "logic_lut_cells": 4,
+      "carry4": 1,
+      "flip_flops": 5
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/conv/vector_softmax_accumulator.sv",
+      "logic_lut_cells": 4,
+      "flip_flops": 54
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/loaders/kernel_burst_encode.sv",
+      "logic_lut_cells": 4,
+      "carry4": 6
+    },
+    {
+      "rtl_source_or_group": "rtl/soc/soc_axi_step_address.sv",
+      "logic_lut_cells": 4,
+      "carry4": 2
+    },
+    {
+      "rtl_source_or_group": "top_level_outputs",
+      "logic_lut_cells": 1
+    },
+    {
+      "rtl_source_or_group": "rtl/npu/compute/ws_systolic_array.sv",
+      "flip_flops": 31
+    }
+  ],
+  "mixed_lut_groups": [
+    {
+      "logic_lut_cells": 700,
+      "consumers": [
+        "rtl/npu/conv/registered_vector_pe.sv",
+        "rtl/npu/conv/vector_engine_operand_store.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 614,
+      "consumers": [
+        "rtl/npu/loaders/kernel_loader.sv",
+        "rtl/npu/loaders/kernel_loader_buffer.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 586,
+      "consumers": [
+        "rtl/npu/dma/axi_linear_block_dma.sv",
+        "rtl/npu/dma/dma_register_buffer.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 528,
+      "consumers": [
+        "rtl/npu/conv/conv_im2col_frontend.sv",
+        "rtl/npu/conv/conv_im2col_geometry.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 512,
+      "consumers": [
+        "rtl/npu/conv/vector_engine_control.sv",
+        "rtl/npu/ps_compact/ps_frame_store.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 487,
+      "consumers": [
+        "rtl/npu/conv/conv_im2col_frontend.sv",
+        "rtl/npu/conv/conv_im2col_stream.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 360,
+      "consumers": [
+        "rtl/npu/loaders/ia_loader.sv",
+        "rtl/npu/loaders/ia_loader_ctrl.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 256,
+      "consumers": [
+        "rtl/npu/compute/select_add.sv",
+        "rtl/npu/compute/ws_systolic_cell.sv",
+        "rtl/npu/conv/registered_vector_pe.sv",
+        "rtl/npu/conv/vector_engine_operand_store.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 234,
+      "consumers": [
+        "rtl/common/parallel_prefix_add.sv",
+        "rtl/npu/dma/axi_block_dma_arbiter.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 183,
+      "consumers": [
+        "rtl/npu/dma/axi_block_dma_arbiter.sv",
+        "rtl/npu/loaders/kernel_loader.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 175,
+      "consumers": [
+        "rtl/npu/control/ps_window_scheduler.sv",
+        "rtl/npu/ps_compact/ps_frame_store.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 165,
+      "consumers": [
+        "rtl/common/parallel_prefix_add.sv",
+        "rtl/npu/conv/conv_im2col_frontend.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 163,
+      "consumers": [
+        "rtl/npu/buffers/ps_buffer.sv",
+        "rtl/npu/control/npu_controller.sv",
+        "rtl/npu/loaders/bias_loader_buffer.sv",
+        "rtl/npu/loaders/bias_loader_ctrl.sv",
+        "rtl/npu/loaders/ia_loader.sv",
+        "rtl/npu/loaders/ia_loader_ctrl.sv",
+        "rtl/npu/ps_compact/ps_frame_store.sv",
+        "rtl/npu/top/npu_matrix_engine.sv",
+        "rtl/npu/top/npu_output_pipeline.sv",
+        "rtl/npu/writeback/requant_group_buffer.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 162,
+      "consumers": [
+        "rtl/common/parallel_prefix_add.sv",
+        "rtl/npu/conv/vector_engine_control.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 160,
+      "consumers": [
+        "rtl/npu/conv/conv_im2col_descriptor.sv",
+        "rtl/npu/conv/conv_im2col_frontend.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 155,
+      "consumers": [
+        "rtl/npu/conv/vector_engine.sv",
+        "rtl/npu/conv/vector_round_shift.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 132,
+      "consumers": [
+        "rtl/npu/buffers/ps_buffer.sv",
+        "rtl/npu/control/npu_controller.sv",
+        "rtl/npu/loaders/bias_loader_buffer.sv",
+        "rtl/npu/loaders/ia_loader.sv",
+        "rtl/npu/loaders/ia_loader_ctrl.sv",
+        "rtl/npu/ps_compact/ps_frame_store.sv",
+        "rtl/npu/top/npu_matrix_engine.sv",
+        "rtl/npu/top/npu_output_pipeline.sv",
+        "rtl/npu/writeback/requant_group_buffer.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 126,
+      "consumers": [
+        "rtl/common/parallel_prefix_add.sv",
+        "rtl/npu/conv/conv_im2col_descriptor.sv",
+        "rtl/npu/conv/conv_im2col_frontend.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 124,
+      "consumers": [
+        "rtl/common/parallel_prefix_add.sv",
+        "rtl/npu/conv/vector_engine.sv",
+        "rtl/npu/conv/vector_engine_control.sv"
+      ]
+    },
+    {
+      "logic_lut_cells": 117,
+      "consumers": [
+        "rtl/npu/control/ps_window_scheduler.sv",
+        "unclassified"
+      ]
+    }
+  ],
+  "remaining_graph_cycle_cells": 0,
+  "registers_with_original_signal_source": 38084,
+  "attribution_method": "Original register signal declarations, RTL source attributes and register instance names identify storage and arithmetic owners. Flattened LUTs without source attributes are assigned when all reachable consumer owners agree; shared and unclassified logic are reported separately.",
+  "physical_lut_positions_by_module": null
+}

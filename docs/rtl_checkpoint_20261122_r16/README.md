@@ -1,5 +1,7 @@
 # R16 完整 SoC 验证与综合结果
 
+本文保存的资源与路径记录使用当次固定源码、RTL 算术属性选择和 740 个 DSP 的总预算，具体源码与配置见随文测量报告。文中的运行命令用于当前工作区，采用普通 RTL 自动映射并生成新的资源与路径报告。
+
 本版本以 GitHub 上游提交 `48f28649b274851a4768ee60ddb5c6c9e75de295` 为导入起点。功能与综合使用固定源码 `7c932a9e9ec5e48ab119f0227bb894763872157f`，其 RTL、配置和验证输入的 SHA-256 保存在 `source_hashes.json`。报告更新不改变这份被测 RTL。
 
 ## 生产配置与实现
@@ -51,17 +53,14 @@
 ```bash
 python3 test/frame_address/run_npu.py --source-root . \
   --out build/r16_npu --verilator verilator --jobs 1
-
 python3 scripts/fpga/open_fpga_synth.py --source-root . --cases soc_top \
-  --out build/r16_soc --rtl-dsp-attributes --wide-alu-dsp-budget 740 \
+  --out build/r16_soc \
   --max-register-path-cells 10 --require-register-path-limit
-
 python3 scripts/fpga/netlist_metrics.py build/r16_soc/soc_top/mapped.json \
   --top soc_top --out build/r16_soc/soc_paths.json \
   --register-origins build/r16_soc/soc_top/pre_lut.il \
   --path-limit 500 --group-limit 1000 --minimum-path-cells 11 \
   --max-register-path-cells 10
-
 python3 scripts/fpga/test_wide_alu_dsp.py --out build/r16_dsp_formal \
   --selected-netlist build/r16_soc/soc_top/pre_alu.json \
   --selection build/r16_soc/soc_top/wide_alu_mapping.json --top soc_top

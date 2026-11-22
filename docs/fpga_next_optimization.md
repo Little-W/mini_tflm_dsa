@@ -1,74 +1,40 @@
-# FPGA 测量与后续优化
+# FPGA 测量与优化流程
 
 ## 目标与结果入口
 
-完整 `soc_top` 使用 [config/npu_fpga.mk](../config/npu_fpga.mk) 的生产配置，目标器件为 `xc7a200tfbg484-3`。板级测量顶层为 `fpga_top`。目标为 Vivado 报告的 **Slice LUTs 不超过 50,000**、完整连接图中寄存器间组合路径不超过 **10 个组合单元**，以及 **150 MHz** 时钟，周期约束为 **6.667 ns**。组合深度检查包含同步数据、使能与控制端点，频率检查使用布线后建立时间和保持时间。
+完整 `soc_top` 使用 [生产配置](../config/npu_fpga.mk)，目标器件为 `xc7a200tfbg484-3`。布局前 LUT 目标为 **45,000**，最长寄存器间组合路径目标为 **10 个组合单元**，重点路径按少于 7 级优化。目标频率为 **150 MHz**，周期约束为 **6.666667 ns**。
 
-固定源码、器件参数、全部 SoC 资源和路径检查状态，由 [完整器件测量入口](fpga_150mhz_measurement.md) 生成。`measurement.json` 保存实际结果，`source_manifest.json` 保存源文件指纹。面积统计包含逻辑 LUT 和存储 LUT；本地结构分析、物理位置统计与 Vivado 资源分别记录。频率结果使用布线后的建立时间和保持时间报告。
+当前测量与功能结果集中在 [完整 SoC 检查](fpga_150mhz_optimization.md)。布局前 LUT、布局后 Slice LUT、连接图组合深度、布线后建立和保持裕量分别记录。每项测量保存实际输入源码及 SHA-256。
 
-保持 16 × 16 计算阵列、8 个向量 PE、INT8/INT16 与 INT32 部分和、WS/IS、逐通道量化、全部向量运算、64 位总线、7 个 8 KiB 共享银行、16 个 PS 帧，以及完整 PicoRV32 和 256 KiB CPU RAM。两个量化计算通道和 513 位 × 512 行整组缓冲继续使用当前预留、背压和参数生命周期。详细配置及实现说明见 [设计交接](fpga_optimization_handoff.md)。
+## 执行步骤
 
-## 每轮执行顺序
+1. 保存被测源码和完整硬件参数。不同模块的并行工作使用明确的文件范围，公共接口修改统一集成。
+2. 从真实路径的起点寄存器、组合单元和终点寄存器确定优化表达式，检查数据、使能、选择和同步存储控制输入。
+3. 使用可综合 RTL 描述算术与存储，明确位宽、符号、事件优先级及各阶段有效条件。重复阶段字段使用数组，每个模块独立保存。
+4. 对候选完成算术等价、状态转移、接口等待和必要的四态检查。使用完整模块测量确认局部面积及路径变化。
+5. 合入通过检查的候选，保存新的完整源码副本，执行 FPGA 与 ASIC 配置的完整 NPU 功能测试。
+6. 使用相同生产参数进行完整 SoC 综合，统计 LUT、FF、DSP、RAM 及全部寄存器端点的组合深度，检查连接图完整性。
+7. 使用 Vivado 运行目标器件布局布线，并检查实际资源、建立时间和保持时间。
 
-当前固定源码的 [R16 完整结果](rtl_checkpoint_20261122_r16/README.md) 为布局前 LUT 合计 **49,665**，最长寄存器间组合路径 **13 级**，超过 10 级的路径组 **126** 个、端点 **1,026** 个。完整生产 NPU 的 86 项任务和 CPU 两种模式均通过；150 MHz 布线后时序尚未测量。后续组合路径分析使用该目录的 `soc_paths.json`，资源比较使用相同 DSP 预算和生产参数。
+布局布线和 ASIC 工艺映射使用各自实际工具与库。所有目标状态依据对应阶段产生的报告填写。
 
-1. 固定被测源码、参数和工具版本。分模块任务使用独立分支及明确的文件范围，避免同时编辑公共接口。每个任务说明容量、并行规模、有效周期、无效周期字段和同周期事件优先级。
-2. 使用 `rtl-design` 与 `synthesizable-rtl-style` 编写普通 RTL，明确位宽、符号与优先级，添加中文说明性注释。选择、比较和布尔逻辑继续由普通运算表达；公共存储模块统一使用小写 `regfile`。
-3. 根据实际修改运行全输入算术证明、完整状态比较或协议归纳，以及数值和逐周期接口检查。含未知值语义的选择、保持和屏蔽逻辑同时检查四态行为。
-4. 运行完整生产 NPU 功能、容量和层次结构检查。核对 256 个计算 PE、8 个向量 PE、全部数据与参数存储，以及量化组的预留与释放关系。
-5. 对同一固定源码综合完整 SoC。Vivado 读取当前普通 RTL，保存分层资源统计、全部端点的最差时序路径，以及阵列 DSP 的真实寄存器属性和 B 端口连接。本地 Yosys/ABC9 比较保存功能等价结果和结构路径，用于选择改写方案。
-6. 使用 Vivado 执行布局布线，统计 Slice LUTs 并检查 50,000 个 LUT 的目标。其他工具的配对与物理位置统计作为独立分析结果保存。
-7. 使用完整目标器件延迟模型继续布线，按 6.667 ns 约束检查建立、保持时间和实际最差路径。资源、结构深度与布线时序分别记录。
-8. 将采用版本的源码、命令、工具摘要、功能结果、资源、组合深度和实现状态导出到统一测量文件，并核对报告与网表的 SHA-256。
+## 存储与容量
 
-仅修改文档时检查文档中的命令、链接和数据来源。功能或实现结构发生变化时，执行相应代码验证及完整设计检查。
+保留 16 × 16 阵列、8 个 FPGA 向量 PE、64 位总线、7 个 8 KiB 共享存储组、16 个 PS 帧、完整 PicoRV32 和 256 KiB CPU RAM。量化使用两个计算通道与 513 位 × 512 行输入缓冲。
 
-## 面积和组合路径的分析方法
-
-先从同一版本的模块资源、实际布局占用和连接路径中确定资源集中位置。模块独立综合数量用于比较局部结构，整机资源以完整 SoC 测量为准。功能共享和 LUT 配对会影响最终位置数量，各模块的独立资源数字不直接相加。
-
-存储优化核对实际访问周期，再选择同步读取、分组写入及有效状态管理。数据、标签、掩码、容量和输出保持共同检查。ASIC SRAM 取整产生的物理容量与软件可用容量分别计算。
-
-组合路径优化从真实寄存器输出到同步数据、使能或复位输入逐段检查，包含算术宽度、归约、选择、动态移位和 DSP 内部边界。并行准备候选值、共享公共表达式和在已有寄存阶段保存中间结果时，保持原有接受事件和优先级。
-
-逻辑映射提供以下独立可选项，具体参数随采用版本保存。
-
-| 选项 | 使用与检查 |
-| --- | --- |
-| `--small-lut-area-cost` | `physical-cost` 模式下调整 1 至 5 输入 LUT 的面积成本；合法值大于 0 且不超过 1，默认 1。每个候选重新进行等价、配对和布局比较 |
-| `--wide-alu-maximum-chain` | 默认 1，可设为 2；限制可选算术映射中的 DSP 组合级联数量。这类结果单独保存，直接 RTL 的比较不启用额外 DSP 替换 |
-| `--pack-small-alu` | 可选 `FOUR12` 窄算术映射，要求显式 DSP 预算和 `--wide-alu-maximum-chain 1`；保持每个通道的 `X`、`Y`、`CO` 和进位行为 |
-| LUT 配对 | 核对输入并集、输出用途、FF 控制及资源、已有位置关系和逻辑函数；实际收益由新的合法布局确认 |
-
-`ONE48` 和 `FOUR12` 输出位依赖分析的 [96 项符号检查](../test/fpga_dsp_alu4/dependencies.json) 已保存。参数选项、实际映射证明和工具命令见 [开源 FPGA 综合与资源分析](open_fpga_synthesis.md)。原位置距离可用于选择邻近配对，时序结论使用实际布线报告。
-
-## ASIC 存储检查
-
-`ASIC_SRAM` 下的 `requant_group_buffer` 使用 `smic40_sram_1r1w`。在七个 8 KiB 共享银行的生产配置中，513 位 × 512 行对应 **132 个 `RAMTP128X16`**：4 个深度分组，每组 33 个宽度切片。完整行数据与 `tile_done` 均进入 SRAM，该缓冲子层次中推断数据存储和 `regfile` 实例均为零。
-
-ASIC Makefile 默认读取 `config/npu.mk`，使用九个 2 KiB 共享银行、`IA_CACHE_BLOCKS=2`、`PS_FRAME_COUNT=4`、完整并行量化和 50 MHz 约束。需要检查上述分时量化缓冲时，通过 `NPU_CONFIG` 选择 `config/npu_fpga.mk`。DC 流程定义 `SYNTHESIS`、`ASIC_SYNTHESIS`、`ASIC_SRAM`，并读取公共 RTL、SMIC 包装层和标准单元/SRAM 库。
-
-已保存的相关检查包括：
-
-- **26 项结构检查**：13 组参数分别检查 ASIC 与 FPGA 分支，包含非二次幂行数、宏边界、完整行位宽、掩码及读取 bank 保持。
-- **10 种深度的功能检查**：比较实际封装、完整 SRAM 功能模型、通用存储分支与独立队列，覆盖满容量、回绕、背压、清空及复位。
-- **10 种深度的控制归纳证明**：从合法预留和消费协议导出容量守恒、地址范围及读写地址互斥。
-- **完整 NPU 的 ASIC 结构检查**：通过真实 DC 源文件准备流程，在实际量化模块中确认 132 个 SRAM，保留 256 个计算 PE 和 8 个向量 PE。
-
-SRAM 读使能暂停时，宏输出和读取 bank 同时保持。功能模型不依赖同址并发读写结果；控制证明不将地址互斥当作输入假设。宏数据阵列、读取周期及控制协议发生修改时，重新执行上述相关检查。
-
-完整 NPU 结构检查使用 Yosys/Slang 和宏端口黑盒。实际 Design Compiler 面积和静态时序由对应工艺库运行产生，操作入口见 [ASIC 综合说明](asic_synthesis.md)。
+ASIC 生产配置使用 16 个向量 PE。完整结构检查同时核对阵列规模、共享存储、量化缓冲、SRAM 类型和宏实例数量。软件可用容量、宏取整后的物理容量及 FPGA RAM 资源分别报告。
 
 ## 运行与结果保存
 
-完整 NPU、SRAM 检查、SoC 综合及布局的命令集中于 [设计交接的运行命令](fpga_optimization_handoff.md#运行命令)。ASIC 生产容量的结构检查与 DC 展开可使用：
-
-```sh
-python3 test/requant_group_buffer_npu/run.py \
-  --source-root "$PWD" --out build/requant_group_buffer_npu
-make -C asic/synthesis elaborate \
-  NPU_CONFIG="$PWD/config/npu_fpga.mk" \
-  STD_ROOT="$STD_ROOT" SRAM_ROOT="$SRAM_ROOT"
+```bash
+python3 test/rtl_layout/check.py --out build/rtl_layout
+python3 test/fpga_integration/run.py --out build/fpga_integration --verilator verilator --jobs 1
+python3 test/asic_integration/run.py --out build/asic_integration --verilator verilator --jobs 1
+python3 scripts/fpga/open_fpga_synth.py --source-root . --cases soc_top \
+  --out build/soc_measurement --max-register-path-cells 10 --require-register-path-limit
+python3 test/requant_group_buffer_npu/run.py --source-root . --out build/asic_structure
+python3 scripts/asic/run_ps_synthesis.py --profile npu_r16_150 \
+  --prepare-only --out build/asic/npu_r16_150_prepare
 ```
 
-每个候选使用独立输出目录。`--resume` 只复用源码、工具、参数和阶段文件摘要一致的结果。大型中间网表可在停止使用后无损压缩，同时保存解压后 SHA-256；恢复检查通过后再继续原阶段。交接保存当前采用版本及其实际结果，统一测量文件明确标识尚未执行的布线和时序阶段。
+完整板级入口见 [器件测量说明](fpga_150mhz_measurement.md)，工艺库参数见 [ASIC 综合配置](asic_npu_r16_150.md)。每次运行使用独立输出目录。`--resume` 检查源码、工具、参数和阶段文件摘要后复用已完成结果。较大的中间网表可无损压缩，并保存解压后的 SHA-256。

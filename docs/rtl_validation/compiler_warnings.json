@@ -1,0 +1,274 @@
+{
+  "review_passed": true,
+  "checked_at_utc": "2026-11-22T11:06:55.787498+00:00",
+  "scope": "指定冻结源码的 FPGA 与 ASIC 功能编译诊断，以及完整 ASIC 层次展开连接检查。",
+  "source_root": "/workspace/scratch/e1a5fa683a84/release_rtl_source",
+  "snapshot_manifest_sha256": "14cfa75662c93ab99b0cb6188913079ccdbdaab4497dfc782c9a35569e87b5ab",
+  "frozen_files_verified": 427,
+  "profiles": {
+    "fpga": {
+      "top": "tb_conv_npu",
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "VECTOR_PE_COUNT": 8,
+      "ADDR_WIDTH": 32,
+      "simulation_defines": [
+        "SYNTHESIS=1",
+        "XILINX_FPGA=1"
+      ],
+      "compile_log": "/workspace/scratch/e1a5fa683a84/validation_fpga_release/npu/s16/compile.log",
+      "compile_log_sha256": "5b0e16571e74dc289f5216db37829907fd8969ce47a061fa996dd4a0ef3e9576",
+      "build_manifest_sha256": "16b95b5e17260e087e40f094aa7ec08697b97f6c6bfe12b0336722036436b438",
+      "warnings": 160,
+      "errors": 0,
+      "categories": {
+        "TIMESCALEMOD": 92,
+        "WIDTHTRUNC": 12,
+        "WIDTHEXPAND": 46,
+        "CMPCONST": 10
+      },
+      "scope_categories": {
+        "design": {
+          "TIMESCALEMOD": 92,
+          "WIDTHEXPAND": 32,
+          "WIDTHTRUNC": 6,
+          "CMPCONST": 10
+        },
+        "observer": {
+          "WIDTHTRUNC": 6,
+          "WIDTHEXPAND": 14
+        }
+      },
+      "observed_diagnostic_counts": {
+        "multiple_driver": 0,
+        "latch": 0,
+        "undriven": 0,
+        "missing_input_connection": 0,
+        "mixed_register_assignment": 0,
+        "unsupported_register_definition": 0
+      },
+      "matching_frozen_inputs": 119,
+      "separately_recorded_test_inputs": 29,
+      "preserved_observer_models_verified": 26,
+      "compilation_completed": true
+    },
+    "asic": {
+      "top": "tb_conv_npu",
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "VECTOR_PE_COUNT": 16,
+      "ADDR_WIDTH": 19,
+      "simulation_defines": [
+        "SYNTHESIS=1",
+        "ASIC_SYNTHESIS=1",
+        "ASIC_SRAM=1"
+      ],
+      "compile_log": "/workspace/scratch/e1a5fa683a84/validation_asic_release/npu/s16/compile.log",
+      "compile_log_sha256": "8b0ecb61d9120f3b070a73e87a8f4507cae63a9c25c3e56b33a7d00c83254702",
+      "build_manifest_sha256": "c86ba83da14c4b5ef59d7d9cb50ca0d7ee2311de651b82a0eeda365d213b0406",
+      "warnings": 177,
+      "errors": 0,
+      "categories": {
+        "TIMESCALEMOD": 95,
+        "WIDTHTRUNC": 21,
+        "WIDTHEXPAND": 52,
+        "CMPCONST": 9
+      },
+      "scope_categories": {
+        "design": {
+          "TIMESCALEMOD": 95,
+          "WIDTHEXPAND": 36,
+          "WIDTHTRUNC": 15,
+          "CMPCONST": 9
+        },
+        "observer": {
+          "WIDTHTRUNC": 6,
+          "WIDTHEXPAND": 16
+        }
+      },
+      "observed_diagnostic_counts": {
+        "multiple_driver": 0,
+        "latch": 0,
+        "undriven": 0,
+        "missing_input_connection": 0,
+        "mixed_register_assignment": 0,
+        "unsupported_register_definition": 0
+      },
+      "matching_frozen_inputs": 119,
+      "separately_recorded_test_inputs": 29,
+      "preserved_observer_models_verified": 26,
+      "compilation_completed": true
+    }
+  },
+  "asic_structure": {
+    "log": "/workspace/scratch/e1a5fa683a84/validation_asic_release_structure/elaboration.log",
+    "sha256": "476350844ff0a8b5fea2b7ef787eb6be0dc2b146206a459a8dc622712bdf7fb3",
+    "warnings": 6,
+    "errors": 0,
+    "connectivity_check_problems": 0,
+    "categories": {
+      "shift_count_overflow": 5,
+      "unused_include_search_directory": 1
+    },
+    "shift_semantics": "LOW_BITS 不小于地址宽度的特化实例中，银行地址右移结果为零；read_bank 仅在 read_enable 时更新。",
+    "include_search": "命令中的 snapshot/include 搜索目录不存在，当前源文件没有使用该目录。",
+    "register_definition_warnings": 0
+  },
+  "fpga_non_timescale_comparison": {
+    "normalization": "忽略源文件位置，将 VARXREF 与 VARREF 统一；保留诊断正文和重复次数。",
+    "comparisons": [
+      {
+        "path": "/workspace/scratch/e1a5fa683a84/validation_fpga_unified/npu/s16/compile.log",
+        "sha256": "8e06854b2a2a45166426d3d3ab4fdc431b4500a2f6bad81c30f3931ddc404fe3",
+        "non_timescale_diagnostics": 68,
+        "non_timescale_diagnostics_identical": true
+      },
+      {
+        "path": "/workspace/scratch/e1a5fa683a84/validation_fpga_partitioned/npu/s16/compile.log",
+        "sha256": "f1402150d0d43cd985f284a650723ec2772ca7f0a305bc209316bee1522b7705",
+        "non_timescale_diagnostics": 68,
+        "non_timescale_diagnostics_identical": true
+      }
+    ]
+  },
+  "width_semantics": [
+    {
+      "files": [
+        "rtl/npu/conv/vector_engine_control.sv"
+      ],
+      "lines": [
+        825
+      ],
+      "diagnostic": "WIDTHTRUNC",
+      "count": 1,
+      "meaning": "核尺寸从 32 位赋给 9 位 taps。只有 config_check_done 且 config_check_error 为零时更新；配置检查保证深度卷积核不超过 49、池化核不超过 256，9 位能够完整保存。"
+    },
+    {
+      "files": [
+        "rtl/npu/conv/vector_engine_control.sv"
+      ],
+      "lines": [
+        831,
+        1066
+      ],
+      "diagnostic": "WIDTHTRUNC",
+      "count": 2,
+      "meaning": "active_count_value 的实参为 min(remaining, TILE)，生产 TILE=16，结果范围为 0..16，5 位能够完整保存。"
+    },
+    {
+      "files": [
+        "rtl/npu/conv/vector_engine_control.sv"
+      ],
+      "lines": [
+        934
+      ],
+      "diagnostic": "WIDTHTRUNC",
+      "count": 1,
+      "meaning": "compute_index_value 保存的索引宽度在 FPGA 配置中为 5 位，在 ASIC 配置中为 6 位。仅非末计算组递增，有效组索引小于 TILE=16，32 位加法结果的高位均为零。"
+    },
+    {
+      "files": [
+        "rtl/npu/conv/vector_engine_operand_store.sv"
+      ],
+      "lines": [
+        799,
+        800,
+        801
+      ],
+      "diagnostic": "WIDTHTRUNC/WIDTHEXPAND",
+      "truncation_count": 1,
+      "expansion_count": 2,
+      "meaning": "输入银行共有 32 个元素、8 个银行，每银行 4 行。池化写入仅在 destination_index<pool_elements 时有效，pool_elements 最大为 32，因此有效写行号为 0..3。三位 pool_bank_row 参与条件选择后保存为两位 write_row，保留全部有效地址。",
+      "profiles": [
+        "fpga"
+      ]
+    },
+    {
+      "files": [
+        "rtl/npu/conv/vector_engine.sv"
+      ],
+      "lines": [
+        1135
+      ],
+      "diagnostic": "WIDTHTRUNC",
+      "count": 1,
+      "meaning": "acc_buf 包含 16 项，串行读取索引在 FPGA 配置中为 5 位，在 ASIC 配置中为 6 位。有效量化通道小于 active，归约后续捕获条件为 reduce_index+1<TILE。末项后的组合索引可以等于 16，其结果不被有效控制采样。"
+    },
+    {
+      "files": [
+        "rtl/npu/conv/vector_engine.sv"
+      ],
+      "lines": [
+        1106
+      ],
+      "diagnostic": "WIDTHEXPAND",
+      "count": 1,
+      "meaning": "Add 的输入选择索引为 4 位，底层输入数组地址为 6 位。Add 仅在 compute_index+1<active<=16 时保存下一项，访问范围为 0..15。"
+    },
+    {
+      "files": [
+        "asic/rtl/smic40_sram_1r1w.sv"
+      ],
+      "lines": [
+        25,
+        34,
+        35,
+        42,
+        43
+      ],
+      "profiles": [
+        "asic"
+      ],
+      "meaning": "地址高位用于选择 SRAM 银行，低 7 位或低 10 位作为宏内部行地址。地址宽度小于宏行地址宽度时补零；银行选择右移值为零。两银行实例的移位结果范围为 0..1，单个位寄存器能够完整保存。"
+    },
+    {
+      "files": [
+        "asic/rtl/smic40_sram_1r1w.sv"
+      ],
+      "lines": [
+        19,
+        20,
+        26
+      ],
+      "profiles": [
+        "asic"
+      ],
+      "meaning": "每个 SRAM 数据切片为 16 位，写入数据和掩码在高位补零。7 位、8 位和 513 位逻辑字读取时舍去宏切片补齐位，保留全部有效数据；513 位组缓冲包含 512 位数据和 1 位末行标记。"
+    },
+    {
+      "files": [
+        "rtl/npu/ps_compact/ps_raw_address.sv"
+      ],
+      "lines": [
+        14
+      ],
+      "profiles": [
+        "asic"
+      ],
+      "meaning": "实际 WIDTH=16，常量 RECIPROCAL=ceil(65536/DIVISOR)。DIVISOR 为 5、6、7，64 位常量计算结果均完整包含在 17 位接收字段中。",
+      "reciprocal_values": {
+        "5": 13108,
+        "6": 10923,
+        "7": 9363
+      },
+      "exhaustive_quotient_remainder_checks": 196608
+    }
+  ],
+  "constant_comparisons": "生成循环边界、完整地址范围和窗口计数上限在相应参数下化为常量。FPGA 为 10 项，ASIC 为 9 项。",
+  "other_width_warnings": "其余设计位宽扩展用于将无符号计数扩展到运算或接口宽度。观察模块的逻辑条件使用固定的 0/1 整数参数；数组观察表达式由有效索引条件保护。",
+  "register_diagnostic_scope": "所检查日志没有报告异步加载值缺失、寄存器驱动定义冲突或无效寄存器；普通优化删除信息不计为警告。",
+  "required_rtl_fixes": [],
+  "source_sha256": {
+    "asic/rtl/smic40_sram_1r1w.sv": "841b5894b63e0a67eb8484034a1aed92ae9dfdc5f96095012900521440694b0b",
+    "rtl/npu/conv/vector_banked_writeback.sv": "c7f30c197fbfc6678f95f13530bf8389aee528efb70e7af4ea12c4de34e1707e",
+    "rtl/npu/conv/vector_config_check.sv": "82959318e4ee620c6190604f01a6278b0a29c91a926fa8b73ab9cb808f7c60fe",
+    "rtl/npu/conv/vector_engine.sv": "4ef682bd4245675681858e53e93852488edef97085a740ce98e2a70d638842ec",
+    "rtl/npu/conv/vector_engine_address.sv": "51f9d0364251f7595b43dfe3a625145eb732c01cbc2362600d938a056a9ce778",
+    "rtl/npu/conv/vector_engine_control.sv": "050e69004a31ee5b1fcb978bf79222efc32a0663facffcb31dc09dbd59c65eaf",
+    "rtl/npu/conv/vector_engine_operand_store.sv": "f04549f7afbc8414d4744010687cae86cc84d2b2c23aa5033b95a4632f55b39e",
+    "rtl/npu/dma/conv_window_queue.sv": "5e7a2e87325b62660e38713a3d98b67697d8356e5945c71f62da6055591e1ef4",
+    "rtl/npu/loaders/ia_loader_cache_mgr.sv": "004b36be0c707534e80ba33e39096d4199cb8576bac6e2cf0cd879f61d26d1b2",
+    "rtl/npu/loaders/kernel_loader_buffer.sv": "6766457a21276ab1f722e39ca3928e6025e0929732f1638b145b8b35b35a935e",
+    "rtl/npu/ps_compact/ps_raw_address.sv": "7c75af23f8efc17b2c29d2f32822d8be2037fb0b92eb62b86355c977b8ccc2d9"
+  }
+}

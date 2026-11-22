@@ -1,0 +1,20 @@
+{
+  "source_snapshot": "release_rtl_source",
+  "source_manifest_sha256": "14cfa75662c93ab99b0cb6188913079ccdbdaab4497dfc782c9a35569e87b5ab",
+  "allocator_sha256": "51952ffe97354b56197c9b765582023d435cfbe1930b0c03b778bdb5faa1fff5",
+  "stage_environments": {
+    "ordinary_elaboration": {
+      "MALLOC_ARENA_MAX": "1",
+      "MALLOC_TRIM_THRESHOLD_": "65536",
+      "MALLOC_MMAP_THRESHOLD_": "65536"
+    },
+    "ordinary_pre_lut_and_lut_mapping": {
+      "LD_PRELOAD": "/lib/x86_64-linux-gnu/libjemalloc.so.2",
+      "MALLOC_CONF": "narenas:1,dirty_decay_ms:0,muzzy_decay_ms:0,background_thread:false,retain:false"
+    },
+    "equal_lut_cost_mapping": {
+      "LD_PRELOAD": "/lib/x86_64-linux-gnu/libjemalloc.so.2",
+      "MALLOC_CONF": "narenas:1,tcache:false,dirty_decay_ms:0,muzzy_decay_ms:0,background_thread:false,retain:false"
+    }
+  }
+}

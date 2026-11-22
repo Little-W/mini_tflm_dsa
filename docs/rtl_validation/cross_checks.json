@@ -1,0 +1,175 @@
+{
+  "passed": true,
+  "checked_at_utc": "2026-11-22T11:06:59.562541+00:00",
+  "scope": "指定冻结源码的 RTL 结构、功能回归、编译诊断与生产综合脚本检查。",
+  "source_root": "/workspace/scratch/e1a5fa683a84/release_rtl_source",
+  "snapshot_manifest_sha256": "14cfa75662c93ab99b0cb6188913079ccdbdaab4497dfc782c9a35569e87b5ab",
+  "frozen_files": 427,
+  "frozen_files_unchanged": true,
+  "main_inputs_identical_to_frozen_files": true,
+  "input_checks": [
+    {
+      "check": "asic_structure",
+      "matching_frozen_files": 124,
+      "passed": true
+    },
+    {
+      "check": "dc_production_profile",
+      "matching_frozen_files": 136,
+      "passed": true
+    },
+    {
+      "check": "design_layout",
+      "matching_frozen_files": 145,
+      "passed": true
+    },
+    {
+      "check": "static_sources",
+      "matching_frozen_files": 147,
+      "passed": true
+    },
+    {
+      "check": "fpga_functional_build",
+      "matching_frozen_files": 119,
+      "separately_recorded_test_inputs": 29,
+      "passed": true
+    },
+    {
+      "check": "asic_functional_build",
+      "matching_frozen_files": 119,
+      "separately_recorded_test_inputs": 29,
+      "passed": true
+    }
+  ],
+  "asic_structure": {
+    "passed": true,
+    "summary": "/workspace/scratch/e1a5fa683a84/validation_asic_release_structure/summary.json",
+    "summary_sha256": "8c8a62f43e52e38fb201047b1af35d96fd2d43002665022288dcec04db1563e0",
+    "macro_counts": {
+      "RAMTP128X16": 60,
+      "RAMTP1024X16": 105
+    },
+    "total_sram_macros": 165,
+    "ws_systolic_cells": 256,
+    "vector_pe": 16,
+    "requant_compute_lanes": 2,
+    "group_buffer_rows": 512,
+    "group_buffer_row_bits": 513,
+    "group_buffer_macro_instances": 33,
+    "group_buffer_inferred_memory_cells": 0,
+    "other_inferred_memory_cells": 113,
+    "complete_hierarchy": true,
+    "compressed_netlist_content_verified": true,
+    "netlist_sha256": "d01c0c7d45aa816b7eebf355af1ffcead60005c4ee0fe848f678605305bd16be"
+  },
+  "functional_regressions": {
+    "fpga": {
+      "passed": true,
+      "summary": "/workspace/scratch/e1a5fa683a84/validation_fpga_release/summary.json",
+      "summary_sha256": "3b5958a6bdd2fc63563ac40c37c62cf8a60257784f314b9e427b53752d728686",
+      "build_manifest": "/workspace/scratch/e1a5fa683a84/validation_fpga_release/npu/s16/build.json",
+      "build_manifest_sha256": "16b95b5e17260e087e40f094aa7ec08697b97f6c6bfe12b0336722036436b438",
+      "binary_sha256": "912644a0dbb68d6eccabe9f50133e1705fdfac763f49394eecb94cac708d80c1",
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "VECTOR_PE_COUNT": 8,
+      "ADDR_WIDTH": 32,
+      "sources_unchanged_during_build": true
+    },
+    "asic": {
+      "passed": true,
+      "summary": "/workspace/scratch/e1a5fa683a84/validation_asic_release/summary.json",
+      "summary_sha256": "6bb8301954d54b7f28111ab1a1c670555288457aded033b82ce12f151d7a8a5b",
+      "build_manifest": "/workspace/scratch/e1a5fa683a84/validation_asic_release/npu/s16/build.json",
+      "build_manifest_sha256": "c86ba83da14c4b5ef59d7d9cb50ca0d7ee2311de651b82a0eeda365d213b0406",
+      "binary_sha256": "12b09f1e2e65cdbff2c24c031e93463b7aaa4fbb732cc25f44cb591d71a4d348",
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "VECTOR_PE_COUNT": 16,
+      "ADDR_WIDTH": 19,
+      "sources_unchanged_during_build": true
+    }
+  },
+  "dc_profile": {
+    "checks_passed": 44,
+    "summary": "/workspace/scratch/e1a5fa683a84/validation_dc_release_profile/summary.json",
+    "summary_sha256": "905308efa892af39444ffad5db60dd67c0e9dd59b696b64e29510f595ba575eb",
+    "dc_executed": false,
+    "execution_status": "NOT_RUN",
+    "synthesis_passed": null,
+    "parameters": {
+      "WEIGHT_WIDTH": 16,
+      "DATA_WIDTH": 16,
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "REG_WIDTH": 32,
+      "ADDR_WIDTH": 19,
+      "SHARED_BANK_BYTES": 8192,
+      "SHARED_BANK_COUNT": 7,
+      "IA_CACHE_BLOCKS": 4,
+      "IM2COL_CACHE_BYTES": 4096,
+      "PS_FRAME_COUNT": 16,
+      "AXI_READ_OUTSTANDING": 4,
+      "AXI_WRITE_OUTSTANDING": 4,
+      "ENABLE_IS_MODE": 1,
+      "ENABLE_PER_CHANNEL": 1,
+      "DW_PE_COUNT": 16,
+      "VECTOR_PE_COUNT": 16,
+      "WINDOW_LANES": 16
+    },
+    "frequency_mhz": 150,
+    "area_target": 3500000,
+    "setup_path_count": 5000,
+    "hold_path_count": 5000
+  },
+  "static_sources": {
+    "summary": "/workspace/scratch/e1a5fa683a84/validation_release_static_sources/summary.json",
+    "summary_sha256": "72dc294c9376f9f3d7445a2d6b324eaea8c46440a4ab01c33ad0a843e5a41bdf",
+    "layout_summary": "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/build/rtl_layout_release/summary.json",
+    "layout_summary_sha256": "1284ab714577aeadc37ab875b42fa170f80733a6df1d1d95bf7575e4db3ddbc0",
+    "design_rtl_files": 145,
+    "modules": 140,
+    "packages": 5,
+    "maximum_npu_source_lines": 1488,
+    "resource_flags": 0,
+    "explicit_fpga_primitives": 0,
+    "multiple_definition_files": 0,
+    "filelists": [
+      {
+        "path": "asic/synthesis/filelists/npu_top.f",
+        "sources": 120,
+        "sha256": "9d3606ea7ff08e14da22647dbbe69bc4d4cfffff3c790811741884d96b2cafb9",
+        "dependencies_complete": true
+      },
+      {
+        "path": "veri/flist/dut_axil.f",
+        "sources": 118,
+        "sha256": "d0696109e5d5be6e0f1229c13caca496f3f2eec2d9ea87dcffe8f296e9c9fc7d",
+        "dependencies_complete": true
+      }
+    ],
+    "vivado_sources": 147,
+    "vivado_dependencies_complete": true,
+    "all_vivado_sources_in_snapshot": true,
+    "checker_source_sha256": {
+      "test/rtl_layout/check.py": "a41d1dee05e35ded1fb03070d29836b8e51d685271c4926e59a05aa9b2f0bba0",
+      "scripts/rtl/source_files.py": "5a368bf00f1675ec1d16c0c4b0804ae0550aaac2fc8de6e53e1865bad2351c06",
+      "fpga/vivado/tflm_ai_dsa_soc/scripts/npu_config.tcl": "d0d8af13cd87b8da1aef4302bd39dc96436c67e0e20c69b830b9dd36dd9fa3c3"
+    }
+  },
+  "compiler_warning_review": {
+    "summary": "/workspace/scratch/e1a5fa683a84/validation_release_rtl_warnings/summary.json",
+    "sha256": "9dc09ddb1ec0d80769907f734d0a965eb0205487b5ffdebea55d0cbf024c8772",
+    "passed": true,
+    "fpga_warnings": 160,
+    "asic_warnings": 177,
+    "asic_connectivity_problems": 0,
+    "required_rtl_fixes": []
+  },
+  "checker_source_sha256": {
+    "test/requant_group_buffer_npu/run.py": "f84eefebd9278ad0e8137a3d54a191c232ea1d2b06fe764f6ae9deffd949a840",
+    "test/asic_profile/check.py": "77aa20c98f95640bac32b4aadc29009d74daede642dfd30c9617369a385ce729",
+    "scripts/asic/prepare_dc_sources.py": "f08e66a87a376bd56d7529bb37abc2a5b90db315701b6b20aba2049eca27c897",
+    "scripts/asic/run_ps_synthesis.py": "a4dce96d6cf7f408546bce1e3727472d748807f40da91d5ec2d8824b62d55dbd"
+  }
+}

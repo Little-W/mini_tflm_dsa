@@ -18,7 +18,8 @@ make -C asic/synthesis syn \
 共享 bank、`IA_CACHE_BLOCKS=2` 和 `PS_FRAME_COUNT=4`。该配置使用全并行
 量化。生产 FPGA 参数保存在 `config/npu_fpga.mk`，包含七个 8 KiB 共享
 bank、`IA_CACHE_BLOCKS=4` 和 `PS_FRAME_COUNT=16`，可通过 `NPU_CONFIG`
-选择这份配置进行 ASIC 结构检查。
+选择这份配置进行 ASIC 结构检查。16 路向量计算的 150 MHz ASIC 配置
+见 [ASIC NPU 生产配置](asic_npu_r16_150.md)。
 
 `prepare-rtl` 在构建目录生成综合输入，将带默认值的输入端口转换为显式连接。RTL 源码、生成文件和综合结果分别保存在源码目录、构建目录的 `sources/` 以及构建目录根部。
 
@@ -38,15 +39,16 @@ bank、`IA_CACHE_BLOCKS=4` 和 `PS_FRAME_COUNT=16`，可通过 `NPU_CONFIG`
 | 每行逻辑位宽 | 513 bit |
 | 逻辑深度 | 512 行 |
 | 有效存储容量 | 262,656 bit，32,832 byte |
-| SRAM 宏型号 | `RAMTP128X16` |
-| 深度方向分组 | 4 组，每组 128 行 |
+| SRAM 宏型号 | `RAMTP1024X16` |
+| 深度方向分组 | 1 组，宏深度 1024 行 |
 | 每组宽度方向宏数量 | 33 |
-| SRAM 宏总数 | 132 |
-| 物理存储容量 | 270,336 bit，33 KiB |
+| SRAM 宏总数 | 33 |
+| 物理存储容量 | 540,672 bit，66 KiB |
 
 每行未使用的高 15 位补零，其写掩码关闭。读写双方使用原始行地址，
-完整行数据和 tile 标记在同一同步读取边沿更新。`MACRO_DEPTH=128`
-固定了该缓冲的宏深度；位宽和深度方向均按参数计算宏数量。
+完整行数据和 tile 标记在同一同步读取边沿更新。宏封装按逻辑深度选择
+128 行或 1024 行宏；位宽和深度方向均按参数计算宏数量。逻辑地址
+只访问声明的 512 行，其余物理行不参与缓冲容量计算。
 FPGA 和通用仿真配置继续使用同步读出的 `regfile`。
 
 从仓库根目录运行对应的 ASIC 展开命令：
@@ -59,7 +61,7 @@ make -C asic/synthesis elaborate \
 
 RTL 展开并链接库之后，综合流程生成
 `npu_top_requant_storage.rpt`。报告逐一列出量化缓冲区的宏数量、物理
-容量和 `regfile` 子实例数量。上述生产参数应显示 132 个宏、270,336
+容量和 `regfile` 子实例数量。上述生产参数应显示 33 个宏、540,672
 个物理存储位和零个 `regfile` 子实例。检查通过后再执行标准单元映射。
 
 修改 RTL 后，从源码重新执行 `prepare-rtl`、分析和展开，以生成包含
