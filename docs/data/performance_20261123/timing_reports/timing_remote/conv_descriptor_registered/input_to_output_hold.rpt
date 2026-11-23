@@ -1,0 +1,31 @@
+Startpoint: i_error (input port clocked by CORE_CLK)
+Endpoint: o_tile_commit (output port clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: min
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.000000    0.000000 ^ input external delay
+                     0.100000    0.000000    0.000000 ^ i_error (in)
+    3    6.110359                                       i_error (net)
+                     0.100000    0.000016    0.000016 ^ _11947_/A1 (NOR2_X1)
+                     0.010331    0.026253    0.026269 v _11947_/ZN (NOR2_X1)
+    2    5.882954                                       o_tile_commit (net)
+                     0.010331    0.000002    0.026271 v o_tile_commit (out)
+                                             0.026271   data arrival time
+
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.125000    0.125000   clock uncertainty
+                                 0.000000    0.125000   clock reconvergence pessimism
+                                 0.000000    0.125000   output external delay
+                                             0.125000   data required time
+--------------------------------------------------------------------------------------------
+                                             0.125000   data required time
+                                            -0.026271   data arrival time
+--------------------------------------------------------------------------------------------
+                                            -0.098729   slack (VIOLATED)
+
+

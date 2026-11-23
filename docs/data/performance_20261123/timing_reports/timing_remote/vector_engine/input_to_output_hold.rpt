@@ -1,0 +1,28 @@
+Startpoint: i_ps_read_data[480] (input port clocked by CORE_CLK)
+Endpoint: quant_req_accumulator[0] (output port clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: min
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.000000    0.000000 ^ input external delay
+                     0.100000    0.000000    0.000000 ^ i_ps_read_data[480] (in)
+    1    5.000000                                       i_ps_read_data[480] (net)
+                     0.100000    0.000002    0.000002 ^ quant_req_accumulator[0] (out)
+                                             0.000002   data arrival time
+
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.125000    0.125000   clock uncertainty
+                                 0.000000    0.125000   clock reconvergence pessimism
+                                 0.000000    0.125000   output external delay
+                                             0.125000   data required time
+--------------------------------------------------------------------------------------------
+                                             0.125000   data required time
+                                            -0.000002   data arrival time
+--------------------------------------------------------------------------------------------
+                                            -0.124998   slack (VIOLATED)
+
+

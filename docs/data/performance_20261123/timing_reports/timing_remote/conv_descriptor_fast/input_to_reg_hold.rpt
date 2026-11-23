@@ -1,0 +1,32 @@
+Startpoint: i_cfg_valid (input port clocked by CORE_CLK)
+Endpoint: _29991_ (rising edge-triggered flip-flop clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: min
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.000000    0.000000 ^ input external delay
+                     0.100000    0.000000    0.000000 ^ i_cfg_valid (in)
+    3    6.242091                                       i_cfg_valid (net)
+                     0.100000    0.000016    0.000016 ^ _27207_/C1 (AOI211_X1)
+                     0.006187    0.019890    0.019906 v _27207_/ZN (AOI211_X1)
+    1    1.362472                                       _00467_ (net)
+                     0.006187    0.000008    0.019914 v _29991_/D (DFFR_X1)
+                                             0.019914   data arrival time
+
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.125000    0.125000   clock uncertainty
+                                 0.000000    0.125000   clock reconvergence pessimism
+                                             0.125000 ^ _29991_/CK (DFFR_X1)
+                                 0.011318    0.136318   library hold time
+                                             0.136318   data required time
+--------------------------------------------------------------------------------------------
+                                             0.136318   data required time
+                                            -0.019914   data arrival time
+--------------------------------------------------------------------------------------------
+                                            -0.116404   slack (VIOLATED)
+
+

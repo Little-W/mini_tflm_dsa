@@ -1,0 +1,32 @@
+Startpoint: _29655_ (rising edge-triggered flip-flop clocked by CORE_CLK)
+Endpoint: _29655_ (rising edge-triggered flip-flop clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: min
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                     0.100000    0.000000    0.000000 ^ _29655_/CK (DFF_X1)
+                     0.009985    0.106638    0.106638 ^ _29655_/Q (DFF_X1)
+    2    2.588399                                       window_next_channel_range[0] (net)
+                     0.009985    0.000009    0.106647 ^ _19660_/B (MUX2_X1)
+                     0.008232    0.034851    0.141498 ^ _19660_/Z (MUX2_X1)
+    1    1.450030                                       _00395_ (net)
+                     0.008232    0.000009    0.141507 ^ _29655_/D (DFF_X1)
+                                             0.141507   data arrival time
+
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.125000    0.125000   clock uncertainty
+                                 0.000000    0.125000   clock reconvergence pessimism
+                                             0.125000 ^ _29655_/CK (DFF_X1)
+                                 0.019803    0.144803   library hold time
+                                             0.144803   data required time
+--------------------------------------------------------------------------------------------
+                                             0.144803   data required time
+                                            -0.141507   data arrival time
+--------------------------------------------------------------------------------------------
+                                            -0.003296   slack (VIOLATED)
+
+

@@ -1,0 +1,81 @@
+{
+  "passed": true,
+  "source_commit": "e4db0886a7d3e11f56cc3bcb58af05eea8885832",
+  "verified_against_source_commit": "3fcb4e120976d7f341dee892f9eb88052d6f6382",
+  "suite_source_commits": {
+    "operators": "e4db0886a7d3e11f56cc3bcb58af05eea8885832",
+    "numeric": "e4db0886a7d3e11f56cc3bcb58af05eea8885832"
+  },
+  "tracked_source_tree_clean": true,
+  "configuration": "CONV_LOW_LATENCY=0",
+  "capacity_bits": 653666,
+  "capacity_bytes": 81708.25,
+  "budget_bytes": 81920,
+  "cases_checked": 62,
+  "suites": {
+    "operators": {
+      "cases": 36,
+      "cycles": 407870
+    },
+    "numeric": {
+      "cases": 26,
+      "cycles": 193107
+    }
+  },
+  "all_gemm_strictly_leading": true,
+  "common_groups": {
+    "gemm": {
+      "cases": 31,
+      "npu_cycles": 149991,
+      "gemmini_cycles": 219155,
+      "strictly_faster_than_all": 31
+    },
+    "conv": {
+      "cases": 3,
+      "npu_cycles": 145714,
+      "gemmini_cycles": 150563,
+      "strictly_faster_than_all": 2
+    },
+    "dw": {
+      "cases": 2,
+      "npu_cycles": 112165,
+      "gemmini_cycles": 50517,
+      "strictly_faster_than_all": 0
+    },
+    "all": {
+      "cases": 36,
+      "npu_cycles": 407870,
+      "gemmini_cycles": 420235,
+      "strictly_faster_than_all": 33
+    }
+  },
+  "all_measurements_and_timings_unchanged": true,
+  "simulator_sha256": "4b451cfca744f87507b126ef5b22ade2e4078635626c061609c855be88c75446",
+  "verified_simulator_source_count": 155,
+  "numeric_reuses_source_verified_simulator": true,
+  "memory_checks": {
+    "axi_bits": 64,
+    "ram_bytes": 2097152,
+    "all_32_bit_memory_words_checked": true,
+    "minimum_read_latency_cycles": 8,
+    "maximum_read_outstanding": 4,
+    "maximum_write_outstanding": 4,
+    "all_responses_drained_before_done": true,
+    "requested_read_bytes_within_physical_beat_capacity": true,
+    "cases_with_narrow_read_beats": [
+      "numeric_depthwise_7x9_c1_o1_s1_p1",
+      "numeric_depthwise_11x13_c17_o17_s1_p1",
+      "numeric_depthwise_13x11_c17_o17_s2_p0",
+      "numeric_conv2d_7x9_c3_o5_s1_p1",
+      "numeric_conv2d_17x15_c17_o19_s2_p1"
+    ]
+  },
+  "record_sha256": {
+    "capacity/result.json": "abcbb69a17c30ec98c54bd2b8b2d06b92a4a8f008dd9769c0e43301f93dc93f0",
+    "operators/sim/build.json": "3f5fd16e6b2124d00d295908424a01623621a459c30c134fb9fb2769a4190cc6",
+    "operators/summary.json": "5e10527f19d8577721b043a4c718c0c6d0f757673b4ff5690390ce25f00e1d6b",
+    "numeric/sim/build.json": "bbc2b07b8781b5d1d4b6331ff870b30e29671886d80e10a757edd722e613b557",
+    "numeric/summary.json": "64293cd24728bac0f36d0f9d5e53fc18bdc04fe22107b29f951996c1d25b0cd3",
+    "comparison/comparison.json": "646217ab64a62faa4fcd0a33dad957635589010c5a582468880e658356ed4197"
+  }
+}

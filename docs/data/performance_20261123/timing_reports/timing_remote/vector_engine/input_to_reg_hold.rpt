@@ -1,0 +1,29 @@
+Startpoint: wr_done (input port clocked by CORE_CLK)
+Endpoint: _210128_ (rising edge-triggered flip-flop clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: min
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.000000    0.000000 ^ input external delay
+                     0.100000    0.000000    0.000000 ^ wr_done (in)
+    2    3.747069                                       wr_done (net)
+                     0.100000    0.000010    0.000010 ^ _210128_/D (DFFR_X1)
+                                             0.000010   data arrival time
+
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.125000    0.125000   clock uncertainty
+                                 0.000000    0.125000   clock reconvergence pessimism
+                                             0.125000 ^ _210128_/CK (DFFR_X1)
+                                 0.061269    0.186269   library hold time
+                                             0.186269   data required time
+--------------------------------------------------------------------------------------------
+                                             0.186269   data required time
+                                            -0.000010   data arrival time
+--------------------------------------------------------------------------------------------
+                                            -0.186259   slack (VIOLATED)
+
+

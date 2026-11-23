@@ -1,0 +1,35 @@
+Startpoint: i_next_row_addr[7] (input port clocked by CORE_CLK)
+Endpoint: _15519_ (rising edge-triggered flip-flop clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: min
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.000000    0.000000 ^ input external delay
+                     0.100000    0.000000    0.000000 ^ i_next_row_addr[7] (in)
+    2    3.930133                                       i_next_row_addr[7] (net)
+                     0.100000    0.000014    0.000014 ^ _13131_/C1 (AOI221_X1)
+                     0.010405    0.022486    0.022500 v _13131_/ZN (AOI221_X1)
+    1    1.838936                                       _05600_ (net)
+                     0.010405    0.000011    0.022512 v _13136_/A1 (NAND2_X1)
+                     0.008025    0.014375    0.036887 ^ _13136_/ZN (NAND2_X1)
+    1    1.438017                                       _00125_ (net)
+                     0.008025    0.000009    0.036896 ^ _15519_/D (DFFR_X1)
+                                             0.036896   data arrival time
+
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.125000    0.125000   clock uncertainty
+                                 0.000000    0.125000   clock reconvergence pessimism
+                                             0.125000 ^ _15519_/CK (DFFR_X1)
+                                 0.018511    0.143511   library hold time
+                                             0.143511   data required time
+--------------------------------------------------------------------------------------------
+                                             0.143511   data required time
+                                            -0.036896   data arrival time
+--------------------------------------------------------------------------------------------
+                                            -0.106616   slack (VIOLATED)
+
+

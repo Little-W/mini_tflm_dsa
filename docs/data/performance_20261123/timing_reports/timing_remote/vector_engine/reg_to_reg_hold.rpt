@@ -1,0 +1,29 @@
+Startpoint: _210342_ (rising edge-triggered flip-flop clocked by CORE_CLK)
+Endpoint: _210472_ (rising edge-triggered flip-flop clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: min
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                     0.100000    0.000000    0.000000 ^ _210342_/CK (DFF_X1)
+                     0.008061    0.104250    0.104250 ^ _210342_/Q (DFF_X1)
+    1    1.450030                                       u_scalar_multiplier.u_multiplier.low_product[0] (net)
+                     0.008061    0.000009    0.104260 ^ _210472_/D (DFF_X1)
+                                             0.104260   data arrival time
+
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.125000    0.125000   clock uncertainty
+                                 0.000000    0.125000   clock reconvergence pessimism
+                                             0.125000 ^ _210472_/CK (DFF_X1)
+                                 0.019749    0.144749   library hold time
+                                             0.144749   data required time
+--------------------------------------------------------------------------------------------
+                                             0.144749   data required time
+                                            -0.104260   data arrival time
+--------------------------------------------------------------------------------------------
+                                            -0.040490   slack (VIOLATED)
+
+

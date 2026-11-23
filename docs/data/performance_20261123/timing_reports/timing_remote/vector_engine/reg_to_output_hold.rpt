@@ -1,0 +1,28 @@
+Startpoint: _203974_ (rising edge-triggered flip-flop clocked by CORE_CLK)
+Endpoint: o_ps_write_data[387] (output port clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: min
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                     0.100000    0.000000    0.000000 ^ _203974_/CK (DFF_X1)
+                     0.010859    0.106680    0.106680 v _203974_/Q (DFF_X1)
+    2    5.875250                                       u_operand_store.acc_buf[99] (net)
+                     0.010859    0.000002    0.106682 v o_ps_write_data[387] (out)
+                                             0.106682   data arrival time
+
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.125000    0.125000   clock uncertainty
+                                 0.000000    0.125000   clock reconvergence pessimism
+                                 0.000000    0.125000   output external delay
+                                             0.125000   data required time
+--------------------------------------------------------------------------------------------
+                                             0.125000   data required time
+                                            -0.106682   data arrival time
+--------------------------------------------------------------------------------------------
+                                            -0.018318   slack (VIOLATED)
+
+

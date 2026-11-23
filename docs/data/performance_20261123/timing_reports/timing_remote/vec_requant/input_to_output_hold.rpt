@@ -1,0 +1,31 @@
+Startpoint: in_valid (input port clocked by CORE_CLK)
+Endpoint: o_dw_ready (output port clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: min
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.000000    0.000000 ^ input external delay
+                     0.100000    0.000000    0.000000 ^ in_valid (in)
+    2    3.979347                                       in_valid (net)
+                     0.100000    0.000014    0.000014 ^ _217227_/A3 (NOR3_X1)
+                     0.011117    0.034601    0.034615 v _217227_/ZN (NOR3_X1)
+    2    6.529196                                       o_dw_ready (net)
+                     0.011117    0.000002    0.034618 v o_dw_ready (out)
+                                             0.034618   data arrival time
+
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.125000    0.125000   clock uncertainty
+                                 0.000000    0.125000   clock reconvergence pessimism
+                                 0.000000    0.125000   output external delay
+                                             0.125000   data required time
+--------------------------------------------------------------------------------------------
+                                             0.125000   data required time
+                                            -0.034618   data arrival time
+--------------------------------------------------------------------------------------------
+                                            -0.090382   slack (VIOLATED)
+
+

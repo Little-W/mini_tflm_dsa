@@ -1,0 +1,5 @@
+model_id,remote_reference_mean_invoke_cycles,current_default_mean_invoke_cycles,current_low_latency_mean_invoke_cycles
+mnist_cnn,74825.5,73870.5,61267.5
+mobilenet_v1_vww,663453.5,600678.5,359705.5
+resnet8_cifar10,893156.5,867509.5,778404.5
+ds_cnn_kws,226651.5,211405.5,116341.5

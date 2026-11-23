@@ -1,0 +1,28 @@
+Startpoint: _21599_ (rising edge-triggered flip-flop clocked by CORE_CLK)
+Endpoint: o_committing_tile_packed[496] (output port clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: min
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                     0.100000    0.000000    0.000000 ^ _21599_/CK (DFF_X1)
+                     0.010673    0.106418    0.106418 v _21599_/Q (DFF_X1)
+    2    5.699202                                       prepared_tile_q[496] (net)
+                     0.010673    0.000002    0.106420 v o_committing_tile_packed[496] (out)
+                                             0.106420   data arrival time
+
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.125000    0.125000   clock uncertainty
+                                 0.000000    0.125000   clock reconvergence pessimism
+                                 0.000000    0.125000   output external delay
+                                             0.125000   data required time
+--------------------------------------------------------------------------------------------
+                                             0.125000   data required time
+                                            -0.106420   data arrival time
+--------------------------------------------------------------------------------------------
+                                            -0.018580   slack (VIOLATED)
+
+

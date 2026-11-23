@@ -1,0 +1,32 @@
+Startpoint: i_dw_tag (input port clocked by CORE_CLK)
+Endpoint: _399980_ (rising edge-triggered flip-flop clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: min
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.000000    0.000000 ^ input external delay
+                     0.100000    0.000000    0.000000 ^ i_dw_tag (in)
+    1    1.284370                                       i_dw_tag (net)
+                     0.100000    0.000008    0.000008 ^ _323820_/A2 (AND2_X1)
+                     0.008362    0.045575    0.045583 ^ _323820_/ZN (AND2_X1)
+    1    1.438017                                       _018650_ (net)
+                     0.008362    0.000009    0.045592 ^ _399980_/D (DFFR_X1)
+                                             0.045592   data arrival time
+
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.125000    0.125000   clock uncertainty
+                                 0.000000    0.125000   clock reconvergence pessimism
+                                             0.125000 ^ _399980_/CK (DFFR_X1)
+                                 0.018625    0.143625   library hold time
+                                             0.143625   data required time
+--------------------------------------------------------------------------------------------
+                                             0.143625   data required time
+                                            -0.045592   data arrival time
+--------------------------------------------------------------------------------------------
+                                            -0.098032   slack (VIOLATED)
+
+

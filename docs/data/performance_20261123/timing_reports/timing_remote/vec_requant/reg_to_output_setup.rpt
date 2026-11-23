@@ -1,0 +1,37 @@
+Startpoint: _400486_ (rising edge-triggered flip-flop clocked by CORE_CLK)
+Endpoint: dma_start (output port clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: max
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                     0.100000    0.000000    0.000000 ^ _400486_/CK (DFF_X1)
+                     0.015449    0.112702    0.112702 ^ _400486_/Q (DFF_X1)
+    3    5.535825                                       state[2] (net)
+                     0.015449    0.000010    0.112712 ^ _208335_/A (BUF_X1)
+                     0.044960    0.065265    0.177978 ^ _208335_/Z (BUF_X1)
+   10   18.487295                                       _133922_ (net)
+                     0.044960    0.000019    0.177997 ^ _208336_/A2 (NAND4_X1)
+                     0.047012    0.069818    0.247815 v _208336_/ZN (NAND4_X1)
+    5    9.603897                                       _133923_ (net)
+                     0.047012    0.000017    0.247831 v _311088_/A (INV_X1)
+                     0.025206    0.045174    0.293005 ^ _311088_/ZN (INV_X1)
+    2    6.647003                                       dma_start (net)
+                     0.025206    0.000002    0.293008 ^ dma_start (out)
+                                             0.293008   data arrival time
+
+                     0.100000    6.666667    6.666667   clock CORE_CLK (rise edge)
+                                 0.000000    6.666667   clock network delay (ideal)
+                                -0.666667    6.000000   clock uncertainty
+                                 0.000000    6.000000   clock reconvergence pessimism
+                                -1.333333    4.666667   output external delay
+                                             4.666667   data required time
+--------------------------------------------------------------------------------------------
+                                             4.666667   data required time
+                                            -0.293008   data arrival time
+--------------------------------------------------------------------------------------------
+                                             4.373659   slack (MET)
+
+

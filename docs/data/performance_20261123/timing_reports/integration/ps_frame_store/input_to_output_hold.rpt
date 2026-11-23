@@ -1,0 +1,31 @@
+Startpoint: frame_request (input port clocked by CORE_CLK)
+Endpoint: frame_pressure (output port clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: min
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.000000    0.000000 ^ input external delay
+                     0.100000    0.000000    0.000000 ^ frame_request (in)
+    6   11.135203                                       frame_request (net)
+                     0.100000    0.000012    0.000012 ^ _21741_/A2 (AND3_X1)
+                     0.017429    0.074860    0.074872 ^ _21741_/ZN (AND3_X1)
+    1    5.000000                                       frame_pressure (net)
+                     0.017429    0.000002    0.074874 ^ frame_pressure (out)
+                                             0.074874   data arrival time
+
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.125000    0.125000   clock uncertainty
+                                 0.000000    0.125000   clock reconvergence pessimism
+                                 0.000000    0.125000   output external delay
+                                             0.125000   data required time
+--------------------------------------------------------------------------------------------
+                                             0.125000   data required time
+                                            -0.074874   data arrival time
+--------------------------------------------------------------------------------------------
+                                            -0.050126   slack (VIOLATED)
+
+

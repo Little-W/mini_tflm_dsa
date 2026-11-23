@@ -1,0 +1,37 @@
+Startpoint: in_valid (input port clocked by CORE_CLK)
+Endpoint: o_group_ready (output port clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: min
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.000000    0.000000 v input external delay
+                     0.100000    0.000000    0.000000 v in_valid (in)
+    2    3.753845                                       in_valid (net)
+                     0.100000    0.000013    0.000013 v _216780_/A2 (NAND2_X1)
+                     0.013409    0.052118    0.052131 ^ _216780_/ZN (NAND2_X1)
+    2    3.373738                                       _134968_ (net)
+                     0.013409    0.000014    0.052146 ^ _219604_/A (INV_X1)
+                     0.018809    0.027572    0.079718 v _219604_/ZN (INV_X1)
+    8   15.818199                                       _144407_ (net)
+                     0.018809    0.000020    0.079738 v _219615_/A4 (NAND4_X1)
+                     0.019274    0.037049    0.116786 ^ _219615_/ZN (NAND4_X1)
+    1    5.000000                                       o_group_ready (net)
+                     0.019274    0.000002    0.116788 ^ o_group_ready (out)
+                                             0.116788   data arrival time
+
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 0.125000    0.125000   clock uncertainty
+                                 0.000000    0.125000   clock reconvergence pessimism
+                                 0.000000    0.125000   output external delay
+                                             0.125000   data required time
+--------------------------------------------------------------------------------------------
+                                             0.125000   data required time
+                                            -0.116788   data arrival time
+--------------------------------------------------------------------------------------------
+                                            -0.008212   slack (VIOLATED)
+
+

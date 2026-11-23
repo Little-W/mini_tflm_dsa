@@ -1,0 +1,392 @@
+{
+  "passed": true,
+  "frame_store": {
+    "commands": 465,
+    "address_cases": 24576,
+    "checked_read_int32": 156656,
+    "pressure_checks": 35,
+    "reset_cases": 37,
+    "cycles": 28188,
+    "force_raw": true,
+    "source_sha256": {
+      "test/ps_compression/run_frame_store.py": "fa127baa6822f8405b924d36e0cd4b5450dc3021bd0feea6b58085c214fcd48c",
+      "test/ps_compression/stream_test_vectors.hpp": "ab6dd1168b855006366d9dab5326cf0c9df813b470c613612a3b849fb33069fa",
+      "test/ps_compression/cpp_adaptive_codec.hpp": "a6e050c9942e2f77380ef6cbc35ea2b962cc04716384ce82e6987e3db968acfc",
+      "test/ps_compression/cpp_row_codec.hpp": "5e919ce48ec306326b96e60e2b70517c77e40fcaca23e60b83ee503ec5b1c7d6",
+      "rtl/npu/ps_compact/ps_adaptive_encoder.sv": "1fda7773a35b2a18a0c4cb2927104a6a4b140d235684164ca9b2f9481e98abc3",
+      "rtl/npu/ps_compact/ps_adaptive_decoder.sv": "cfd4e6c572853da00b87fdb9ac960264306f67aef3befe85b026338d61e21524",
+      "rtl/npu/ps_compact/ps_frame_store.sv": "e284e8764a2705ec8a4c69a9b0a968ad9b30f65577d350a8c45ee1227410aeae",
+      "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+      "rtl/npu/ps_compact/ps_frame_store_capacity.sv": "7467430d4a35092f1af5e852937a146c043b92ae5bdeef8a86633408ba2559a8",
+      "rtl/npu/ps_compact/ps_raw_address.sv": "f2793dde76b79a15845fe4eb40a5c3429dd6f52f37146770e85d2af461346f1c",
+      "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+      "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+      "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+      "rtl/common/unsigned_compare.sv": "2f8a56bf2356ab9ef3bbe1691290758e110f275409a55b2ebee2025cdefb74dc",
+      "test/monitors/ps_frame_store_observer.sv": "7900fa2a7d8438753cff46cddbfe7b6f307c33fd5127b8e7177aa2ee09f8523f",
+      "test/monitors/sources.py": "655017d058b9adafbd2bad48885864201cfd882828100cadff5b08d22a82fdb9",
+      "test/ps_compression/raw_frame_store_tb.sv": "2815569be28570c60f7a577a3b13cc145c0719a6c6b85f41cee7cc83e3c731d4",
+      "test/ps_compression/raw_frame_store_test.cpp": "77288d75af80e597fa66cda00e33eebcc2c6f370c7380b952a54d2d08e024a03"
+    },
+    "binary_sha256": "dca3769ff00b99c5b44a1662dd7f710fe1c3e04df0456e1120f159aec75888d0"
+  },
+  "vector_engine": [
+    {
+      "configuration": "vector_private_pe8",
+      "passed": true,
+      "source_hashes_match": true,
+      "source_file_count": 88,
+      "totals": {
+        "cases": 616,
+        "outputs": 170743,
+        "add_cases": 143,
+        "add_outputs": 135758,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "snapshot_checks": {
+        "forwarded": 1787,
+        "buffered": 899,
+        "partial_group": 735,
+        "multiple_groups": 1060
+      }
+    },
+    {
+      "configuration": "vector_direct_pe8",
+      "passed": true,
+      "source_hashes_match": true,
+      "source_file_count": 89,
+      "totals": {
+        "cases": 616,
+        "outputs": 170743,
+        "add_cases": 143,
+        "add_outputs": 135758,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "snapshot_checks": {
+        "forwarded": 1805,
+        "buffered": 881,
+        "partial_group": 747,
+        "multiple_groups": 1068
+      }
+    },
+    {
+      "configuration": "vector_registered_pe16",
+      "passed": true,
+      "source_hashes_match": true,
+      "source_file_count": 89,
+      "totals": {
+        "cases": 616,
+        "outputs": 170743,
+        "add_cases": 143,
+        "add_outputs": 135758,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "snapshot_checks": {
+        "forwarded": 1839,
+        "buffered": 847,
+        "partial_group": 829,
+        "multiple_groups": 0
+      }
+    }
+  ],
+  "vector_engine_source_compatibility": {
+    "passed": true,
+    "production_commit": "8cbd624115243a6cefe5d71c9d3808463c7ce693",
+    "checks": [
+      {
+        "configuration": "vector_private_pe8",
+        "all_other_sources_identical": true,
+        "changed_inputs": [
+          {
+            "path": "rtl/npu/writeback/vec_requant.sv",
+            "measured_sha256": "b5575eccebd905b4f96db6301167690deabd6a810142183342c1d087cfcc0387",
+            "current_sha256": "3aad83ade2173e0ab1c9e82eb12d9a3022ba09745c37f50dc2dc02f5736f087a"
+          }
+        ]
+      },
+      {
+        "configuration": "vector_direct_pe8",
+        "all_other_sources_identical": true,
+        "changed_inputs": [
+          {
+            "path": "rtl/npu/writeback/vec_requant.sv",
+            "measured_sha256": "b5575eccebd905b4f96db6301167690deabd6a810142183342c1d087cfcc0387",
+            "current_sha256": "3aad83ade2173e0ab1c9e82eb12d9a3022ba09745c37f50dc2dc02f5736f087a"
+          }
+        ]
+      },
+      {
+        "configuration": "vector_registered_pe16",
+        "all_other_sources_identical": true,
+        "changed_inputs": [
+          {
+            "path": "rtl/npu/writeback/vec_requant.sv",
+            "measured_sha256": "b5575eccebd905b4f96db6301167690deabd6a810142183342c1d087cfcc0387",
+            "current_sha256": "3aad83ade2173e0ab1c9e82eb12d9a3022ba09745c37f50dc2dc02f5736f087a"
+          }
+        ]
+      }
+    ],
+    "changed_logic": "parallel o_group_ready assignment only",
+    "component_connection": {
+      "cfg_per_channel": 0,
+      "i_dw_enable": 1,
+      "o_group_ready": "unconnected"
+    },
+    "changed_logic_evaluates_to_same_constant": true,
+    "component_test_sources_unchanged": true
+  },
+  "requantization": {
+    "parallel": {
+      "passed": true,
+      "source_sha256": {
+        "rtl/npu/writeback/requant_pkg.sv": "869759e4bb58908d6996648f13160e0201e1463d609519fab004e24dc15bb59d",
+        "rtl/npu/writeback/requant_shift_pipeline.sv": "cbb4c2c9ffa96d7d98311383065a119949540a3c5badd12575a0c780dce7a739",
+        "test/requant_time_share/tb.sv": "1bc353ce0260827f49a80ddf4a2ba3d4f973dbfbb88ab234dce45c9b672f25ae",
+        "test/requant_time_share/main.cpp": "20051666e91ff8cb58d630f6194e6d9e16bbb698c68f5f1394a3873ff86aa20f",
+        "rtl/npu/writeback/vec_requant.sv": "3aad83ade2173e0ab1c9e82eb12d9a3022ba09745c37f50dc2dc02f5736f087a",
+        "rtl/npu/writeback/requant_compute_lane.sv": "8d5576519c7226a0b327a94482826bece4abffe1f5f23792c988ca5f1165a141",
+        "rtl/npu/writeback/requant_group_buffer.sv": "d2fa3f8bc9c89ba0e9e5338d53a1060ba1c3172bcaa8209bc165cc48f8a04194",
+        "rtl/npu/conv/registered_multiplier_s32.sv": "a90920f46be466d6853e475461fe0a5dbe2c7de21d8d3c2371eb45c6be0398c3",
+        "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+        "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+        "test/monitors/requant_group_buffer_observer.sv": "fc5599bb2e5491f458c70c757bf2116f4b1515b1ee228aba03bbfe09a95b5047"
+      },
+      "binary_sha256": "198512a28de591394e30949203232141ee3bc4b611dfbeb4df4002f37e5bce2c",
+      "result": {
+        "passed": true,
+        "vlen": 16,
+        "lanes": 16,
+        "reuse": 16,
+        "bus": 64,
+        "cycles": 153241,
+        "outputs": 174466,
+        "elements": 5582912,
+        "groups": 3180,
+        "clears": 7,
+        "resets": 6,
+        "full_groups": 12,
+        "dma_commands": 6464,
+        "boundary_cases": 320,
+        "boundary_rows": 81936,
+        "parameter_boundaries": 1168,
+        "overlap_starts": 1688
+      },
+      "xilinx": false
+    },
+    "serial": {
+      "passed": true,
+      "source_sha256": {
+        "rtl/npu/writeback/requant_pkg.sv": "869759e4bb58908d6996648f13160e0201e1463d609519fab004e24dc15bb59d",
+        "rtl/npu/writeback/requant_shift_pipeline.sv": "cbb4c2c9ffa96d7d98311383065a119949540a3c5badd12575a0c780dce7a739",
+        "test/requant_time_share/tb.sv": "1bc353ce0260827f49a80ddf4a2ba3d4f973dbfbb88ab234dce45c9b672f25ae",
+        "test/requant_time_share/main.cpp": "20051666e91ff8cb58d630f6194e6d9e16bbb698c68f5f1394a3873ff86aa20f",
+        "rtl/npu/writeback/vec_requant.sv": "3aad83ade2173e0ab1c9e82eb12d9a3022ba09745c37f50dc2dc02f5736f087a",
+        "rtl/npu/writeback/requant_compute_lane.sv": "8d5576519c7226a0b327a94482826bece4abffe1f5f23792c988ca5f1165a141",
+        "rtl/npu/writeback/requant_group_buffer.sv": "d2fa3f8bc9c89ba0e9e5338d53a1060ba1c3172bcaa8209bc165cc48f8a04194",
+        "rtl/npu/conv/registered_multiplier_s32.sv": "a90920f46be466d6853e475461fe0a5dbe2c7de21d8d3c2371eb45c6be0398c3",
+        "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+        "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+        "test/monitors/requant_group_buffer_observer.sv": "fc5599bb2e5491f458c70c757bf2116f4b1515b1ee228aba03bbfe09a95b5047"
+      },
+      "binary_sha256": "0982fd2e8f720a3fca3d9fe5ea24e1a17234d021d551749b34dfc2acbde37c74",
+      "result": {
+        "passed": true,
+        "vlen": 16,
+        "lanes": 4,
+        "reuse": 16,
+        "bus": 64,
+        "cycles": 33376,
+        "outputs": 13059,
+        "elements": 417888,
+        "groups": 187,
+        "clears": 7,
+        "resets": 6,
+        "full_groups": 14,
+        "dma_commands": 510,
+        "boundary_cases": 0,
+        "boundary_rows": 0,
+        "parameter_boundaries": 0,
+        "overlap_starts": 0
+      },
+      "xilinx": false
+    }
+  },
+  "scored_planner": {
+    "passed": true,
+    "configurations": 800,
+    "geometry_checks": 71,
+    "auto_selection_cases": 10,
+    "test_sha256": {
+      "test/capacity/run_scored_planner.py": "78296b8f9654a0b6ec16a56609d686444a78c43c3d63d5f9b5f889e7334b888a",
+      "test/capacity/test_scored_planner.c": "082beedf51eddfc97920eb09a5982c475ecbbe8e28e971d7b17717a8b329e7ef"
+    },
+    "driver_sha256": {
+      "dsa_schedule.h": "b777fc7bce4ddc733acdfb961d1ce64f67b89bc931ecd7627bc1566bfbc43057",
+      "dsa_memory_schedule.h": "f6911d86dd1c68effe8df8f21e14715f495dd64abd7a3f8695815efcc6dd442e",
+      "dsa_memory.h": "8df9d8b962c8e6eef159d80c408aa24ea78b3feebd20aec9680e88acf8f4ed2f",
+      "gempact_tiling.h": "440531423a06e341fb33fc94b040ba7ec53ecae14e8677b7e57c6eb3f507dffa"
+    }
+  },
+  "memory_policy": {
+    "passed": true,
+    "profiles": [
+      {
+        "profile": "standalone",
+        "passed": true,
+        "observations": [
+          "POLICY axi=32 raw=0 ia=1 r=4 w=4 flow=0 ctrl=14 candidates=128 estimate=208896",
+          "POLICY axi=32 raw=1 ia=1 r=2 w=4 flow=0 ctrl=1 candidates=84 estimate=222208",
+          "POLICY axi=32 raw=0 ia=1 r=4 w=8 flow=0 ctrl=0 candidates=166 estimate=115200",
+          "POLICY axi=32 raw=1 ia=1 r=4 w=4 flow=0 ctrl=1 candidates=122 estimate=149504",
+          "POLICY axi=32 raw=0 ia=4 r=16 w=1 flow=0 ctrl=14 candidates=208 estimate=73984",
+          "POLICY axi=32 raw=1 ia=4 r=16 w=1 flow=0 ctrl=15 candidates=174 estimate=73984",
+          "POLICY axi=64 raw=0 ia=1 r=2 w=4 flow=0 ctrl=0 candidates=128 estimate=123904",
+          "POLICY axi=64 raw=1 ia=1 r=2 w=4 flow=0 ctrl=1 candidates=84 estimate=123904",
+          "POLICY axi=64 raw=0 ia=1 r=4 w=8 flow=0 ctrl=0 candidates=166 estimate=64000",
+          "POLICY axi=64 raw=1 ia=1 r=4 w=4 flow=0 ctrl=1 candidates=122 estimate=83968",
+          "POLICY axi=64 raw=0 ia=1 r=8 w=8 flow=1 ctrl=0 candidates=208 estimate=46080",
+          "POLICY axi=64 raw=1 ia=1 r=8 w=8 flow=1 ctrl=1 candidates=174 estimate=46080",
+          "MEMORY_POLICY_PASS checks=1534 starts=54"
+        ]
+      },
+      {
+        "profile": "standalone_pcr",
+        "passed": true,
+        "observations": [
+          "POLICY axi=32 raw=0 ia=1 r=4 w=4 flow=0 ctrl=14 candidates=128 estimate=208896",
+          "POLICY axi=32 raw=1 ia=1 r=2 w=4 flow=0 ctrl=1 candidates=84 estimate=222208",
+          "POLICY axi=32 raw=0 ia=1 r=4 w=8 flow=0 ctrl=0 candidates=166 estimate=115200",
+          "POLICY axi=32 raw=1 ia=1 r=4 w=4 flow=0 ctrl=1 candidates=122 estimate=149504",
+          "POLICY axi=32 raw=0 ia=4 r=16 w=1 flow=0 ctrl=14 candidates=208 estimate=73984",
+          "POLICY axi=32 raw=1 ia=4 r=16 w=1 flow=0 ctrl=15 candidates=174 estimate=73984",
+          "POLICY axi=64 raw=0 ia=1 r=2 w=4 flow=0 ctrl=0 candidates=128 estimate=123904",
+          "POLICY axi=64 raw=1 ia=1 r=2 w=4 flow=0 ctrl=1 candidates=84 estimate=123904",
+          "POLICY axi=64 raw=0 ia=1 r=4 w=8 flow=0 ctrl=0 candidates=166 estimate=64000",
+          "POLICY axi=64 raw=1 ia=1 r=4 w=4 flow=0 ctrl=1 candidates=122 estimate=83968",
+          "POLICY axi=64 raw=0 ia=1 r=8 w=8 flow=1 ctrl=0 candidates=208 estimate=46080",
+          "POLICY axi=64 raw=1 ia=1 r=8 w=8 flow=1 ctrl=1 candidates=174 estimate=46080",
+          "MEMORY_POLICY_PASS checks=1534 starts=54"
+        ]
+      },
+      {
+        "profile": "nmsis",
+        "passed": true,
+        "observations": [
+          "POLICY axi=32 raw=0 ia=1 r=4 w=4 flow=0 ctrl=14 candidates=128 estimate=208896",
+          "POLICY axi=32 raw=1 ia=1 r=2 w=4 flow=0 ctrl=1 candidates=84 estimate=222208",
+          "POLICY axi=32 raw=0 ia=1 r=4 w=8 flow=0 ctrl=0 candidates=166 estimate=115200",
+          "POLICY axi=32 raw=1 ia=1 r=4 w=4 flow=0 ctrl=1 candidates=122 estimate=149504",
+          "POLICY axi=32 raw=0 ia=4 r=16 w=1 flow=0 ctrl=14 candidates=208 estimate=73984",
+          "POLICY axi=32 raw=1 ia=4 r=16 w=1 flow=0 ctrl=15 candidates=174 estimate=73984",
+          "POLICY axi=64 raw=0 ia=1 r=2 w=4 flow=0 ctrl=0 candidates=128 estimate=123904",
+          "POLICY axi=64 raw=1 ia=1 r=2 w=4 flow=0 ctrl=1 candidates=84 estimate=123904",
+          "POLICY axi=64 raw=0 ia=1 r=4 w=8 flow=0 ctrl=0 candidates=166 estimate=64000",
+          "POLICY axi=64 raw=1 ia=1 r=4 w=4 flow=0 ctrl=1 candidates=122 estimate=83968",
+          "POLICY axi=64 raw=0 ia=1 r=8 w=8 flow=1 ctrl=0 candidates=208 estimate=46080",
+          "POLICY axi=64 raw=1 ia=1 r=8 w=8 flow=1 ctrl=1 candidates=174 estimate=46080",
+          "MEMORY_POLICY_PASS checks=1534 starts=54"
+        ]
+      },
+      {
+        "profile": "nmsis_pcr",
+        "passed": true,
+        "observations": [
+          "POLICY axi=32 raw=0 ia=1 r=4 w=4 flow=0 ctrl=14 candidates=128 estimate=208896",
+          "POLICY axi=32 raw=1 ia=1 r=2 w=4 flow=0 ctrl=1 candidates=84 estimate=222208",
+          "POLICY axi=32 raw=0 ia=1 r=4 w=8 flow=0 ctrl=0 candidates=166 estimate=115200",
+          "POLICY axi=32 raw=1 ia=1 r=4 w=4 flow=0 ctrl=1 candidates=122 estimate=149504",
+          "POLICY axi=32 raw=0 ia=4 r=16 w=1 flow=0 ctrl=14 candidates=208 estimate=73984",
+          "POLICY axi=32 raw=1 ia=4 r=16 w=1 flow=0 ctrl=15 candidates=174 estimate=73984",
+          "POLICY axi=64 raw=0 ia=1 r=2 w=4 flow=0 ctrl=0 candidates=128 estimate=123904",
+          "POLICY axi=64 raw=1 ia=1 r=2 w=4 flow=0 ctrl=1 candidates=84 estimate=123904",
+          "POLICY axi=64 raw=0 ia=1 r=4 w=8 flow=0 ctrl=0 candidates=166 estimate=64000",
+          "POLICY axi=64 raw=1 ia=1 r=4 w=4 flow=0 ctrl=1 candidates=122 estimate=83968",
+          "POLICY axi=64 raw=0 ia=1 r=8 w=8 flow=1 ctrl=0 candidates=208 estimate=46080",
+          "POLICY axi=64 raw=1 ia=1 r=8 w=8 flow=1 ctrl=1 candidates=174 estimate=46080",
+          "MEMORY_POLICY_PASS checks=1534 starts=54"
+        ]
+      }
+    ]
+  },
+  "planner_cache": {
+    "passed": true,
+    "profiles": [
+      {
+        "profile": "standalone",
+        "passed": true,
+        "observations": "PLANNER_CACHE_PASS hits=19 misses=32 independent_plans=51"
+      },
+      {
+        "profile": "nmsis",
+        "passed": true,
+        "observations": "PLANNER_CACHE_PASS hits=19 misses=32 independent_plans=51"
+      }
+    ]
+  },
+  "shared_axi_schedule": {
+    "quant_group_checks": 60,
+    "passed": true,
+    "transfer_cases": 42,
+    "invalid_bus_configs": 18,
+    "driver_sha256": {
+      "dsa_schedule.h": "b777fc7bce4ddc733acdfb961d1ce64f67b89bc931ecd7627bc1566bfbc43057",
+      "dsa_memory_schedule.h": "f6911d86dd1c68effe8df8f21e14715f495dd64abd7a3f8695815efcc6dd442e",
+      "gempact_tiling.h": "440531423a06e341fb33fc94b040ba7ec53ecae14e8677b7e57c6eb3f507dffa",
+      "dsa_memory.h": "8df9d8b962c8e6eef159d80c408aa24ea78b3feebd20aec9680e88acf8f4ed2f"
+    }
+  },
+  "ps_frame_observation": {
+    "passed": true,
+    "event_verification": {
+      "passed": true,
+      "summary": {
+        "writes": 774,
+        "reads": 774,
+        "discarded": 0,
+        "frames": 16,
+        "payload_write_bytes": 49536,
+        "payload_read_bytes": 49536,
+        "fifo_write_bytes": 0,
+        "fifo_read_bytes": 0,
+        "direct_rows": 774,
+        "peak_payload_bytes": 16384
+      },
+      "write_data_sha256": "130d0a19e2a1a0d9a01a6ee63f50faf0065963277ac35171d6bd109cbdb17499",
+      "read_data_sha256": "130d0a19e2a1a0d9a01a6ee63f50faf0065963277ac35171d6bd109cbdb17499",
+      "event_file_sha256": "72b3eb6d8bc8c460fb8191b9790b3137399dece31462c76f5d18a6d86aa0f673"
+    },
+    "assertion_cases": [
+      {
+        "case": 1,
+        "expected_assertion": "PS INT32 mismatch",
+        "rejected": true
+      },
+      {
+        "case": 2,
+        "expected_assertion": "Invalid PS observer descriptor",
+        "rejected": true
+      },
+      {
+        "case": 3,
+        "expected_assertion": "Incomplete PS frame at completion",
+        "rejected": true
+      }
+    ],
+    "source_sha256": {
+      "test/ps_stream_capture/run.py": "606b6a72279947a23345349c6b1655bfae1481df05b57292340b8dd8617db25b",
+      "test/ps_compression/stream_soc_trace.py": "8f8fa81d975cfdab5913f450bc8ad941236ab6a59715655a14a5ceb60a8e0c8b",
+      "test/ps_stream_capture/tb.sv": "da165e2f36df79a88740b82f6a64dafe09c20df991b22752ee61817bfe30e5c8",
+      "test/ps_compression/ps_stream_capture.sv": "a537813263ff183e42e288ceb84380b849839b5270904602d4227f3a30283164",
+      "rtl/npu/ps_compact/ps_frame_store.sv": "e284e8764a2705ec8a4c69a9b0a968ad9b30f65577d350a8c45ee1227410aeae",
+      "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+      "rtl/npu/ps_compact/ps_frame_store_capacity.sv": "7467430d4a35092f1af5e852937a146c043b92ae5bdeef8a86633408ba2559a8",
+      "rtl/npu/ps_compact/ps_raw_address.sv": "f2793dde76b79a15845fe4eb40a5c3429dd6f52f37146770e85d2af461346f1c",
+      "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+      "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d"
+    }
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "passed": true,
+  "source_commit": "e4db0886a7d3e11f56cc3bcb58af05eea8885832",
+  "verified_against_source_commit": "3fcb4e120976d7f341dee892f9eb88052d6f6382",
+  "suite_source_commits": {
+    "operators": "e4db0886a7d3e11f56cc3bcb58af05eea8885832",
+    "numeric": "e4db0886a7d3e11f56cc3bcb58af05eea8885832"
+  },
+  "tracked_source_tree_clean": true,
+  "configuration": "CONV_LOW_LATENCY=1",
+  "capacity_bits": 653349,
+  "capacity_bytes": 81668.625,
+  "budget_bytes": 81920,
+  "cases_checked": 62,
+  "suites": {
+    "operators": {
+      "cases": 36,
+      "cycles": 272654
+    },
+    "numeric": {
+      "cases": 26,
+      "cycles": 154648
+    }
+  },
+  "all_gemm_strictly_leading": true,
+  "common_groups": {
+    "gemm": {
+      "cases": 31,
+      "npu_cycles": 149991,
+      "gemmini_cycles": 219155,
+      "strictly_faster_than_all": 31
+    },
+    "conv": {
+      "cases": 3,
+      "npu_cycles": 86138,
+      "gemmini_cycles": 150563,
+      "strictly_faster_than_all": 3
+    },
+    "dw": {
+      "cases": 2,
+      "npu_cycles": 36525,
+      "gemmini_cycles": 50517,
+      "strictly_faster_than_all": 2
+    },
+    "all": {
+      "cases": 36,
+      "npu_cycles": 272654,
+      "gemmini_cycles": 420235,
+      "strictly_faster_than_all": 36
+    }
+  },
+  "all_measurements_and_timings_unchanged": true,
+  "simulator_sha256": "6b5ebe24320abb80db88a20a5f2f87bb4f28492bf3f934b5346706d8d5239534",
+  "verified_simulator_source_count": 155,
+  "numeric_reuses_source_verified_simulator": true,
+  "memory_checks": {
+    "axi_bits": 64,
+    "ram_bytes": 2097152,
+    "all_32_bit_memory_words_checked": true,
+    "minimum_read_latency_cycles": 8,
+    "maximum_read_outstanding": 4,
+    "maximum_write_outstanding": 4,
+    "all_responses_drained_before_done": true,
+    "requested_read_bytes_within_physical_beat_capacity": true,
+    "cases_with_narrow_read_beats": [
+      "numeric_depthwise_7x9_c1_o1_s1_p1",
+      "numeric_depthwise_11x13_c17_o17_s1_p1",
+      "numeric_depthwise_13x11_c17_o17_s2_p0",
+      "numeric_conv2d_7x9_c3_o5_s1_p1",
+      "numeric_conv2d_17x15_c17_o19_s2_p1"
+    ]
+  },
+  "record_sha256": {
+    "capacity/result.json": "f714798872c8879ce64b4a39430827e6b2905163f36163fa4e3513d8cfa3f36d",
+    "operators/sim/build.json": "0d20491fa3aee2bf12468edff59d1dc1c9ced762b6d23673683352061708c907",
+    "operators/summary.json": "a3715b450bed4c41c26e4577f902c9a24e0861fdcd3cf6a4de45d2b2aae8b214",
+    "numeric/sim/build.json": "f8fc965d914449ecc1d89a00496f71b323ca5ff46e458b83a8742431bda25c25",
+    "numeric/summary.json": "5c54cafdfc545af17f8f72aced43f183756a684faee37e5c99c6118bb9f5a90e",
+    "comparison/comparison.json": "b809bb8c02ed12de2d00c6e7c3015fd483a1a4d6229b9edb738ece1225195f14"
+  }
+}

@@ -1,0 +1,46 @@
+Startpoint: cfg_valid (input port clocked by CORE_CLK)
+Endpoint: ram_read_en[0] (output port clocked by CORE_CLK)
+Path Group: CORE_CLK
+Path Type: max
+
+Fanout         Cap        Slew       Delay        Time   Description
+--------------------------------------------------------------------------------------------
+                     0.100000    0.000000    0.000000   clock CORE_CLK (rise edge)
+                                 0.000000    0.000000   clock network delay (ideal)
+                                 1.333333    1.333333 v input external delay
+                     0.100000    0.000000    1.333333 v cfg_valid (in)
+    1    1.871773                                       cfg_valid (net)
+                     0.100000    0.000012    1.333345 v _18669_/A1 (NAND3_X1)
+                     0.027435    0.041073    1.374418 ^ _18669_/ZN (NAND3_X1)
+    1    2.024211                                       _05513_ (net)
+                     0.027435    0.000013    1.374431 ^ _28030_/A1 (NOR2_X1)
+                     0.010667    0.017152    1.391583 v _28030_/ZN (NOR2_X1)
+    3    4.644002                                       configure_start (net)
+                     0.010667    0.000010    1.391593 v _29141_/A2 (OR2_X1)
+                     0.019726    0.069847    1.461440 v _29141_/ZN (OR2_X1)
+    7   12.234124                                       _05518_ (net)
+                     0.019726    0.000018    1.461457 v _20892_/A1 (NOR2_X1)
+                     0.048819    0.064247    1.525705 ^ _20892_/ZN (NOR2_X1)
+    5    8.873075                                       _05523_ (net)
+                     0.048819    0.000017    1.525722 ^ _30564_/A1 (NAND3_X1)
+                     0.060639    0.090002    1.615724 v _30564_/ZN (NAND3_X1)
+   10   21.121811                                       _06258_ (net)
+                     0.060639    0.000019    1.615743 v _30575_/A (INV_X1)
+                     0.063202    0.098009    1.713752 ^ _30575_/ZN (INV_X1)
+    6   23.250376                                       ram_read_en[0] (net)
+                     0.063202    0.000004    1.713756 ^ ram_read_en[0] (out)
+                                             1.713756   data arrival time
+
+                     0.100000    6.666667    6.666667   clock CORE_CLK (rise edge)
+                                 0.000000    6.666667   clock network delay (ideal)
+                                -0.666667    6.000000   clock uncertainty
+                                 0.000000    6.000000   clock reconvergence pessimism
+                                -1.333333    4.666667   output external delay
+                                             4.666667   data required time
+--------------------------------------------------------------------------------------------
+                                             4.666667   data required time
+                                            -1.713756   data arrival time
+--------------------------------------------------------------------------------------------
+                                             2.952910   slack (MET)
+
+
