@@ -1,286 +1,554 @@
 {
   "passed": true,
-  "rtl_sha256": "fcef0c8031e8869c5f9735f9a39c13393e2a9bed2a2d63e76ab9b4630a930ee9",
-  "reference_rtl_sha256": "305fd681270d5aeb82111e30ebb880146a20d21dec7856b2842db7af69c7c264",
+  "scope": "输出写回器的完整位宽行数比较、全部公开输出与寄存状态",
+  "reference_commit": "7ff66a59",
+  "rtl_sha256": "1141bf3ad067fe1f866fe2fc10f61b263c56034ef547404810bddad966ee8e5c",
+  "reference_rtl_sha256": "ce312ab4c763f3b7a003cec8d5d1ce35e6bf4c71ea1a529593085cd7497f04f7",
   "production_parameters": {
     "VLEN": 16,
     "BUS_WIDTH": 64,
-    "REG_WIDTH": 32,
-    "COUNT_WIDTH": 29
+    "COUNT_WIDTH": 29,
+    "REG_WIDTH": 32
   },
   "source_sha256": {
-    "rtl/npu/writeback/oa_writer.sv": "fcef0c8031e8869c5f9735f9a39c13393e2a9bed2a2d63e76ab9b4630a930ee9",
-    "test/oa_writer_geometry/run_formal.py": "ba89b81d3303238bdbe66aa7b464cf1d63cd36909b5cc59f64814607b0dbdfac",
-    "test/oa_writer_geometry/run_equivalence.py": "2428c6c74fe54e5b2a6376a2e88da7203d55ed327ea2111e85c5a394f9ef76a0",
-    "test/oa_writer_geometry/run_four_state.py": "aa0fed5586019dac1bff8e064cb3587d92e2a99a80ebd9c228ec904766e683e9",
+    "rtl/npu/writeback/oa_writer.sv": "1141bf3ad067fe1f866fe2fc10f61b263c56034ef547404810bddad966ee8e5c",
+    "rtl/common/unsigned_compare.sv": "2f8a56bf2356ab9ef3bbe1691290758e110f275409a55b2ebee2025cdefb74dc",
+    "test/oa_writer_geometry/run_compare_formal.py": "c04cc7dd3ab0bd444f81ef23c051e23f8e95e8f4e8139e660e47082504b05a3e",
+    "test/oa_writer_geometry/run_equivalence.py": "81e8ab84f73657c945d7f47ca09610706dbbca96b1266bd719ee71e9125bbd5e",
+    "test/oa_writer_geometry/run_four_state.py": "7a9b2ddbb8fc6f9cdcc8226cf1dc5ec6c5ae8f7db5a22914d5ab71477890742e",
     "test/oa_writer_geometry/synthesis_cases.json": "38972ceccaf7fd7b373176add9adf39eaf0a917a0c53b8e550986a0ca5d458f4",
-    "test/oa_writer/tb_equivalence.sv": "d110abb2833881567d2a5e6f9621a9eace4701361d9e32fa6e6c2749196bce34",
-    "test/oa_fifo_timing/run_formal.py": "b2ff08d31b44e016c1612114fdf23205c729158ca3c3ea3b10df1ebd198d2d41"
+    "test/oa_writer/tb_equivalence.sv": "d110abb2833881567d2a5e6f9621a9eace4701361d9e32fa6e6c2749196bce34"
   },
-  "measurement": {
-    "reference": {
-      "report": "build/oa_geometry_r1/synthesis/reference/metrics.json",
-      "sha256": "873149ae9e918834e042aae1a2f8f8ee390f921854057a1d4f1c33858c18135b",
-      "resources": {
-        "logic_lut_cells": 1235,
-        "lut_sites_nominal_before_packing": 1235,
-        "flip_flops": 940,
-        "dsp48e1": 8,
-        "carry4": 77
-      },
-      "longest_register_path_cells": 10,
-      "graph_complete": true
-    },
-    "final": {
-      "report": "build/oa_geometry_r1/synthesis/final/metrics.json",
-      "sha256": "5029a601f2fba68e9ea6e194b818c6ef3bc7ed06a9e27c13d9eb925d40972d09",
-      "resources": {
-        "logic_lut_cells": 1138,
-        "lut_sites_nominal_before_packing": 1138,
-        "flip_flops": 944,
-        "dsp48e1": 16,
-        "carry4": 41
-      },
-      "longest_register_path_cells": 8,
-      "graph_complete": true
-    }
-  },
-  "verification": {
-    "final_formal_synthesis": {
+  "formal": {
+    "synthesis": {
       "passed": true,
-      "report": "build/oa_geometry_r1/final_formal_synthesis/summary.json",
-      "sha256": "6b610701a50d2a1ab8f6fb66eecbeaada4cfd3690b9ad7fa98087305e98cac41",
-      "profiles_passed": 11,
-      "synthesis_define": true,
-      "all_public_outputs_compared_each_cycle": true,
-      "state_comparison_scope": "Common state each cycle; effective WS/IS row tiles; group step after configuration preparation; next row tiles when consumed",
-      "parameters": [
+      "profiles": [
         {
+          "passed": true,
           "vlen": 4,
           "bus_width": 32,
           "count_width": 4,
-          "register_width": 32
+          "register_width": 32,
+          "enable_is_mode": 1,
+          "proved_points": 10018,
+          "log_sha256": "83914a8903d5a333d71cdc4b8c5cd1ada6d1fc44c9a029dd05c6432a493b4028"
         },
         {
+          "passed": true,
           "vlen": 8,
           "bus_width": 64,
           "count_width": 6,
-          "register_width": 32
+          "register_width": 32,
+          "enable_is_mode": 1,
+          "proved_points": 10147,
+          "log_sha256": "7cf2e43d1eb3525776f8de3b5a3311b8ce263341be6eeb48eb24d2b7f76c522f"
         },
         {
+          "passed": true,
           "vlen": 16,
           "bus_width": 32,
           "count_width": 7,
-          "register_width": 32
+          "register_width": 32,
+          "enable_is_mode": 1,
+          "proved_points": 10168,
+          "log_sha256": "331c883c4d7b9aaacbb5afb96afe6492573b34e9b6cafa89b1094fb55b9adc78"
         },
         {
+          "passed": true,
           "vlen": 16,
           "bus_width": 64,
           "count_width": 8,
-          "register_width": 32
+          "register_width": 32,
+          "enable_is_mode": 1,
+          "proved_points": 10239,
+          "log_sha256": "ef52c56a1ec28afc09e51f0723f352d1363c98bd69bb5ffb5270137852b4b981"
         },
         {
+          "passed": true,
           "vlen": 16,
           "bus_width": 64,
           "count_width": 16,
-          "register_width": 32
+          "register_width": 32,
+          "enable_is_mode": 1,
+          "proved_points": 10513,
+          "log_sha256": "f78ce1e0c1a4946147850fbec9d2c7db9ee602f69d58141112ad181b66ea029f"
         },
         {
+          "passed": true,
           "vlen": 16,
           "bus_width": 64,
           "count_width": 29,
-          "register_width": 32
+          "register_width": 32,
+          "enable_is_mode": 1,
+          "proved_points": 10955,
+          "log_sha256": "5fc7b21716ab8c6c883c4f49acbf873e24fc976c6b0d154aba016319e4c6c285"
         },
         {
+          "passed": true,
           "vlen": 16,
           "bus_width": 64,
           "count_width": 32,
-          "register_width": 32
+          "register_width": 32,
+          "enable_is_mode": 1,
+          "proved_points": 11045,
+          "log_sha256": "cc735ed1e095e5189b1ca88775ea9c03ae099dc0c6935dcf1dfb86f680659f35"
         },
         {
+          "passed": true,
           "vlen": 32,
           "bus_width": 64,
           "count_width": 32,
-          "register_width": 32
+          "register_width": 32,
+          "enable_is_mode": 1,
+          "proved_points": 11065,
+          "log_sha256": "507f3261a278fbd7c9937880724b05b66c9206692366504e97701c30112a306f"
         },
         {
+          "passed": true,
           "vlen": 4,
           "bus_width": 32,
           "count_width": 4,
-          "register_width": 4
+          "register_width": 4,
+          "enable_is_mode": 1,
+          "proved_points": 8857,
+          "log_sha256": "c1ca088a60d31ddbe5757b4e4d9c7ccd23cf2823a093aa67170986e81bbe8a87"
         },
         {
+          "passed": true,
           "vlen": 8,
           "bus_width": 64,
           "count_width": 8,
-          "register_width": 8
+          "register_width": 8,
+          "enable_is_mode": 1,
+          "proved_points": 9218,
+          "log_sha256": "58690187eb06bb679dfddd9579cb378f02b65d01b00c10e26e15d73d9299246b"
         },
         {
+          "passed": true,
           "vlen": 8,
           "bus_width": 64,
           "count_width": 9,
-          "register_width": 9
+          "register_width": 9,
+          "enable_is_mode": 1,
+          "proved_points": 9294,
+          "log_sha256": "480d127a0328f5ac3fd3d424878afa805264ab91aa7dc3c5195ffd352fc6a992"
         }
-      ]
-    },
-    "final_formal_simulation": {
-      "passed": true,
-      "report": "build/oa_geometry_r1/final_formal_simulation/summary.json",
-      "sha256": "6341feeb78705a83e580ae94c4550bcc4a45ee59fe4cec976e6e6118338ced34",
-      "profiles_passed": 6,
-      "synthesis_define": false,
+      ],
       "all_public_outputs_compared_each_cycle": true,
-      "state_comparison_scope": "Common state each cycle; effective WS/IS row tiles; group step after configuration preparation; next row tiles when consumed",
-      "parameters": [
+      "all_state_registers": [
+        "beats_in_row",
+        "beats_per_row_cur_tile",
+        "cfg_coalesce",
+        "cfg_coalesce_cols",
+        "cfg_dst_base",
+        "cfg_dst_row_stride_b",
+        "cfg_has_tiles",
+        "cfg_ia_reuse_num",
+        "cfg_is_mode",
+        "cfg_k",
+        "cfg_lat_tick",
+        "cfg_m",
+        "cfg_output_16bits",
+        "co_contiguous_q",
+        "co_current_row_tiles_q",
+        "co_current_rows",
+        "co_dma_len",
+        "co_dma_rows",
+        "co_dma_stride",
+        "co_has_next_col",
+        "co_has_next_group",
+        "co_initial_row_tiles_q",
+        "co_initial_rows",
+        "co_next_col_offset_q",
+        "co_next_row_tiles_q",
+        "co_next_rows_prepared",
+        "co_next_rows_remaining_q",
+        "co_row_div_shift_q",
+        "col_addr_step_cur",
+        "col_inc_in_range_q",
+        "col_inc_is_last_q",
+        "col_offset_addr_cur",
+        "col_tiles_last_idx",
+        "col_tiles_total",
+        "col_tiles_total_pre",
+        "column_base_addr",
+        "dma_done_q",
+        "group_base_is_last_q",
+        "group_inc_in_range_q",
+        "group_next_is_last_q",
+        "group_row_addr_step_cur",
+        "k_last_valid",
+        "m_last_valid",
+        "next_address_base",
+        "next_address_step",
+        "next_tile_col_advance_r",
+        "next_tile_col_is_last_r",
+        "next_tile_group_advance_r",
+        "next_tile_row_advance_r",
+        "next_tile_row_is_last_r",
+        "next_tile_wrap_r",
+        "oa_calc_over_r",
+        "row_addr_step_cur",
+        "row_group_base_addr_cur",
+        "row_group_base_idx",
+        "row_group_next_base_idx",
+        "row_in_tile",
+        "row_inc_in_range_q",
+        "row_inc_is_last_q",
+        "row_offset_addr_cur",
+        "row_tiles_last_idx",
+        "row_tiles_total",
+        "row_tiles_total_pre",
+        "rows_valid_cur_tile",
+        "state",
+        "tile_base_addr_cur",
+        "tile_col_idx",
+        "tile_col_inc_q",
+        "tile_col_is_last",
+        "tile_row_idx",
+        "tile_row_inc_q",
+        "tile_row_is_last",
+        "tiles_done",
+        "vec_valid_num_col_next_r",
+        "vec_valid_num_col_r",
+        "vec_valid_num_row_next_r",
+        "vec_valid_num_row_r"
+      ],
+      "input_value_constraints": [],
+      "handshake_constraints": [],
+      "report_sha256": "ebf42046fa6e88d9d727645ed276bb6b0797c24b297f8d13ac081d660a003b7e"
+    },
+    "simulation": {
+      "passed": true,
+      "profiles": [
         {
+          "passed": true,
           "vlen": 4,
           "bus_width": 32,
           "count_width": 4,
-          "register_width": 32
+          "register_width": 32,
+          "enable_is_mode": 1,
+          "proved_points": 10018,
+          "log_sha256": "ebc980da570a9586061ea6195a2500d4094eb6258db997fbdbd59b7bf660b7b9"
         },
         {
+          "passed": true,
           "vlen": 16,
           "bus_width": 64,
           "count_width": 29,
-          "register_width": 32
+          "register_width": 32,
+          "enable_is_mode": 1,
+          "proved_points": 10955,
+          "log_sha256": "525d93f62f3680473cf5c0da66171402bf0c5a8ef8e0aaaf111b14bbb0552549"
         },
         {
+          "passed": true,
           "vlen": 16,
           "bus_width": 64,
           "count_width": 1,
-          "register_width": 32
-        },
-        {
-          "vlen": 12,
-          "bus_width": 64,
-          "count_width": 29,
-          "register_width": 32
-        },
-        {
-          "vlen": 16,
-          "bus_width": 128,
-          "count_width": 29,
-          "register_width": 32
-        },
-        {
-          "vlen": 16,
-          "bus_width": 64,
-          "count_width": 29,
-          "register_width": 40
+          "register_width": 32,
+          "enable_is_mode": 1,
+          "proved_points": 9969,
+          "log_sha256": "5f1f340406075960991346f4ecd7f3f369ff1d47e154d08d218e5faa280cbc75"
         }
-      ]
-    },
-    "final_numeric": {
-      "passed": true,
-      "report": "build/oa_geometry_r1/final_numeric/summary.json",
-      "sha256": "2ca54b355c2ab60d6965c63eb97bce064a8d02bef143294b02f81a2d504317ae",
-      "profiles_passed": 8,
-      "undefined_behavior_sanitizer": true,
-      "totals": {
-        "scenarios": 4096,
-        "cycles": 4178136,
-        "commands": 128375,
-        "groups": 19793,
-        "completions": 2214,
-        "interrupted": 1429
-      },
-      "parameters": [
-        {
-          "vlen": 4,
-          "bus_width": 32,
-          "count_width": 8
-        },
-        {
-          "vlen": 8,
-          "bus_width": 64,
-          "count_width": 8
-        },
-        {
-          "vlen": 16,
-          "bus_width": 32,
-          "count_width": 16
-        },
-        {
-          "vlen": 16,
-          "bus_width": 64,
-          "count_width": 16
-        },
-        {
-          "vlen": 16,
-          "bus_width": 64,
-          "count_width": 28
-        },
-        {
-          "vlen": 16,
-          "bus_width": 64,
-          "count_width": 29
-        },
-        {
-          "vlen": 16,
-          "bus_width": 64,
-          "count_width": 32
-        },
-        {
-          "vlen": 32,
-          "bus_width": 64,
-          "count_width": 32
-        }
-      ]
-    },
-    "final_four_state_complete": {
-      "passed": true,
-      "report": "build/oa_geometry_r1/final_four_state_complete/summary.json",
-      "sha256": "aff156b7429fdf1838447bcbc9c515bd97bdc6195592384b1d11510b8806894c",
-      "profiles_passed": 4,
-      "strict_four_state_comparison": true,
-      "totals": {
-        "scenarios": 4096,
-        "cycles": 102780,
-        "checks": 205556
-      },
-      "parameters": [
-        {
-          "vlen": 4,
-          "bus_width": 32,
-          "count_width": 4
-        },
-        {
-          "vlen": 8,
-          "bus_width": 64,
-          "count_width": 6
-        },
-        {
-          "vlen": 16,
-          "bus_width": 64,
-          "count_width": 29
-        },
-        {
-          "vlen": 32,
-          "bus_width": 64,
-          "count_width": 32
-        }
-      ]
-    },
-    "final_fifo_integration": {
-      "passed": true,
-      "report": "build/oa_geometry_r1/final_fifo_integration/summary.json",
-      "sha256": "8b3bd7b09ad2b0b989e6e85069b073397d1be2a4d748bed838f84f008df992da",
-      "writer_profiles_passed": 1,
-      "truncated_product_profiles_passed": 12,
-      "retained_product_bits": [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        11,
-        12
-      ]
+      ],
+      "all_public_outputs_compared_each_cycle": true,
+      "all_state_registers": [
+        "beats_in_row",
+        "beats_per_row_cur_tile",
+        "cfg_coalesce",
+        "cfg_coalesce_cols",
+        "cfg_dst_base",
+        "cfg_dst_row_stride_b",
+        "cfg_has_tiles",
+        "cfg_ia_reuse_num",
+        "cfg_is_mode",
+        "cfg_k",
+        "cfg_lat_tick",
+        "cfg_m",
+        "cfg_output_16bits",
+        "co_contiguous_q",
+        "co_current_row_tiles_q",
+        "co_current_rows",
+        "co_dma_len",
+        "co_dma_rows",
+        "co_dma_stride",
+        "co_has_next_col",
+        "co_has_next_group",
+        "co_initial_row_tiles_q",
+        "co_initial_rows",
+        "co_next_col_offset_q",
+        "co_next_row_tiles_q",
+        "co_next_rows_prepared",
+        "co_next_rows_remaining_q",
+        "co_row_div_shift_q",
+        "col_addr_step_cur",
+        "col_inc_in_range_q",
+        "col_inc_is_last_q",
+        "col_offset_addr_cur",
+        "col_tiles_last_idx",
+        "col_tiles_total",
+        "col_tiles_total_pre",
+        "column_base_addr",
+        "dma_done_q",
+        "group_base_is_last_q",
+        "group_inc_in_range_q",
+        "group_next_is_last_q",
+        "group_row_addr_step_cur",
+        "k_last_valid",
+        "m_last_valid",
+        "next_address_base",
+        "next_address_step",
+        "next_tile_col_advance_r",
+        "next_tile_col_is_last_r",
+        "next_tile_group_advance_r",
+        "next_tile_row_advance_r",
+        "next_tile_row_is_last_r",
+        "next_tile_wrap_r",
+        "oa_calc_over_r",
+        "row_addr_step_cur",
+        "row_group_base_addr_cur",
+        "row_group_base_idx",
+        "row_group_next_base_idx",
+        "row_in_tile",
+        "row_inc_in_range_q",
+        "row_inc_is_last_q",
+        "row_offset_addr_cur",
+        "row_tiles_last_idx",
+        "row_tiles_total",
+        "row_tiles_total_pre",
+        "rows_valid_cur_tile",
+        "state",
+        "tile_base_addr_cur",
+        "tile_col_idx",
+        "tile_col_inc_q",
+        "tile_col_is_last",
+        "tile_row_idx",
+        "tile_row_inc_q",
+        "tile_row_is_last",
+        "tiles_done",
+        "vec_valid_num_col_next_r",
+        "vec_valid_num_col_r",
+        "vec_valid_num_row_next_r",
+        "vec_valid_num_row_r"
+      ],
+      "input_value_constraints": [],
+      "handshake_constraints": [],
+      "report_sha256": "24188e1694d88f7a9e0d8df711e31068c6f079aec8bf1986c38fac4d10f30e60"
     }
+  },
+  "numeric": {
+    "passed": true,
+    "profiles": [
+      {
+        "vlen": 4,
+        "bus_width": 32,
+        "count_width": 8,
+        "passed": true,
+        "binary_sha256": "f79c0f44904cad5c09be5a6f0fee874be9f98939862c315855768007cfb9d4a7",
+        "scenarios": 512,
+        "cycles": 533239,
+        "outputs": 21,
+        "commands": 16522,
+        "groups": 2945,
+        "completions": 279,
+        "interrupted": 179
+      },
+      {
+        "vlen": 8,
+        "bus_width": 64,
+        "count_width": 8,
+        "passed": true,
+        "binary_sha256": "9a9b5e0c7cfa3f3f38d84f43df6a5f25f48928cb315956c1b33b839b644bda65",
+        "scenarios": 512,
+        "cycles": 531817,
+        "outputs": 21,
+        "commands": 16351,
+        "groups": 2740,
+        "completions": 255,
+        "interrupted": 193
+      },
+      {
+        "vlen": 16,
+        "bus_width": 32,
+        "count_width": 16,
+        "passed": true,
+        "binary_sha256": "33588fe3a5ba2cbdf80e84d499ac4f9277a16343a3520addfdff6c438c3b3361",
+        "scenarios": 512,
+        "cycles": 541574,
+        "outputs": 21,
+        "commands": 16674,
+        "groups": 2470,
+        "completions": 269,
+        "interrupted": 171
+      },
+      {
+        "vlen": 16,
+        "bus_width": 64,
+        "count_width": 16,
+        "passed": true,
+        "binary_sha256": "8e2e177b6fe2afa1d61ae2ade05d6adeeb9531da076d367947bbe062d3ccb789",
+        "scenarios": 512,
+        "cycles": 547660,
+        "outputs": 21,
+        "commands": 16898,
+        "groups": 2477,
+        "completions": 259,
+        "interrupted": 200
+      },
+      {
+        "vlen": 16,
+        "bus_width": 64,
+        "count_width": 28,
+        "passed": true,
+        "binary_sha256": "1e64cb2227d732afd7ac4c62661085943f3c5f16f4d0062fb1066681508cf98c",
+        "scenarios": 512,
+        "cycles": 542182,
+        "outputs": 21,
+        "commands": 16787,
+        "groups": 2387,
+        "completions": 263,
+        "interrupted": 195
+      },
+      {
+        "vlen": 16,
+        "bus_width": 64,
+        "count_width": 29,
+        "passed": true,
+        "binary_sha256": "0df9857b547c8b46643f141f682713195f17c85bb282512ef64b961a454ded6d",
+        "scenarios": 512,
+        "cycles": 542182,
+        "outputs": 21,
+        "commands": 16787,
+        "groups": 2387,
+        "completions": 263,
+        "interrupted": 195
+      },
+      {
+        "vlen": 16,
+        "bus_width": 64,
+        "count_width": 32,
+        "passed": true,
+        "binary_sha256": "df0b1244c7a2b76b08a33fce15b7b72de4060c0ffdd9a8be312941ea55d65bd6",
+        "scenarios": 512,
+        "cycles": 542182,
+        "outputs": 21,
+        "commands": 16787,
+        "groups": 2387,
+        "completions": 263,
+        "interrupted": 195
+      },
+      {
+        "vlen": 32,
+        "bus_width": 64,
+        "count_width": 32,
+        "passed": true,
+        "binary_sha256": "a3e492a3d7123a44443a4a00e781f11b783ca9ab007d8520514799bc2283b538",
+        "scenarios": 512,
+        "cycles": 397300,
+        "outputs": 21,
+        "commands": 11569,
+        "groups": 2000,
+        "completions": 363,
+        "interrupted": 101
+      }
+    ],
+    "totals": {
+      "scenarios": 4096,
+      "cycles": 4178136,
+      "commands": 128375,
+      "groups": 19793,
+      "completions": 2214,
+      "interrupted": 1429
+    },
+    "undefined_behavior_sanitizer": true,
+    "report_sha256": "29f0698b1405855a5b762928f4c82ed93967fad68019567b3e06cc37b6f9493f"
+  },
+  "four_state": {
+    "passed": true,
+    "profiles": [
+      {
+        "vlen": 4,
+        "bus_width": 32,
+        "count_width": 4,
+        "passed": true,
+        "scenarios": 1024,
+        "cycles": 25695,
+        "checks": 51389,
+        "outputs": 21,
+        "log_sha256": "136a5d15e69c68fb7f2b1167804e5c93f97dfe20f6d4f629c7f94a3e4ff1b589",
+        "binary_sha256": "f0b58c47a4d69187ce4e5b5878b0536903464607f9d4b0e596d1e43b8a4080ec"
+      },
+      {
+        "vlen": 8,
+        "bus_width": 64,
+        "count_width": 6,
+        "passed": true,
+        "scenarios": 1024,
+        "cycles": 25695,
+        "checks": 51389,
+        "outputs": 21,
+        "log_sha256": "136a5d15e69c68fb7f2b1167804e5c93f97dfe20f6d4f629c7f94a3e4ff1b589",
+        "binary_sha256": "add4c67297cd1961b20f75b26e2048677628c46c8c59117d10f0e465120b2490"
+      },
+      {
+        "vlen": 16,
+        "bus_width": 64,
+        "count_width": 29,
+        "passed": true,
+        "scenarios": 1024,
+        "cycles": 25695,
+        "checks": 51389,
+        "outputs": 21,
+        "log_sha256": "136a5d15e69c68fb7f2b1167804e5c93f97dfe20f6d4f629c7f94a3e4ff1b589",
+        "binary_sha256": "7480f009d6e0e3c08b81116237b38ded0d5b13b27a7485866e9a1d5dac79fcf2"
+      },
+      {
+        "vlen": 32,
+        "bus_width": 64,
+        "count_width": 32,
+        "passed": true,
+        "scenarios": 1024,
+        "cycles": 25695,
+        "checks": 51389,
+        "outputs": 21,
+        "log_sha256": "136a5d15e69c68fb7f2b1167804e5c93f97dfe20f6d4f629c7f94a3e4ff1b589",
+        "binary_sha256": "ea891bfaf7170e34094c7cc043991d5c2c8a3a2ea0a16edd59b7c70c648c6c53"
+      }
+    ],
+    "totals": {
+      "scenarios": 4096,
+      "cycles": 102780,
+      "checks": 205556
+    },
+    "strict_comparison": true,
+    "report_sha256": "b31e49465c81be0587c302b26f6b68689ece626ac4233ab22ff6a5f37799e10a"
+  },
+  "mapping": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 1380,
+        "flip_flops": 944,
+        "dsp48e1": 2,
+        "carry4": 150
+      },
+      "longest_combinational_path_cells": 12,
+      "longest_register_path_cells": 10,
+      "register_graph_complete": true,
+      "metrics_sha256": "69e0f6d622aa0c11b5a1a8c5db7ac9440ebef6339a80f21525847ec043c32ab4"
+    },
+    "candidate": {
+      "resources": {
+        "logic_lut_cells": 1428,
+        "flip_flops": 944,
+        "dsp48e1": 2,
+        "carry4": 140
+      },
+      "longest_combinational_path_cells": 10,
+      "longest_register_path_cells": 10,
+      "register_graph_complete": true,
+      "metrics_sha256": "36d9afdee700aa5c1a3829f1ef6e75ff1a7f631651a893c17857375df40f1ca3"
+    },
+    "scope": "xc7 布局前原生映射；组合图包含模块输入端口，寄存器间级数单独记录"
   }
 }

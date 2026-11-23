@@ -265,7 +265,7 @@ module oa_writer #(
     logic [REG_WIDTH-1:0] co_next_col_offset;
     logic [2:0] init_group_shift;
     logic init_group_by_25;
-    logic [REG_WIDTH:0] co_initial_difference, co_next_difference;
+    logic [1:0] unused_co_compare_equal;
     logic co_initial_is_short, co_next_is_short;
     count_t row_tiles_decrement, col_tiles_decrement;
     logic co_contiguous_q;
@@ -471,11 +471,13 @@ module oa_writer #(
     assign co_valid_rows = co_current_rows;
     assign co_rows_limit = REG_WIDTH'(cfg_ia_reuse_num) << VCOL_W;
     assign co_initial_limit = REG_WIDTH'(init_reuse_num_eff) << VCOL_W;
-    // 扩展减法的最高位保存无符号借位，两个行数选择共用比较结果。
-    assign co_initial_difference = {1'b0, k} - {1'b0, co_initial_limit};
-    assign co_next_difference = {1'b0, co_next_rows_remaining_q} - {1'b0, co_rows_limit};
-    assign co_initial_is_short = co_initial_difference[REG_WIDTH];
-    assign co_next_is_short = co_next_difference[REG_WIDTH];
+    // 完整位宽的字节分组比较同时准备初始与下一组行数选择。
+    unsigned_compare #(.p_width(REG_WIDTH)) u_initial_rows_compare (
+        .i_a(k), .i_b(co_initial_limit),
+        .o_less(co_initial_is_short), .o_equal(unused_co_compare_equal[0]));
+    unsigned_compare #(.p_width(REG_WIDTH)) u_next_rows_compare (
+        .i_a(co_next_rows_remaining_q), .i_b(co_rows_limit),
+        .o_less(co_next_is_short), .o_equal(unused_co_compare_equal[1]));
     assign row_tiles_decrement = row_tiles_total - count_t'(1);
     assign col_tiles_decrement = col_tiles_total - count_t'(1);
     assign co_initial_rows_calc = 9'(co_initial_is_short ? k : co_initial_limit);

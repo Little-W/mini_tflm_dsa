@@ -13,6 +13,8 @@ from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/writeback/oa_writer.sv")
+sys.path.insert(0, str(ROOT))
+from scripts.rtl.source_files import input_files, with_dependencies
 
 
 def digest(path):
@@ -21,7 +23,7 @@ def digest(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--reference", default="9bb1e28a")
+    parser.add_argument("--reference", default="7ff66a59")
     parser.add_argument("--reference-rtl", type=Path)
     parser.add_argument("--rtl", type=Path, default=ROOT / SOURCE)
     parser.add_argument("--out", type=Path, default=ROOT / "build/oa_writer_geometry_equivalence")
@@ -36,8 +38,9 @@ def main():
     original = args.reference_rtl.read_text() if args.reference_rtl else read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT, text=True)
     reference = out / "oa_writer_ref.sv"
     reference.write_text(re.sub(r"\boa_writer\b", "oa_writer_ref", original))
-    sources = [args.rtl.resolve(), ROOT / "test/oa_writer/tb_equivalence.sv"]
-    hashes = {str(path): digest(path) for path in sources}
+    sources = with_dependencies([args.rtl.resolve(), ROOT / "test/oa_writer/tb_equivalence.sv"], ROOT)
+    tracked = input_files(sources, ROOT)
+    hashes = {str(path): digest(path) for path in tracked}
     reports = []
     for profile in args.profiles:
         size, bus, count = map(int, profile.split(":"))
@@ -68,7 +71,7 @@ def main():
             if temporary.suffix in (".o", ".gch"):
                 temporary.unlink()
         print(json.dumps(reports[-1]), flush=True)
-    if hashes != {str(path): digest(path) for path in sources}:
+    if hashes != {str(path): digest(path) for path in tracked}:
         raise RuntimeError("Sources changed during verification")
     (out / "summary.json").write_text(json.dumps(dict(passed=True, reference=None if args.reference_rtl else args.reference, undefined_behavior_sanitizer=True,
         source_sha256=hashes, reference_sha256=hashlib.sha256(original.encode()).hexdigest(),

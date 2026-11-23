@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import shlex
 import subprocess
 import sys
@@ -42,14 +43,16 @@ def main():
     cases = [(32, width, split) for width in (32, 64) for split in (0, 1)]
     cases += [(16, 16, 1), (33, 128, 1), (40, 256, 1)]
     runs = []
+    dependencies = runpy.run_path(str(ROOT / 'scripts/rtl/source_files.py'))['with_dependencies']
     for address_width, data_width, split in cases:
         folder = out / f'a{address_width}_d{data_width}_s{split}'
         folder.mkdir(exist_ok=True)
         options = f'-GADDR_W={address_width} -GDATA_W={data_width} -GSPLIT_GEMM_4K={split}'
         commands = []
         for name, source in (('reference', reference), ('current', candidate)):
+            sources = dependencies([source], ROOT)
             commands.extend([
-                f'read_slang --top conv_axi_read_guard {options} {shlex.quote(str(source))}{primitive_options}',
+                f'read_slang --top conv_axi_read_guard {options} {shlex.join(map(str, sources))}{primitive_options}',
                 'prep -top conv_axi_read_guard -flatten', 'memory_map', 'async2sync', 'opt_clean',
                 f'rename conv_axi_read_guard {name}', f'design -stash {name}',
             ])

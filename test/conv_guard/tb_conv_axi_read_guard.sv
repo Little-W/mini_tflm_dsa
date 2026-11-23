@@ -10,7 +10,7 @@ module tb_conv_axi_read_guard;
   logic [7:0] s_arlen=0;
   logic [2:0] s_arsize=2;
   logic [1:0] s_arburst=1,s_rresp;
-  logic m_arvalid,m_arready,m_rvalid,m_rready,m_rlast,idle;
+  logic m_arvalid,o_arb_arvalid,m_arready,m_rvalid,m_rready,m_rlast,idle;
   logic [31:0] m_araddr,m_rdata;
   logic [7:0] m_arlen;
   logic [2:0] m_arsize;
@@ -43,6 +43,8 @@ module tb_conv_axi_read_guard;
     end else begin
       cycles<=cycles+1;
       if(cycles>100000) $fatal(1,"guard timeout");
+      if(o_arb_arvalid && (!enable || !m_arvalid))
+        $fatal(1,"仲裁请求必须对应已启用的读取请求");
       rng<={rng[30:0],rng[31]^rng[21]^rng[1]^rng[0]};
       m_arready<=!mem_active && rng[0];
       s_rready<=rng[1] || rng[7];

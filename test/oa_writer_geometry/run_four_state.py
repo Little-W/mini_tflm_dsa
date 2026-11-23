@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/writeback/oa_writer.sv')
 sys.path.insert(0, str(ROOT / 'test'))
 from rtl_reference import read_rtl_source
+sys.path.insert(0, str(ROOT))
+from scripts.rtl.source_files import input_files, with_dependencies
 
 
 def digest(data):
@@ -113,7 +115,7 @@ endmodule
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--rtl', type=Path, default=ROOT / SOURCE)
-    parser.add_argument('--reference', default='9bb1e28a')
+    parser.add_argument('--reference', default='7ff66a59')
     parser.add_argument('--reference-rtl', type=Path)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--profiles', nargs='+', default=['4:32:4', '8:64:6', '16:64:29', '32:64:32'])
@@ -127,10 +129,18 @@ def main():
         return text.replace('int unsigned', 'integer')
     (out/'current.sv').write_text(compatible(current))
     (out/'reference.sv').write_text(compatible(re.sub(r'\boa_writer\b', 'oa_writer_ref', original)))
+    dependencies = with_dependencies([args.rtl.resolve()], ROOT)
+    input_hashes = {str(path): digest(path.read_bytes()) for path in input_files(dependencies, ROOT)}
+    copied_dependencies = []
+    for index, path in enumerate(dependencies[1:]):
+        copy = out / f'dependency_{index}.sv'
+        copy.write_text(compatible(path.read_text()))
+        copied_dependencies.append(copy)
     bench_source=ROOT/'test/oa_writer/tb_equivalence.sv'
     prefix=bench_source.read_text().split('    int unsigned cycle_count')[0]
     (out/'tb.sv').write_text(prefix+BODY)
     report=dict(passed=True,source_sha256=digest(current.encode()),reference_sha256=digest(original.encode()),
+                input_sha256=input_hashes,
                 bench_source_sha256=digest(bench_source.read_bytes()),runner_sha256=digest(Path(__file__).read_bytes()),
                 parameter_integer_compatibility=True, strict_comparison=True, profiles=[])
     for profile in args.profiles:
@@ -139,7 +149,8 @@ def main():
         cmd=['iverilog','-g2012','-s','tb_oa_writer_equivalence',
              f'-Ptb_oa_writer_equivalence.VLEN={lanes}',f'-Ptb_oa_writer_equivalence.BUS_WIDTH={bus}',
              f'-Ptb_oa_writer_equivalence.COUNT_WIDTH={count}',f'-Ptb_oa_writer_equivalence.SCENARIOS={args.scenarios}',
-             '-o',str(binary),str(out/'current.sv'),str(out/'reference.sv'),str(out/'tb.sv')]
+             '-o',str(binary),str(out/'current.sv'),str(out/'reference.sv'),str(out/'tb.sv'),
+             *map(str,copied_dependencies)]
         with (out/(label+'_compile.log')).open('w') as log:
             subprocess.run(cmd,stdout=log,stderr=subprocess.STDOUT,check=True)
         result=subprocess.run(['vvp',str(binary)],text=True,capture_output=True,timeout=180)
@@ -150,6 +161,8 @@ def main():
                  **{k:int(v) for k,v in re.findall(r'(\w+)=(\d+)',match.group(1))},log_sha256=digest(log.read_bytes()), binary_sha256=digest(binary.read_bytes()))
         report['profiles'].append(row);print(json.dumps(row),flush=True)
     if current!=args.rtl.read_text():raise RuntimeError('验证期间 RTL 发生变化')
+    if input_hashes != {name: digest(Path(name).read_bytes()) for name in input_hashes}:
+        raise RuntimeError('验证期间模块依赖发生变化')
     (out/'summary.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
 
 if __name__=='__main__':main()

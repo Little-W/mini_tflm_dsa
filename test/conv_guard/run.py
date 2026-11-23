@@ -2,6 +2,7 @@
 """Run the production read guard with an address-mapped AXI responder."""
 import json
 import os
+import runpy
 from pathlib import Path
 import shutil
 import subprocess
@@ -17,9 +18,11 @@ status={'scope':'production conv_axi_read_guard standalone RTL',
         'simulator':subprocess.check_output([sim,'--version'],text=True).strip(),'status':'FAIL'}
 log=RESULTS/'guard.log'
 with tempfile.TemporaryDirectory(prefix='conv_guard_',dir=os.environ.get('TMPDIR','/tmp')) as temporary:
+    sources=runpy.run_path(str(ROOT/'scripts/rtl/source_files.py'))['with_dependencies'](
+        [ROOT/'rtl/npu/conv/conv_axi_read_guard.sv',HERE/'tb_conv_axi_read_guard.sv'],ROOT)
     command=[sim,'--binary','--timing','--assert','-DNPU_SIM_ASSERT','-Wall','-Wno-fatal',
              '--top-module','tb_conv_axi_read_guard','--Mdir',temporary,'-j','2',
-             str(ROOT/'rtl/npu/conv/conv_axi_read_guard.sv'),str(HERE/'tb_conv_axi_read_guard.sv')]
+             *map(str,sources)]
     status['command']=command
     try:
         with log.open('w') as stream:

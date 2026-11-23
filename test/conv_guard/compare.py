@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import shutil
 import subprocess
 import sys
@@ -30,6 +31,7 @@ def main():
     content = read_rtl_source(f'{args.reference_ref}:{SOURCE}', cwd=ROOT, text=True)
     reference.write_text(content.replace('module conv_axi_read_guard', 'module reference_conv_axi_read_guard'))
     sources = [ROOT / SOURCE, reference, HERE / 'tb_guard_compare.sv']
+    sources = runpy.run_path(str(ROOT / 'scripts/rtl/source_files.py'))['with_dependencies'](sources, ROOT)
     options = []
     primitive_library_sha256 = None
     if args.fpga:

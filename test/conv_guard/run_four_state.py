@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import subprocess
 import sys
 ROOT = Path(__file__).resolve().parents[2]
@@ -73,6 +74,12 @@ def main():
 """
     assert bench.count(marker)==1;bench=bench.replace(marker,extra+marker)
     tb=out/"tb.sv";tb.write_text(bench);binary=out/"simulation"
+    dependencies=runpy.run_path(str(ROOT/"scripts/rtl/source_files.py"))["with_dependencies"](paths,ROOT)
+    for path in dependencies:
+        if path in paths:continue
+        target=out/path.name
+        target.write_text(path.read_text().replace("parameter int unsigned","parameter integer").replace("localparam int unsigned","localparam integer"))
+        paths.append(target)
     with (out/"build.log").open("w") as f:
         subprocess.run(["iverilog","-g2012","-s","tb_guard_compare","-o",str(binary),*map(str,paths),str(tb)],stdout=f,stderr=subprocess.STDOUT,check=True)
     with (out/"run.log").open("w") as f:

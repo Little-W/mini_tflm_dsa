@@ -70,30 +70,17 @@ module conv_axi_read_guard #(
     for (genvar allocation=0; allocation<4; allocation++) begin : g_allocation_mask
         wire base_present = base_q[allocation] != 0;
         localparam int p_word_width = 33 - BUS_SHIFT;
-        localparam int p_compare_groups = (p_word_width + 2) / 3;
-        (* keep *) logic [p_compare_groups-1:0] base_group_equal, end_group_equal;
         logic [BUS_BYTES-1:0] before_end_byte_mask, overlapping_byte_mask;
-        logic [p_word_width:0] base_word_difference;
-        logic [p_word_width:0] end_word_difference;
-        // 字范围比较保留扩展借位，四个分配区间并行产生边界条件。
-        assign base_word_difference = {2'b00,base_q[allocation][31:BUS_SHIFT]} -
-            {1'b0,addr_q[32:BUS_SHIFT]};
-        assign end_word_difference = {1'b0,addr_q[32:BUS_SHIFT]} -
-            {1'b0,end_q[allocation][32:BUS_SHIFT]};
-        wire after_base_word = base_word_difference[p_word_width];
-        // 保留完整字地址比较结果，使字节选择与状态判断共享并行范围条件。
-        (* keep *) wire at_base_word = &base_group_equal;
-        wire before_end_word = end_word_difference[p_word_width];
-        (* keep *) wire at_end_word = &end_group_equal;
-        for (genvar part = 0; part < p_compare_groups; part++) begin : g_word_compare
-            localparam int p_first = part * 3;
-            localparam int p_width = p_word_width - p_first < 3 ? p_word_width - p_first : 3;
-            wire [32:0] extended_base = {1'b0, base_q[allocation]};
-            assign base_group_equal[part] = addr_q[BUS_SHIFT+p_first +: p_width] ==
-                extended_base[BUS_SHIFT+p_first +: p_width];
-            assign end_group_equal[part] = addr_q[BUS_SHIFT+p_first +: p_width] ==
-                end_q[allocation][BUS_SHIFT+p_first +: p_width];
-        end
+        wire after_base_word, before_end_word;
+        wire at_base_word, at_end_word;
+        // 各字节分组并行比较完整字地址，范围选择只组合比较结果。
+        unsigned_compare #(.p_width(p_word_width)) u_base_word (
+            .i_a({1'b0,base_q[allocation][31:BUS_SHIFT]}),
+            .i_b(addr_q[32:BUS_SHIFT]),
+            .o_less(after_base_word), .o_equal(at_base_word));
+        unsigned_compare #(.p_width(p_word_width)) u_end_word (
+            .i_a(addr_q[32:BUS_SHIFT]), .i_b(end_q[allocation][32:BUS_SHIFT]),
+            .o_less(before_end_word), .o_equal(at_end_word));
         for (genvar byte_lane=0; byte_lane<BUS_BYTES; byte_lane++) begin : g_byte_lane
             wire after_base_byte, before_end_byte;
             if (byte_lane==BUS_BYTES-1) begin : g_last_byte
@@ -158,14 +145,18 @@ module conv_axi_read_guard #(
         // 保留33位地址运算的回绕语义；32位地址配置会将此项化简为零。
         assign request_end_wrap = (&request_addr_ext[32:12]) && (&request_last_word[p_page_word_w-1:0]);
         for (genvar allocation=0; allocation<4; allocation++) begin : g_allocation
-            logic [33:0] base_difference;
-            logic [21:0] page_difference;
-            assign base_difference = {1'b0,request_addr_ext} - {2'b00,base_q[allocation]};
-            assign page_difference = {1'b0,request_addr_ext[32:12]} - {1'b0,end_q[allocation][32:12]};
-            // 结束地址是开区间端点，页号借位与页内末字同时计算。
+            wire below_base, before_end_page;
+            wire unused_base_equal, unused_page_equal;
+            unsigned_compare #(.p_width(33)) u_request_base (
+                .i_a(request_addr_ext), .i_b({1'b0,base_q[allocation]}),
+                .o_less(below_base), .o_equal(unused_base_equal));
+            unsigned_compare #(.p_width(21)) u_request_end_page (
+                .i_a(request_addr_ext[32:12]), .i_b(end_q[allocation][32:12]),
+                .o_less(before_end_page), .o_equal(unused_page_equal));
+            // 结束地址为开区间端点，页号关系与页内末字同时计算。
             assign fast_allocation[allocation] = base_q[allocation] != 0 &&
-                !base_difference[33] &&
-                (request_end_wrap || page_difference[21] ||
+                !below_base &&
+                (request_end_wrap || before_end_page ||
                  (request_addr_ext[32:12] == end_q[allocation][32:12] &&
                   request_last_word < {1'b0, end_q[allocation][11:BUS_SHIFT]}));
         end
@@ -175,12 +166,16 @@ module conv_axi_read_guard #(
         assign request_end = request_addr_ext + ((33'(s_arlen) + 33'd1) << BUS_SHIFT);
         assign request_page_fits = {1'b0, s_araddr[11:0]} + ((13'(s_arlen) + 13'd1) << BUS_SHIFT) <= 13'd4096;
         for (genvar allocation=0; allocation<4; allocation++) begin : g_allocation
-            logic [33:0] base_difference;
-            logic [33:0] end_difference;
-            assign base_difference = {1'b0,request_addr_ext} - {2'b00,base_q[allocation]};
-            assign end_difference = {1'b0,end_q[allocation]} - {1'b0,request_end};
+            wire below_base, after_end;
+            wire unused_base_equal, unused_end_equal;
+            unsigned_compare #(.p_width(33)) u_request_base (
+                .i_a(request_addr_ext), .i_b({1'b0,base_q[allocation]}),
+                .o_less(below_base), .o_equal(unused_base_equal));
+            unsigned_compare #(.p_width(33)) u_request_end (
+                .i_a(end_q[allocation]), .i_b(request_end),
+                .o_less(after_end), .o_equal(unused_end_equal));
             assign fast_allocation[allocation] = base_q[allocation] != 0 &&
-                !base_difference[33] && !end_difference[33];
+                !below_base && !after_end;
         end
     end
 
