@@ -1,0 +1,26 @@
+{
+  "kernel_buffer_s8": {
+    "top": "kernel_loader_buffer",
+    "sources": [
+      "rtl/npu/loaders/kernel_loader_buffer.sv"
+    ],
+    "options": [
+      "-D", "SYNTHESIS=1", "-D", "XILINX_FPGA=1",
+      "-GSIZE=16", "-GDATA_WIDTH=8"
+    ],
+    "parameters": {"SIZE": 16, "DATA_WIDTH": 8},
+    "configuration": "16 列、每列 48×8 的同步权重存储"
+  },
+  "kernel_buffer_s16": {
+    "top": "kernel_loader_buffer",
+    "sources": [
+      "rtl/npu/loaders/kernel_loader_buffer.sv"
+    ],
+    "options": [
+      "-D", "SYNTHESIS=1", "-D", "XILINX_FPGA=1",
+      "-GSIZE=16", "-GDATA_WIDTH=16"
+    ],
+    "parameters": {"SIZE": 16, "DATA_WIDTH": 16},
+    "configuration": "16 列、每列 48×16 的同步权重存储"
+  }
+}

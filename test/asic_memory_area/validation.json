@@ -1,0 +1,34 @@
+{
+  "passed": true,
+  "native_dc_available": false,
+  "native_dc_executed": false,
+  "tests_passed": 14,
+  "tcl_accounting_test_executed": true,
+  "unordered_timing_collection_test_executed": true,
+  "missing_tool_rejected": true,
+  "required_output_checks_passed": true,
+  "failure_state_checks_passed": true,
+  "source_snapshot_consistency_checked": true,
+  "source_sha256": {
+    "scripts/asic/compare_memory_area.py": "461e9ed64972f57cab53a6598b45b18c17eed6f5e09f72101ec8b17c8fd7b0be",
+    "test/asic_memory_area/test_compare_memory_area.py": "1f2c0006b334b66e44a4eee067acbdf4b7ab91744e7c9b4b1ae2c90a6aaecc43"
+  },
+  "unit_test_log_sha256": "59f53c863e893f2a90b0e0ff543258a6d492ffd05a8fab33dfdfebe6f8c2e8bc",
+  "real_source_preparation": {
+    "passed": true,
+    "cases": [
+      "reference_ia0",
+      "reference_ia1",
+      "current_ia0",
+      "current_ia1"
+    ],
+    "input_count_per_case": {
+      "reference_ia0": 119,
+      "reference_ia1": 119,
+      "current_ia0": 119,
+      "current_ia1": 119
+    },
+    "comparison_manifest_sha256": "8df62b827c4ecf91b5b9b42bcad721a8a00b3e49b3dc57e46f3a3a9d2bc1c6c0",
+    "contains_area_results": false
+  }
+}

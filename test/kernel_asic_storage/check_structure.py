@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""检查生产权重缓存的 ASIC 同步存储和 FPGA 矩阵存储容量。"""
+"""检查生产权重缓存的容量、端口行为以及 ASIC 小数组实现。"""
 from __future__ import annotations
 
 import argparse
@@ -72,45 +72,61 @@ def main() -> None:
         assert not any('latch' in cell['type'].lower() for cell in cells.values())
         flip_flops = sum(len(cell['connections']['Q']) for cell in cells.values()
                          if cell['type'].startswith(('$dff', '$sdff', '$adff')))
+        assert not macros
+        assert len(matrix_memories) == 16, len(matrix_memories)
+        capacity = 0
+        for column in range(16):
+            matched = [(name, cell) for name, cell in matrix_memories
+                       if f'g_column_storage.g_column_ram[{column}].' in name]
+            assert len(matched) == 1, (column, len(matched))
+            _, memory = matched[0]
+            params = memory['parameters']
+            assert number(params['WIDTH']) == 16
+            assert number(params['SIZE']) == 48
+            assert number(params['RD_PORTS']) == 1
+            assert number(params['RD_CLK_ENABLE']) == 1
+            assert number(params['WR_PORTS']) == 1
+            assert number(params['WR_CLK_ENABLE']) == 1
+            assert number(params['RD_TRANSPARENCY_MASK']) == 0
+            assert number(params['RD_COLLISION_X_MASK']) == 0
+            capacity += number(params['WIDTH']) * number(params['SIZE'])
+        assert capacity == 12288
+        result = dict(macro_count=0, matrix_inferred_memories=16,
+                      matrix_storage_bits=capacity, register_bits_outside_memories=flip_flops,
+                      synchronous_read=True, synchronous_write=True,
+                      read_ports_per_column=1, write_ports_per_column=1,
+                      same_address_read='old data')
         if mode == 'asic':
-            assert len(macros) == 16, len(macros)
-            assert not matrix_memories, [name for name, _ in matrix_memories]
-            for column in range(16):
-                matched = [(name, cell) for name, cell in macros
-                           if f'g_column_storage.g_column_ram[{column}].' in name]
-                assert len(matched) == 1, (column, len(matched))
-                _, macro = matched[0]
-                assert macro['type'] == 'RAMTP128X16'
-                ports = macro['connections']
-                assert len(ports['QA']) == len(ports['DB']) == len(ports['WENB']) == 16
-                assert len(ports['AA']) == len(ports['AB']) == 7
-                assert ports['CLKA'] == ports['CLKB'] == module['ports']['clk']['bits']
-                assert ports['RET1N'] == ports['COLLDISN'] == ['1']
-            assert flip_flops < 2000, flip_flops
-            result = dict(macro_type='RAMTP128X16', macro_count=16,
-                          physical_storage_bits=16*128*16, matrix_inferred_memories=0,
-                          register_bits=flip_flops)
+            mapped_script = folder / 'registers.ys'
+            mapped_log = folder / 'registers.log'
+            mapped_netlist = folder / 'registers.json'
+            mapped_script.write_text('\n'.join([
+                'read_json ' + shlex.quote(str(netlist)),
+                'memory_map', 'opt', 'opt_expr -undriven', 'opt_clean', 'check -assert',
+                'write_json ' + shlex.quote(str(mapped_netlist)),
+            ]) + '\n')
+            with mapped_log.open('w') as stream:
+                subprocess.run([sys.executable, str(ROOT / 'scripts/fpga/open_fpga_synth.py'),
+                                '--worker', str(mapped_script)], stdout=stream,
+                               stderr=subprocess.STDOUT, check=True)
+            mapped_cells = json.loads(mapped_netlist.read_text())['modules'][TOP]['cells']
+            assert not any(cell['type'].startswith(('RAMTP', '$mem'))
+                           for cell in mapped_cells.values())
+            assert not any('latch' in cell['type'].lower() for cell in mapped_cells.values())
+            register_bits = sum(len(cell['connections']['Q']) for cell in mapped_cells.values()
+                                if cell['type'].startswith(('$dff', '$sdff', '$adff')))
+            assert register_bits >= capacity
+            result.update(storage_implementation='register array',
+                          physical_storage_bits=capacity,
+                          register_bits_after_memory_map=register_bits,
+                          register_map_script_sha256=sha(mapped_script),
+                          register_map_log_sha256=sha(mapped_log),
+                          register_map_netlist_sha256=sha(mapped_netlist))
+            with gzip.open(str(mapped_netlist) + '.gz', 'wb') as stream:
+                stream.write(mapped_netlist.read_bytes())
+            mapped_netlist.unlink()
         else:
-            assert not macros
-            assert len(matrix_memories) == 16, len(matrix_memories)
-            capacity = 0
-            for _, memory in matrix_memories:
-                params = memory['parameters']
-                assert number(params['WIDTH']) == 16
-                assert number(params['SIZE']) == 48
-                assert number(params['RD_PORTS']) == 1
-                assert number(params['RD_CLK_ENABLE']) == 1
-                assert number(params['WR_PORTS']) == 1
-                assert number(params['WR_CLK_ENABLE']) == 1
-                assert number(params['RD_TRANSPARENCY_MASK']) == 0
-                assert number(params['RD_COLLISION_X_MASK']) == 0
-                capacity += number(params['WIDTH']) * number(params['SIZE'])
-            assert capacity == 12288
-            result = dict(macro_count=0, matrix_inferred_memories=16,
-                          matrix_storage_bits=capacity, register_bits=flip_flops,
-                          synchronous_read=True, synchronous_write=True,
-                          read_ports_per_column=1, write_ports_per_column=1,
-                          same_address_read='old data')
+            result.update(storage_implementation='inferred synchronous RAM')
         entry = dict(mode=mode, passed=True, script_sha256=sha(script), log_sha256=sha(log),
                      netlist_sha256=sha(netlist), **result)
         report['profiles'].append(entry)

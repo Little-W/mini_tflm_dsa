@@ -75,6 +75,15 @@ python3 test/requant_group_buffer_npu/run.py \
 
 省略 `--source-root` 时使用脚本所在仓库，省略 IA 参数时使用 0。参考源码的 IA 开启配置以 `--ia-compact-enable 1` 运行。输出包含源文件副本、DC 准备结果、展开脚本、日志、压缩网表及 `summary.json`。`--keep-netlist` 可保留未压缩网表。
 
-`measurement.json` 保存参考提交与当前源码的四项结果。SRAM 封装的边界功能检查覆盖默认深度 128、256、384、385、1100，以及显式指定宏深度的两项配置，共 9105 次比较。分组缓冲功能与控制检查由 `test/requant_group_buffer_memory/` 执行。
+`measurement.json` 保存参考提交与当前源码的四项结果，完整 NPU 的宏数量如下：
+
+| 源码 | IA_COMPACT_ENABLE | 128×16 宏 | 1024×16 宏 |
+| --- | ---: | ---: | ---: |
+| `820c2b18` | 0 | 52 | 97 |
+| `820c2b18` | 1 | 40 | 105 |
+| 当前源码 | 0 | 110 | 64 |
+| 当前源码 | 1 | 42 | 101 |
+
+SRAM 封装的边界功能检查覆盖默认深度 128、256、384、385、1100，以及显式指定宏深度的两项配置，共 9105 次比较。分组缓冲功能与控制检查由 `test/requant_group_buffer_memory/` 执行，13 种配置通过数据比较及控制属性检查，功能测试共读取 39,642 行，比较 5,188,506 个消费数据位。
 
 本检查记录存储结构和容量。实际 ASIC 总面积及 150 MHz 时序由 `scripts/asic/compare_memory_area.py` 使用相同工艺库和约束进行原生 DC 比较。

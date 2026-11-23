@@ -448,7 +448,20 @@
       },
       "elaboration_script_sha256": "1ca3ac7d79e5b706f39b3b09152d66c08180548077e3d1de389694a6baa68c83",
       "checker_source_sha256": "541ee8a630f1e01a6abaf1eb2bf5295e7a83527eaa576314da7dec0cdd6be0e9",
-      "storage_analyzer_sha256": "5df772b164b60ce7cf761e08ebff098fccf7271ab759d1b4663b556df9a63e46"
+      "storage_analyzer_sha256": "5df772b164b60ce7cf761e08ebff098fccf7271ab759d1b4663b556df9a63e46",
+      "current_checker_reinspection": {
+        "path": "/workspace/scratch/e1a5fa683a84/r21_npu_structure/checked_820c_ia0/reinspection_current_checker.json",
+        "sha256": "8d31337177c054b43821af611c1c8f3e939e23ecdbc03d9d5dc1a78bd568d010",
+        "passed": true,
+        "uses_existing_elaboration": true,
+        "reelaborated": false,
+        "same_result": true,
+        "mismatched_ia_mode_rejected": true,
+        "checker_source_sha256": "5fadb06108a181f76b98f4d74df797a8acdeb1cdc0682c065456ecde4829f7a2",
+        "storage_analyzer_sha256": "eebbe3d6f5cb57a7d2cb4f9caf791442840f23ef00365df6d59a6b55a004ae8f",
+        "elaborated_netlist_sha256": "18a982cccfb89a311071177585ff389f240a1f8d4ea7d770a91b161601eaff3e",
+        "elaboration_summary_sha256": "01f2b8f1ab788f46daa4af82894a37c3d52a2d2bd039a519895e77bd21c7509c"
+      }
     },
     {
       "implementation": "820c",
@@ -642,7 +655,20 @@
       },
       "elaboration_script_sha256": "8dc10a0126fab098a8428a3274912b725a23fe7f485069a534de54cd5eb5f0c3",
       "checker_source_sha256": "541ee8a630f1e01a6abaf1eb2bf5295e7a83527eaa576314da7dec0cdd6be0e9",
-      "storage_analyzer_sha256": "5df772b164b60ce7cf761e08ebff098fccf7271ab759d1b4663b556df9a63e46"
+      "storage_analyzer_sha256": "5df772b164b60ce7cf761e08ebff098fccf7271ab759d1b4663b556df9a63e46",
+      "current_checker_reinspection": {
+        "path": "/workspace/scratch/e1a5fa683a84/r21_npu_structure/checked_820c_ia1/reinspection_current_checker.json",
+        "sha256": "eae12046336057e8619f510bf6b7c15478a20b7f8b08f747c8a4df79034e2c9f",
+        "passed": true,
+        "uses_existing_elaboration": true,
+        "reelaborated": false,
+        "same_result": true,
+        "mismatched_ia_mode_rejected": true,
+        "checker_source_sha256": "5fadb06108a181f76b98f4d74df797a8acdeb1cdc0682c065456ecde4829f7a2",
+        "storage_analyzer_sha256": "eebbe3d6f5cb57a7d2cb4f9caf791442840f23ef00365df6d59a6b55a004ae8f",
+        "elaborated_netlist_sha256": "9778a875ec308dbbfede25f3b2e230124edbf01a961b07733291215bea9ab02a",
+        "elaboration_summary_sha256": "f86ebd4d12951ed43bc4543a2d3a3669c9add9e3c0564befd85277c9f417b854"
+      }
     },
     {
       "implementation": "current",
