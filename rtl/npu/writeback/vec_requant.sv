@@ -1047,7 +1047,9 @@ module vec_requant #(
     assign row_consume_valid = in_valid && !i_dw_enable;
     assign row_consume_tile_done = in_tile_done;
     assign parameter_read_idx = input_group_idx_cur;
-    assign o_group_ready = 1'b1;
+    // 当前末行使用已装载参数；下一参数组在参数装载完成后获得启动许可。
+    assign o_group_ready = !(cfg_control_per_channel && row_consume_valid &&
+        row_consume_tile_done && !next_same_quant_group_cur);
     assign out_valid = parallel_lane_valid[0] && !dw_owner_q[p_pipeline_stages-1];
     assign out_tile_done = tile_done_q[p_pipeline_stages-1] && !dw_owner_q[p_pipeline_stages-1];
     always_ff @(posedge clk or negedge rst_n) begin

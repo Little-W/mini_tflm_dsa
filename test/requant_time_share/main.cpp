@@ -29,6 +29,7 @@ public:
     std::vector<std::pair<uint32_t,unsigned>> commands[2];
     Response response[2];
     uint64_t cycles=0,outputs=0,elements=0,groups=0,clears=0,resets=0,full_groups=0,commands_count=0;
+    uint64_t boundary_cases=0,boundary_rows=0,parameter_boundaries=0,overlap_starts=0;
     unsigned scenario=0;
     std::array<unsigned,2> received{};
     uint32_t multiplier(unsigned index) const {
@@ -128,6 +129,68 @@ public:
     }
     template<class Predicate>void wait(Predicate predicate){for(unsigned n=0;!predicate();++n){require(n<100000,"Quantization wait exceeded");tick();}}
     void idle(unsigned n){dut.input_valid=0;dut.input_tile_done=0;while(n--)tick();}
+    void check_parallel_boundaries(){
+        if(LANES!=N)return;
+        struct Group {unsigned base,column,rows;};
+        const std::array<unsigned,8> row_counts={1,N-1,N+1,2*N-1,2*N+1,REUSE*N,REUSE*N+1,2*REUSE*N+N};
+        const std::array<unsigned,5> column_counts={1,N-1,N+1,2*N,2*N+1};
+        for(unsigned mode=0;mode<8;++mode){
+            for(unsigned row_count:row_counts)for(unsigned column_count:column_counts){
+                ++scenario;++boundary_cases;
+                dut.cfg_per_channel=mode&1U;dut.cfg_is=(mode>>1)&1U;dut.cfg_s16=(mode>>2)&1U;
+                dut.cfg_min=uint32_t(dut.cfg_s16 ? -30000 : -100);dut.cfg_max=dut.cfg_s16 ? 30000 : 100;
+                dut.cfg_offset=uint32_t(int(scenario%17)-8);
+                dut.cfg_multiplier=dut.cfg_per_channel ? 0x10000U : multiplier(0);
+                dut.cfg_shift=dut.cfg_per_channel ? 0x20000U : shift(0);
+                dut.cfg_rows=row_count;dut.cfg_columns=column_count;
+                dut.cfg_reuse=(scenario%3==0 ? 1U : scenario%3==1 ? std::min<unsigned>(2,REUSE) : REUSE);
+                dut.input_valid=0;dut.input_tile_done=0;dut.group_start=0;
+                dut.init_cfg=1;tick();dut.init_cfg=0;commands[0].clear();commands[1].clear();received={};
+                std::vector<Group> work;
+                for(unsigned base=0;base<row_count;base+=dut.cfg_reuse*N)
+                    for(unsigned column=0;column<column_count;column+=N)
+                        work.push_back({base,column,std::min<unsigned>(dut.cfg_reuse*N,row_count-base)});
+                bool reserved=false;
+                for(unsigned group=0;group<work.size();++group){
+                    const auto current=work[group];
+                    if(!reserved){
+                        dut.input_valid=0;dut.input_tile_done=0;dut.group_start=0;dut.eval();
+                        wait([&]{return dut.group_ready==3 && dut.params_ready==3;});
+                        dut.group_rows=current.rows;dut.group_start=1;tick();dut.group_start=0;
+                    }else{
+                        // The array output and bias registers precede quantization input.
+                        idle(2);
+                    }
+                    reserved=false;++groups;
+                    for(unsigned row=0;row<current.rows;++row){
+                        const bool final_row=row+1==current.rows;
+                        const bool parameter_change=dut.cfg_per_channel && final_row &&
+                            (!dut.cfg_is || current.column+N>=column_count);
+                        dut.input_valid=1;dut.input_tile_done=(row%N==N-1 || final_row);
+                        for(unsigned lane=0;lane<N;++lane)dut.input_data[lane]=random();
+                        dut.clk=0;dut.eval();
+                        require(dut.params_ready==3,"An admitted group reached unavailable parameters");
+                        require(dut.group_ready==(parameter_change ? 0U : 3U),
+                                "Parallel group admission differs at a parameter boundary");
+                        parameter_boundaries+=parameter_change;
+                        if(final_row && group+1<work.size() && dut.group_ready==3){
+                            dut.group_start=1;dut.group_rows=work[group+1].rows;
+                            reserved=true;++overlap_starts;
+                        }
+                        Row value=golden(current.base+row,current.column);
+                        expected[0].push_back(value);expected[1].push_back(value);tick();
+                        dut.group_start=0;++boundary_rows;
+                    }
+                }
+                dut.input_valid=0;dut.input_tile_done=0;dut.group_start=0;
+                wait([&]{return expected[0].empty() && expected[1].empty();});
+                require(commands[0]==commands[1],"Parallel parameter DMA sequences differ");
+                idle(8);
+            }
+        }
+        require(boundary_cases==320 && parameter_boundaries && overlap_starts,
+                "Parallel boundary coverage is incomplete");
+    }
     void run(){
         dut.rst_n=0;dut.init_cfg=0;dut.input_valid=0;dut.group_start=0;tick();tick();dut.rst_n=1;
         for(scenario=0;scenario<96;++scenario){
@@ -176,10 +239,13 @@ public:
             if(!canceled)require(commands[0]==commands[1],"Parameter DMA sequence differs");
             idle(16);
         }
+        check_parallel_boundaries();
         require(groups && outputs && clears && resets && full_groups,"Coverage incomplete");
         std::cout<<"{\"passed\":true,\"vlen\":"<<N<<",\"lanes\":"<<LANES<<",\"reuse\":"<<REUSE<<",\"bus\":"<<BUS
                  <<",\"cycles\":"<<cycles<<",\"outputs\":"<<outputs<<",\"elements\":"<<elements<<",\"groups\":"<<groups
-                 <<",\"clears\":"<<clears<<",\"resets\":"<<resets<<",\"full_groups\":"<<full_groups<<",\"dma_commands\":"<<commands_count<<"}\n";
+                 <<",\"clears\":"<<clears<<",\"resets\":"<<resets<<",\"full_groups\":"<<full_groups<<",\"dma_commands\":"<<commands_count
+                 <<",\"boundary_cases\":"<<boundary_cases<<",\"boundary_rows\":"<<boundary_rows
+                 <<",\"parameter_boundaries\":"<<parameter_boundaries<<",\"overlap_starts\":"<<overlap_starts<<"}\n";
     }
 };
 int main(int argc,char **argv){Verilated::commandArgs(argc,argv);try{Check check;check.run();check.dut.final();}catch(const std::exception&e){std::cerr<<e.what()<<'\n';return 1;}}
