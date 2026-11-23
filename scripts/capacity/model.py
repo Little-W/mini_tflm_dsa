@@ -20,7 +20,7 @@ POOL_ALIGNMENT = 64
 MAX_POOL_BYTES = 1 << 24
 SCOPES = ("logical-state", "buffer-ram")
 REPRESENTATIONS = ("adaptive", "raw32")
-MODEL_VERSION = "dip-shared-window-vector-v16"
+MODEL_VERSION = "dip-shared-window-vector-v17"
 DECODE_FIFO_ROWS = 8
 DECODE_PREFETCH_CREDITS = 7
 SHARED_BANK_BYTES = 2048
@@ -146,7 +146,7 @@ def memory_geometry(cache, frames, pool_bytes, size=16, compressed=True, *, shar
 def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None,
                        bank_bytes=SHARED_BANK_BYTES, bank_count=None, ia_compact_enable=False,
                        im2col_cache_bytes=im2col_cache.DEFAULT_BYTES, bus_width=64,
-                       vector_pe_count=None, target="asic"):
+                       vector_pe_count=None, conv_low_latency=False, target="asic"):
     """Addressable data arrays and their persistent metadata, in logical bits.
 
     The full interface has 16-bit activation and stationary operands, both S8
@@ -164,6 +164,8 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
         raise ValueError("bus_width must be 32 or 64")
     if target not in ("asic", "generic"):
         raise ValueError("target must be asic or generic")
+    if type(conv_low_latency) not in (bool, int) or conv_low_latency not in (0, 1):
+        raise ValueError("CONV_LOW_LATENCY must be 0 or 1")
     vector_pe_count = min(size, 16) if vector_pe_count is None else vector_pe_count
     if vector_pe_count not in (1, 2, 4, 8, 16) or vector_pe_count > size:
         raise ValueError("vector_pe_count must be a power of two no greater than SIZE and 16")
@@ -178,7 +180,7 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
     # 输入存储按 PE 并行度保留二倍或四倍 tile；累加、指数、偏置和量化参数各保存一份。
     vector_input_rows = 4 * size if vector_pe_count >= 16 else 2 * size
     prefetch_key_copies = 1 if target == "asic" else 2
-    demand_depth = 2
+    demand_depth = 1 if conv_low_latency else 2
     bits = {
         "ia_cache_tags": slots * (2 * (32 - (size.bit_length() - 1)) + size.bit_length() + 1),
         "ia_slot_metadata": slots * (2 * size.bit_length() + 2),
@@ -228,27 +230,29 @@ def register_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *,
 def buffer_ram_bytes(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None,
                      bank_bytes=SHARED_BANK_BYTES, bank_count=None, ia_compact_enable=False,
                      im2col_cache_bytes=im2col_cache.DEFAULT_BYTES, bus_width=64,
-                     vector_pe_count=None, target="asic"):
+                     vector_pe_count=None, conv_low_latency=False, target="asic"):
     return ceil_div(sum(buffer_arrays_bits(cache, frames, pool_bytes, size, compressed,
                                           shared=shared, bank_bytes=bank_bytes,
                                           bank_count=bank_count, ia_compact_enable=ia_compact_enable,
                                           im2col_cache_bytes=im2col_cache_bytes,
                                           bus_width=bus_width,
-                                          vector_pe_count=vector_pe_count, target=target).values()), 8)
+                                          vector_pe_count=vector_pe_count,
+                                          conv_low_latency=conv_low_latency, target=target).values()), 8)
 
 
 def allocation(cache, frames, pool_bytes, budget_bytes, scope="buffer-ram", *,
                size=16, compressed=True, measured_state_bits=None, shared=None,
                bank_bytes=SHARED_BANK_BYTES, bank_count=None, ia_compact_enable=False,
                im2col_cache_bytes=im2col_cache.DEFAULT_BYTES, bus_width=64,
-               vector_pe_count=None, target="asic"):
+               vector_pe_count=None, conv_low_latency=False, target="asic"):
     _integer(budget_bytes, "budget bytes")
     if scope not in SCOPES:
         raise ValueError(f"budget scope must be one of {SCOPES}")
     arrays = buffer_arrays_bits(cache, frames, pool_bytes, size, compressed, shared=shared,
                                 bank_bytes=bank_bytes, bank_count=bank_count, ia_compact_enable=ia_compact_enable,
                                 im2col_cache_bytes=im2col_cache_bytes, bus_width=bus_width,
-                                vector_pe_count=vector_pe_count, target=target)
+                                vector_pe_count=vector_pe_count,
+                                conv_low_latency=conv_low_latency, target=target)
     ram_bits = sum(arrays.values())
     ram_bytes = ceil_div(ram_bits, 8)
     if measured_state_bits is not None:
@@ -262,6 +266,8 @@ def allocation(cache, frames, pool_bytes, budget_bytes, scope="buffer-ram", *,
                                      bank_bytes=bank_bytes, bank_count=bank_count, ia_compact_enable=ia_compact_enable)
     used = measured_state_bits / 8 if scope == "logical-state" else ram_bytes
     return dict(ia_cache_blocks=cache, ps_frame_count=frames, size=size, bus_width=bus_width,
+                conv_low_latency=bool(conv_low_latency),
+                conv_request_response_depth=1 if conv_low_latency else 2,
                 compressed_ps=False,
                 ps_frame_store_enabled=bool(compressed),
                 ps_pool_bytes=(layout["default_ps_pool_bytes"] if layout["shared_ia_ps_enabled"]
@@ -363,7 +369,7 @@ def plan_for_hardware(M, K, N, cache, frames, pool_bytes, representation="raw32"
 
 def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", representation="raw32",
                    measure=None, fixed_only=False, bank_bytes=SHARED_BANK_BYTES, bank_count=None, ia_compact_enable=False,
-                   im2col_cache_bytes=im2col_cache.DEFAULT_BYTES):
+                   im2col_cache_bytes=im2col_cache.DEFAULT_BYTES, conv_low_latency=False):
     _integer(budget_bytes, "budget bytes")
     im2col_cache.validate_bytes(im2col_cache_bytes)
     if scope not in SCOPES:
@@ -377,6 +383,7 @@ def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", represent
         pool = (banks - 1) * bank_bytes
         parameters = dict(shared=True, bank_bytes=bank_bytes, bank_count=banks, ia_compact_enable=ia_compact_enable)
         if buffer_ram_bytes(cache, frames, pool, im2col_cache_bytes=im2col_cache_bytes,
+                            conv_low_latency=conv_low_latency,
                             **parameters) > budget_bytes:
             continue
         state = measure(cache, frames, pool, representation, bank_bytes=bank_bytes,
@@ -388,7 +395,8 @@ def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", represent
 
 def solve(workloads, budget_bytes, budget_scope="buffer-ram", representation="raw32", *,
           measure=None, bank_bytes=SHARED_BANK_BYTES, im2col_cache_bytes=im2col_cache.DEFAULT_BYTES,
-          cache_blocks=4, frame_count=16, ps_build_bytes=12288, ia_compact_enable=False):
+          cache_blocks=4, frame_count=16, ps_build_bytes=12288, ia_compact_enable=False,
+          conv_low_latency=False):
     tasks = validate_workloads(workloads)
     im2col_cache.validate_bytes(im2col_cache_bytes)
     _integer(budget_bytes, "budget bytes")
@@ -406,7 +414,8 @@ def solve(workloads, budget_bytes, budget_scope="buffer-ram", representation="ra
     for banks in range(SHARED_MIN_BANKS, SHARED_MAX_BANKS + 1):
         parameters = dict(shared=True, bank_bytes=bank_bytes, bank_count=banks, ia_compact_enable=ia_compact_enable)
         if buffer_ram_bytes(cache_blocks, frame_count, ps_build_bytes,
-                            im2col_cache_bytes=im2col_cache_bytes, **parameters) > budget_bytes:
+                            im2col_cache_bytes=im2col_cache_bytes,
+                            conv_low_latency=conv_low_latency, **parameters) > budget_bytes:
             continue
         state = None
         if budget_scope == "logical-state":
@@ -422,6 +431,7 @@ def solve(workloads, budget_bytes, budget_scope="buffer-ram", representation="ra
             continue
         alloc = allocation(cache_blocks, frame_count, ps_build_bytes, budget_bytes, budget_scope,
                            measured_state_bits=state, im2col_cache_bytes=im2col_cache_bytes,
+                           conv_low_latency=conv_low_latency,
                            **parameters)
         key = (math.prod(p["service_estimate"] for p in plans),
                sum(p["column_frames"] for p in plans), sum(p["groups"] for p in plans),

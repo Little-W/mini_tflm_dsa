@@ -874,12 +874,11 @@ module conv_im2col_stream #(
       default: ;
     endcase
   end
-  // 配置只在空闲状态接收，译码、描述符提交和数据输出分别使用互斥状态。
-  // 直接描述符模式保留末拍提交优先次序，寄存模式在后续空闲周期提交。
+  // A new descriptor owns the range update when the previous tile completes.
   assign range_update_select[0] = range_decode_write;
   assign range_update_select[1] = i_cfg_valid && i_cfg_ready;
   assign range_update_select[2] = i_tile_commit && !committing_tile.invalid && committing_tile.fast;
-  assign range_update_select[3] = (p_register_descriptor || !i_tile_commit) &&
+  assign range_update_select[3] = !i_tile_commit &&
       i_wr_valid && range_stream_allowed;
   if (p_lanes <= 16) begin : g_range_data_choice
     // 保存资格只控制时钟使能，流式数据独立选择行首或递增范围。
@@ -926,9 +925,8 @@ module conv_im2col_stream #(
     .o_sum(o_cfg_skip_group), .o_carry(unused_cfg_skip_carry)
   );
 
-  // 地址更新直接使用对应运行状态；配置接收只发生在空闲状态。
-  // 寄存描述符在空闲周期提交，直接模式在末拍接收时优先写入新地址。
-  assign address_stream_write = i_wr_valid && i_wr_ready && (p_register_descriptor || !i_tile_commit);
+  // Descriptor commit takes priority over advancing the completing stream.
+  assign address_stream_write = i_wr_valid && i_wr_ready && !i_tile_commit;
   assign address_column_advance = !o_chunk_reaches_end && !i_past_active_q && o_active_after_chunk;
   assign address_update_select[0] = i_tile_commit && !committing_tile.invalid && committing_tile.fast;
   assign address_update_select[1] = address_stream_write && o_chunk_reaches_end && !i_row_last_q &&
@@ -999,7 +997,7 @@ module conv_im2col_stream #(
 
   // 有效列数量与逐通道范围在同一边沿更新，运行期直接读取范围寄存器。
   // 数据选择使用任务阶段；传输和行末资格只控制寄存器使能。
-  assign active_select_commit = p_register_descriptor ? i_state[$clog2(IDLE)] : i_tile_commit;
+  assign active_select_commit = i_tile_commit;
   assign active_data_select[0] = active_select_commit;
   assign active_data_select[1] = !active_select_commit && o_chunk_reaches_end;
   assign active_data_select[2] = !active_select_commit && !o_chunk_reaches_end;

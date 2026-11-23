@@ -34,6 +34,7 @@ module npu_top #(
     parameter int unsigned CONV_LINE_BYTES = 128,
     parameter int unsigned CONV_CACHE_SETS = IM2COL_CACHE_BYTES / (CONV_CACHE_WAYS * CONV_LINE_BYTES),
     parameter int unsigned CONV_CACHE_POLICY = 3,
+    parameter bit CONV_LOW_LATENCY = 1'b0,
     parameter int unsigned ENABLE_DW_POOL = 1,
     parameter int unsigned DW_PE_COUNT = (SIZE < 16) ? SIZE : 16,
     parameter int unsigned ENABLE_VECTOR_ENGINE = ENABLE_DW_POOL,
@@ -824,9 +825,14 @@ module npu_top #(
             frame_prefetch_idle && conv_task_idle;
 
     logic run_compact;
+    logic block_dma_arbiter_i_ia_wide_im2col;
     logic [REG_WIDTH-1:0] ia_reuse_num_eff;
     logic is_mode;
     logic exec_dma_job_init;
+
+    // Raw rows use adjacent words in separate banks; each bank selects its own write data.
+    assign block_dma_arbiter_i_ia_wide_im2col = run_compact ||
+        (SHARED_RAM_ENABLED && SHARED_MAX_IA_BANKS >= 4 && shared_ia_banks_q >= 32'd2);
 
         axi_block_dma_arbiter #(
             .DMA_MAX_BYTES(DMA_MAX_BYTES),
@@ -846,6 +852,7 @@ module npu_top #(
             .CONV_CACHE_WAYS(CONV_CACHE_WAYS),
             .CONV_LINE_BYTES(CONV_LINE_BYTES),
             .CONV_CACHE_POLICY(CONV_CACHE_POLICY),
+            .CONV_LOW_LATENCY(CONV_LOW_LATENCY),
             .p_register_bus_error(1'b1)
         ) u_block_dma_arbiter (
             .clk                     (clk),
@@ -904,7 +911,7 @@ module npu_top #(
             .ia_wr_data              (ia_dma_wr_data),
             .ia_wr_valid             (ia_dma_wr_valid),
             .ia_wr_use_16bits        (ia_dma_wr_use_16bits),
-            .ia_wide_im2col          (run_compact),
+            .ia_wide_im2col          (block_dma_arbiter_i_ia_wide_im2col),
                 .kernel_req(load_weight_req && !abort_pending),
                 .kernel_granted          (load_weight_granted),
             .o_kernel_eligible       (block_dma_arbiter_o_kernel_eligible),

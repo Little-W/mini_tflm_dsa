@@ -522,6 +522,7 @@ module conv_im2col_frontend #(
     .i_cfg_ready(cfg_ready),
     .i_tile_valid(tile_valid),
     .i_tile_ready(tile_ready),
+    .i_tile_finish(finishing_tile),
     .i_tile_p0(tile_p0),
     .i_tile_q0(tile_q0),
     .i_tile_rows(tile_rows),
@@ -885,10 +886,10 @@ module conv_im2col_frontend #(
   end
   assign cfg_ready = (&cfg_idle_group_clear) && cache_cfg_ready && !cache_hint_pending && !tile_prepared_valid;
   assign finishing_tile=wr_valid && wr_ready && wr_last;
-  // 寄存描述符在空闲阶段接收，数据字来自已完成的缓存返回寄存器。
-  assign descriptor_response_forward = !REGISTER_DESCRIPTOR && finishing_tile && state[$clog2(WAIT_WORD)];
+  // Capture the completing response with the next descriptor at the same edge.
+  assign descriptor_response_forward = finishing_tile && state[$clog2(WAIT_WORD)];
   // 描述符就绪的静态条件共用，配置有效只参与最终接收选择。
-  assign tile_ready_context = (state[$clog2(IDLE)] || (!REGISTER_DESCRIPTOR && finishing_tile)) && cfg_prepare_phase==0 && configured && !error &&
+  assign tile_ready_context = (state[$clog2(IDLE)] || finishing_tile) && cfg_prepare_phase==0 && configured && !error &&
                               !pred_busy && !pred_cfg_busy && !pred_cfg_pending && !cache_cfg_pending &&
                               !cache_hint_pending && address_step_phase==0;
   assign tile_ready = tile_ready_context && !cfg_valid &&

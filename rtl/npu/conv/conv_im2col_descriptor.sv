@@ -27,6 +27,7 @@ module conv_im2col_descriptor #(
   input wire logic i_cfg_ready,
   input wire logic i_tile_valid,
   input wire logic i_tile_ready,
+  input wire logic i_tile_finish,
   input wire logic [31:0] i_tile_p0,
   input wire logic [31:0] i_tile_q0,
   input wire logic [p_rw-1:0] i_tile_rows,
@@ -1160,9 +1161,9 @@ module conv_im2col_descriptor #(
       i_row_wrap ? i_last_output_col_q == 16'd0 : i_row_next_o_equal;
   end
   assign tile_capture = i_tile_valid && i_tile_ready;
-  // 已准备描述符在空闲状态提交，当前分块的完成先经过状态寄存器。
+  // Commit a prepared descriptor when the current tile releases its state.
   assign o_tile_commit = p_register_descriptor ?
-    (o_tile_prepared_valid && !i_error && i_state[$clog2(IDLE)]) : tile_capture;
+    (o_tile_prepared_valid && !i_error && (i_state[$clog2(IDLE)] || i_tile_finish)) : tile_capture;
   // 检查阶段读取已保存地址，描述符输入队列可以同时保存后续准备项。
   assign o_committing_saved_word_hit = descriptor_saved_word_valid_q && committing_saved_word_match;
   assign o_descriptor_padding = descriptor_padding_select_q ? descriptor_padding_value_q :
