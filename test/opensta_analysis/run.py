@@ -60,9 +60,39 @@ def main():
     assert run.returncode != 0
     log = (out/'unknown_cell/opensta.log').read_text().lower()
     assert 'black box' in log or 'blackbox' in log or 'error:' in log, log
+    literal_netlist = out/'literal_outputs.v'
+    literal_netlist.write_text(NETLIST.replace(
+        'output q, output y, output z);',
+        'output q, output y, output z, output tied_low, output unused_data);').replace(
+        'endmodule', "assign tied_low = 1'b0;\nassign unused_data = 1'bx;\nendmodule"))
+    literal_json = out/'literal_outputs.json'
+    module = {'ports': {'tied_low': {'direction': 'output', 'bits': ['0']},
+                        'unused_data': {'direction': 'output', 'bits': ['x']}}}
+    literal_json.write_text(json.dumps({'modules': {'sta_pilot': module}}))
+    run = subprocess.run([*common, '--netlist', str(literal_netlist), '--netlist-json',
+                          str(literal_json), '--out', str(out/'literal_outputs')],
+                         capture_output=True, text=True)
+    (out/'literal_outputs.log').write_text(run.stdout+run.stderr)
+    assert run.returncode == 0, run.stdout+run.stderr
+    coverage = json.loads((out/'literal_outputs/summary.json').read_text())['timing_coverage']
+    assert coverage['constant_output_endpoints'] == [{'endpoint': 'tied_low', 'value': '0'}]
+    assert coverage['undefined_output_endpoints'] == [{'endpoint': 'unused_data', 'value': 'x'}]
+    floating_netlist = out/'floating_output.v'
+    floating_netlist.write_text(literal_netlist.read_text().replace("assign unused_data = 1'bx;", ''))
+    module['ports']['unused_data']['bits'] = [42]
+    floating_json = out/'floating_output.json'
+    floating_json.write_text(json.dumps({'modules': {'sta_pilot': module}}))
+    run = subprocess.run([*common, '--netlist', str(floating_netlist), '--netlist-json',
+                          str(floating_json), '--out', str(out/'floating_output')],
+                         capture_output=True, text=True)
+    (out/'floating_output.log').write_text(run.stdout+run.stderr)
+    assert run.returncode != 0
+    assert 'timing coverage is incomplete' in run.stdout+run.stderr
     report = {'passed': True, 'path_groups_checked': list(results[0]['path_groups']),
               'load_sensitivity_checked': ['reg_to_output', 'input_to_output'],
-              'unknown_cell_rejected': True, 'nominal_result': str(out/'load5/summary.json'),
+              'unknown_cell_rejected': True, 'literal_outputs_classified': True,
+              'unconstrained_signal_rejected': True,
+              'nominal_result': str(out/'load5/summary.json'),
               'increased_load_result': str(out/'load10/summary.json')}
     (out/'summary.json').write_text(json.dumps(report, indent=2)+'\n')
     print(json.dumps(report, indent=2))

@@ -46,6 +46,49 @@ def parse_path(text: str) -> dict:
     return result
 
 
+def classify_coverage(report: str, module: dict | None) -> dict:
+    """Separate literal output bits from unconstrained signal endpoints."""
+    literals = {}
+    if module is not None:
+        for name, port in module.get('ports', {}).items():
+            if port['direction'] != 'output':
+                continue
+            bits = port['bits']
+            offset = port.get('offset', 0)
+            for position, bit in enumerate(bits):
+                index = offset + (len(bits) - 1 - position if port.get('upto') else position)
+                endpoint = name if len(bits) == 1 and not offset else f'{name}[{index}]'
+                if bit in ('0', '1', 'x', 'z'):
+                    literals[endpoint] = bit
+    endpoints = []
+    other_lines = []
+    in_endpoints = False
+    for line in report.splitlines():
+        if not line.strip():
+            continue
+        if re.fullmatch(r'Warning: There are \d+ unconstrained endpoints\.', line):
+            in_endpoints = True
+        elif in_endpoints and line.startswith('  '):
+            endpoints.append(line.strip())
+        else:
+            in_endpoints = False
+            other_lines.append(line)
+    unmatched = [name for name in endpoints if name not in literals]
+    if unmatched or other_lines:
+        raise RuntimeError(f'OpenSTA timing coverage is incomplete: endpoints={unmatched[:16]}, '
+                           f'checks={other_lines[:8]}')
+    return {
+        'all_dynamic_endpoints_constrained': True,
+        'constant_output_endpoints': [
+            {'endpoint': name, 'value': literals[name]} for name in endpoints
+            if literals[name] in ('0', '1')],
+        'undefined_output_endpoints': [
+            {'endpoint': name, 'value': literals[name]} for name in endpoints
+            if literals[name] in ('x', 'z')],
+        'literal_outputs_have_no_timing_paths': True,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--sta', default='sta')
@@ -77,6 +120,7 @@ def main() -> None:
         raise ValueError('The analysis requires Liberty time_unit=1ns and capacitive_load_unit=(1,ff)')
     lib_cells = set(re.findall(r'\bcell\s*\(\s*"?([^\s"()]+)"?\s*\)', lib_text))
     tracked = [Path(__file__).resolve(), executable, liberty, netlist]
+    top_module = None
     if args.netlist_json:
         mapped_json = args.netlist_json.resolve()
         design = json.loads(mapped_json.read_text())
@@ -169,6 +213,16 @@ exit 0
         raise RuntimeError('OpenSTA did not complete cleanly; inspect ' + str(out/'opensta.log'))
     if source_hashes != {str(path): sha256(path) for path in tracked}:
         raise RuntimeError('Analysis inputs changed during OpenSTA execution')
+    coverage = classify_coverage((out/'coverage.rpt').read_text(), top_module)
+    transition_text = (out/'transition_violations.rpt').read_text()
+    transition_rows = re.findall(
+        r'^\s*(\S+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+\(VIOLATED\)',
+        transition_text, re.MULTILINE)
+    if len(transition_rows) != transition_text.count('(VIOLATED)'):
+        raise RuntimeError('OpenSTA maximum-transition report could not be parsed completely')
+    transition_violations = [
+        {'pin': pin, 'limit_ns': float(limit), 'transition_ns': float(transition),
+         'slack_ns': float(slack)} for pin, limit, transition, slack in transition_rows]
     sdc_file = out/'constraints.sdc'
     sdc_text = sdc_file.read_text()
     if re.search(r'^set_wire_load_model\b', sdc_text, re.MULTILINE) is None:
@@ -206,10 +260,14 @@ exit 0
               'path_groups': groups_result,
               'setup_met': all(g['setup'].get('met', True) for g in groups_result.values()),
               'hold_met': all(g['hold'].get('met', True) for g in groups_result.values()),
+              'max_transition_met': not transition_violations,
+              'transition_violations': transition_violations,
+              'transition_report': str(out/'transition_violations.rpt'),
               'source_sha256': source_hashes,
               'analysis_script_sha256': sha256(script_file),
               'constraints_sha256': sha256(sdc_file),
               'coverage_report': str(out/'coverage.rpt'),
+              'timing_coverage': coverage,
               'sta_version': subprocess.check_output([str(executable), '-version'], text=True).strip(),
               'command': command}
     (out/'summary.json').write_text(json.dumps(record, indent=2)+'\n')
