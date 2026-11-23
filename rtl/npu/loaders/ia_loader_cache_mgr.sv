@@ -1,8 +1,6 @@
-/* IA cache with synchronous, complete-row reads for the DiP array.
- * All lanes use the same slot and row address. A group streams its active
- * rows consecutively, including a partial final tile. The early tile marker
- * starts PS replay two cycles before the corresponding array input row.
- */
+// IA 缓存按完整行连续读取，所有通道使用相同的槽位与行地址。
+// 紧凑功能启用时，RAM 输出先寄存，再恢复有符号偏移。
+// tile 起始标记始终提前两个周期启动 PS 数据读取。
 
 module ia_loader_cache_mgr #(
     parameter int unsigned DATA_WIDTH   = 16,
@@ -61,7 +59,7 @@ module ia_loader_cache_mgr #(
     input logic [$clog2(SIZE+1)-1:0] row_table_value [3] = '{default:'0},
     output logic                              tile_done,       // 单 tile 输出完成
     output logic                              l1_done,         // L1组全部输出完成
-    output logic                              ia_tile_start,   // 单 tile 首行到达输出端
+    output logic                              ia_tile_start,   // 提前两个周期指示单 tile 首行
 
     // ---- Complete row and associated metadata ----
     output logic signed [DATA_WIDTH-1:0]         ia_out          [SIZE],
@@ -77,10 +75,27 @@ module ia_loader_cache_mgr #(
   localparam int RAM_DEPTH     = SLOT_BLOCKS * SIZE;
   localparam int ADDR_W        = $clog2(RAM_DEPTH);
   localparam int PHYSICAL_ADDR_W = $clog2(CACHE_BLOCKS * SIZE);
+  localparam bit p_compact_supported = (COMPACT_S8 != 0) && (DATA_WIDTH == 16);
+  localparam int unsigned p_read_stages = p_compact_supported ? 3 : 2;
+  logic compact_active;
+  assign compact_active = p_compact_supported && compact_mode;
+
+  // 行属性随读请求传递，连续发送不同 L1 组时仍对应各自的数据。
+  typedef struct packed {
+    logic valid;
+    logic tile_first;
+    logic tile_last;
+    logic group_last;
+    logic is_init;
+    logic calc_done;
+    logic compact;
+    logic signed [p_compact_offset_width-1:0] offset;
+  } read_metadata_t;
+  read_metadata_t read_metadata_q [p_read_stages];
 
   // =====================================================================
-  // Each 16-bit lane contains two 8-bit banks of CACHE_BLOCKS * SIZE entries.
-  // Compact S8 selects one bank with the high slot bit; wide S16 uses both.
+  // 紧凑功能启用时，每个 16 位通道使用两个字节存储体。
+  // 紧凑模式由槽位高位选择字节，普通模式同时读写两个字节。
   // =====================================================================
   // 写端口：LOAD 阶段从 AXI DMA 响应写入
   // Read every lane of the selected row in the same cycle.
@@ -89,54 +104,36 @@ module ia_loader_cache_mgr #(
   logic signed [DATA_WIDTH-1:0] ram_wr_data [SIZE];
 
   logic              ram_rd_en   [SIZE];
-  logic              ram_rd_en_d1 [SIZE];
   logic [ADDR_W-1:0] ram_rd_addr [SIZE];
+  logic signed [DATA_WIDTH-1:0] ram_rd_raw_data [SIZE];
   logic signed [DATA_WIDTH-1:0] ram_rd_data [SIZE];
-  logic [7:0] compact_read_byte [SIZE];
-  logic signed [DATA_WIDTH-1:0] compact_read_data [SIZE];
 
-  // 偏移有效位宽由调用者给出，默认保留完整输入位宽。
-  // 有符号字节与偏移先在足够的结果位宽中相加，再扩展为阵列数据位宽。
-  localparam int unsigned p_restore_width =
+  // 紧凑路径只保留结果所需的有效位，普通路径复用同一数据寄存级。
+  // 编译关闭紧凑功能时，数据直接使用同步 RAM 输出。
+  localparam int unsigned p_sum_width =
       ((p_compact_offset_width > 8) ? p_compact_offset_width : 8) + 1;
-  if (p_restore_width <= 12) begin : g_compact_read_packed
-    logic restore_i_zero, restore_i_one;
-    assign restore_i_zero = 1'b0;
-    assign restore_i_one = 1'b1;
-    for (genvar group_index = 0; group_index < (SIZE+3)/4; group_index++) begin : g_group
-      logic signed [47:0] packed_lhs, packed_rhs, packed_sum;
-
-      // 四个字节独立恢复有符号值，每个 12 位通道保留完整和及符号。
-      for (genvar group_lane = 0; group_lane < 4; group_lane++) begin : g_lane
-        localparam int p_lane = 4 * group_index + group_lane;
-        if (p_lane < SIZE) begin : g_data
-          assign packed_lhs[group_lane*12 +: 12] = 12'($signed(compact_read_byte[p_lane]));
-          assign packed_rhs[group_lane*12 +: 12] =
-              12'($signed(compact_offset[p_compact_offset_width-1:0]));
-          assign compact_read_data[p_lane] =
-              DATA_WIDTH'($signed(packed_sum[group_lane*12 +: p_restore_width]));
-        end else begin : g_padding
-          assign packed_lhs[group_lane*12 +: 12] = '0;
-          assign packed_rhs[group_lane*12 +: 12] = '0;
-        end
-      end
-      select_add #(.p_width(48), .p_split_12bit(1'b1)) u_restore (
-        .i_lhs(packed_lhs), .i_rhs0(packed_rhs), .i_rhs1(packed_rhs),
-        .i_rhs_select(restore_i_zero), .i_add_enable(restore_i_one), .o_sum(packed_sum)
-      );
-    end
-  end else begin : g_compact_read_wide
+  localparam int unsigned p_restore_width =
+      (p_sum_width < DATA_WIDTH) ? p_sum_width : DATA_WIDTH;
+  if (p_compact_supported) begin : g_read_register
     for (genvar lane = 0; lane < SIZE; lane++) begin : g_lane
-      logic signed [p_restore_width:0] byte_extended, offset_extended;
-      logic signed [p_restore_width-1:0] restored_sum;
+      logic signed [DATA_WIDTH-1:0] data_q;
+      logic [p_restore_width-1:0] restore_lhs, restore_rhs, restore_sum;
       logic unused_restore_carry;
 
-      assign byte_extended = (p_restore_width + 1)'($signed(compact_read_byte[lane]));
-      assign offset_extended =
-          (p_restore_width + 1)'($signed(compact_offset[p_compact_offset_width-1:0]));
-      assign {unused_restore_carry, restored_sum} = byte_extended + offset_extended;
-      assign compact_read_data[lane] = DATA_WIDTH'($signed(restored_sum));
+      always_ff @(posedge clk) begin
+        if (read_metadata_q[1].valid) data_q <= ram_rd_raw_data[lane];
+      end
+      assign restore_lhs = p_restore_width'($signed(data_q[7:0]));
+      assign restore_rhs = p_restore_width'(read_metadata_q[p_read_stages-1].offset);
+      parallel_prefix_add #(.p_width(p_restore_width), .p_group_width(4)) u_restore (
+        .i_a(restore_lhs), .i_b(restore_rhs), .i_carry(1'b0),
+        .o_sum(restore_sum), .o_carry(unused_restore_carry)
+      );
+      assign ram_rd_data[lane] = read_metadata_q[p_read_stages-1].compact ?
+          DATA_WIDTH'($signed(restore_sum)) : data_q;
     end
+  end else begin : g_read_direct
+    assign ram_rd_data = ram_rd_raw_data;
   end
 
   generate if (!EXTERNAL_RAM) begin : g_local_ram
@@ -148,36 +145,33 @@ module ia_loader_cache_mgr #(
     assign ram_port_wr_mask = '{default:'0};
     assign ram_port_rd_addr = '{default:'0};
     for (genvar j = 0; j < SIZE; j++) begin : g_ram_bank
-      if ((COMPACT_S8 != 0) && (DATA_WIDTH == 16)) begin : g_byte_banks
+      if (p_compact_supported) begin : g_byte_banks
         logic [7:0] bank_data [2];
         logic read_bank_q;
         wire [7:0] original_s8 = 8'(ram_wr_data[j] - compact_offset);
         wire [7:0] selected_byte = read_bank_q ? bank_data[1] : bank_data[0];
-        assign compact_read_byte[j] = selected_byte;
         always_ff @(posedge clk) begin
           if (!rst_n) read_bank_q <= 1'b0;
           else if (ram_rd_en[j]) read_bank_q <= ram_rd_addr[j][PHYSICAL_ADDR_W];
         end
         for (genvar b = 0; b < 2; b++) begin : g_bank
           wire write_enable = ram_wr_en[j] &&
-              (!compact_mode || ram_wr_addr[j][PHYSICAL_ADDR_W] == 1'(b));
+              (!compact_active || ram_wr_addr[j][PHYSICAL_ADDR_W] == 1'(b));
           wire read_enable = ram_rd_en[j] &&
-              (!compact_mode || ram_rd_addr[j][PHYSICAL_ADDR_W] == 1'(b));
-          wire [7:0] write_byte = compact_mode ? original_s8 : ram_wr_data[j][b*8 +: 8];
+              (!read_metadata_q[0].compact || ram_rd_addr[j][PHYSICAL_ADDR_W] == 1'(b));
+          wire [7:0] write_byte = compact_active ? original_s8 : ram_wr_data[j][b*8 +: 8];
           pseudo_dual_port_ram #(.DATA_WIDTH(8), .ADDR_WIDTH(PHYSICAL_ADDR_W)) u_ram (
               .clk(clk), .ena(write_enable), .enb(read_enable), .wea(1'b1),
               .addra(ram_wr_addr[j][PHYSICAL_ADDR_W-1:0]), .dia(write_byte),
               .addrb(ram_rd_addr[j][PHYSICAL_ADDR_W-1:0]), .dob(bank_data[b]));
         end
-        assign ram_rd_data[j] = compact_mode
-            ? compact_read_data[j]
-            : {bank_data[1], bank_data[0]};
+        assign ram_rd_raw_data[j] = {bank_data[1],
+            read_metadata_q[1].compact ? selected_byte : bank_data[0]};
       end else begin : g_word_bank
-        assign compact_read_byte[j] = '0;
         pseudo_dual_port_ram #(.DATA_WIDTH(DATA_WIDTH), .ADDR_WIDTH(ADDR_W)) u_ram (
             .clk(clk), .ena(ram_wr_en[j]), .enb(ram_rd_en[j]), .wea(1'b1),
             .addra(ram_wr_addr[j]), .dia(ram_wr_data[j]),
-            .addrb(ram_rd_addr[j]), .dob(ram_rd_data[j]));
+            .addrb(ram_rd_addr[j]), .dob(ram_rd_raw_data[j]));
       end
     end
   end else begin : g_external_ram
@@ -261,7 +255,7 @@ module ia_loader_cache_mgr #(
         input_mask_q <= input_mask;
         column_q <= wr_col_base;
         empty_byte_q <= compact_empty_byte;
-        compact_q <= compact_mode;
+        compact_q <= compact_active;
       end
       // 字节掩码与数据共同使用本拍保存的原始通道和列位置。
       // ram_port_wr_en 指定有效写命令，两个物理端口在同一周期接收掩码和数据。
@@ -287,13 +281,12 @@ module ia_loader_cache_mgr #(
     end
 
     wire [RAM_WORD_ADDR_WIDTH-1:0] write_row_word =
-        RAM_WORD_ADDR_WIDTH'({wr_slot, wr_row}) << (compact_mode ? 0 : 1);
+        RAM_WORD_ADDR_WIDTH'({wr_slot, wr_row}) << (compact_active ? 0 : 1);
     wire [RAM_WORD_ADDR_WIDTH-1:0] read_row_word =
-        RAM_WORD_ADDR_WIDTH'(ram_rd_addr[0]) << (compact_mode ? 0 : 1);
-    logic signed [DATA_WIDTH-1:0] row_data [SIZE];
+        RAM_WORD_ADDR_WIDTH'(ram_rd_addr[0]) << (read_metadata_q[0].compact ? 0 : 1);
     assign write_addr[0] = write_row_word;
     assign write_addr[1] = write_row_word + RAM_WORD_ADDR_WIDTH'(1);
-    assign ram_port_rd_en = {ram_rd_en[0] && !compact_mode, ram_rd_en[0]};
+    assign ram_port_rd_en = {ram_rd_en[0] && !read_metadata_q[0].compact, ram_rd_en[0]};
     assign ram_port_rd_addr[0] = read_row_word;
     assign ram_port_rd_addr[1] = read_row_word + RAM_WORD_ADDR_WIDTH'(1);
     // 常量列区间提前判断输入通道属于哪个端口，写使能不等待完整掩码排列。
@@ -317,28 +310,25 @@ module ia_loader_cache_mgr #(
           assign write_compact_row[lane] = 1'b0;
         end
       end
-      assign write_en[0] = compact_mode ? (|write_compact_row) : (|write_first_half);
-      assign write_en[1] = !compact_mode && (|write_second_half);
+      assign write_en[0] = compact_active ? (|write_compact_row) : (|write_first_half);
+      assign write_en[1] = !compact_active && (|write_second_half);
     end else begin : g_write_port_mask
       assign write_en[0] = |write_mask[0];
       assign write_en[1] = |write_mask[1];
     end
     for (genvar lane = 0; lane < SIZE; lane++) begin : g_write_lane
       if (lane < 8) begin : g_first_half
-        assign write_data[0][lane*16 +: 16] = compact_mode ?
+        assign write_data[0][lane*16 +: 16] = compact_active ?
             {compact_write_byte[lane*2+1], compact_write_byte[lane*2]} : ram_wr_data[lane];
-        assign write_mask[0][lane*2 +: 2] = compact_mode ?
+        assign write_mask[0][lane*2 +: 2] = compact_active ?
             {ram_wr_en[lane*2+1], ram_wr_en[lane*2]} : {2{ram_wr_en[lane]}};
       end else begin : g_second_half
         assign write_data[1][(lane-8)*16 +: 16] = ram_wr_data[lane];
-        assign write_mask[1][(lane-8)*2 +: 2] = {2{ram_wr_en[lane] && !compact_mode}};
+        assign write_mask[1][(lane-8)*2 +: 2] = {2{ram_wr_en[lane] && !compact_active}};
       end
-      assign compact_read_byte[lane] = ram_port_rd_data[0][lane*8 +: 8];
-      assign row_data[lane] = compact_mode ? compact_read_data[lane] :
+      assign ram_rd_raw_data[lane] = read_metadata_q[1].compact ?
+          {8'd0, ram_port_rd_data[0][lane*8 +: 8]} :
           ram_port_rd_data[lane/8][(lane%8)*16 +: 16];
-    end
-    for (genvar lane = 0; lane < SIZE; lane++) begin : g_row
-      assign ram_rd_data[lane] = row_data[lane];
     end
 `ifdef NPU_SIM_ASSERT
     initial begin
@@ -395,7 +385,7 @@ module ia_loader_cache_mgr #(
   localparam int SLOT_W = (SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS);
   localparam int ROW_CNT_W = $clog2(SIZE + 1);
   (* ram_style = "block" *) logic [ROW_CNT_W-1:0] slot_written_cols [SLOT_BLOCKS];
-  logic [ROW_CNT_W-1:0] write_extent, write_extent_physical, read_extent_q;
+  logic [ROW_CNT_W-1:0] write_extent, write_extent_physical, read_extent_q, output_extent;
   logic any_lane_write, physical_lane_write;
   logic [SIZE-1:0] write_last_column;
   assign physical_lane_write = |write_shifted_mask;
@@ -470,7 +460,7 @@ module ia_loader_cache_mgr #(
   wire [31:0] active_cache_blocks = cfg_cache_blocks == 0 ? 32'(CACHE_BLOCKS) : cfg_cache_blocks;
   // 预计算掩码与上层配置同时更新，读写槽号共用此映射。
   wire [SLOT_W-1:0] slot_mask = p_precomputed_slot_mask ? cfg_slot_mask :
-      ((COMPACT_S8 != 0) && (DATA_WIDTH == 16) && compact_mode)
+      compact_active
       ? SLOT_W'((active_cache_blocks << 1) - 1) : SLOT_W'(active_cache_blocks - 1);
 
   logic l1_issue_active;                  // 仍有行需要在 col0 发射
@@ -480,12 +470,6 @@ module ia_loader_cache_mgr #(
   logic [ROW_CNT_W-1:0] issue_rows_r;    // 当前 slot 总有效行数
   logic send_is_init_r;
   logic send_calc_done_r;
-  localparam int unsigned ISSUE_GAP_CYCLES = 0;
-  localparam int unsigned GAP_CNT_W = (ISSUE_GAP_CYCLES < 2) ? 1 :
-                                      $clog2(ISSUE_GAP_CYCLES + 1);
-  logic [GAP_CNT_W-1:0] issue_gap_cnt;
-  logic                 issue_gap_active;
-  assign issue_gap_active = (issue_gap_cnt != '0);
 
   // col0 源信号（每拍最多发射 1 行）
   logic              src_rd_en;
@@ -556,7 +540,7 @@ module ia_loader_cache_mgr #(
     src_tile_first  = 1'b0;
     src_l1_last     = 1'b0;
 
-    if (start_issue_now || (l1_issue_active && !issue_gap_active)) begin
+    if (start_issue_now || (l1_issue_active)) begin
       src_rd_en     = 1'b1;
       src_rd_addr   = ADDR_W'({issue_slot_now, LOG2_SIZE'(issue_row_idx_now)});
       src_tile_last = (issue_row_idx_inc_now == issue_rows_now);
@@ -568,8 +552,6 @@ module ia_loader_cache_mgr #(
   // Registered read controls are identical for every lane.
   logic              rd_en_pipe      [SIZE];
   logic [ADDR_W-1:0] rd_addr_pipe    [SIZE];
-  logic              tile_last_pipe  [SIZE];
-  logic              l1_last_pipe    [SIZE];
 
 
   always_ff @(posedge clk) begin
@@ -581,22 +563,12 @@ module ia_loader_cache_mgr #(
       issue_rows_r    <= '0;
       send_is_init_r  <= 1'b0;
       send_calc_done_r<= 1'b0;
-      issue_gap_cnt   <= '0;
-      tile_done       <= 1'b0;
-      l1_done         <= 1'b0;
       for (int j = 0; j < SIZE; j++) begin
         rd_en_pipe[j]     <= 1'b0;
         rd_addr_pipe[j]   <= '0;
-        tile_last_pipe[j] <= 1'b0;
-        l1_last_pipe[j]   <= 1'b0;
       end
     end else begin
-      tile_done     <= 1'b0;
-      l1_done       <= 1'b0;
 
-      if (issue_gap_cnt != '0) begin
-        issue_gap_cnt <= issue_gap_cnt - 1'b1;
-      end
 
       // 启动新的 L1 组发射
       if (l1_start && !l1_issue_active) begin
@@ -615,7 +587,6 @@ module ia_loader_cache_mgr #(
               issue_slot_r    <= next_issue_slot_now;
               issue_row_idx_r <= '0;
               issue_rows_r    <= slot_rows_next_now;
-              issue_gap_cnt   <= GAP_CNT_W'(ISSUE_GAP_CYCLES);
             end
           end else begin
             issue_row_idx_r <= ROW_CNT_W'(1);
@@ -626,7 +597,7 @@ module ia_loader_cache_mgr #(
       end
 
       // col0 发射调度
-      if (l1_issue_active && !issue_gap_active) begin
+      if (l1_issue_active) begin
         if (issue_row_is_last) begin
           // 当前 tile 最后一行在 col0 发射
           if (issue_slot_r == l1_slot_end_r) begin
@@ -638,7 +609,6 @@ module ia_loader_cache_mgr #(
             issue_row_idx_r <= '0;
             // 发射期间 next_issue_slot_now 与 next_issue_slot 相同，复用行数选择结果。
             issue_rows_r    <= slot_rows_next_now;
-            issue_gap_cnt   <= GAP_CNT_W'(ISSUE_GAP_CYCLES);
           end
         end else begin
           issue_row_idx_r <= issue_row_idx_r + 1;
@@ -648,15 +618,8 @@ module ia_loader_cache_mgr #(
       for (int j = 0; j < SIZE; j++) begin
         rd_en_pipe[j]     <= src_rd_en;
         rd_addr_pipe[j]   <= src_rd_addr;
-        tile_last_pipe[j] <= src_tile_last;
-        l1_last_pipe[j]   <= src_l1_last;
       end
 
-      // Completion accompanies the last synchronous RAM output row.
-      if (rd_en_pipe[0] && tile_last_pipe[0])
-        tile_done <= 1'b1;
-      if (rd_en_pipe[0] && l1_last_pipe[0])
-        l1_done <= 1'b1;
     end
   end
 
@@ -670,33 +633,47 @@ module ia_loader_cache_mgr #(
     end
   end
 
-  // =====================================================================
-  // 输出数据：RAM 读出数据直接作为 ia_out（RAM 寄存器输出，延迟 1 拍）
-  // =====================================================================
+  // 行属性与数据使用相同的寄存器级数，复位立即清空有效位。
   always_ff @(posedge clk) begin
     if (!rst_n) begin
-      for (int j = 0; j < SIZE; j++)
-        ram_rd_en_d1[j] <= 1'b0;
-	    end else begin
-	      for (int j = 0; j < SIZE; j++)
-	        ram_rd_en_d1[j] <= ram_rd_en[j];
-	    end
-	  end
-
-  // Inactive cycles present zero values to every PE input.
-  always_comb begin
-    for (int j = 0; j < SIZE; j++)
-      ia_out[j] = ram_rd_en_d1[j] && ROW_CNT_W'(j)<read_extent_q ? ram_rd_data[j] : '0;
+      for (int stage = 0; stage < p_read_stages; stage++)
+        read_metadata_q[stage] <= '0;
+    end else begin
+      read_metadata_q[0].valid <= src_rd_en;
+      read_metadata_q[0].tile_first <= src_tile_first;
+      read_metadata_q[0].tile_last <= src_tile_last;
+      read_metadata_q[0].group_last <= src_l1_last;
+      read_metadata_q[0].is_init <= start_issue_now ? l1_is_init : send_is_init_r;
+      read_metadata_q[0].calc_done <= start_issue_now ? l1_calc_done : send_calc_done_r;
+      read_metadata_q[0].compact <= compact_active;
+      read_metadata_q[0].offset <= p_compact_supported ?
+          compact_offset[p_compact_offset_width-1:0] : '0;
+      for (int stage = 1; stage < p_read_stages; stage++)
+        read_metadata_q[stage] <= read_metadata_q[stage-1];
+    end
   end
 
-  assign ia_row_valid = ram_rd_en_d1[0];
-  assign ia_tile_start = src_rd_en & src_tile_first;
+  if (p_compact_supported) begin : g_extent_register
+    logic [ROW_CNT_W-1:0] extent_q;
+    always_ff @(posedge clk) begin
+      if (read_metadata_q[1].valid) extent_q <= read_extent_q;
+    end
+    assign output_extent = extent_q;
+    assign ia_tile_start = read_metadata_q[0].valid && read_metadata_q[0].tile_first;
+  end else begin : g_extent_direct
+    assign output_extent = read_extent_q;
+    assign ia_tile_start = src_rd_en && src_tile_first;
+  end
 
-  // =====================================================================
-  // ia_is_init_data / ia_calc_done
-  // =====================================================================
-  // send_is_init_r / send_calc_done_r 在整个 L1 组期间不变，无需额外延迟链
-  assign ia_is_init_data = ram_rd_en_d1[0] & send_is_init_r;
-  assign ia_calc_done    = ram_rd_en_d1[0] & send_calc_done_r;
+  // 无效周期输出零，未写入列不参与阵列计算。
+  for (genvar lane = 0; lane < SIZE; lane++) begin : g_output
+    assign ia_out[lane] = ia_row_valid && ROW_CNT_W'(lane) < output_extent ?
+        ram_rd_data[lane] : '0;
+  end
+  assign ia_row_valid = read_metadata_q[p_read_stages-1].valid;
+  assign ia_is_init_data = ia_row_valid && read_metadata_q[p_read_stages-1].is_init;
+  assign ia_calc_done = ia_row_valid && read_metadata_q[p_read_stages-1].calc_done;
+  assign tile_done = ia_row_valid && read_metadata_q[p_read_stages-1].tile_last;
+  assign l1_done = ia_row_valid && read_metadata_q[p_read_stages-1].group_last;
 
 endmodule

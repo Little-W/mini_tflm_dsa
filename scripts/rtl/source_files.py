@@ -6,6 +6,29 @@ from pathlib import Path
 import re
 
 
+def input_files(sources, root: Path, include_dirs=()):
+    """递归收集源文件和文本头文件，用于检查构建期间输入内容是否保持一致。"""
+    root = Path(root).resolve()
+    paths = list(dict.fromkeys(Path(path).resolve() for path in sources))
+    search = [Path(path).resolve() for path in include_dirs]
+    search += [root / "include", root / "asic/rtl", root]
+    cursor = 0
+    while cursor < len(paths):
+        path = paths[cursor]
+        cursor += 1
+        if path.suffix not in (".v", ".sv", ".vh", ".svh"):
+            continue
+        text = re.sub(r'//[^\n]*|/\*.*?\*/', " ", path.read_text(), flags=re.S)
+        for name in re.findall(r'`include\s+"([^"\n]+)"', text):
+            candidates = [path.parent / name] + [folder / name for folder in search]
+            dependency = next((candidate.resolve() for candidate in candidates if candidate.is_file()), None)
+            if dependency is None:
+                raise FileNotFoundError(f"RTL include {name} referenced by {path}")
+            if dependency not in paths:
+                paths.append(dependency)
+    return paths
+
+
 def _code(path: Path) -> str:
     text = path.read_text()
     # 保留字符串以外的标识符；注释和字符串不会引入模块依赖。

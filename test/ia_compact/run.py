@@ -5,9 +5,12 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / "scripts/rtl"))
+from source_files import input_files, with_dependencies
 
 
 def digest(path):
@@ -38,7 +41,8 @@ def main():
             continue
         target = out / name
         target.mkdir(parents=True, exist_ok=True)
-        sources = [Path(__file__).resolve(), *rtl, cpp]
+        rtl = with_dependencies(rtl, ROOT)
+        sources = input_files([Path(__file__).resolve(), ROOT / "scripts/rtl/source_files.py", *rtl, cpp], ROOT)
         hashes = {str(p.relative_to(ROOT)): digest(p) for p in sources}
         rules = target / 'compile_rules.mk'
         rules.write_text('%.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_FAST) -c -o $@ $<\n'

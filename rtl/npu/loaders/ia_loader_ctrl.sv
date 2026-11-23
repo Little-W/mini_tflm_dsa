@@ -599,8 +599,14 @@ module ia_loader_ctrl #(
   logic [REG_WIDTH-1:0] l2_row_base;
   logic                 l2_group_retire;
 
-   logic [REG_WIDTH-1:0] l2_row_base_advanced;
-  assign l2_row_base_advanced = l2_row_base + l2_group_row_step_b;
+  logic [REG_WIDTH-1:0] l2_row_base_advanced;
+  logic unused_l2_row_carry;
+  parallel_prefix_add #(
+    .p_width(REG_WIDTH), .p_group_width(4), .p_preserve_groups(1'b1)
+  ) u_l2_row_advance (
+    .i_a(l2_row_base), .i_b(l2_group_row_step_b), .i_carry(1'b0),
+    .o_sum(l2_row_base_advanced), .o_carry(unused_l2_row_carry)
+  );
 
   assign l2_group_retire = (state == S_SEND || state == S_LOAD) && cache_tile_done &&
                            ia_iter_last &&

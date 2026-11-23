@@ -11,7 +11,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-WIDTHS = (1, 8, 16, 17, 24, 29, 32, 33, 47, 48, 64)
+WIDTHS = (1, 2, 4, 8, 16, 17, 18, 19, 21, 24, 29, 32, 33, 35, 47, 48, 64)
 
 
 def main():

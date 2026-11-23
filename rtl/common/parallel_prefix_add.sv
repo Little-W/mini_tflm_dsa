@@ -20,8 +20,8 @@ module parallel_prefix_add #(
         localparam int unsigned p_groups = (p_width + p_group_width - 1) / p_group_width;
         logic [p_width-1:0] bit_generate, bit_propagate;
         // 各组分别保存产生和传播条件，并行推导各组输入进位。
-        logic [p_groups-1:0] group_generate;
-        logic [p_groups-1:0] group_propagate;
+        (* keep = p_preserve_groups *) logic [p_groups-1:0] group_generate;
+        (* keep = p_preserve_groups *) logic [p_groups-1:0] group_propagate;
         logic [p_groups:0] group_carry;
 
         assign bit_generate = i_a & i_b;
@@ -63,8 +63,11 @@ module parallel_prefix_add #(
                     if ((group % (2 << level)) >= (1 << level)) begin : g_merge
                         localparam int unsigned p_prefix_end =
                             (group / (2 << level)) * (2 << level) + (1 << level) - 1;
-                        assign prefix_generate[level+1][group] = prefix_generate[level][group] |
+                        // 保留实际归并节点，避免组间前缀被重新串接为长组合路径。
+                        (* keep = 1 *) logic merged_generate;
+                        assign merged_generate = prefix_generate[level][group] |
                             (prefix_propagate[level][group] & prefix_generate[level][p_prefix_end]);
+                        assign prefix_generate[level+1][group] = merged_generate;
                         assign prefix_propagate[level+1][group] = prefix_propagate[level][group] &
                             prefix_propagate[level][p_prefix_end];
                     end else begin : g_pass

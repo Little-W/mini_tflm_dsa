@@ -7,9 +7,12 @@ from pathlib import Path
 import re
 import subprocess
 import time
+import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / "scripts/rtl"))
+from source_files import input_files, with_dependencies
 
 
 def digest(path):
@@ -41,7 +44,8 @@ def main():
             source_root / 'rtl/npu/loaders/ia_loader_cache_mgr.sv',
             source_root / 'rtl/npu/buffers/ia_ps_shared_ram.sv', HERE / 'cache_tb.sv']
     cpp = HERE / 'cache_test.cpp'
-    sources = [Path(__file__).resolve(), *rtl, cpp]
+    rtl = with_dependencies(rtl, source_root)
+    sources = input_files([Path(__file__).resolve(), ROOT / "scripts/rtl/source_files.py", *rtl, cpp], source_root)
     source_paths = {str(path.relative_to(source_root) if path.is_relative_to(source_root)
                         else path.relative_to(ROOT)): path for path in sources}
     hashes = {name: digest(path) for name, path in source_paths.items()}

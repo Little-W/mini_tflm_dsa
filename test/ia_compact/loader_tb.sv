@@ -49,6 +49,6 @@ module ia_compact_loader_tb #(
     assign compact_active = u_loader.cfg_compact_q;
     assign cache_hit = u_loader.cache_hit_event;
     for (genvar lane = 0; lane < 16; lane++) begin : g_valid
-        assign lane_valid[lane] = u_loader.u_cache_mgr.ram_rd_en_d1[lane];
+        assign lane_valid[lane] = ia_row_valid;
     end
 endmodule

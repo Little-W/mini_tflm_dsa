@@ -111,7 +111,7 @@ module ia_loader #(
     output logic                         ia_row_valid,           // Complete input row is valid.
     output logic                         ia_is_init_data,        // 同上
     output logic                         ia_calc_done,           // 同上
-    output logic                         ia_tile_start,          // 单 tile 首行到达输出端
+    output logic                         ia_tile_start,          // 提前两个周期指示单 tile 首行
     output logic                         ia_sending_done,
     output logic                         ia_data_valid,
     output logic [31:0]                 ps_frame_rows,
@@ -214,6 +214,9 @@ module ia_loader #(
     end
     wire compact_config_valid = (COMPACT_S8 != 0) && (DATA_WIDTH == 16) &&
         cfg_compact && compact_offset_valid;
+    // 普通存储格式没有恢复偏移，编译关闭时相关状态保持常量零。
+    wire signed [DATA_WIDTH-1:0] compact_config_offset =
+        compact_config_valid ? DATA_WIDTH'(cfg_compact_offset) : '0;
     logic [REG_WIDTH-1:0] regular_prefetch_capacity, compact_prefetch_capacity;
     logic regular_reuse_fits, compact_reuse_fits, prefetch_reuse_fits;
     // 两种存储格式独立比较复用数量，格式有效条件只选择一位范围结果。
@@ -281,7 +284,7 @@ module ia_loader #(
             cache_blocks_q <= 32'(CACHE_BLOCKS);
         end else if (init_cfg) begin
             cfg_compact_q <= compact_config_valid;
-            compact_offset_q <= DATA_WIDTH'(cfg_compact_offset);
+            compact_offset_q <= compact_config_offset;
             cache_blocks_q <= incoming_cache_blocks;
             cache_slot_mask <= incoming_slot_mask;
             preserve_cache_q <= cfg_preserve_cache;
@@ -565,6 +568,7 @@ module ia_loader #(
         end
     end
     logic prefetch_pending, prefetch_start;
+    logic prefetch_prepare_pending, prefetch_prepare_in_range;
     logic [REG_WIDTH-1:0] prefetch_rows_left;
     logic [REG_WIDTH-1:0] prefetch_group_p0, prefetch_group_rows;
     logic [REG_WIDTH-1:0] prefetch_group_base, prefetch_group_r;
@@ -703,19 +707,25 @@ module ia_loader #(
         cache_tags_valid[request_descriptor.slot] && request_tag_match;
     logic demand_lookup_match;
     if (ORDERED_JOB) begin : g_saved_demand_lookup
-        logic [CACHE_TAG_W-1:0] demand_lookup_tag_d;
         logic demand_lookup_match_q;
-        // 请求标记与需求坐标在同一边沿保存，比较结果随同一请求进入启动阶段。
-        // 配置同拍更新时使用需求坐标和物理槽号的实际下一值。
-        assign demand_lookup_tag_d = CACHE_TAG_W'({
-            demand_p0_nxt[REG_WIDTH-1:LOG2_SIZE],
-            demand_q0_nxt[REG_WIDTH-1:LOG2_SIZE],
-            request_rows[$clog2(SIZE + 1)-1:0]});
+        logic [1:0] demand_coordinate_same;
+        // 两组绝对坐标共用请求偏移量，只比较配置基址和低位进位。
+        ia_ordered_coordinate_same #(
+            .p_width(REG_WIDTH), .p_low_width(LOG2_SIZE)
+        ) u_demand_p0_same (
+            .i_base_a(p0_base_q), .i_base_b(init_cfg ? cfg_p0_base : p0_base_q),
+            .i_offset(request_p0), .o_equal(demand_coordinate_same[0])
+        );
+        ia_ordered_coordinate_same #(
+            .p_width(REG_WIDTH), .p_low_width(LOG2_SIZE)
+        ) u_demand_q0_same (
+            .i_base_a(q0_base_q), .i_base_b(init_cfg ? cfg_q0_base : q0_base_q),
+            .i_offset(request_q0), .o_equal(demand_coordinate_same[1])
+        );
         always_ff @(posedge clk or negedge rst_n) begin
             if (!rst_n) demand_lookup_match_q <= 1'b0;
             else demand_lookup_match_q <=
-                (request_descriptor.slot == demand_slot_next) &&
-                (descriptor_tag(request_descriptor) == demand_lookup_tag_d);
+                (request_descriptor.slot == demand_slot_next) && (&demand_coordinate_same);
         end
         assign demand_lookup_match = demand_lookup_match_q;
     end else begin : g_current_demand_lookup
@@ -770,7 +780,7 @@ module ia_loader #(
         assign request_permission = load_ia_granted;
     end
     assign ctrl_load_granted = grant_without_lookup || (request_lookup_ready && grant_with_lookup);
-    assign prefetch_idle = !prefetch_pending && !prefetch_inflight;
+    assign prefetch_idle = !prefetch_prepare_pending && !prefetch_pending && !prefetch_inflight;
 
     // A following command may consume the prefetched K group or reuse its
     // predecessor. Any other source/slot mapping cancels unissued requests.
@@ -819,7 +829,7 @@ module ia_loader #(
         (use_16bits == prefetch_descriptor.use16) &&
         (cfg_im2col == prefetch_descriptor.im2col) &&
         (compact_config_valid == prefetch_descriptor.compact) &&
-        (DATA_WIDTH'(cfg_compact_offset) == prefetch_descriptor.offset) &&
+        (compact_config_offset == prefetch_descriptor.offset) &&
         (incoming_cache_blocks == cache_blocks_q) &&
         (cfg_global_reduction == global_reduction_q))) &&
 `ifdef SYNTHESIS
@@ -829,13 +839,20 @@ module ia_loader #(
            (context_equal[1] ? CACHE_SLOT_W'(0) :
              CACHE_SLOT_W'(ia_reuse_num))) & incoming_slot_mask) == prefetch_group_slot);
 `endif
-     wire [REG_WIDTH-1:0] next_q0 = q0_base_q + REG_WIDTH'(SIZE);
+    logic [REG_WIDTH-1:0] next_q0;
+    logic unused_next_q0_carry;
+    parallel_prefix_add #(
+        .p_width(REG_WIDTH), .p_group_width(4), .p_preserve_groups(1'b1)
+    ) u_next_q0 (
+        .i_a(q0_base_q), .i_b(REG_WIDTH'(SIZE)), .i_carry(1'b0),
+        .o_sum(next_q0), .o_carry(unused_next_q0_carry)
+    );
     wire [REG_WIDTH-1:0] next_beats =
         (((tile_packed_q ? REG_WIDTH'(SIZE) : next_cols) << cfg_use_16bits) +
          REG_WIDTH'(BYTE_PER_BEAT - 1)) >> LOG2_BYTE_PER_BEAT;
-     wire [REG_WIDTH-1:0] packed_prefetch_k_tiles =
-        (global_reduction_q >> LOG2_SIZE) +
-        REG_WIDTH'((global_reduction_q & REG_WIDTH'(SIZE-1)) != 0);
+    // 全局归约数为零时保持零步长，其余配置复用已经保存的分块数量。
+    wire [REG_WIDTH-1:0] packed_prefetch_k_tiles =
+        (global_reduction_q == '0) ? '0 : packed_k_tiles_q;
     wire [REG_WIDTH-1:0] prefetch_next_k_bytes = REG_WIDTH'(SIZE) <<
         ((tile_packed_q ? LOG2_SIZE : 0) + (cfg_use_16bits ? 1 : 0));
 
@@ -849,6 +866,8 @@ module ia_loader #(
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             prefetch_pending <= 1'b0;
+            prefetch_prepare_pending <= 1'b0;
+            prefetch_prepare_in_range <= 1'b0;
             prefetch_start <= 1'b0;
             prefetch_descriptor <= '0;
             prefetch_dma_descriptor <= '0;
@@ -860,6 +879,11 @@ module ia_loader #(
             prefetch_group_slot <= '0;
             prefetch_previous_q0 <= REG_WIDTH'(0) - REG_WIDTH'(SIZE);
         end else begin
+            // 启动事件先保存为准备状态，地址和描述符在下一拍统一接收。
+            prefetch_prepare_pending <= cache_l1_start && prefetch_enable_q &&
+                !prefetch_pending && !prefetch_inflight && !prefetch_prepare_pending;
+            prefetch_prepare_in_range <= (next_q0 > q0_base_q) &&
+                (next_q0 < global_reduction_q);
             prefetch_start <= prefetch_issue;
             if (prefetch_issue) prefetch_dma_descriptor <= prefetch_descriptor;
             if (prefetch_advance) begin
@@ -873,8 +897,7 @@ module ia_loader #(
                     prefetch_descriptor.slot <= (prefetch_descriptor.slot + CACHE_SLOT_W'(1)) & cache_slot_mask;
                 end
             end
-            if (cache_l1_start && prefetch_enable_q && !prefetch_pending && !prefetch_inflight &&
-                (next_q0 > q0_base_q) && (next_q0 < global_reduction_q)) begin
+            if (prefetch_prepare_pending && prefetch_prepare_in_range && !init_cfg && !cache_flush) begin
                 prefetch_pending <= 1'b1;
                 prefetch_rows_left <= cfg_k;
                 prefetch_group_p0 <= p0_base_q;
@@ -900,6 +923,10 @@ module ia_loader #(
                 prefetch_descriptor.compact <= cfg_compact_q;
                 prefetch_descriptor.tile_packed <= tile_packed_q;
                 prefetch_descriptor.slot <= (cache_slot_base_q + CACHE_SLOT_W'(cfg_ia_reuse_num)) & cache_slot_mask;
+            end
+            if (init_cfg || cache_flush) begin
+                prefetch_prepare_pending <= 1'b0;
+                prefetch_prepare_in_range <= 1'b0;
             end
             if (cache_flush || (init_cfg && !prefetch_context_matches)) prefetch_pending <= 1'b0;
         end
@@ -984,7 +1011,7 @@ module ia_loader #(
                 else $fatal(1, "IA DMA descriptors overlap");
         if (prefetch_inflight && init_cfg)
             assert (cfg_preserve_cache && (compact_config_valid == cfg_compact_q) &&
-                    (DATA_WIDTH'(cfg_compact_offset) == compact_offset_q))
+                    (compact_config_offset == compact_offset_q))
                 else $fatal(1, "IA job reconfiguration must wait for prefetch_idle");
         if (cache_flush)
             assert (prefetch_idle) else $fatal(1, "IA flush must wait for prefetch_idle");

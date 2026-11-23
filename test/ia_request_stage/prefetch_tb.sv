@@ -58,6 +58,6 @@ module ia_prefetch_tb #(parameter bit ORDERED_JOB = 0) (
     assign group_start = u_loader.cache_l1_start;
     assign active_column_mask = u_loader.active_column_mask;
     for (genvar lane = 0; lane < 16; lane++) begin : g_valid
-        assign lane_valid[lane] = u_loader.u_cache_mgr.ram_rd_en_d1[lane];
+        assign lane_valid[lane] = ia_row_valid;
     end
 endmodule

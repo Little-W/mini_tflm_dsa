@@ -289,12 +289,12 @@ void read_group(Via_shared_cache_tb& dut, int first, int last, bool init = true,
         if (concurrent) concurrent(step);
         dut.eval();
         bool expected_first = false;
-        for (int index : first_rows) expected_first |= index == step;
+        for (int index : first_rows) expected_first |= index + 1 == step;
         require(bool(dut.shared_tile_start) == expected_first, "Tile-start issue cycle");
         first_count += dut.shared_tile_start;
         tick(dut);
         for (int lane = 0; lane < 16; ++lane) {
-            const int index = step - 1;
+            const int index = step - 2;
             const bool valid = index >= 0 && index < static_cast<int>(order.size());
             const auto value = valid && unsigned(lane)<expected_columns[order[index].first] ?
                 expected[order[index].first][order[index].second][lane] : 0;

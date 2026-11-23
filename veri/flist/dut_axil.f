@@ -61,6 +61,7 @@
 ../../rtl/npu/compute/de_diagonalizer.sv
 ../../rtl/npu/loaders/ia_loader.sv
 ../../rtl/npu/loaders/ia_ordered_coordinate_equal.sv
+../../rtl/npu/loaders/ia_ordered_coordinate_same.sv
 ../../rtl/npu/loaders/ia_loader_cache_mgr.sv
 ../../rtl/npu/loaders/ia_loader_ctrl.sv
 ../../rtl/npu/loaders/kernel_loader.sv

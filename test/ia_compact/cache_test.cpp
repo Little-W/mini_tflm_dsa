@@ -71,7 +71,7 @@ void read_group(Via_loader_cache_mgr& dut, int first, int last,
     if (concurrent) concurrent(step);
     tick(dut);
     for (int lane = 0; lane < kSize; ++lane) {
-      const int index = step - 1;
+      const int index = step - 2;
       const bool valid = index >= 0 && index < static_cast<int>(order.size());
       const auto value = valid ? expected[order[index].first][order[index].second][lane] : 0;
       if (signed16(dut.ia_out[lane]) != value)
