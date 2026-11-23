@@ -25,7 +25,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--source-root", type=Path, default=ROOT)
-    parser.add_argument("--verilator", default="verilator-modern")
+    parser.add_argument("--verilator", default="verilator")
     parser.add_argument("--jobs", type=int, default=2)
     parser.add_argument("--keep-objects", action="store_true")
     args = parser.parse_args()
@@ -72,11 +72,11 @@ def main():
     simulation = (out / "simulation.log").read_text()
     profiles = [json.loads(line.removeprefix("RESULT ")) for line in simulation.splitlines()
                 if line.startswith("RESULT ")]
-    if len(profiles) != 10 or "PASS complete SRAM row comparison" not in simulation:
+    if len(profiles) != 13 or "PASS complete SRAM row comparison" not in simulation:
         raise RuntimeError("Simulation coverage is incomplete")
     if hashes != {str(path): sha(path) for path in sources}:
         raise RuntimeError("Source files changed during verification")
-    default = next(profile for profile in profiles if profile["rows"] == 512)
+    default = next(profile for profile in profiles if profile["rows"] == 256)
     summary = {
         "passed": True,
         "model": "完整状态同步 SRAM 功能模型；同地址并发读写终止仿真",
@@ -91,9 +91,10 @@ def main():
         "compile_command": command,
         "profiles": sorted(profiles, key=lambda item: item["rows"]),
         "default_logical_storage_bits": default["logical_bits"],
-        "default_sram_instances": 33,
-        "default_physical_storage_bits": 33 * 1024 * 16,
-        "default_physical_storage_bytes": 33 * 1024 * 16 // 8,
+        "default_sram_instances": 66,
+        "default_sram_macro": "RAMTP128X16",
+        "default_physical_storage_bits": 66 * 128 * 16,
+        "default_physical_storage_bytes": 66 * 128 * 16 // 8,
         "total_row_reads": sum(profile["reads"] for profile in profiles),
         "compared_consumed_bits": sum(profile["reads"] * (profile["lanes"] * 32 + 1)
                                       for profile in profiles),

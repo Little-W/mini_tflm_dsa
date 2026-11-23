@@ -2,7 +2,8 @@ module smic40_sram_1r1w #(
     parameter integer DATA_WIDTH = 32,
     parameter integer DEPTH = 128,
     parameter integer ADDR_WIDTH = 7,
-    parameter integer MACRO_DEPTH = (DEPTH <= 128) ? 128 : 1024,
+    // 384 行以内采用 128 行宏组合，较深存储采用 1024 行宏以减少宏面积。
+    parameter integer MACRO_DEPTH = (DEPTH <= 384) ? 128 : 1024,
     parameter integer BANKS = (DEPTH + MACRO_DEPTH - 1) / MACRO_DEPTH,
     parameter integer BANK_BITS = (BANKS <= 1) ? 1 : $clog2(BANKS),
     parameter integer LANES = (DATA_WIDTH + 15) / 16

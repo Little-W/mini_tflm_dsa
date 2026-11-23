@@ -250,12 +250,12 @@ endmodule
 
 module tb_requant_group_buffer_memory;
     logic clk = 0;
-    wire [9:0] done;
-    localparam int p_test_rows [10] = '{1, 3, 16, 127, 128, 129, 511, 512, 513, 1024};
+    wire [12:0] done;
+    localparam int p_test_rows [13] = '{1, 3, 16, 127, 128, 129, 256, 384, 385, 511, 512, 513, 1024};
     always #5 clk = ~clk;
-    for (genvar profile = 0; profile < 10; profile++) begin : g_case
+    for (genvar profile = 0; profile < 13; profile++) begin : g_case
         requant_group_buffer_memory_case #(
-            .p_rows(p_test_rows[profile]), .p_lanes(profile == 7 ? 16 : 1), .p_case(profile)
+            .p_rows(p_test_rows[profile]), .p_lanes((p_test_rows[profile] == 256 || p_test_rows[profile] == 512) ? 16 : 1), .p_case(profile)
         ) u_case (.clk(clk), .o_done(done[profile]));
     end
     initial begin

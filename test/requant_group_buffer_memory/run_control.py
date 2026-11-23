@@ -49,7 +49,7 @@ def main():
 """
     proof.write_text(original.replace("endmodule", additions + "endmodule"))
     profiles = []
-    for rows in (1, 3, 16, 127, 128, 129, 511, 512, 513, 1024):
+    for rows in (1, 3, 16, 127, 128, 129, 256, 384, 385, 511, 512, 513, 1024):
         script = out / f"rows_{rows}.ys"
         script.write_text(
             f"read_slang --top requant_buffer_proof -Gp_rows={rows} "

@@ -29,6 +29,32 @@ DEFINES = [
     "GEMPACT_PS_COMPRESS=1", "GEMMORA_PS_POOL_BYTES=49152", "GEMMORA_PS_FORCE_RAW=1",
 ]
 MACROS = ("RAMTP128X16", "RAMTP1024X16")
+PROFILES = {
+    "820c": {"wrapper_small_depth_limit": 128, "bias_full_word_mask": False, "amount_pair_min_depth": None},
+    "current": {"wrapper_small_depth_limit": 384, "bias_full_word_mask": True, "amount_pair_min_depth": 129},
+}
+
+
+def ceiling_log2(value):
+    return max(1, (value - 1).bit_length())
+
+
+def expected_capacity(parameters):
+    """按 npu_top 与 matrix_engine 的生产参数推导完整分组容量。"""
+    size, data_width = parameters["SIZE"], parameters["DATA_WIDTH"]
+    physical_banks = parameters["SHARED_BANK_COUNT"]
+    max_ia_banks = 4 if physical_banks >= 8 else 2
+    bytes_per_tile = size * size * data_width // 8
+    ia_cache_blocks = max_ia_banks * parameters["SHARED_BANK_BYTES"] // bytes_per_tile
+    slots = ia_cache_blocks * (2 if parameters["IA_COMPACT_ENABLE"] and data_width == 16 else 1)
+    ia_reuse = max(1, slots // 2)
+    rows = size * ia_reuse
+    return {"shared_physical_banks": physical_banks, "shared_max_ia_banks": max_ia_banks,
+            "ia_max_cache_blocks": ia_cache_blocks, "ia_slot_blocks": slots,
+            "ia_reuse_num_max": ia_reuse, "group_rows": rows,
+            "group_address_width": ceiling_log2(rows), "group_count_width": ceiling_log2(rows + 1),
+            "bias_logical_width": 64, "bias_logical_depth": rows,
+            "product_amount_banks": 2, "product_amount_rows_per_bank": rows // 2}
 
 
 def digest(path):
@@ -73,8 +99,10 @@ def original_name(name, module):
     return name.split("$", 1)[0]
 
 
-def inspect(design):
+def inspect(design, parameters, implementation_profile):
     """按真实实例递归计数，并单独收集量化缓冲的整个子层次。"""
+    capacity = expected_capacity(parameters)
+    profile = PROFILES[implementation_profile]
     modules = design["modules"]
     instances = Counter()
     rows = []
@@ -101,7 +129,10 @@ def inspect(design):
                 visit(cell_type, child_path, lineage)
             elif cell_type.startswith("$mem"):
                 memories.append({"path": child_path, "type": cell_type,
-                                 "inside_group_buffer": "requant_group_buffer" in lineage})
+                                 "inside_group_buffer": "requant_group_buffer" in lineage,
+                                 "geometry": {key: number(value) for key, value in cell["parameters"].items()
+                                              if key in ("WIDTH", "SIZE", "RD_PORTS", "WR_PORTS",
+                                                         "RD_CLK_ENABLE", "WR_CLK_ENABLE")}})
             elif not cell_type.startswith("$"):
                 raise RuntimeError("Unresolved module: " + cell_type)
 
@@ -114,34 +145,44 @@ def inspect(design):
     group_memories = [row for row in memories if row["inside_group_buffer"]]
     if group_memories or any(row["module"] == "regfile" for row in subtree):
         raise RuntimeError("Group buffer contains inferred storage arrays")
-    if Counter(row["module"] for row in macro_rows) != {"RAMTP1024X16": 33}:
+    group_rows = capacity["group_rows"]
+    group_address_width = capacity["group_address_width"]
+    group_count_width = capacity["group_count_width"]
+    macro_depth = 128 if group_rows <= profile["wrapper_small_depth_limit"] else 1024
+    macro_type = f"RAMTP{macro_depth}X16"
+    depth_banks = (group_rows + macro_depth - 1) // macro_depth
+    width_lanes = (parameters["SIZE"] * 32 + 1 + 15) // 16
+    if Counter(row["module"] for row in macro_rows) != {macro_type: depth_banks * width_lanes}:
         raise RuntimeError("Unexpected group-buffer SRAM macro geometry")
     group_module = modules[group["specialization"]]
     group_state = {name: len(group_module["netnames"][name]["bits"])
                    for name in ("read_addr_q", "write_addr_q", "stored_rows_q", "pending_rows_q")}
-    # 九位地址和十位占用计数同时成立时，现有计数器定义对应恰好 512 行。
-    if group_state != {"read_addr_q": 9, "write_addr_q": 9,
-                       "stored_rows_q": 10, "pending_rows_q": 10} or \
-            any(group["port_widths"][name] != 512 for name in ("i_row_data", "o_row_data")):
+    expected_state = {"read_addr_q": group_address_width, "write_addr_q": group_address_width,
+                      "stored_rows_q": group_count_width, "pending_rows_q": group_count_width}
+    if group_state != expected_state or any(group["port_widths"][name] != parameters["SIZE"] * 32
+                                           for name in ("i_row_data", "o_row_data")):
         raise RuntimeError("Unexpected group-buffer logical capacity")
     wrappers = [row for row in subtree if row["module"] == "smic40_sram_1r1w"]
     if len(wrappers) != 1:
         raise RuntimeError("Expected one group-buffer SRAM wrapper")
     wrapper_widths = wrappers[0]["port_widths"]
     expected_widths = {"write_data": 513, "read_data": 513, "write_mask": 513,
-                       "write_address": 9, "read_address": 9}
+                       "write_address": group_address_width, "read_address": group_address_width}
     if any(wrapper_widths.get(k) != v for k, v in expected_widths.items()):
         raise RuntimeError("SRAM wrapper geometry differs from the logical row capacity")
     bank_lanes = Counter()
+    found_coordinates = set()
     for row in macro_rows:
         match = re.search(r"g_bank\[(\d+)\].*g_lane\[(\d+)\]", row["path"])
         if not match or not row["blackbox"]:
             raise RuntimeError("SRAM macro hierarchy or blackbox declaration differs")
-        bank_lanes[int(match[1])] += 1
-        if int(match[2]) not in range(33):
-            raise RuntimeError("SRAM width index is outside the expected range")
-    if bank_lanes != {0: 33}:
-        raise RuntimeError("SRAM depth banks are incomplete")
+        coordinates = tuple(map(int, match.groups()))
+        if coordinates in found_coordinates:
+            raise RuntimeError("SRAM macro coordinate is duplicated")
+        found_coordinates.add(coordinates)
+        bank_lanes[coordinates[0]] += 1
+    if found_coordinates != {(bank, lane) for bank in range(depth_banks) for lane in range(width_lanes)}:
+        raise RuntimeError("SRAM depth banks or width slices are incomplete")
     sequential_bits = 0
     for row in [group] + subtree:
         if row["blackbox"]:
@@ -151,8 +192,9 @@ def inspect(design):
                 raise RuntimeError("Group buffer contains a latch")
             if "dff" in cell["type"]:
                 sequential_bits += number(cell["parameters"]["WIDTH"])
-    if sequential_bits != 40:
-        raise RuntimeError("Group-buffer state differs from its 39 control bits and one elaborated selector bit")
+    expected_sequential_bits = 2 * group_address_width + 2 * group_count_width + 1 + ceiling_log2(depth_banks)
+    if sequential_bits != expected_sequential_bits:
+        raise RuntimeError("Group-buffer control and bank-selector widths differ")
     expected_instances = {"npu_top": 1, "compute_core": 1, "ws_systolic_array": 1,
                           "ws_systolic_cell": 256, "vector_engine": 1, "vector_pe": 16,
                           "requant_group_buffer": 1, "ia_ps_shared_ram": 1}
@@ -175,18 +217,25 @@ def inspect(design):
                           "RET1N": ("input", 1), "COLLDISN": ("input", 1)}
         if {k: (v["direction"], len(v["bits"])) for k, v in ports.items()} != expected_ports:
             raise RuntimeError("SRAM blackbox port dimensions differ")
+    from storage_geometry import inspect_selected_storage
+    selected_storage = inspect_selected_storage(rows, memories, capacity, profile)
     return {
+        "capacity_derivation": capacity,
+        "implementation_profile": implementation_profile,
+        "selected_storage": selected_storage,
         "module_instances": dict(sorted(instances.items())),
         "expected_compute_instances": expected_instances,
         "top_port_widths": top_widths,
         "group_buffer": {
-            "path": group["path"], "lanes": 16, "rows": 512,
+            "path": group["path"], "lanes": 16, "rows": group_rows,
             "state_widths": group_state, "wrapper_port_widths": wrapper_widths,
-            "macro_instances": len(macro_rows), "macro_type": "RAMTP1024X16",
+            "macro_instances": len(macro_rows), "macro_type": macro_type,
             "macros_per_depth_bank": dict(sorted(bank_lanes.items())),
-            "logical_storage_bits": 513 * 512,
-            "physical_macro_storage_bits": 33 * 1024 * 16,
-            "physical_macro_storage_bytes": 33 * 1024 * 16 // 8,
+            "logical_storage_bits": 513 * group_rows,
+            "physical_macro_storage_bits": len(macro_rows) * macro_depth * 16,
+            "physical_macro_storage_bytes": len(macro_rows) * macro_depth * 16 // 8,
+            "padding_bits": len(macro_rows) * macro_depth * 16 - 513 * group_rows,
+            "capacity_utilization": 513 * group_rows / (len(macro_rows) * macro_depth * 16),
             "inferred_memory_cells": 0, "regfile_instances": 0,
             "control_and_bank_select_register_bits": sequential_bits,
             "macro_paths": [row["path"] for row in macro_rows],
@@ -203,6 +252,9 @@ def main():
     parser.add_argument("--out", type=Path)
     parser.add_argument("--worker", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--keep-netlist", action="store_true")
+    parser.add_argument("--ia-compact-enable", type=int, choices=(0, 1), default=0)
+    parser.add_argument("--implementation-profile", choices=tuple(PROFILES), default="current",
+                        help="选择需要严格验证的存储实现：820c 或当前打包实现")
     args = parser.parse_args()
     if args.worker:
         from pyosys import libyosys as yosys
@@ -211,6 +263,11 @@ def main():
     if args.out is None:
         parser.error("--out is required")
     root, out = args.source_root.resolve(), args.out.resolve()
+    parameters = dict(PARAMETERS, IA_COMPACT_ENABLE=args.ia_compact_enable)
+    wrapper_source = (root / "asic/rtl/smic40_sram_1r1w.sv").read_text()
+    threshold = re.search(r"MACRO_DEPTH\s*=\s*\(DEPTH\s*<=\s*(\d+)\)", wrapper_source)
+    if not threshold or int(threshold[1]) != PROFILES[args.implementation_profile]["wrapper_small_depth_limit"]:
+        raise RuntimeError("SRAM selection threshold differs from the requested implementation profile")
     out.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
     snapshot = out / "snapshot"
@@ -254,7 +311,7 @@ def main():
         ["+incdir+" + path for path in includes] + list(map(str, compilation_files))) + "\n")
     options = ["read_slang", "--keep-hierarchy", "--top", "npu_top"]
     options += ["-D" + item for item in DEFINES]
-    options += ["-G" + name + "=" + str(value) for name, value in PARAMETERS.items()]
+    options += ["-G" + name + "=" + str(value) for name, value in parameters.items()]
     options += ["-I" + path for path in includes]
     options += [str(path) for path in compilation_files]
     netlist, script, log = out / "npu.json", out / "elaborate.ys", out / "elaboration.log"
@@ -264,7 +321,7 @@ def main():
     command = [sys.executable, str(Path(__file__).resolve()), "--worker", str(script)]
     run(command, log, snapshot)
     design = json.loads(netlist.read_text())
-    result = inspect(design)
+    result = inspect(design, parameters, args.implementation_profile)
     unchanged = hashes == {relative: digest(path) for relative, path in input_paths.items()}
     if not unchanged:
         raise RuntimeError("Source inputs changed during complete NPU elaboration")
@@ -280,10 +337,11 @@ def main():
         "prepared_filelist_sha256": digest(prepared_filelist),
         "blackbox_source_sha256": digest(blackboxes),
         "checker_source_sha256": digest(Path(__file__).resolve()),
+        "storage_analyzer_sha256": digest(HERE / "storage_geometry.py"),
         "elaboration_script_sha256": digest(script), "elaborated_netlist_sha256": digest(netlist),
         "tool": design.get("creator", "Yosys with Slang"),
         "structural_frontend": "Yosys read_slang --keep-hierarchy",
-        "defines": DEFINES, "parameters": PARAMETERS,
+        "defines": DEFINES, "parameters": parameters,
         "prepare_command": prepare_command, "elaboration_command": command,
         "dc_synthesis_performed": False, "technology_library_used": False,
         "macro_behavior_simulated": False,
