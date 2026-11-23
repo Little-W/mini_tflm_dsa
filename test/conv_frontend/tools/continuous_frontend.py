@@ -1,16 +1,19 @@
-"""构造持续提供描述符的前端数值测试，并检查完成顺序和两项在途容量。"""
+"""构造持续提供描述符的前端数值测试，并检查完成顺序和在途容量。"""
 
 
-def continuous_bench(text, admission="idle"):
+def continuous_bench(text, admission="idle", descriptor_capacity=2):
+    if descriptor_capacity not in (1, 2):
+        raise ValueError('descriptor_capacity must be 1 or 2')
     declaration = '''
   localparam int MAX_JOB_TILES=4096;
+  localparam int EXPECTED_DESCRIPTOR_CAPACITY=DESCRIPTOR_CAPACITY_VALUE;
   int queued_descriptor[MAX_JOB_TILES][4];
   int queued_expected[MAX_JOB_TILES][SIZE][SIZE];
   int accepted_count=0, completed_count=0, done_count=0;
-  int maximum_pending=0;
+  int maximum_pending=0, pending_after_transfer=0;
   longint unsigned blocked_offers=0, concurrent_offers=0, finish_captures=0, commit_captures=0;
   longint unsigned job_cycle_start=0;
-'''
+'''.replace('DESCRIPTOR_CAPACITY_VALUE', str(descriptor_capacity))
     text = text.replace('  logic [31:0] virtual_stride;', declaration + '  logic [31:0] virtual_stride;')
     old = '      if (wr_valid && wr_ready) begin\n        if (32\'(wr_slot)!=expected_slot)'
     new = '''      if (tile_valid && !tile_ready) blocked_offers++;
@@ -24,9 +27,11 @@ def continuous_bench(text, admission="idle"):
         done_count++;
         if (done_count>completed_count) $fatal(1,"completion precedes final output");
       end
-      if (accepted_count-completed_count>maximum_pending)
-        maximum_pending=accepted_count-completed_count;
-      if (accepted_count-completed_count>2)
+      // Count both descriptor acceptance and tile completion at this edge.
+      pending_after_transfer=accepted_count-completed_count-int'(wr_valid && wr_ready && unused_wr_last);
+      if (pending_after_transfer>maximum_pending)
+        maximum_pending=pending_after_transfer;
+      if (pending_after_transfer>EXPECTED_DESCRIPTOR_CAPACITY)
         $fatal(1,"descriptor capacity exceeded");
       if (wr_valid && wr_ready) begin
         if (completed_count>=accepted_count || completed_count>=ntiles)
@@ -106,7 +111,7 @@ def continuous_bench(text, admission="idle"):
     index = text.index(marker)
     policy_check = ('finish_captures==0' if admission=='finish' else
                     'finish_captures!=0 || commit_captures==0')
-    text = text[:index] + f'''    if(blocked_offers==0 || concurrent_offers==0 || {policy_check} || maximum_pending!=2)
+    text = text[:index] + f'''    if(blocked_offers==0 || concurrent_offers==0 || {policy_check} || maximum_pending!=EXPECTED_DESCRIPTOR_CAPACITY)
       $fatal(1,"continuous scenarios blocked=%0d concurrent=%0d finish=%0d commit=%0d capacity=%0d",
         blocked_offers,concurrent_offers,finish_captures,commit_captures,maximum_pending);
     $display("FRONTEND_CONTINUOUS_PASS blocked=%0d concurrent=%0d finish_captures=%0d commit_captures=%0d capacity=%0d",

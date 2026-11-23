@@ -119,18 +119,27 @@ def reviewed_warnings(log, register_descriptor=None):
                 "assign remaining_allowed[step] = TILE_COUNT_W'(lane) < remaining_count;",
                 "if (!rst_n) column_lane_allowed_q[lane] <= $unsigned(TILE_COUNT_W'(lane)) < $unsigned(TILE_COUNT_W'(SIZE));",
             }
-        match = re.match(r"%Warning-CMPCONST: (.*conv_read_cache\.sv):(\d+):", line)
+        match = re.match(r"%Warning-CMPCONST: (.*(?:conv_read_cache|conv_windowed_cache)\.sv):(\d+):", line)
         if match is None:
             return False
         statement = Path(match[1]).read_text().splitlines()[int(match[2]) - 1].strip()
         # 单个需求名额使用一位计数器，保留参数化队列的上界检查。
         return statement in {
             "if (request_count > DQ_CW'(1))",
+            "if (request_count > DQ_CW'(1)) lookup_candidate_select = 2'd1;",
             "(request_count > DQ_CW'(1) && lookup_next_work_match);",
             "assert(outstanding_count<=DQ_CW'(DEMAND_DEPTH));",
             "assert(request_count<=DQ_CW'(DEMAND_DEPTH));",
             "assert(response_count<=DQ_CW'(DEMAND_DEPTH));",
         }
+
+    def expected_ram_style_padding(line):
+        match = re.match(r"%Warning-WIDTHEXPAND: (.*rtl/common/regfile\.v):(\d+):", line)
+        if match is None:
+            return False
+        statement = Path(match[1]).read_text().splitlines()[int(match[2]) - 1].strip()
+        return statement == 'parameter [8*16-1:0] p_ram_style = "auto",' and \
+            "Operator VAR 'p_ram_style' expects 128 bits" in line
 
     def expected_reference_ready_feedback(line):
         # 参考版本在直接接收模式仍保留恒为零的描述符有效寄存器。
@@ -144,6 +153,7 @@ def reviewed_warnings(log, register_descriptor=None):
     unexpected = [line for line in warnings
                   if line.split(':', 1)[0].removeprefix('%Warning-') not in reviewed
                   and not expected_constant_count(line)
+                  and not expected_ram_style_padding(line)
                   and not expected_reference_ready_feedback(line)
                   and not (line.startswith('%Warning-PINMISSING:') and
                            '/rtl/npu/conv/conv_ia_tile_path.sv:' in line and

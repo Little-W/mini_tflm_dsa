@@ -192,6 +192,10 @@ module vector_dw_progress_observer #(
   longint unsigned quant_slot_wait, write_busy_cycles, fetch_padding;
   logic previous_done;
   logic [2:0] owned_slots, peak_owned_slots;
+  logic input_column_in_bounds;
+
+  assign input_column_in_bounds = vector_engine.input_x >= 34'sd0 &&
+      $unsigned(vector_engine.input_x) < 34'(vector_engine.c.image.input_w);
 
   always_comb begin
     owned_slots=0;
@@ -210,7 +214,7 @@ module vector_dw_progress_observer #(
       if (vector_engine.depthwise) begin
         if (vector_engine.window_request_fire) request_count<=request_count+1;
         if (vector_engine.dw_issue_fire) issue_count<=issue_count+1;
-        if (32'(vector_engine.state)==p_execute && (vector_engine.u_invariants.input_column_in_bounds && vector_engine.u_address.input_row_in_bounds) &&
+        if (32'(vector_engine.state)==p_execute && (input_column_in_bounds && vector_engine.u_address.input_row_in_bounds) &&
             !vector_engine.input_ready[vector_engine.read_bank]) wait_input<=wait_input+1;
         if (32'(vector_engine.state)==p_finish && vector_engine.dw_snapshot_vld)
           wait_snapshot<=wait_snapshot+1;

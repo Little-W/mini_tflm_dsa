@@ -38,6 +38,7 @@ def main():
     parser.add_argument('--first-read-latency', type=int, default=8)
     parser.add_argument('--pe-count', type=int, choices=(8, 16), default=8,
                         help='向量乘累加单元数量，与容量统计及实际仿真参数交叉检查')
+    parser.add_argument('--conv-low-latency', action='store_true')
     parser.add_argument('--jobs', type=int, default=2)
     parser.add_argument('--run-jobs', type=int, default=2)
     parser.add_argument('--models', nargs='+')
@@ -133,7 +134,8 @@ def main():
                            'SHARED_BANK_COUNT': args.shared_bank_count,
                            'PS_POOL_BYTES': pool_bytes, 'IM2COL_CACHE_BYTES': args.im2col_cache_bytes,
                            'IA_CACHE_BLOCKS': 4, 'PS_FRAME_COUNT': 16, 'NPU_AXI_DATA_WIDTH': 64,
-                           'AXI_READ_OUTSTANDING': 4, 'PS_FORCE_RAW': 1}
+                           'AXI_READ_OUTSTANDING': 4, 'PS_FORCE_RAW': 1,
+                           'CONV_LOW_LATENCY': int(args.conv_low_latency)}
     if (capacity_report.get('elaboration_target') != 'generic' or
             not capacity_report['passed'] or not capacity_report['sources_unchanged'] or
             any(capacity_report['hardware_configuration'].get(key) != value for key, value in capacity_parameters.items()) or
@@ -159,6 +161,7 @@ def main():
         'ram_fixed_latency': 0, 'ram_continuous_read_beat_cycles': 1,
         'axi_read_outstanding': 4, 'axi_write_outstanding': 4, 'dma_max_bytes': 2048,
         'vector_pe_count': args.pe_count,
+        'conv_low_latency': int(args.conv_low_latency),
         'rounding_mode': 'nearest_even',
         'timing': 'CPU rdcycle around complete MicroInterpreter::Invoke; initialization recorded separately',
         'ps_policy': 'raw32', 'dataflow_selection': 'production AUTO WS/IS',
@@ -173,7 +176,8 @@ def main():
     settings['capacity_accounting'] = capacity_model.allocation(
         4, 16, pool_bytes, args.capacity_budget_bytes, 'buffer-ram', size=16, compressed=True,
         im2col_cache_bytes=args.im2col_cache_bytes,
-        bank_bytes=args.shared_bank_bytes, bank_count=args.shared_bank_count)
+        bank_bytes=args.shared_bank_bytes, bank_count=args.shared_bank_count,
+        vector_pe_count=args.pe_count, conv_low_latency=args.conv_low_latency, target='generic')
     if settings['capacity_accounting']['unused_budget_bytes'] < 0:
         raise ValueError('The requested NPU buffer allocation exceeds the supplied capacity budget')
     bench.write_json(settings_path, settings)
@@ -218,7 +222,8 @@ def main():
         ia_cache_blocks=4, ps_frame_count=16, ps_storage_rows=799, s16_output_banks=4,
         cpu_profile='performance', bus_width=64, first_read_latency=args.first_read_latency,
         ps_pool_bytes=pool_bytes, shared_bank_bytes=args.shared_bank_bytes,
-        shared_bank_count=args.shared_bank_count, im2col_cache_bytes=args.im2col_cache_bytes, hardware_raw=True)
+        shared_bank_count=args.shared_bank_count, im2col_cache_bytes=args.im2col_cache_bytes, hardware_raw=True,
+        conv_low_latency=args.conv_low_latency)
     sim_manifest = json.loads((out / 'sim/build.json').read_text())
     if not sim_manifest['profile']['shared_ia_ps']:
         raise RuntimeError('Shared IA/PS hardware is required')
@@ -231,6 +236,7 @@ def main():
         'ps_pool_bytes': pool_bytes, 'im2col_cache_bytes': args.im2col_cache_bytes,
         'ps_storage_implementation': 'raw32',
         'vector_pe_count': args.pe_count,
+        'conv_low_latency': int(args.conv_low_latency),
     }
     if any(sim_manifest['profile'].get(key) != value for key, value in required_profile.items()):
         raise RuntimeError('The constructed simulator differs from the comparison configuration')

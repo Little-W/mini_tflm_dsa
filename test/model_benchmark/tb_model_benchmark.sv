@@ -48,6 +48,9 @@
 `ifndef SOC_NETWORK_IM2COL_CACHE_BYTES
 `define SOC_NETWORK_IM2COL_CACHE_BYTES 4096
 `endif
+`ifndef SOC_NETWORK_CONV_LOW_LATENCY
+`define SOC_NETWORK_CONV_LOW_LATENCY 0
+`endif
 `ifndef SOC_NETWORK_DMA_MAX_BYTES
 `define SOC_NETWORK_DMA_MAX_BYTES (256 * (`SOC_NETWORK_BUS_WIDTH / 8))
 `endif
@@ -65,6 +68,7 @@
 `endif
 `define PS_BENCH_AXIL dut.u_npu_axil_top
 `define PS_BENCH_CORE dut.u_npu_axil_top.u_npu_top
+`define PS_BENCH_MATRIX `PS_BENCH_CORE.u_matrix_engine
 module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                       output logic [31:0] progress, pc);
     localparam int RAM_WORDS = `SOC_NETWORK_RAM_WORDS;
@@ -77,6 +81,7 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
         .SHARED_BANK_BYTES(`SOC_NETWORK_SHARED_BANK_BYTES),
         .SHARED_BANK_COUNT(`SOC_NETWORK_SHARED_BANK_COUNT),
         .IM2COL_CACHE_BYTES(`SOC_NETWORK_IM2COL_CACHE_BYTES),
+        .CONV_LOW_LATENCY(`SOC_NETWORK_CONV_LOW_LATENCY),
         .CPU_MEM_WORD_WIDTH(`SOC_NETWORK_BUS_WIDTH),
         .IA_CACHE_BLOCKS(`SOC_NETWORK_IA_CACHE_BLOCKS), .PS_FRAME_COUNT(`SOC_NETWORK_PS_FRAME_COUNT),
         .PS_STORAGE_ROWS(`SOC_NETWORK_PS_STORAGE_ROWS),
@@ -326,9 +331,9 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
             if(job_inflight && (job_kind==JOB_CONV || job_kind==JOB_GEMM)) begin
                 if(npu_busy) total.array_jobs_busy_cycles++;
                 if(dut.u_npu_axil_top.npu_clk_gate_en) begin
-                    if(dut.u_npu_axil_top.u_npu_top.ia_row_valid)
+                    if(dut.u_npu_axil_top.u_npu_top.u_matrix_engine.ia_row_valid)
                         total.array_ia_valid_cycles++;
-                    if(dut.u_npu_axil_top.u_npu_top.weight_commit)
+                    if(dut.u_npu_axil_top.u_npu_top.u_matrix_engine.weight_commit)
                         total.array_weight_commits++;
                 end
             end
@@ -434,18 +439,18 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                 if (`PS_BENCH_AXIL.npu_clk_gate_en) begin
                     job_stats.core_cycles++;
                     if (!job_vector) begin
-                        job_stats.ps_wait_cycles += `PS_BENCH_CORE.u_npu_controller.current_state == 3 &&
-                            `PS_BENCH_CORE.ia_data_valid && `PS_BENCH_CORE.u_npu_controller.bias_ready_for_compute &&
-                            `PS_BENCH_CORE.quant_params_valid &&
-                            !(`PS_BENCH_CORE.fifo_full_flag && `PS_BENCH_CORE.ia_output_pending) &&
-                            !`PS_BENCH_CORE.ia_sending_done && !`PS_BENCH_CORE.oa_calc_over && !`PS_BENCH_CORE.ps_frame_ready;
-                        job_stats.array_rows += `PS_BENCH_CORE.u_compute_core.ia_row_valid;
+                        job_stats.ps_wait_cycles += `PS_BENCH_MATRIX.u_npu_controller.current_state == 3 &&
+                            `PS_BENCH_MATRIX.ia_data_valid && `PS_BENCH_MATRIX.u_npu_controller.bias_ready_for_compute &&
+                            `PS_BENCH_MATRIX.quant_params_valid &&
+                            !(`PS_BENCH_MATRIX.fifo_full_flag && `PS_BENCH_MATRIX.ia_output_pending) &&
+                            !`PS_BENCH_MATRIX.ia_sending_done && !`PS_BENCH_MATRIX.oa_calc_over && !`PS_BENCH_MATRIX.ps_frame_ready;
+                        job_stats.array_rows += `PS_BENCH_MATRIX.u_compute_core.ia_row_valid;
 `ifdef GEMPACT_PS_COMPRESS
-                        job_stats.ps_write_words += $countones(`PS_BENCH_CORE.u_compute_core.u_ps_buffer.g_compressed.u_store.payload_ram_write_en);
-                        job_stats.ps_read_words += $countones(`PS_BENCH_CORE.u_compute_core.u_ps_buffer.g_compressed.u_store.payload_ram_read_en);
-                        job_stats.ps_rows += `PS_BENCH_CORE.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_valid;
-                        job_stats.ps_raw_rows += `PS_BENCH_CORE.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_valid &&
-                            `PS_BENCH_CORE.u_compute_core.u_ps_buffer.g_compressed.u_store.tb_observer.encode_commit_opcode == 3;
+                        job_stats.ps_write_words += $countones(`PS_BENCH_MATRIX.u_compute_core.u_ps_buffer.g_compressed.u_store.payload_ram_write_en);
+                        job_stats.ps_read_words += $countones(`PS_BENCH_MATRIX.u_compute_core.u_ps_buffer.g_compressed.u_store.payload_ram_read_en);
+                        job_stats.ps_rows += `PS_BENCH_MATRIX.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_valid;
+                        job_stats.ps_raw_rows += `PS_BENCH_MATRIX.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_valid &&
+                            `PS_BENCH_MATRIX.u_compute_core.u_ps_buffer.g_compressed.u_store.tb_observer.encode_commit_opcode == 3;
 `endif
                     end
                 end
@@ -531,14 +536,14 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                 // reports completion. Wait reasons within each issue state
                 // are mutually exclusive; IA-valid is an independent measure.
                 if(job_kind==JOB_CONV || job_kind==JOB_GEMM) begin
-                    total.array_controller_cycles+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.tb_observer.util_active_cycles;
-                    total.array_wait_weight_tail+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.tb_observer.util_stall_weight_tail_cycles;
-                    total.array_wait_weight_data+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.tb_observer.util_stall_weight_data_cycles;
-                    total.array_wait_ia_data+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.tb_observer.util_stall_ia_data_cycles;
-                    total.array_wait_bias+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.tb_observer.util_stall_bias_cycles;
-                    total.array_wait_quant+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.tb_observer.util_stall_quant_cycles;
-                    total.array_wait_output+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.tb_observer.util_stall_fifo_cycles;
-                    total.array_wait_ia_done+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.tb_observer.util_stall_ia_done_cycles;
+                    total.array_controller_cycles+=dut.u_npu_axil_top.u_npu_top.u_matrix_engine.u_npu_controller.tb_observer.util_active_cycles;
+                    total.array_wait_weight_tail+=dut.u_npu_axil_top.u_npu_top.u_matrix_engine.u_npu_controller.tb_observer.util_stall_weight_tail_cycles;
+                    total.array_wait_weight_data+=dut.u_npu_axil_top.u_npu_top.u_matrix_engine.u_npu_controller.tb_observer.util_stall_weight_data_cycles;
+                    total.array_wait_ia_data+=dut.u_npu_axil_top.u_npu_top.u_matrix_engine.u_npu_controller.tb_observer.util_stall_ia_data_cycles;
+                    total.array_wait_bias+=dut.u_npu_axil_top.u_npu_top.u_matrix_engine.u_npu_controller.tb_observer.util_stall_bias_cycles;
+                    total.array_wait_quant+=dut.u_npu_axil_top.u_npu_top.u_matrix_engine.u_npu_controller.tb_observer.util_stall_quant_cycles;
+                    total.array_wait_output+=dut.u_npu_axil_top.u_npu_top.u_matrix_engine.u_npu_controller.tb_observer.util_stall_fifo_cycles;
+                    total.array_wait_ia_done+=dut.u_npu_axil_top.u_npu_top.u_matrix_engine.u_npu_controller.tb_observer.util_stall_ia_done_cycles;
                 end else begin
                     total.vector_compute_cycles+=64'(dut.u_npu_axil_top.u_npu_top.tb_observer.vector_stat_compute);
                     total.vector_dma_wait_cycles+=64'(dut.u_npu_axil_top.u_npu_top.tb_observer.vector_stat_dma_wait);
@@ -653,14 +658,16 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
         end
     end
 `ifdef GEMPACT_PS_COMPRESS
-`define PS_BENCH_STORE `PS_BENCH_CORE.u_compute_core.u_ps_buffer.g_compressed.u_store
+`define PS_BENCH_STORE `PS_BENCH_MATRIX.u_compute_core.u_ps_buffer.g_compressed.u_store
     localparam int PS_MONITOR_BANKS = `SOC_NETWORK_SHARED_BANK_COUNT - 1;
     localparam int PS_MONITOR_IA_BANKS = `SOC_NETWORK_SHARED_BANK_COUNT >= 8 ? 4 : 2;
-    localparam int PS_MONITOR_ROWS = 16 * (PS_MONITOR_IA_BANKS * `SOC_NETWORK_SHARED_BANK_BYTES / 512);
+    // 十六位输入的两个存储区域共同支持一次分组复用。
+    localparam int PS_MONITOR_REUSE_TILES = PS_MONITOR_IA_BANKS * `SOC_NETWORK_SHARED_BANK_BYTES / 1024;
+    localparam int PS_MONITOR_ROWS = 16 * (PS_MONITOR_REUSE_TILES < 1 ? 1 : PS_MONITOR_REUSE_TILES);
     initial begin
         assert(`PS_BENCH_CORE.SHARED_RAM_ENABLED &&
                `PS_BENCH_STORE.BANKS == PS_MONITOR_BANKS &&
-               `PS_BENCH_CORE.IA_REUSE_NUM_MAX * 16 == PS_MONITOR_ROWS)
+               `PS_BENCH_MATRIX.IA_REUSE_NUM_MAX * 16 == PS_MONITOR_ROWS)
             else $fatal(1, "PS capture geometry differs from the shared RAM configuration");
     end
     logic [31:0] occupied_payload_bytes;
@@ -693,5 +700,6 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
 `endif
 
 endmodule
+`undef PS_BENCH_MATRIX
 `undef PS_BENCH_CORE
 `undef PS_BENCH_AXIL
