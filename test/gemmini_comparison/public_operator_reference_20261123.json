@@ -1,0 +1,1112 @@
+{
+  "schema_version": 1,
+  "unit": "cycles",
+  "npu_remote_commit": "e6caf608e3aeca205b956908a38b4d229209529c",
+  "numerical_task": "INT8 operands, INT32 accumulation and bias, clip_INT8(RNE((A*B+bias)/32)), zero points 0",
+  "timing": "Accepted task start through completed INT8 writes and final external-memory responses; host layout preparation excluded",
+  "npu_profile": {
+    "size": 16,
+    "bus_width": 64,
+    "dma_max_bytes": 2048,
+    "ia_cache_blocks": 4,
+    "ps_frame_count": 16,
+    "shared_bank_bytes": 4096,
+    "shared_bank_count": 9,
+    "shared_total_bytes": 36864,
+    "im2col_cache_bytes": 16384,
+    "vector_pe_count": 16,
+    "quantization_lanes": 16,
+    "window_lanes": 16,
+    "shared_quant_enable": 1
+  },
+  "public_sources": {
+    "gemmini_bird": {
+      "hardware_commit": "4a33b75f975297e309847f41f81f4c0f8b20b81d",
+      "software_commit": "576f08c217dfefb9fa2e3e087575f23699565560",
+      "axi_bits": 64,
+      "logical_state_bits": 650391,
+      "gemm_schedule": "Selected and independently replayed schedules from 456 candidates"
+    },
+    "vta": {
+      "commit": "d4a15f627d5cc9762a82270d1be60a136e6af9c2",
+      "axi_bits": 64,
+      "logical_state_bits": 627138,
+      "counter": "drained_cycles"
+    },
+    "coral_vme": {
+      "commit": "f385a31b4af454be21063fca1d17351b35a3a99c",
+      "axi_bits": 128,
+      "logical_state_bits": 665344,
+      "program": "External operands copied to DTCM; scalar control, copies and RVV postprocessing included"
+    }
+  },
+  "source_table_sha256": {
+    "optimization_operators.csv": "5a50caacc5a5b2ed24d04e212ef95a04483281f8cd55ed7d50d07958ef9fecf7",
+    "coral_comparison.csv": "b543639ad71b92f756c7f2986e039f54f0abb6a2eee824b43d3d26f846f417cc"
+  },
+  "cases": [
+    {
+      "name": "tile16",
+      "kind": "gemm",
+      "shape": {
+        "m": 16,
+        "n": 16,
+        "k": 16
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "dbb07585f223bfaf9f241467a2c6fba5efa29b64a1c468453c4310cae0da8f8e",
+      "input_tensor_sha256": {
+        "a": "d8173c1578318bc1ff2c108e5100768bf7d5498fe2b76a1b58eb2bf39aeab056",
+        "b": "06effa42c574de032d8c7ae69fdd53e935d65edf6dad0f2c5bec74c9268e86be",
+        "b_transposed": "99bf7b9f5b837599bb8e5f278921e7d751710f22a5ade95f90bca3b1c81adc48",
+        "bias": "f52d268e101a33b717a2b867fe6e22c55d337fdce948e472e8f189e191ed2ac5",
+        "c_s32": "ef9d5c3fb607b2bdac086253f1b828475d1d876cc0726f4443f65efe6d439ed2",
+        "c_s8": "69ce56722c76955b54ee8358b729cb59332644c02c72d8b39bcf9143f8e30247"
+      },
+      "output_sha256": "69ce56722c76955b54ee8358b729cb59332644c02c72d8b39bcf9143f8e30247",
+      "output_elements": 256,
+      "npu_remote_cycles": 211,
+      "npu_previous_low_latency_cycles": 211,
+      "public_cycles": {
+        "gemmini_bird": 345,
+        "vta": 483,
+        "coral_vme": 706
+      }
+    },
+    {
+      "name": "tile32",
+      "kind": "gemm",
+      "shape": {
+        "m": 32,
+        "n": 32,
+        "k": 32
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "e3e29bd6713162013379ca32ea3d649d8e9e0a8b18151ca5da19d75fc0cac248",
+      "input_tensor_sha256": {
+        "a": "4a617fa6b141a27acb83cac121041300e3599441e6b6ff2e0bc44d20e05953de",
+        "b": "5d9700622db80b239daf611766eefba3986777afcf24fcc97d4e2727546f496f",
+        "b_transposed": "baefc0a870b4dd0347923ed35b911b01d7397f81335857b214f577c128f174a8",
+        "bias": "ad8813f677073dc2d4e6e87496864cb2493bfd610599ee56b4037189426da0c9",
+        "c_s32": "2c597c4c3bb901e70ea3b458cd42cc1fdac22323767b99eae30065a622c20205",
+        "c_s8": "d841a8ab7e25323f3762e8881aafec344f04b50ee7ae910dfd0f617545095327"
+      },
+      "output_sha256": "d841a8ab7e25323f3762e8881aafec344f04b50ee7ae910dfd0f617545095327",
+      "output_elements": 1024,
+      "npu_remote_cycles": 562,
+      "npu_previous_low_latency_cycles": 562,
+      "public_cycles": {
+        "gemmini_bird": 789,
+        "vta": 1537,
+        "coral_vme": 3033
+      }
+    },
+    {
+      "name": "tile64",
+      "kind": "gemm",
+      "shape": {
+        "m": 64,
+        "n": 64,
+        "k": 64
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "b39e71176ead9a28e20e6d38570968f63755e92119f2ed2565905a3ced86b893",
+      "input_tensor_sha256": {
+        "a": "c51fa27d1a7b310a5b2262ed6c66d5d404378e67100918ecd1a8557ade26142d",
+        "b": "7177fb14c4ae70c41fe4107d36ff6e05de319d5637b8ae94f4d6669717bbf188",
+        "b_transposed": "9fe2fc53d023bbbd2718dcb457fd94a4c7315489a4b5611f7ebbf1586b4518fc",
+        "bias": "08b5ec7ee18b99e50770dbcc49ff75b48c5fcfe3916d6f37a72858e309d3ede3",
+        "c_s32": "d9709d73931a9b91e44d11b80f8006a5a75edb0d5536267b34fad37d6e0b4d0a",
+        "c_s8": "2f4b9bdd7a6e745823e95040c37cde979d7525ebeb776873ed59fe4fa57abfb2"
+      },
+      "output_sha256": "2f4b9bdd7a6e745823e95040c37cde979d7525ebeb776873ed59fe4fa57abfb2",
+      "output_elements": 4096,
+      "npu_remote_cycles": 2222,
+      "npu_previous_low_latency_cycles": 2222,
+      "public_cycles": {
+        "gemmini_bird": 2914,
+        "vta": 5898,
+        "coral_vme": 17023
+      }
+    },
+    {
+      "name": "tail17",
+      "kind": "gemm",
+      "shape": {
+        "m": 17,
+        "n": 23,
+        "k": 19
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "b1d676b9bb99a3f7cfbb277def5de0ac6e11393a0408b8835be316c73433960d",
+      "input_tensor_sha256": {
+        "a": "ac20d3a08b39f4ec4dc2307f13e2c219b929dc5b2bbcf3ee9e6dd40577598350",
+        "b": "c69410b2b379522fa501cb435dfb96fc766fb3d47f061cbf7d8c84155ea22e62",
+        "b_transposed": "597129da1a74019f049ee96fb04bde59d83c282ab3791279c5547b8d823d8670",
+        "bias": "4c13e3fb3510f6a888e9b7d442d2b9cf6d239ec3ae9c3ce71878fb62357f1bbb",
+        "c_s32": "4e41cdcccc1f3b8757e33cfcdd32312a279c7bf596095b4acc2985337637cd1a",
+        "c_s8": "de02dbd78faa1380616baa13afad6e6fcaf991c03fe790cd73ba5b62bbfc35c4"
+      },
+      "output_sha256": "de02dbd78faa1380616baa13afad6e6fcaf991c03fe790cd73ba5b62bbfc35c4",
+      "output_elements": 391,
+      "npu_remote_cycles": 444,
+      "npu_previous_low_latency_cycles": 444,
+      "public_cycles": {
+        "gemmini_bird": 1722,
+        "vta": 952,
+        "coral_vme": 1931
+      }
+    },
+    {
+      "name": "vector_m1",
+      "kind": "gemm",
+      "shape": {
+        "m": 1,
+        "n": 64,
+        "k": 64
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "3790e2ad818518ce78be1bd898026440804b52d59f2316c6f210aca9afb9646f",
+      "input_tensor_sha256": {
+        "a": "91b219eb15603222074ff9297d63c627f2cbcfdfb71a06df87ace4bce700fe66",
+        "b": "7c171bb2b61624f6aabd87fd00040bb964814fc5e320816ba8aaa04bbc65c19e",
+        "b_transposed": "59b3a7cf6e290f7b072f5b6a666753f0b6dfeec3a1cc44f5ef0ab6c3f54115ef",
+        "bias": "39b61de9fa8d6cb00ed291ec54e9b2ea4a4c1d870591551fdc6d2acad610bc04",
+        "c_s32": "23ede4668ab21ea584a843548c5c6bbf5319a26d9063c6b4b99432191f269ad0",
+        "c_s8": "03932b5f80702f94ab53732858104fdbc7ca144488c8c5e971828632c85df8e9"
+      },
+      "output_sha256": "03932b5f80702f94ab53732858104fdbc7ca144488c8c5e971828632c85df8e9",
+      "output_elements": 64,
+      "npu_remote_cycles": 643,
+      "npu_previous_low_latency_cycles": 643,
+      "public_cycles": {
+        "gemmini_bird": 853,
+        "vta": 768,
+        "coral_vme": 4279
+      }
+    },
+    {
+      "name": "model_m784_n8_k9",
+      "kind": "gemm",
+      "shape": {
+        "m": 784,
+        "n": 8,
+        "k": 9
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "7cbabbba45bb809b37980d7ea52c630003e8a688c58d1e5b2f917ebe20c4673a",
+      "input_tensor_sha256": {
+        "a": "f62350a39fcf9a9b0f392019c0221560bf2e9c6ff2067c56c94f2a69baa7853d",
+        "b": "c2ba7704c4e1328a0c93babf85698de938b98dea390765dfda0f87805e7ea5b5",
+        "b_transposed": "334918d1b0206ffb91c02c45aae077bf2973b625939d4a6b4174c02f0c561574",
+        "bias": "bba04a25fa9b5bb185b0ac5949f9c92efc800ff784a893687b1becef93842cfc",
+        "c_s32": "871ab515703b50fd240dfc27da14fcfc0d859a82a4714ffc6755f8e30ed49cc6",
+        "c_s8": "835d39ef1b6eea118b85556dd217d6e6d6357ecfeb503659d6f18885a5a35f79"
+      },
+      "output_sha256": "835d39ef1b6eea118b85556dd217d6e6d6357ecfeb503659d6f18885a5a35f79",
+      "output_elements": 6272,
+      "npu_remote_cycles": 2263,
+      "npu_previous_low_latency_cycles": 2263,
+      "public_cycles": {
+        "gemmini_bird": 5704,
+        "vta": 13847,
+        "coral_vme": 20317
+      }
+    },
+    {
+      "name": "model_m196_n16_k72",
+      "kind": "gemm",
+      "shape": {
+        "m": 196,
+        "n": 16,
+        "k": 72
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "d94e2e24e907ce90565781f2ade827d0f999a0faf73ef9216a4445a78465d8a2",
+      "input_tensor_sha256": {
+        "a": "907e6112af765d992e7ad0ba8b2b394fb7cfe0f2a4b8dd4931fe7debc3bc41a4",
+        "b": "55680e784e0942bb9f06d3e2325633caa816cd077a6e9df01612f3025520dc6d",
+        "b_transposed": "2e70a963f5a4ac5587f24e712814c03ede8db7109b7872d727b452ef443059ed",
+        "bias": "3cec8906e43d8e5f7abfc01847c0114e9db680a9815f3cc0f901a032f9bd5823",
+        "c_s32": "e2a869550eeccbeaf1637ef234871322222e774c1df8956fc8755580b5628732",
+        "c_s8": "e7070af425963815fb527228ab71cfd2dedb21dac32c195f2ba96eee1bc9b99d"
+      },
+      "output_sha256": "e7070af425963815fb527228ab71cfd2dedb21dac32c195f2ba96eee1bc9b99d",
+      "output_elements": 3136,
+      "npu_remote_cycles": 4048,
+      "npu_previous_low_latency_cycles": 4048,
+      "public_cycles": {
+        "gemmini_bird": 7936,
+        "vta": 5582,
+        "coral_vme": 14067
+      }
+    },
+    {
+      "name": "model_m1_n64_k784",
+      "kind": "gemm",
+      "shape": {
+        "m": 1,
+        "n": 64,
+        "k": 784
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "73894abd08045975a42d5361885a48322d149e9d2d929697f70e631181abadb7",
+      "input_tensor_sha256": {
+        "a": "5ffa55bc9a34d2d2b4f69ada82f0faf01f2e4a35689e0f599b48d423130cc9ee",
+        "b": "5c0eb7a140bb4a10aba424e07dfc59d7e0a9a331532502f9569cab34ffc159e1",
+        "b_transposed": "81627ec0f2fd7df2ed2c61cff3cc6e41c1c3b16a15602688e473704d94991c35",
+        "bias": "3747c7cec7c5d10e2d688ddbd5c9f8a622721a8fc9183c31404145adad59b9a4",
+        "c_s32": "61cdbcce6f4f4b6031435e1848872ab40187afc8f29e1e10785aff827f8a2e10",
+        "c_s8": "15efa3f0448fa22667b5ada3827f0cd14a98c5a97647fe08ceb9763ea33dfee1"
+      },
+      "output_sha256": "15efa3f0448fa22667b5ada3827f0cd14a98c5a97647fe08ceb9763ea33dfee1",
+      "output_elements": 64,
+      "npu_remote_cycles": 6493,
+      "npu_previous_low_latency_cycles": 6493,
+      "public_cycles": {
+        "gemmini_bird": 7822,
+        "vta": 6919,
+        "coral_vme": 46759
+      }
+    },
+    {
+      "name": "model_m1_n10_k64",
+      "kind": "gemm",
+      "shape": {
+        "m": 1,
+        "n": 10,
+        "k": 64
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "6ac836c42da6ae1014b1be75056992361f3b7ef5731224b9eb7959639665aaab",
+      "input_tensor_sha256": {
+        "a": "2bb4bd14ce25d4b28bcaf4e4cd0a06d99e9ad005d17ea1b0246c6ec5c44c6d83",
+        "b": "33d0a77054e1a417ab3c0822eafadb03ee244752a005dc6dcc2f018b00cc9106",
+        "b_transposed": "e08a250d1419f4265873473e0441a27841c72f437b2d4affccf137823d8e01d1",
+        "bias": "40ca11c9116e6c3cf0ea9da6a54fb1addd8c03b79d9714822720222df1130f93",
+        "c_s32": "7a765317128575b5a7723e22b48ceb3e2c743cc8467c59a732920b02012a3c7a",
+        "c_s8": "a9fca07e33e074df2cb69611b15226ec7f271d2d0541b5e72647c2c89602cdd4"
+      },
+      "output_sha256": "a9fca07e33e074df2cb69611b15226ec7f271d2d0541b5e72647c2c89602cdd4",
+      "output_elements": 10,
+      "npu_remote_cycles": 207,
+      "npu_previous_low_latency_cycles": 207,
+      "public_cycles": {
+        "gemmini_bird": 409,
+        "vta": 318,
+        "coral_vme": 1168
+      }
+    },
+    {
+      "name": "model_m2304_n8_k27",
+      "kind": "gemm",
+      "shape": {
+        "m": 2304,
+        "n": 8,
+        "k": 27
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "d21a10e704ceb7836a9ea3892cd5c526f38329f1be7800a2fbc7496b54ae16aa",
+      "input_tensor_sha256": {
+        "a": "5b362a26d23211817ecfa1c60376d49a7774e7dfda47341f19904b89158b7ace",
+        "b": "48d896b96494adcf89b3515cb81d864eed23b1cce996980728e30f260558b556",
+        "b_transposed": "dbfab5de6de3e7f81220a3c1c600688469b9052a861b3f4d3d84d625066a1014",
+        "bias": "7664264a21262db6a1cbb0d472fb5ab26d6b01ac2c05e64734591299380723d6",
+        "c_s32": "6ac54fec394a3b9df5f206044f0bfa913372a21c8860641d1bc6d5f1aa49f683",
+        "c_s8": "04dc2c25fe3e82b3da5a6232dace105717cdce4c010a7e98a110de54daeef6b8"
+      },
+      "output_sha256": "04dc2c25fe3e82b3da5a6232dace105717cdce4c010a7e98a110de54daeef6b8",
+      "output_elements": 18432,
+      "npu_remote_cycles": 15223,
+      "npu_previous_low_latency_cycles": 15223,
+      "public_cycles": {
+        "gemmini_bird": 16204,
+        "vta": 41936,
+        "coral_vme": 83817
+      }
+    },
+    {
+      "name": "model_m2304_n16_k8",
+      "kind": "gemm",
+      "shape": {
+        "m": 2304,
+        "n": 16,
+        "k": 8
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "401644c9841c793cf5f58efbd4259181c20cbec893b5f125aa21860162d496d2",
+      "input_tensor_sha256": {
+        "a": "d4cf0ea15f8b07906b73ba90f28ded230fe823ffea7c2210e6cd003f8064c45b",
+        "b": "9714177eae81a1c3fd226196755907716e23e038964b37428ef2426328b720b0",
+        "b_transposed": "bdc355f8d36e826b44cd4326657e05d9357ca5ca7fdb81424eb112636f00a828",
+        "bias": "ab81163d779a09a9e3f23a5205cc9af50b983b03a884ce5c5b8cbbd9a650dbbb",
+        "c_s32": "f6d85dc3e9078e81300fac277448ceb69e5548bb350144c72017a461b6c651d6",
+        "c_s8": "f7638a1be62d15a458476a70a661c4b0c113f3fedfb01b1638201af88d38f5ff"
+      },
+      "output_sha256": "f7638a1be62d15a458476a70a661c4b0c113f3fedfb01b1638201af88d38f5ff",
+      "output_elements": 36864,
+      "npu_remote_cycles": 8632,
+      "npu_previous_low_latency_cycles": 8632,
+      "public_cycles": {
+        "gemmini_bird": 11845,
+        "vta": 39344,
+        "coral_vme": 55069
+      }
+    },
+    {
+      "name": "model_m576_n32_k16",
+      "kind": "gemm",
+      "shape": {
+        "m": 576,
+        "n": 32,
+        "k": 16
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "959e61112f6b45b1a66460792c950a256a0274bfb28224fcb2d9f530409d109b",
+      "input_tensor_sha256": {
+        "a": "3dfd828c1a1c51147e1a326c53293fd4f431b8522cfb24a33d2f3c8cedb8cf60",
+        "b": "4a65ae56820f6607222b998cd605394256a86c8c99c45d4a1f3d5beff9a2eaa5",
+        "b_transposed": "f06e8fdf2e50b3500b67b81881149cc402a0f1141c1cfb01b4f05168d4dc6f67",
+        "bias": "de1a088dcd13d5f822cf47d899d4f45f10db2b0bc8c7e18bb2eecb1d74216036",
+        "c_s32": "562619083c8e1031d4eca451782e42e5f1c7697b5f59cacf9217fc47c154cc56",
+        "c_s8": "f253ebc52aac1dfd6697ea25fb6006f7fdf7a26b7dc5a0bc6795b895fcd93055"
+      },
+      "output_sha256": "f253ebc52aac1dfd6697ea25fb6006f7fdf7a26b7dc5a0bc6795b895fcd93055",
+      "output_elements": 18432,
+      "npu_remote_cycles": 4000,
+      "npu_previous_low_latency_cycles": 4000,
+      "public_cycles": {
+        "gemmini_bird": 6619,
+        "vta": 19961,
+        "coral_vme": 33901
+      }
+    },
+    {
+      "name": "model_m576_n32_k32",
+      "kind": "gemm",
+      "shape": {
+        "m": 576,
+        "n": 32,
+        "k": 32
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "629651e08dffa6a2863887177d4702263f53aaab3b81f3e5a14011f1a857b870",
+      "input_tensor_sha256": {
+        "a": "7529091184d48cfd679b6775bb0d97796d24577e8b5795624f72652d7eccb2fa",
+        "b": "7ef6bc9c665dfcdb8f6ed002ff74dac449838867e2f5f5b4fd1e958acabdbff4",
+        "b_transposed": "784e36252a1e4762c4d2ac75b968b65321064cde80168cbe50a9d7f948331281",
+        "bias": "b6cf1190c70a3d4620e139be1804b1c513b49a1c503279073a18307d62718106",
+        "c_s32": "85264437753eaf138d5f9bc83f669ca1023f2ce21f224a07d999316de23d38a9",
+        "c_s8": "2b4e1ecbfd6befed64bfa19cbfac0bd1b84b603e993e132a5ebb1ebda6fd137f"
+      },
+      "output_sha256": "2b4e1ecbfd6befed64bfa19cbfac0bd1b84b603e993e132a5ebb1ebda6fd137f",
+      "output_elements": 18432,
+      "npu_remote_cycles": 4564,
+      "npu_previous_low_latency_cycles": 4564,
+      "public_cycles": {
+        "gemmini_bird": 7352,
+        "vta": 21305,
+        "coral_vme": 46281
+      }
+    },
+    {
+      "name": "model_m144_n64_k32",
+      "kind": "gemm",
+      "shape": {
+        "m": 144,
+        "n": 64,
+        "k": 32
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "a2f1c953e0d1410cc05aa380ed4898180e164637b8697c20bfd71a625f722f6e",
+      "input_tensor_sha256": {
+        "a": "71c56d1d37b8440aee4f4f2a1c9a1f28988e36ba598bb12365b791410e2bc563",
+        "b": "d179405bf475226d7e1c1e948b0a4501fe8b9fda6fd5d1cb5a1746ab30f558b0",
+        "b_transposed": "0606448db11163e477f6ab49057acabbab9811955e9d5b787a159a35d66fe3bb",
+        "bias": "1f5ee1af83226761cfd66a6f37f0583fda3cb0b04043efd80ea786b777aa17ed",
+        "c_s32": "52b80884cbe8c117a7b3a34a4795b3e0849860746e4d288d731fd4e0da6369d9",
+        "c_s8": "9761446caeff8aaf02556d2f998f75bdeb87231d37fb92f46ba54d956095bfe8"
+      },
+      "output_sha256": "9761446caeff8aaf02556d2f998f75bdeb87231d37fb92f46ba54d956095bfe8",
+      "output_elements": 9216,
+      "npu_remote_cycles": 2346,
+      "npu_previous_low_latency_cycles": 2346,
+      "public_cycles": {
+        "gemmini_bird": 4147,
+        "vta": 11046,
+        "coral_vme": 23743
+      }
+    },
+    {
+      "name": "model_m144_n64_k64",
+      "kind": "gemm",
+      "shape": {
+        "m": 144,
+        "n": 64,
+        "k": 64
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "13d323d8ce4162063198dcaf67c4a3ebcb704b327ca484748229bc177c97dfa1",
+      "input_tensor_sha256": {
+        "a": "b557d2ea7662d4943408b14f2a12fb6c9f33dbcf3edde72e4dae0fd30f91652e",
+        "b": "8a3fed264af86919c95cfed562554e2229dc61faaf2dc9d3feee062363e684a8",
+        "b_transposed": "ae2c610a19db226a30615bb4b55e038bf2612469a6e795616ab4921533bb8cd5",
+        "bias": "df99875fb096e1d649bd2ce834c59718d10f2ab0354db8e1e19434cf24f0eb79",
+        "c_s32": "ffc7d109f7e12f7e9c6109c060db5f450e273010b042937ff7be8bdfede11f20",
+        "c_s8": "69e3256552cb721a4b6e7ca534e915be3e3dc7c4d2966a2f36fd0f5f70f3cfa4"
+      },
+      "output_sha256": "69e3256552cb721a4b6e7ca534e915be3e3dc7c4d2966a2f36fd0f5f70f3cfa4",
+      "output_elements": 9216,
+      "npu_remote_cycles": 3964,
+      "npu_previous_low_latency_cycles": 3964,
+      "public_cycles": {
+        "gemmini_bird": 5252,
+        "vta": 12449,
+        "coral_vme": 36543
+      }
+    },
+    {
+      "name": "model_m36_n128_k64",
+      "kind": "gemm",
+      "shape": {
+        "m": 36,
+        "n": 128,
+        "k": 64
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "89b6f510e58d7773322dfeb843ce665ca970e7f4ebf7ae48e46badb669347a9d",
+      "input_tensor_sha256": {
+        "a": "6a9738297e6a30a3db32220a0b0f50013f7f7da1522ecab4e18f01dce600aa70",
+        "b": "aa9b26034bd6ac1b6ac35de2b5be261c36de25ecede3f123b3107e12900c8d2a",
+        "b_transposed": "550b0c008b558f1a9789b04fdc7219b76af72ff7bf847ee0d12b345875e5e648",
+        "bias": "fbb475107cdbf814b6a41d05f1eac26c423e5713981bbc7d8916fabb3827eaa0",
+        "c_s32": "bfcccc029c35da4cab5b3f5606c8f695c8a749177406fe4ff57bf4da69ccf1cb",
+        "c_s8": "64d294e035388dac022d4907b3e88d703789fd40fba03025a6887286da3dd533"
+      },
+      "output_sha256": "64d294e035388dac022d4907b3e88d703789fd40fba03025a6887286da3dd533",
+      "output_elements": 4608,
+      "npu_remote_cycles": 2860,
+      "npu_previous_low_latency_cycles": 2860,
+      "public_cycles": {
+        "gemmini_bird": 3545,
+        "vta": 7150,
+        "coral_vme": 24435
+      }
+    },
+    {
+      "name": "model_m36_n128_k128",
+      "kind": "gemm",
+      "shape": {
+        "m": 36,
+        "n": 128,
+        "k": 128
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "246364c4c22d34f1057182ade7e7fc84e0b0a55ab12b82b9dc8c1004b8b9fe06",
+      "input_tensor_sha256": {
+        "a": "d0b269f9e4accdc33c8c5a0744cf1cfe0e441f0eb635ad77e02044d496b9c5fa",
+        "b": "0da95474547375b46afc0482746dbd87d909bfd8617ab4410ddd05eef0cebf79",
+        "b_transposed": "e6483f5588f55b840eb3e86251f9a94173378c12d525b845d18b3a54509bb8df",
+        "bias": "ec857c36d85ad746806acd403d84c59002b33603c6e6e14cefe491c8ecfa86e7",
+        "c_s32": "575c719a1f3c8dd5ac0530e40eb82aead10d1ab3b3388a3bb319fb23768b80b8",
+        "c_s8": "02b5a556bc07dd5810b0a138cc3dd6f0c608ec7990551975dd407bac5b7cf9b8"
+      },
+      "output_sha256": "02b5a556bc07dd5810b0a138cc3dd6f0c608ec7990551975dd407bac5b7cf9b8",
+      "output_elements": 4608,
+      "npu_remote_cycles": 4783,
+      "npu_previous_low_latency_cycles": 4783,
+      "public_cycles": {
+        "gemmini_bird": 5960,
+        "vta": 9447,
+        "coral_vme": 42867
+      }
+    },
+    {
+      "name": "model_m9_n256_k128",
+      "kind": "gemm",
+      "shape": {
+        "m": 9,
+        "n": 256,
+        "k": 128
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "d88726d259716bd958a78fc9f89def0f1e45a115e7e02e1f77ed9018548ca284",
+      "input_tensor_sha256": {
+        "a": "227c1a020362303b791054d4e40c1f8de2ff74da5c803c1e8f0a515c8d3ce089",
+        "b": "3d0fca80f58e70a0aaf7ce487beb553afebf1072ce56b28fb24be8dd19c04233",
+        "b_transposed": "44a7ac463781690d3e5f47c158cea9daf4cab883d06eb0e4a2161da978d11ab9",
+        "bias": "3b9dcba46c3ec07286a778c447c4f52745148d94d7301c3925dc68d50aac517c",
+        "c_s32": "695e6ea8fc0cf15c486e5cf42673da715a218546305c5db70c584a4ed86d5107",
+        "c_s8": "b1387f43e83e18ae9767189d2c8a0d8c49ae3627b5242f83323e61fca09aad7e"
+      },
+      "output_sha256": "b1387f43e83e18ae9767189d2c8a0d8c49ae3627b5242f83323e61fca09aad7e",
+      "output_elements": 2304,
+      "npu_remote_cycles": 7251,
+      "npu_previous_low_latency_cycles": 7251,
+      "public_cycles": {
+        "gemmini_bird": 8045,
+        "vta": 8005,
+        "coral_vme": 34419
+      }
+    },
+    {
+      "name": "model_m9_n256_k256",
+      "kind": "gemm",
+      "shape": {
+        "m": 9,
+        "n": 256,
+        "k": 256
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "03d59fa6b7874ba2b53f88a18a3e37f79d64e97e8b8fe96adb7eae5e266a0767",
+      "input_tensor_sha256": {
+        "a": "761ae06b886c83cff32d8688b94eb717e37ef958f6a7558d28d29b30bf738982",
+        "b": "6330e79b0381fee8fb2fc87369c3986b4597171fb29057c05f2e7d406be0630c",
+        "b_transposed": "73eb1077aa3859691269669209365386f440fb650134dffe551401ca1d3a3352",
+        "bias": "11d437486fe94b6b9070600cb97c441c036885100c6f27f56c95a1bc3d52c3b3",
+        "c_s32": "5dadf92917a82c0155f6f7faf9337dd65723c8084bc1c3ec406ec2399d81644e",
+        "c_s8": "2506056e69324cc3489b9c599662fa703a85f3e4301617c97ae079cd1b7477f4"
+      },
+      "output_sha256": "2506056e69324cc3489b9c599662fa703a85f3e4301617c97ae079cd1b7477f4",
+      "output_elements": 2304,
+      "npu_remote_cycles": 13667,
+      "npu_previous_low_latency_cycles": 13667,
+      "public_cycles": {
+        "gemmini_bird": 17436,
+        "vta": 12495,
+        "coral_vme": 65139
+      }
+    },
+    {
+      "name": "model_m1_n2_k256",
+      "kind": "gemm",
+      "shape": {
+        "m": 1,
+        "n": 2,
+        "k": 256
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "a87f79a125bb580b000ec67b4307e264cf0246bc81d9fef0dce89bc4f9f7964a",
+      "input_tensor_sha256": {
+        "a": "facdb40237fbad68ba803e091f81e7fa0bf2896c15ea3dee779a16e7dbadd4ba",
+        "b": "c63526b51247ab2da2a2c0073d74e3fddb6d9c27412781dbac859e5984506aa5",
+        "b_transposed": "b80a5e3ee17fe0db4d0490609dc1a40a4662dfbbff5413a48f84944d64d9e01d",
+        "bias": "8dbdf2da5eaa8ea604eb266ec9dfd6a125b6d1a6472aae74cd04bb2ed848a665",
+        "c_s32": "88c56bff61cc3d182a96f12b064f35ca8181019c19964a3d094ec9761db98bdd",
+        "c_s8": "47dc540c94ceb704a23875c11273e16bb0b8a87aed84de911f2133568115f254"
+      },
+      "output_sha256": "47dc540c94ceb704a23875c11273e16bb0b8a87aed84de911f2133568115f254",
+      "output_elements": 2,
+      "npu_remote_cycles": 507,
+      "npu_previous_low_latency_cycles": 507,
+      "public_cycles": {
+        "gemmini_bird": 1285,
+        "vta": 725,
+        "coral_vme": 3997
+      }
+    },
+    {
+      "name": "model_m125_n64_k40",
+      "kind": "gemm",
+      "shape": {
+        "m": 125,
+        "n": 64,
+        "k": 40
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "aaf65423da92b7d24a3229a3cb44d9314d6e4e46a2e7da02dac26c94f25498a0",
+      "input_tensor_sha256": {
+        "a": "54d741915284d978e3902a96279de406e15ce3de54ae0e8bc825d71525c67825",
+        "b": "de37952a8402c1d2b9c4299af11c4f2665b29a3bdec9145ed98e6cfdfa8fbb7b",
+        "b_transposed": "663f14d3c1ef8f7348001dc6798e66a32ac774fa686cc15fad163dd6ad022354",
+        "bias": "05c32105da05578fcc68bade9e31877c341c9ae48fdbc1d1edf6d67efb6cdc23",
+        "c_s32": "19922d4ea7afd638e7850076e3d0d0d48ca6c9ade49ab10a6c403ece16fc385e",
+        "c_s8": "2519f0db487a9ceb99a03101ac5789d76ae8aecacd8ce8ba4189611217856ae5"
+      },
+      "output_sha256": "2519f0db487a9ceb99a03101ac5789d76ae8aecacd8ce8ba4189611217856ae5",
+      "output_elements": 8000,
+      "npu_remote_cycles": 3984,
+      "npu_previous_low_latency_cycles": 3984,
+      "public_cycles": {
+        "gemmini_bird": 6187,
+        "vta": 10156,
+        "coral_vme": 23867
+      }
+    },
+    {
+      "name": "model_m125_n64_k64",
+      "kind": "gemm",
+      "shape": {
+        "m": 125,
+        "n": 64,
+        "k": 64
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "9c2dcbd9957b86ac5f16bdca70b895cf40d30a2c99c2f0782dca91a43c87aff4",
+      "input_tensor_sha256": {
+        "a": "be466b921d5c6614dde4ee0b5f42b713d88a70f36f3364a6eb99d92f92cacee7",
+        "b": "0e9f66d57c1d5ae8eaa6ef6021f4faeae96777092e8f18c9a9fcf76eece71fcd",
+        "b_transposed": "4caedb90c2163bfbc48bf3b638b3b2f5818cb90f91e4dbc5fea8c0a1f54634ca",
+        "bias": "829ca3b6f5f5f38bf50ed2056b16caa1f0f52de472edaef4a881dff7cfb41f8a",
+        "c_s32": "876a1bcd7d8d3a51c0818b6f1111a4910bd86e5e52fdd252fe407be11c00ae6b",
+        "c_s8": "402bd5bb1ac322628f97ce6d0ccc3dd2ff55f65eed7ecab7a2a5149917b1b6f1"
+      },
+      "output_sha256": "402bd5bb1ac322628f97ce6d0ccc3dd2ff55f65eed7ecab7a2a5149917b1b6f1",
+      "output_elements": 8000,
+      "npu_remote_cycles": 3635,
+      "npu_previous_low_latency_cycles": 3635,
+      "public_cycles": {
+        "gemmini_bird": 4633,
+        "vta": 10848,
+        "coral_vme": 32447
+      }
+    },
+    {
+      "name": "model_m1_n12_k64",
+      "kind": "gemm",
+      "shape": {
+        "m": 1,
+        "n": 12,
+        "k": 64
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "34fb52cfd2fdd6a4603756a46ed27a69bab0bc10f87cf7c581a013702051bdba",
+      "input_tensor_sha256": {
+        "a": "dc5b5aad3f0fc4dff6e886ddf840189d239983c81d418b0b21d38823d723ce9c",
+        "b": "baa3693f00aa0ec798f1d08199f2f2cb242a2d9ec2eda9b6b44f78450ee9a049",
+        "b_transposed": "29c5feab24e302e492c9166e6e27bef88a51d2cbb64a4f332a9879bc32af6ce5",
+        "bias": "845b6148390f2a5049e65cc84d54c21270197c17d6638c78e7c81bd7f3155883",
+        "c_s32": "7f20da4b31e71e019b12835b42da46b97c06c1830916f37f7301723c558c2d9e",
+        "c_s8": "42b8cc1e8a38832ed6b16b9b13c4737a1b564e793839824ab78ca2c8a16fd7b6"
+      },
+      "output_sha256": "42b8cc1e8a38832ed6b16b9b13c4737a1b564e793839824ab78ca2c8a16fd7b6",
+      "output_elements": 12,
+      "npu_remote_cycles": 218,
+      "npu_previous_low_latency_cycles": 218,
+      "public_cycles": {
+        "gemmini_bird": 410,
+        "vta": 318,
+        "coral_vme": 1168
+      }
+    },
+    {
+      "name": "model_m1024_n16_k27",
+      "kind": "gemm",
+      "shape": {
+        "m": 1024,
+        "n": 16,
+        "k": 27
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "fc684486b6938654bc54952786c6b7dda8b4c3a1cf9902ad1e5eabf721f58158",
+      "input_tensor_sha256": {
+        "a": "f4ed1b852032eb88e10da113b3f0cdf8f43fa0d35a6589645ae9316a8a93da25",
+        "b": "801c093d300b9b92894825a344baf3ffd81ee695b4d870a6a892930852b8502a",
+        "b_transposed": "39e24dd262cf10dbcc25028251fb26b2156290ccb2226b9bc031527b43817dbe",
+        "bias": "b149d4a20ced0424abd9c548eb71e744c706b0f3fa550072fcc26b94d172b2c3",
+        "c_s32": "45c1dce011c036690decbc5567a61961a800f9be5c4fc34134979ca23f669760",
+        "c_s8": "d7e1814b995b2b7609da4c4e35d484ed48c161b70452ba2c9814d0b5efc08ccb"
+      },
+      "output_sha256": "d7e1814b995b2b7609da4c4e35d484ed48c161b70452ba2c9814d0b5efc08ccb",
+      "output_elements": 16384,
+      "npu_remote_cycles": 7579,
+      "npu_previous_low_latency_cycles": 7579,
+      "public_cycles": {
+        "gemmini_bird": 8767,
+        "vta": 19134,
+        "coral_vme": 38569
+      }
+    },
+    {
+      "name": "model_m1024_n16_k144",
+      "kind": "gemm",
+      "shape": {
+        "m": 1024,
+        "n": 16,
+        "k": 144
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "acb5cd66ee49cd803b0a773f88fc331e45c959f4dc457e8aa22d1bc4341a6b9d",
+      "input_tensor_sha256": {
+        "a": "26831eaa8068b0b2cc3f73780b4972b270a8bf573f263f81fa8fded795a2d9e5",
+        "b": "dacadb007b8ad2fb71ee6e8d155b91fdcf5d7a24c7e1868485621e1e3d367efe",
+        "b_transposed": "b4344f33e34a4ab145b304229e79f8019c0034d240e92d545bd475b10b956ba4",
+        "bias": "a0f174365e8f890e732965c90004816c4a4c2b4ac94b6bfb51d873f67779438e",
+        "c_s32": "2d669fef4a34b049ca6c24b96c108fda99a07d5ac24eaaab0bb9d8b9efce76e2",
+        "c_s8": "715640445dc2f839926ca4dbd9c42ba34feccf9a7bc4389cfa79c14904c7cf06"
+      },
+      "output_sha256": "715640445dc2f839926ca4dbd9c42ba34feccf9a7bc4389cfa79c14904c7cf06",
+      "output_elements": 16384,
+      "npu_remote_cycles": 30427,
+      "npu_previous_low_latency_cycles": 30427,
+      "public_cycles": {
+        "gemmini_bird": 29731,
+        "vta": 31817,
+        "coral_vme": 117664
+      }
+    },
+    {
+      "name": "model_m256_n32_k144",
+      "kind": "gemm",
+      "shape": {
+        "m": 256,
+        "n": 32,
+        "k": 144
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "65350000664aa538147b07cbe110a48c4437c6372723c7eafbfa685eb61cd255",
+      "input_tensor_sha256": {
+        "a": "70cd3fe6e42492ed022df5b482a636a265612dd9c739d7fe51038d4279171abd",
+        "b": "13f0935956b0eb165898827cf409317335e9574da401ac43fa3ab9f31103e20a",
+        "b_transposed": "beee09b79ea5e9247754e79a9cb80112df40ffc845fac9c4c32a046deb2d6739",
+        "bias": "4babb7c3b9c0abf0cb11e27f5f077874258853e22b23ce884da839c0b331dd27",
+        "c_s32": "49e6b12b5665da1740fcbb1a7254aba7af83d4cbf1851c44fcb5d1de9617db28",
+        "c_s8": "c78517cf4eba9b2879de17f85b7f08b5737e75d750a72c7780609320ecf43635"
+      },
+      "output_sha256": "c78517cf4eba9b2879de17f85b7f08b5737e75d750a72c7780609320ecf43635",
+      "output_elements": 8192,
+      "npu_remote_cycles": 8703,
+      "npu_previous_low_latency_cycles": 8703,
+      "public_cycles": {
+        "gemmini_bird": 8799,
+        "vta": 14531,
+        "coral_vme": 59901
+      }
+    },
+    {
+      "name": "model_m256_n32_k288",
+      "kind": "gemm",
+      "shape": {
+        "m": 256,
+        "n": 32,
+        "k": 288
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "9f1ce37cdb2afa134c1afa7717bcd4294590eeaed3fa9e0d4213cc4f2e12ce5f",
+      "input_tensor_sha256": {
+        "a": "aea361514edd6c0066e9486baa9357a0916bae62859e259f49424bec2bec7f50",
+        "b": "36380f5f9b7d740c80dc0acd3074baa7fdea4862a52aff3ba3c847dceb8ff0ab",
+        "b_transposed": "bdf798effbc54e2c44c1176ca6ad9bfcd6735178141fc7b7a2a61f83c4eb39ba",
+        "bias": "938d619ff042014cc61c93b2b48b863e618c5fd8664a7b25bdff48b4f7684074",
+        "c_s32": "cfabde81ae2a5bdfb06a064cf75f636bc4d1a8d23e57d572dcb5d9c2ba5416a8",
+        "c_s8": "7a3d71bf83b48c1fc59a1dd7b9e4208df3f2111942296462ed7566bd52347738"
+      },
+      "output_sha256": "7a3d71bf83b48c1fc59a1dd7b9e4208df3f2111942296462ed7566bd52347738",
+      "output_elements": 8192,
+      "npu_remote_cycles": 16659,
+      "npu_previous_low_latency_cycles": 16659,
+      "public_cycles": {
+        "gemmini_bird": 19162,
+        "vta": 22079,
+        "coral_vme": 110121
+      }
+    },
+    {
+      "name": "model_m256_n32_k16",
+      "kind": "gemm",
+      "shape": {
+        "m": 256,
+        "n": 32,
+        "k": 16
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "e641ded9e4536fbcb99e4c63b252e34659392fc6b709f59016f9f7225e673661",
+      "input_tensor_sha256": {
+        "a": "ff5513f054ba3cba281cc08b78e37dc6ec1148a4cdd3e10db5492d1cdbcecc77",
+        "b": "ec1b41c21b4fa1ff1c5be0d24f0760584b60c5bd4fcff09c59b8468a19c669e3",
+        "b_transposed": "11285f8a8c166bd362423dd6f13dcc3a2f2490fc0d8efd7ccc8784756dd0250b",
+        "bias": "a3ad94aa6718ab733612f32104c82b256b570c534dc9c6c86c6b8f017852caa4",
+        "c_s32": "6b0970795f045b9a14074396355f790153201e85a14bd275015e209e835b09b7",
+        "c_s8": "98260410220397b9159875283bbfd2d31e8da7be272d71ab2b04c03cb36c0da6"
+      },
+      "output_sha256": "98260410220397b9159875283bbfd2d31e8da7be272d71ab2b04c03cb36c0da6",
+      "output_elements": 8192,
+      "npu_remote_cycles": 2251,
+      "npu_previous_low_latency_cycles": 2251,
+      "public_cycles": {
+        "gemmini_bird": 2951,
+        "vta": 9034,
+        "coral_vme": 15261
+      }
+    },
+    {
+      "name": "model_m64_n64_k288",
+      "kind": "gemm",
+      "shape": {
+        "m": 64,
+        "n": 64,
+        "k": 288
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "4b058ac00fc25bcb4d46be67bd2602dfaeaeb743936f0165aea782396ad67b11",
+      "input_tensor_sha256": {
+        "a": "467837f2969921d10811857f696e1f59989e9b0c3e87aced29d5a6f8f072a7e8",
+        "b": "1ac7d6cd586e145ed8c9bce5a25a75bd50324e1763d388bf2c3deb9b4dc1071c",
+        "b_transposed": "b2585f758a30b2024f20620b93016b4bae4b02c7b73b599c1640d5a1e3949c98",
+        "bias": "532b9ecaa902a601738bfc75f5df6dd3be83f13aa3d231b6a0cf30989ed48766",
+        "c_s32": "944116984f1e616c99c603aba10b61bfaf657b2f5e967422816273d9cda7deb7",
+        "c_s8": "fc288c9e51a9037577b847b8393032f951c42b2a0ef2c21b1451f26b353bb8a7"
+      },
+      "output_sha256": "fc288c9e51a9037577b847b8393032f951c42b2a0ef2c21b1451f26b353bb8a7",
+      "output_elements": 4096,
+      "npu_remote_cycles": 7262,
+      "npu_previous_low_latency_cycles": 7262,
+      "public_cycles": {
+        "gemmini_bird": 7455,
+        "vta": 12170,
+        "coral_vme": 59023
+      }
+    },
+    {
+      "name": "model_m64_n64_k576",
+      "kind": "gemm",
+      "shape": {
+        "m": 64,
+        "n": 64,
+        "k": 576
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "44b71e7821e6a909863a8eaf0fa5ba493f1693b2ec2bc1dcd5fb082ce5b49031",
+      "input_tensor_sha256": {
+        "a": "906ef59aaa0b78717b3c82514fa5fa9055b936579095188e0de99c43803e624f",
+        "b": "39c097798dc1b8ba181864baa33c1c6206111a9ebe32272f6780967003a41d46",
+        "b_transposed": "ee82b473dd992ce11c9bb8d6d71ac1e9e218f9617f0e95075231dec49de13612",
+        "bias": "7e5c125b8cb5fd113bbdc5dfffe6fdd8d331f72e93b5fee2bc440dc286ce726f",
+        "c_s32": "2ea26a1e50666420ec6daea19d67264cac69b9bc75b014514503db5eb0bf9b99",
+        "c_s8": "0418f3e26f7b88b880f8e5f7d942f77b8fb72c11643d05770d761ce29dc6280e"
+      },
+      "output_sha256": "0418f3e26f7b88b880f8e5f7d942f77b8fb72c11643d05770d761ce29dc6280e",
+      "output_elements": 4096,
+      "npu_remote_cycles": 13742,
+      "npu_previous_low_latency_cycles": 13742,
+      "public_cycles": {
+        "gemmini_bird": 12834,
+        "vta": 24721,
+        "coral_vme": 113023
+      }
+    },
+    {
+      "name": "model_m64_n64_k32",
+      "kind": "gemm",
+      "shape": {
+        "m": 64,
+        "n": 64,
+        "k": 32
+      },
+      "spatial": null,
+      "workload_manifest_sha256": "f69852901f179814c4c8f70d63c33c90d001de11df2cd07e8578f834b60cec3a",
+      "input_tensor_sha256": {
+        "a": "5c33c73976ac1418d603be8abe80526bf7e9f7c7cba2b55e8d88976dbd037f8b",
+        "b": "0c17b06b4b07697b5e55270d10fa4b1fc14a75163e62dc37eef8d19fbec18afd",
+        "b_transposed": "640472f3691bdce844767ff54b874bbd51bfc1af93019d12714645e5b70268ec",
+        "bias": "1d5b3a616367f1cbb4e020a67c6b34ffb1ee4db8c9743d8f3bbc1bcb156a5ee2",
+        "c_s32": "ae3c53381f9817657982b2cb577fdffc10394477b694836e73eafa9b5f4f9f94",
+        "c_s8": "cf862850b4d1e0ca79ac511221734211a50af063c5f4b16dcfefc41a4691ef25"
+      },
+      "output_sha256": "cf862850b4d1e0ca79ac511221734211a50af063c5f4b16dcfefc41a4691ef25",
+      "output_elements": 4096,
+      "npu_remote_cycles": 1502,
+      "npu_previous_low_latency_cycles": 1502,
+      "public_cycles": {
+        "gemmini_bird": 2042,
+        "vta": 5137,
+        "coral_vme": 11023
+      }
+    },
+    {
+      "name": "conv3x3_s2_96_c3_o8",
+      "kind": "conv",
+      "shape": {
+        "m": 2304,
+        "n": 8,
+        "k": 27
+      },
+      "spatial": {
+        "batch": 1,
+        "input_h": 96,
+        "input_w": 96,
+        "input_channels": 3,
+        "output_channels": 8,
+        "output_h": 48,
+        "output_w": 48,
+        "stride": 2,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 0,
+        "kernel": 3
+      },
+      "workload_manifest_sha256": "bf935b0840bf79508c2c0c274208934ea3c0a014792a0bfa537555e99b32bbc6",
+      "input_tensor_sha256": {
+        "a": "83ddece6dfea013f89909289dbf86d1d91ebbacb546a38b30e0a74b32773be30",
+        "b": "c1ed418a4a0b35d890a522db074e00c68ea5a0b43c51172ffa13a2b8d020264c",
+        "weights_npu": "0cde17441085d281cb2617071a683f540f5d616e2dcfb690d565d1b684a5a061",
+        "bias": "0a1f419e5523791e3b5bd99afa6beec3a336519fe4741f6a13f847c26ae994ed",
+        "c_s32": "2ee0ae1860d34434597a7022d787e434c16f596b7094ae8f47aab005ecffa14b",
+        "c_s8": "966e3ff9f5091ac83d2aba9c0a1ab4b82be6552a78eb219bfe64d1e918c06e85"
+      },
+      "output_sha256": "966e3ff9f5091ac83d2aba9c0a1ab4b82be6552a78eb219bfe64d1e918c06e85",
+      "output_elements": 18432,
+      "npu_remote_cycles": 82162,
+      "npu_previous_low_latency_cycles": 52864,
+      "public_cycles": {
+        "gemmini_bird": 85503
+      }
+    },
+    {
+      "name": "dw3x3_s1_48_c8",
+      "kind": "dw",
+      "shape": {
+        "m": 2304,
+        "n": 8,
+        "k": 9
+      },
+      "spatial": {
+        "batch": 1,
+        "input_h": 48,
+        "input_w": 48,
+        "input_channels": 8,
+        "output_channels": 8,
+        "output_h": 48,
+        "output_w": 48,
+        "stride": 1,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 1,
+        "kernel": 3
+      },
+      "workload_manifest_sha256": "c028c91e9ba6f5fdf1b338b839a977ff0b29b67acf5f7b447e5f61f4e3fc5027",
+      "input_tensor_sha256": {
+        "a": "9b074ea681401cbbd41fa824c2085b7be664b8593f57b562ac956089e32123eb",
+        "b": "64720145fec04b56fe8787f9449225ad846f729e6e2e41804ad1c0103a17bf90",
+        "weights_npu": "a2b4136533ad8f6cdb380a7fd81b2e0e42a91af50e5aeb8b093af4a391a25d0b",
+        "bias": "afaebdd90806f5b3d9915441d219e6ac0d8586ff39aaf31d58a7353e3e5ed8e4",
+        "c_s32": "25c01a88f334e08935c7a3ad16e1d1d0576006c3f08787d9fd11c07ce708e38a",
+        "c_s8": "257944df19cb3c669f3a38970104f2bfd6aa97744e1eb2a78c52ad266e7d5f28"
+      },
+      "output_sha256": "257944df19cb3c669f3a38970104f2bfd6aa97744e1eb2a78c52ad266e7d5f28",
+      "output_elements": 18432,
+      "npu_remote_cycles": 107012,
+      "npu_previous_low_latency_cycles": 36477,
+      "public_cycles": {
+        "gemmini_bird": 32710
+      }
+    },
+    {
+      "name": "dw3x3_s2_48_c8",
+      "kind": "dw",
+      "shape": {
+        "m": 576,
+        "n": 8,
+        "k": 9
+      },
+      "spatial": {
+        "batch": 1,
+        "input_h": 48,
+        "input_w": 48,
+        "input_channels": 8,
+        "output_channels": 8,
+        "output_h": 24,
+        "output_w": 24,
+        "stride": 2,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 0,
+        "kernel": 3
+      },
+      "workload_manifest_sha256": "e8d9adff443631c9c52d44dfac2248b46d514f3664f1df7a5d76af00e3229e41",
+      "input_tensor_sha256": {
+        "a": "0e5366ca088e2ad2254d38e8cf25f063b7a217a79516d032595cc5a222f9e849",
+        "b": "d545c47c453daa90c2a9b2c8b3c9834f6e92a93eaaa94751a6bf6d5abf488f59",
+        "weights_npu": "105500190a9481dfc3e292f8da2084207f427929c4e0168eb82b6302091b451b",
+        "bias": "6d8159f85f1f37c95a10c152d8aa71cdf4ddad0c7db330e5c0b93d97a43fc5f4",
+        "c_s32": "065f27e823b24788f1dc4109ff2433c2add1b8fa01a062018e09b297d2e9e361",
+        "c_s8": "c9c540dc43e5313db0b8b1090acda1e53e7e67d9252c50931e6d67273e33081c"
+      },
+      "output_sha256": "c9c540dc43e5313db0b8b1090acda1e53e7e67d9252c50931e6d67273e33081c",
+      "output_elements": 4608,
+      "npu_remote_cycles": 29752,
+      "npu_previous_low_latency_cycles": 12630,
+      "public_cycles": {
+        "gemmini_bird": 17807
+      }
+    },
+    {
+      "name": "conv3x3_32_c16_o16",
+      "kind": "conv",
+      "shape": {
+        "m": 1024,
+        "n": 16,
+        "k": 144
+      },
+      "spatial": {
+        "batch": 1,
+        "input_h": 32,
+        "input_w": 32,
+        "input_channels": 16,
+        "output_channels": 16,
+        "output_h": 32,
+        "output_w": 32,
+        "stride": 1,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 1,
+        "kernel": 3
+      },
+      "workload_manifest_sha256": "c7231bf673ae8e4a1c72eef2c440e0317b06ce23b8bf73a989bbdbc074dfb9a8",
+      "input_tensor_sha256": {
+        "a": "0738e898783a1f16036594741f9ba2d70ba4c0e0d66b7a284570ef5e9da7daa6",
+        "b": "ea95ca478cf7bb236ffeb5f93c5ee8fb7588b32a944738b8da0f05ebe51c689c",
+        "weights_npu": "0f099d5d895b6e43494eb8ed06eaa42d4bd34fce1d484cfa31592c19c0147904",
+        "bias": "8750d28c2b2a0a7ec2eefedb90ef99e333eaec44daf9769343de64df61f98ff3",
+        "c_s32": "2ee51ea28cd2a56264e53d5744b111fc3810ef44ff4fa5a0ab4161421bfc6433",
+        "c_s8": "7a77a1c9ec9eb6716903b85f007421bdc1143cbd76ca905afd5d4e1f952ecf37"
+      },
+      "output_sha256": "7a77a1c9ec9eb6716903b85f007421bdc1143cbd76ca905afd5d4e1f952ecf37",
+      "output_elements": 16384,
+      "npu_remote_cycles": 55118,
+      "npu_previous_low_latency_cycles": 19809,
+      "public_cycles": {
+        "gemmini_bird": 24562
+      }
+    },
+    {
+      "name": "conv3x3_8_c64_o64",
+      "kind": "conv",
+      "shape": {
+        "m": 64,
+        "n": 64,
+        "k": 576
+      },
+      "spatial": {
+        "batch": 1,
+        "input_h": 8,
+        "input_w": 8,
+        "input_channels": 64,
+        "output_channels": 64,
+        "output_h": 8,
+        "output_w": 8,
+        "stride": 1,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 1,
+        "kernel": 3
+      },
+      "workload_manifest_sha256": "0306ee352c1a0f30dc0e2d7a538d6d4a87090e02af71133a22f92cf9ab60785e",
+      "input_tensor_sha256": {
+        "a": "0aa7f775b39837d50d30d27665a7106c9d89136b1161bc58d3effbc563294560",
+        "b": "a5ccffa2b5eaa393ebbaccd91194aa6bbbab6df99d23489c83f3d0406729057d",
+        "weights_npu": "31a5a7a9af0f0ee9729cc477642ccf7a276c2542c99a4e49182dc8686c3ff76d",
+        "bias": "16abf4d3ad62c0344f153f2ef8b1626ae92f8f69ae7087273cfb28f898950e90",
+        "c_s32": "99d387286d93056d6693b1b9fde7196b55bfe07374f97d29218604b0b18afc54",
+        "c_s8": "c1b0c7c68bb85c43b79b9eb95f094c190813782854c644367d43c44e656a6eed"
+      },
+      "output_sha256": "c1b0c7c68bb85c43b79b9eb95f094c190813782854c644367d43c44e656a6eed",
+      "output_elements": 4096,
+      "npu_remote_cycles": 17713,
+      "npu_previous_low_latency_cycles": 14429,
+      "public_cycles": {
+        "gemmini_bird": 40498
+      }
+    }
+  ]
+}
