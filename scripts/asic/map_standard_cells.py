@@ -38,6 +38,17 @@ PROFILES = {
                     'window service use their existing RTL ports. All internal state and '
                     'arithmetic are mapped.',
     },
+    'vec_requant': {
+        'top': 'vec_requant',
+        'parameters': {
+            'BUS_WIDTH': 64, 'VLEN': 16, 'REG_WIDTH': 32, 'MAX_IA_REUSE': 16,
+            'ENABLE_PER_CHANNEL': 1, 'ENABLE_IS_MODE': 1, 'ENABLE_S16': 1,
+            'p_compute_lanes': 16, 'p_input_rows': 256, 'p_parameter_output': 0,
+        },
+        'boundary': 'Parameter DMA, matrix inputs, shared depthwise quantization inputs, '
+                    'and quantized outputs use the existing RTL ports. All internal '
+                    'parameter storage, arithmetic pipelines, and control are mapped.',
+    },
 }
 for _registered in (0, 1):
     _suffix = 'registered' if _registered else 'fast'
