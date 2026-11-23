@@ -15,10 +15,10 @@ module conv_im2col_geometry #(
   localparam int p_word_shift=$clog2(p_cache_read_bytes),
   localparam int p_tile_count_w=$clog2(p_size+1),
   localparam int p_chunk_count_w=$clog2(p_lanes+1),
-  localparam int p_saved_group_lanes=p_lanes > 4 && p_lanes <= 8 ? 8 : 4,
+  localparam int p_saved_group_lanes=p_lanes <= 16 ? p_lane_bytes : 4,
   localparam int p_coord_w=35,
   localparam int p_prefetch_count_width=$clog2(p_line_bytes + 2),
-  localparam int p_prepared_tile_width=560+3*p_tile_count_w+p_slot_w+p_saved_group_lanes-p_word_shift
+  localparam int p_prepared_tile_width=528+3*p_tile_count_w+p_slot_w+p_saved_group_lanes-p_word_shift
 )(
   input wire logic i_clk,
   input wire logic i_rst_n,
@@ -43,12 +43,14 @@ module conv_im2col_geometry #(
   input wire logic [31:0] i_pixel_index,
   input wire logic [3:0][31:0] i_coordinate_product_q,
   input wire logic [1:0][32:0] i_coordinate_sum_q,
+  input wire logic [1:0] i_coordinate_borrow_q,
   input wire logic [31:0] i_channel_product,
   input wire logic [31:0] i_group_base_addr,
   input wire logic [31:0] i_tap_group_base,
   input wire logic [31:0] i_row_group_base,
   input wire logic [31:0] i_addr,
   input wire logic [p_chunk_count_w-1:0] i_chunk_count,
+  input wire logic [p_lanes:0] i_chunk_selected,
   input wire logic [31:0] i_decode_index,
   input wire logic [31:0] i_decode_outer,
   input wire logic [31:0] i_decode_inner,
@@ -63,7 +65,7 @@ module conv_im2col_geometry #(
   input wire logic [15:0] i_last_x,
   input wire logic [31:0] i_incoming_pixel,
   input wire logic [3:0] i_prefetch_phase,
-  input wire logic [31:0] i_pf_channel_product,
+  input wire logic [31:0] i_pf_address_term,
   input wire logic signed [p_coord_w-1:0] i_pfa_y,
   input wire logic [31:0] i_pfa_channel,
   input wire logic [31:0] i_pf0_x,
@@ -90,9 +92,9 @@ module conv_im2col_geometry #(
   input wire logic i_tile_commit,
   output logic o_cfg_ok,
   output logic o_cfg_basic_valid,
-  output logic [1:0] o_cfg_prepare_phase,
+  output logic [2:0] o_cfg_prepare_phase,
   output logic [63:0] o_cfg_input_bytes,
-  output logic [63:0] o_cfg_red,
+  output logic [31:0] o_cfg_red,
   output logic [31:0] o_cfg_positions,
   output logic [15:0] o_last_group_channel_q,
   output logic [31:0] o_channel_addr,
@@ -104,9 +106,8 @@ module conv_im2col_geometry #(
   output logic [15:0] o_last_output_col_q,
   output logic [15:0] o_second_last_col_q,
   output logic [15:0] o_last_kernel_col_q,
-  output logic [15:0] o_last_input_col_q,
   output logic o_kernel_width_valid_q,
-  output logic [16:0] o_history_limit_low_sum,
+  output logic o_history_limit_carry,
   output logic o_p_fast_valid,
   output logic o_p_fast_wrap,
   output logic [31:0] o_p_fast_y,
@@ -150,37 +151,24 @@ module conv_im2col_geometry #(
   output logic o_kernel_shape_o_valid,
   output logic [4:0] o_group_width_shift,
   output logic [4:0] o_kernel_width_shift,
-  output logic o_linear_channel_layout_q,
   output logic [5:0] o_k_decode_value,
   output logic [1:0][32:0] o_coordinate_product_sum,
+  output logic [1:0][16:0] o_coordinate_low_difference,
   output logic signed [p_coord_w-1:0] o_coordinate_padded_x,
   output logic signed [p_coord_w-1:0] o_coordinate_padded_y,
   output logic [31:0] o_group_address_sum,
   output logic [31:0] o_prefetch_address_sum,
+  output logic [31:0] o_prefetch_byte_offset,
   output logic [31:0] o_prefetch_pixel_sum,
   output logic [3:0][31:0] o_shared_coordinate_product,
   output logic [1:0][47:0] o_shared_channel_product
 );
   import conv_im2col_pkg::*;
   import conv_im2col_frontend_pkg::*;
-  typedef struct packed {
-    logic invalid, fast, padding, word_hit, output_position_update, output_wrap, kernel_last;
-    logic geometry, narrow_output;
-    logic [31:0] position, reduction, group_index;
-    logic [p_tile_count_w-1:0] rows, columns, active_columns;
-    logic [p_slot_w-1:0] slot;
-    logic [32:0] next_group, skip_group;
-    logic [31:0] tap, channel, kernel_x, kernel_y;
-    logic signed [p_coord_w-1:0] input_x, input_y;
-    logic [31:0] pixel, address, group_address;
-    logic [15:0] output_x, output_y;
-    logic [p_saved_group_lanes:0] channel_range;
-    logic [8:0] padding_select, padding_value;
-    logic [31-p_word_shift:0] word_address;
-    logic saved_word_valid;
-    logic [9:0] operation;
-    logic row_wrap;
-  } prepared_tile_t;
+  localparam int p_prepared_count_w = p_tile_count_w;
+  localparam int p_prepared_slot_w = p_slot_w;
+  localparam int p_prepared_coord_w = p_coord_w;
+  `include "conv_im2col_prepared_tile.svh"
   logic cfg_basic_saved;
   logic [31:0] cfg_input_hw;
   logic [31:0] cfg_kernel_taps;
@@ -206,10 +194,17 @@ module conv_im2col_geometry #(
   logic [32:0] p_history_delta_q;
   logic [32:0] history_delta_full;
   logic history_range_valid;
+  typedef struct packed {
+    logic wrap, valid, row_advance;
+    logic [16:0] column;
+  } history_result_t;
+  history_result_t history_result, history_result_q, selected_history;
   logic [16:0] history_limit_i_a;
   logic [16:0] history_limit_i_b;
   logic history_limit_o_less;
   logic unused_history_limit_equal;
+  logic [15:0] history_carry_i_a, history_carry_i_b;
+  logic unused_history_carry_equal;
   logic [16:0] p_sum_reduced;
   logic unused_p_sum_carry;
   logic unused_p_sum_reduced_carry;
@@ -230,7 +225,6 @@ module conv_im2col_geometry #(
   logic [31:0] cfg_line_pixels;
   logic [p_prefetch_count_width-1:0] prefetch_line_pixels;
   logic [31:0] incoming_epoch_channel;
-  logic unused_incoming_epoch_carry;
   logic [4:0][31:0] epoch_i_a;
   logic [4:0][31:0] epoch_i_b;
   logic epoch_i_carry;
@@ -299,6 +293,8 @@ module conv_im2col_geometry #(
   logic [3:0][15:0] coordinate_b;
   logic [1:0][31:0] channel_a;
   logic [1:0][15:0] channel_b;
+  logic [1:0][1:0][31:0] channel_partial;
+  logic [1:0][31:0] channel_upper;
   logic cfg_group_within_input;
   logic cfg_s8_offset_valid;
   logic [p_line_bytes:0] cfg_line_threshold;
@@ -307,7 +303,10 @@ module conv_im2col_geometry #(
   assign committing_tile = prepared_tile_t'(i_committing_tile_packed);
   // 通道偏移保持十七位范围，完整字节地址使用一次定宽求和。
 
-  assign channel_byte_offset = i_c.input_s16 ? {i_ch_q, 1'b0} : {1'b0, i_ch_q};
+  always_ff @(posedge i_clk) begin
+    if (i_state[$clog2(ADDRESS_BASE)])
+      channel_byte_offset <= i_c.input_s16 ? {i_ch_q, 1'b0} : {1'b0, i_ch_q};
+  end
   assign channel_address_sum = i_group_base_addr + {15'd0, channel_byte_offset};
   assign o_channel_addr = channel_address_sum;
 
@@ -401,7 +400,7 @@ module conv_im2col_geometry #(
     logic [31:0] movement_sum;
     logic unused_movement_carry;
     // 行边界与卷积核边界共用固定配置步长，分组前缀并行提供完整进位。
-    parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_sum (
+    parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_sum (
       .i_a(movement_i_a[source]), .i_b(movement_i_b[source]), .i_carry(1'b0),
       .o_sum(movement_sum), .o_carry(unused_movement_carry)
     );
@@ -417,8 +416,7 @@ module conv_im2col_geometry #(
 `endif
   end
 
-  // Configuration-time products leave only additions and bounds checks at
-  // row and tap boundaries while the current word is being transferred.
+  // 配置阶段保存乘积，输出传输期间的行边界和核边界只执行加法与范围判断。
   assign o_row_wrap = i_row_wrap_q;
   assign o_tap_wrap = i_tap_wrap_q;
   always_comb begin
@@ -477,7 +475,6 @@ module conv_im2col_geometry #(
       output_width_shift <= 5'd0;
       o_group_width_shift <= 5'd0;
       o_kernel_width_shift <= 5'd0;
-      o_linear_channel_layout_q <= 1'b0;
     end else if (i_cfg_valid && i_cfg_ready) begin
       o_group_shape_o_valid <= group_shape_check_o_valid;
       o_kernel_shape_o_valid <= kernel_shape_check_o_valid;
@@ -485,8 +482,6 @@ module conv_im2col_geometry #(
       output_width_shift <= power_shift({16'd0,i_cfg.output_w});
       o_group_width_shift <= power_shift({16'd0,i_cfg.group_c});
       o_kernel_width_shift <= power_shift({16'd0,i_cfg.kernel_w});
-      o_linear_channel_layout_q <= i_cfg.group_c == i_cfg.input_c &&
-          i_cfg.group_offset == 16'd0 && i_cfg.dilation_w == 16'd1;
     end
   end
   function automatic logic [4:0] power_shift(input logic [31:0] value);
@@ -506,7 +501,7 @@ module conv_im2col_geometry #(
       retire_all_bounded_q <= 1'b0;
       retire_no_bound_q <= 1'b0;
     end else begin
-      if (o_cfg_prepare_phase == 2'd1) begin
+      if (o_cfg_prepare_phase == 3'd1) begin
         retire_bias_q <= {1'b0, i_c.pad_top} +
           (o_short_pixel_q ? (17'd1 << retire_shift_q) : 17'd0);
         // 准备期间复用最终阈值寄存器，先保存低位及高位范围分类。
@@ -514,7 +509,7 @@ module conv_im2col_geometry #(
         retire_all_bounded_q <= !(|retire_scaled_last[30:16]);
         retire_no_bound_q <= |retire_scaled_last[30:17];
       end
-      if (o_cfg_prepare_phase == 2'd2) begin
+      if (o_cfg_prepare_phase == 3'd2) begin
         retire_compare_q <= retire_compare_delta[15:0];
         retire_all_bounded_q <= retire_all_bounded_q && retire_compare_delta[16];
         retire_no_bound_q <= retire_no_bound_q ||
@@ -527,7 +522,7 @@ module conv_im2col_geometry #(
   always_ff @(posedge i_clk or negedge i_rst_n) begin
     if (!i_rst_n) prefetch_retire_pfa_q <= 1'b0;
     else if (i_cfg_valid && i_cfg_ready) prefetch_retire_pfa_q <= 1'b0;
-    else prefetch_retire_pfa_q <= i_prefetch_phase == 4'd2;
+    else prefetch_retire_pfa_q <= i_prefetch_phase == 4'd3;
   end
 
   // 请求和预取各共用一个计算端口，全部结果仍在原请求接收周期使用。
@@ -628,7 +623,12 @@ module conv_im2col_geometry #(
   // 接收位置与历史位置的差值先保存，坐标解码只执行一次分组加法。
   // 位置差在描述符提交时保存；历史位置更新为当前位置时，差值同时归零。
   assign history_delta_full = {1'b0, committing_tile.position} - {1'b0, i_last_p};
-  assign o_history_limit_low_sum = {1'b0, i_p0[15:0]} + {1'b0, i_c.output_w};
+  assign history_carry_i_a = ~i_c.output_w;
+  assign history_carry_i_b = i_p0[15:0];
+  unsigned_compare #(.p_width(16)) u_history_carry (
+    .i_a(history_carry_i_a), .i_b(history_carry_i_b),
+    .o_less(o_history_limit_carry), .o_equal(unused_history_carry_equal)
+  );
   always_ff @(posedge i_clk or negedge i_rst_n) begin
     if (!i_rst_n) p_history_delta_q <= 33'd0;
     else if (i_tile_commit && !committing_tile.invalid) p_history_delta_q <= history_delta_full;
@@ -684,6 +684,23 @@ module conv_im2col_geometry #(
     .i_carry_in(p_sum_last_i_carry_in), .o_equal(p_sum_last_o_equal)
   );
   always_comb begin
+    history_result.valid = history_range_valid;
+    history_result.row_advance = history_width_reached;
+    history_result.column = history_width_reached ? p_sum_reduced : p_sum;
+    history_result.wrap = i_c.output_w != 16'd0 &&
+        ((p_sum_last_o_equal && i_last_x <= p_sum_last_i_target) ||
+         (p_sum_wrap_o_equal && (!o_last_output_col_q[15] || i_last_x > p_sum_wrap_i_target)));
+  end
+  if (p_register_descriptor) begin : g_history_prepare
+    always_ff @(posedge i_clk) begin
+      if (i_state[$clog2(P_HISTORY)]) history_result_q <= history_result;
+    end
+    assign selected_history = history_result_q;
+  end else begin : g_history_direct
+    assign history_result_q = '0;
+    assign selected_history = history_result;
+  end
+  always_comb begin
     o_p_fast_valid=0;o_p_fast_y=0;o_p_fast_x=0;
     o_p_fast_wrap = i_c.output_w != 16'd0 && o_last_output_col_q == 16'd0;
     if (p_decode==0) o_p_fast_valid=1;
@@ -696,13 +713,11 @@ module conv_im2col_geometry #(
     else if (p_cache_hit) begin
       o_p_fast_valid=1;o_p_fast_y=32'(p_cache_y);o_p_fast_x=32'(p_cache_x);
       o_p_fast_wrap = i_c.output_w != 16'd0 && p_cache_x == o_last_output_col_q;
-    end else if (history_range_valid) begin
-      o_p_fast_valid=1;o_p_fast_y=32'(i_last_y);o_p_fast_x=32'(p_sum);
-      // 模和值等于目标时，历史列数与目标的关系直接给出最高位进位。
-      o_p_fast_wrap = i_c.output_w != 16'd0 &&
-        ((p_sum_last_o_equal && i_last_x <= p_sum_last_i_target) ||
-         (p_sum_wrap_o_equal && (!o_last_output_col_q[15] || i_last_x > p_sum_wrap_i_target)));
-      if (history_width_reached) begin o_p_fast_x=32'(p_sum_reduced);o_p_fast_y=32'(i_last_y)+1;end
+    end else if (selected_history.valid) begin
+      o_p_fast_valid = 1'b1;
+      o_p_fast_y = 32'(i_last_y) + 32'(selected_history.row_advance);
+      o_p_fast_x = 32'(selected_history.column);
+      o_p_fast_wrap = selected_history.wrap;
     end
   end
 
@@ -764,16 +779,16 @@ module conv_im2col_geometry #(
     coordinate_b[2] = i_c.dilation_w;
     coordinate_a[3] = i_ky_q;
     coordinate_b[3] = i_c.dilation_h;
-    if (i_cfg_valid && i_cfg_ready) begin
-      coordinate_a[0] = i_cfg.input_h;
-      coordinate_b[0] = i_cfg.input_w;
-      coordinate_a[1] = i_cfg.kernel_h;
-      coordinate_b[1] = i_cfg.kernel_w;
-      coordinate_a[2] = i_cfg.output_h;
-      coordinate_b[2] = i_cfg.output_w;
-      coordinate_a[3] = i_cfg.stride_h;
-      coordinate_b[3] = i_cfg.input_w;
-    end else if (o_cfg_prepare_phase == 2'd1) begin
+    if (o_cfg_prepare_phase == 3'd1) begin
+      coordinate_a[0] = i_c.input_h;
+      coordinate_b[0] = i_c.input_w;
+      coordinate_a[1] = i_c.kernel_h;
+      coordinate_b[1] = i_c.kernel_w;
+      coordinate_a[2] = i_c.output_h;
+      coordinate_b[2] = i_c.output_w;
+      coordinate_a[3] = i_c.stride_h;
+      coordinate_b[3] = i_c.input_w;
+    end else if (o_cfg_prepare_phase == 3'd2) begin
       coordinate_a[0] = i_c.output_w;
       coordinate_b[0] = i_c.stride_w;
       coordinate_a[1] = i_c.kernel_w;
@@ -782,7 +797,7 @@ module conv_im2col_geometry #(
       coordinate_b[2] = i_c.input_w;
       coordinate_a[3] = i_c.stride_w;
       coordinate_b[3] = i_c.input_c;
-    end else if (o_cfg_prepare_phase == 2'd2) begin
+    end else if (o_cfg_prepare_phase == 3'd3) begin
       coordinate_a[3] = i_c.dilation_w;
       coordinate_b[3] = i_c.input_c;
     end else if (i_state[$clog2(ADDRESS)]) begin
@@ -801,31 +816,47 @@ module conv_im2col_geometry #(
     channel_b[0] = i_c.input_c;
     channel_a[1] = i_pf1_pixel;
     channel_b[1] = i_c.input_c;
-    if (o_cfg_prepare_phase == 2'd1) begin
+    if (o_cfg_prepare_phase == 3'd2) begin
       channel_a[0] = cfg_input_hw;
       channel_a[1] = cfg_kernel_taps;
       channel_b[1] = i_c.group_c;
     end else if (i_address_step_phase == 2'd1) begin
       channel_a[0] = i_row_wrap_pixels[31:0];
       channel_a[1] = i_tap_wrap_pixels[31:0];
-    end else if (i_prefetch_phase == 4'd4) begin
+    end else if (i_prefetch_phase == 4'd5) begin
       channel_a[1] = i_pf0_y;
       channel_b[1] = i_c.input_w;
     end
   end
   for (genvar product = 0; product < 2; product++) begin : g_channel
+    // 两个十六位部分积在同一拍保存，下一阶段合并完整四十八位结果。
+    always_ff @(posedge i_clk) begin
+      channel_partial[product][0] <= channel_a[product][15:0] * channel_b[product];
+      channel_partial[product][1] <= channel_a[product][31:16] * channel_b[product];
+    end
+    assign channel_upper[product] = channel_partial[product][1] +
+        {16'd0, channel_partial[product][0][31:16]};
     assign o_shared_channel_product[product] =
-        48'(channel_a[product]) * 48'(channel_b[product]);
+        {channel_upper[product], channel_partial[product][0][15:0]};
   end
 
   assign o_coordinate_product_sum[0] = {1'b0, i_coordinate_product_q[0]} + {1'b0, i_coordinate_product_q[2]};
   assign o_coordinate_product_sum[1] = {1'b0, i_coordinate_product_q[1]} + {1'b0, i_coordinate_product_q[3]};
-  assign o_coordinate_padded_x = $signed(p_coord_w'(i_coordinate_sum_q[0])) - $signed(p_coord_w'(i_c.pad_left));
-  assign o_coordinate_padded_y = $signed(p_coord_w'(i_coordinate_sum_q[1])) - $signed(p_coord_w'(i_c.pad_top));
+  assign o_coordinate_low_difference[0] = {1'b0, i_coordinate_sum_q[0][15:0]} - {1'b0, i_c.pad_left};
+  assign o_coordinate_low_difference[1] = {1'b0, i_coordinate_sum_q[1][15:0]} - {1'b0, i_c.pad_top};
+  logic [1:0][p_coord_w-17:0] coordinate_high;
+  for (genvar axis = 0; axis < 2; axis++) begin : g_coordinate_padding
+    // 低半字和借位已经保存，高位保留完整有符号坐标范围。
+    assign coordinate_high[axis] = (p_coord_w-16)'(i_coordinate_sum_q[axis][32:16]) -
+        (p_coord_w-16)'(i_coordinate_borrow_q[axis]);
+  end
+  assign o_coordinate_padded_x = $signed({coordinate_high[0], i_coordinate_sum_q[0][15:0]});
+  assign o_coordinate_padded_y = $signed({coordinate_high[1], i_coordinate_sum_q[1][15:0]});
   assign group_channel_sum = i_channel_product + 32'(i_c.group_offset);
   assign o_group_address_sum = i_c.input_base + (group_channel_sum << i_c.input_s16);
-  assign prefetch_channel_sum = i_pf_channel_product + i_pf1_channel;
-  assign o_prefetch_address_sum = i_c.input_base + (prefetch_channel_sum << i_c.input_s16);
+  assign prefetch_channel_sum = i_pf_address_term + i_pf1_channel;
+  assign o_prefetch_byte_offset = prefetch_channel_sum << i_c.input_s16;
+  assign o_prefetch_address_sum = i_c.input_base + i_pf_address_term;
   assign o_prefetch_pixel_sum = o_shared_channel_product[1][31:0] + i_pf0_x;
 
   // 每个字节并行判断地址进位，最后合并四段结果。
@@ -856,7 +887,7 @@ module conv_im2col_geometry #(
     if (i_cfg.input_s16) o_cfg_basic_valid=o_cfg_basic_valid && i_cfg.input_offset==0 && !i_cfg.input_base[0];
     else o_cfg_basic_valid=o_cfg_basic_valid && cfg_s8_offset_valid;
     o_cfg_input_bytes={15'd0,cfg_tensor_product};
-    o_cfg_red={16'd0,cfg_reduction_product};
+    o_cfg_red=cfg_reduction_product[31:0];
     o_cfg_positions=cfg_position_product;
     o_cfg_ok=cfg_basic_saved && cfg_tensor_product[48:32]==0 &&
       cfg_reduction_product[47:32]==0 && !cfg_address_overflow;
@@ -871,18 +902,21 @@ module conv_im2col_geometry #(
       cfg_basic_saved <= o_cfg_basic_valid;
     end else case (o_cfg_prepare_phase)
       1: o_cfg_prepare_phase <= 2;
-      2: o_cfg_prepare_phase <= 0;
+      2: o_cfg_prepare_phase <= 3;
+      3: o_cfg_prepare_phase <= 4;
+      4: o_cfg_prepare_phase <= 0;
       default: ;
     endcase
   end
   always_ff @(posedge i_clk) begin
     if (!i_rst_n) begin
-    end else if (i_cfg_valid && i_cfg_ready) begin
-      cfg_input_hw <= o_shared_coordinate_product[0];
-      cfg_kernel_taps <= o_shared_coordinate_product[1];
-      cfg_position_product <= o_shared_coordinate_product[2];
     end else case (o_cfg_prepare_phase)
       1: begin
+        cfg_input_hw <= o_shared_coordinate_product[0];
+        cfg_kernel_taps <= o_shared_coordinate_product[1];
+        cfg_position_product <= o_shared_coordinate_product[2];
+      end
+      3: begin
         cfg_tensor_product <= {1'b0, o_shared_channel_product[0]} << i_c.input_s16;
         cfg_reduction_product <= o_shared_channel_product[1];
       end
@@ -921,7 +955,7 @@ module conv_im2col_geometry #(
     end else if (i_cfg_valid && i_cfg_ready) begin
       o_pf_step_base <= cfg_base_step;
       prefetch_line_pixels <= p_prefetch_count_width'(cfg_line_pixels);
-    end else if (o_cfg_prepare_phase == 2'd1) begin
+    end else if (o_cfg_prepare_phase == 3'd1) begin
       o_pf_step_base <= o_pf_step_base < 32'(prefetch_line_pixels) ?
         32'(prefetch_line_pixels) : o_pf_step_base;
     end
@@ -933,7 +967,6 @@ module conv_im2col_geometry #(
       o_window_index_valid_q<=0;o_window_index_shift_q<=0;
       o_second_last_row_q<=0;o_last_output_col_q<=0;o_second_last_col_q<=0;
       o_last_kernel_col_q <= 16'd0;
-      o_last_input_col_q <= 16'hffff;
 
       o_last_group_channel_q <= 16'hffff;
 
@@ -964,7 +997,6 @@ module conv_im2col_geometry #(
       o_second_last_row_q<=i_cfg.output_h-16'd2;
       o_last_output_col_q<=i_cfg.output_w-16'd1;o_second_last_col_q<=i_cfg.output_w-16'd2;
       o_last_kernel_col_q <= i_cfg.kernel_w - 16'd1;
-      o_last_input_col_q <= i_cfg.input_w - 16'd1;
 
       o_last_group_channel_q <= i_cfg.group_c - 16'd1;
 
@@ -987,16 +1019,26 @@ module conv_im2col_geometry #(
   assign epoch_i_b[4] = {16'd0, i_c.group_offset};
   assign epoch_i_carry = 1'b0;
   for (genvar candidate = 0; candidate < 5; candidate++) begin : g_epoch_candidate
-    if (candidate == 3 && p_lanes <= 8) begin : g_stream_shared
-      logic [17:0] channel_sum;
-
-      // 通道起点、组内偏移和本拍数量共用一组进位保存加法。
-      // 两个十六位操作数和至多八个通道的数量需要十八位结果。
-      assign channel_sum = epoch_i_a[candidate][17:0] + epoch_i_b[candidate][17:0];
-      assign o_epoch_o_sum[candidate] = {14'd0, channel_sum};
+    if (candidate == 3 && p_lanes <= 16) begin : g_stream_shared
+      // 数据流模块提供传输步长选择，纪元直接选择相应通道和值。
+      logic [p_lanes:0][17:0] channel_sum;
+      logic [p_lanes:0] step_select;
+      for (genvar step = 0; step <= p_lanes; step++) begin : g_step
+        logic [17:0] sum_bits, carry_bits;
+        assign sum_bits = {2'b0, i_c.group_offset} ^ i_ch[17:0] ^ 18'(step);
+        assign carry_bits = (({2'b0, i_c.group_offset} & i_ch[17:0]) |
+            (({2'b0, i_c.group_offset} | i_ch[17:0]) & 18'(step))) << 1;
+        assign channel_sum[step] = sum_bits + carry_bits;
+        assign step_select[step] = i_chunk_selected[step];
+      end
+      always_comb begin
+        o_epoch_o_sum[candidate] = '0;
+        for (int step = 0; step <= p_lanes; step++)
+          o_epoch_o_sum[candidate] |= {32{step_select[step]}} & {14'd0, channel_sum[step]};
+      end
       assign unused_epoch_carry[candidate] = 1'b0;
     end else begin : g_general
-      parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_sum (
+      parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_sum (
         .i_a(epoch_i_a[candidate]), .i_b(epoch_i_b[candidate]), .i_carry(epoch_i_carry),
         .o_sum(o_epoch_o_sum[candidate]), .o_carry(unused_epoch_carry[candidate])
       );
@@ -1004,13 +1046,12 @@ module conv_im2col_geometry #(
   end
   assign stream_channel_i_a = i_ch;
   assign stream_channel_i_b = 32'(i_chunk_count);
-  parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_stream_channel (
+  parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_stream_channel (
     .i_a(stream_channel_i_a), .i_b(stream_channel_i_b), .i_carry(epoch_i_carry),
     .o_sum(o_stream_channel_full), .o_carry(unused_stream_channel_carry)
   );
 
   // 当前项与新描述符分别完成索引移位和纪元运算，描述符有效条件只控制末级选择。
-  assign unused_incoming_epoch_carry = 1'b0;
   assign incoming_epoch_channel = i_incoming_next_position_fast ? o_epoch_o_sum[0] : o_epoch_o_sum[1];
   assign o_incoming_req_index = o_short_pixel_q ? i_incoming_pixel >> o_window_index_shift_q : i_incoming_pixel;
   assign o_incoming_req_epoch = o_short_pixel_q ? 32'd0 :

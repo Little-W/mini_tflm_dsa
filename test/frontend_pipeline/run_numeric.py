@@ -68,6 +68,7 @@ original_which = shutil.which
 os.environ['FRONTEND_REAL_VERILATOR'] = original_which('verilator') or ''
 os.environ['FRONTEND_RTL_TARGET'] = args.target
 os.environ['FRONTEND_REGISTER_DESCRIPTOR'] = args.register_descriptor
+os.environ['FRONTEND_RTL_ROOT'] = str(SOURCE)
 
 
 def simulator(name, *arguments, **keywords):
@@ -77,8 +78,8 @@ def simulator(name, *arguments, **keywords):
 
 
 shutil.which = simulator
-input_hashes = {str(Path(name).resolve()): hashlib.sha256(Path(name).read_bytes()).hexdigest()
-                for name in files if Path(name).is_absolute()}
+inputs = runpy.run_path(str(ROOT/'scripts/rtl/source_files.py'))['input_files'](files, SOURCE)
+input_hashes = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in inputs}
 result = environment['main']()
 status_path = output/'rtl_status.json'
 if status_path.exists():

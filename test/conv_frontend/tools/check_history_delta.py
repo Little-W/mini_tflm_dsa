@@ -10,6 +10,8 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT/'test/frontend_pipeline'))
+from source_sections import read_module
 
 
 def extract(text,start,stop):
@@ -22,12 +24,14 @@ def main():
     parser.add_argument('--out',type=Path,required=True)
     args=parser.parse_args();args.out.mkdir(parents=True,exist_ok=True)
     path=args.source_root/'rtl/npu/conv/conv_im2col_frontend.sv';text=path.read_text();sha=hashlib.sha256(path.read_bytes()).hexdigest()
-    update=extract(text,'  assign history_delta_full =','  always_ff @(posedge clk or negedge rst_n) begin\n    if (!rst_n) p_wrap_target_q')
-    compares=extract(text,'  assign p_sum_wrap_i_a =','  always_comb begin\n    p_fast_valid=')
+    geometry_path,geometry=read_module(args.source_root,'geometry')
+    geometry_sha=hashlib.sha256(geometry_path.read_bytes()).hexdigest()
+    update=extract(geometry,'  assign history_delta_full =','  always_ff @(posedge clk or negedge rst_n) begin\n    if (!rst_n) p_wrap_target_q')
+    compares=extract(geometry,'  assign p_sum_wrap_i_a =','  always_comb begin\n    history_result.valid =')
     assert re.findall(r'\blast_p\s*<=\s*([^;]+);',text)==['0','p0','p0']
     assert re.findall(r'\bp0\s*<=\s*([^;]+);',text)==['0','committing_tile.position']
     overflow_assignments=re.findall(r'\blast_p_overflow_q\s*<=\s*([^;]+);',text)
-    assert overflow_assignments==['0','(&p0[31:16]) && history_limit_low_sum[16]','(&p0[31:16]) && history_limit_low_sum[16]']
+    assert overflow_assignments==['0','(&p0[31:16]) && history_limit_carry','(&p0[31:16]) && history_limit_carry']
     sv=args.out/'history.sv';ys=args.out/'history.ys';log=args.out/'history.log'
     sv.write_text('''module proof(input logic clk,rst_n,input logic[1:0]event_choice,
  input logic[31:0]position,input logic invalid,input logic[15:0]output_width,last_x,p_wrap_target_q,last_output_col_q,
@@ -37,7 +41,8 @@ def main():
  logic[31:0]p0,last_p,last_p_limit;
  logic last_p_valid,last_p_overflow_q;
  logic[32:0]p_history_delta_q,history_delta_full,reference_limit_sum,reference_delta;
- logic[16:0]history_limit_low_sum;
+ logic history_limit_carry,unused_history_carry_equal;
+ logic[15:0]history_carry_i_a,history_carry_i_b;
  logic history_range_valid;
  logic[16:0]history_limit_i_a,history_limit_i_b;
  logic history_limit_o_less,unused_history_limit_equal;
@@ -60,7 +65,7 @@ def main():
     2:if(!invalid)p0<=position;
     3:begin
      last_p<=p0;last_p_limit<=p0+32'(c.output_w);last_p_valid<=1;
-     last_p_overflow_q<=(&p0[31:16])&&history_limit_low_sum[16];
+     last_p_overflow_q<=(&p0[31:16])&&history_limit_carry;
     end
     default:;
    endcase
@@ -83,7 +88,8 @@ endmodule
                               stdout=stream,stderr=subprocess.STDOUT,timeout=180)
     if result.returncode or 'Induction step proven: SUCCESS!'not in log.read_text():raise RuntimeError(str(log))
     assert sha==hashlib.sha256(path.read_bytes()).hexdigest()
-    report={'passed':True,'source_sha256':sha,'reset_steps':2,'unbounded_induction_steps':1,
+    assert geometry_sha==hashlib.sha256(geometry_path.read_bytes()).hexdigest()
+    report={'passed':True,'source_sha256':sha,'geometry_sha256':geometry_sha,'reset_steps':2,'unbounded_induction_steps':1,
             'position_and_width_constraints':[],'formal_domain':'all binary input and state values',
             'event_scope':'Configuration, valid or invalid descriptor commit, and history storage are mutually exclusive.',
             'event_relationship_proof':'check_frontend_event_domains.py','position_update_sites':2,'history_update_sites':3,

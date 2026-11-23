@@ -23,11 +23,11 @@ def main():
     assignments='\n'.join(re.search(r'  assign '+name+r' = .*?;',source,re.S).group(0)
                           for name in ('stream_epoch_xor','stream_epoch_carry'))
     assignments=assignments.replace('c.group_offset','group_offset')
-    first=source.index('      logic [17:0] channel_sum;')
+    first=source.index('      logic [LANES:0][17:0] channel_sum;')
     last=source.index('    end else begin : g_general',first)
     actual=source[first:last].replace('epoch_i_a[candidate][17:0]','stream_epoch_xor[17:0]')
     actual=actual.replace('epoch_i_b[candidate][17:0]','stream_epoch_carry[17:0]')
-    actual=actual.replace('epoch_o_sum[candidate]','current_sum')
+    actual=actual.replace('epoch_o_sum[candidate]','current_sum').replace('c.group_offset','group_offset')
     actual=re.sub(r"      assign unused_epoch_carry\[candidate\] = 1'b0;\n",'',actual)
     model=out/'epoch.sv'
     model.write_text("""module comparison #(parameter int LANES=8,CHUNK_COUNT_W=$clog2(LANES+1))(
@@ -36,14 +36,18 @@ def main():
  output logic equivalent
 );
  logic [31:0] ch,stream_epoch_xor,stream_epoch_carry,current_sum,expected;
+ logic [LANES:0] chunk_selected;
  assign ch={16'd0,ch_q};
+ for(genvar step=0;step<=LANES;step++)begin:g_count_select
+   assign chunk_selected[step]=chunk_count==CHUNK_COUNT_W'(step);
+ end
 """+assignments+actual+"""
  assign expected={16'd0,group_offset}+{16'd0,ch_q}+32'(chunk_count);
  assign equivalent=int'(chunk_count)>LANES || current_sum==expected;
 endmodule
 """)
     cases=[]
-    for lanes in range(1,9):
+    for lanes in range(1,17):
         script,log=out/f'l{lanes}.ys',out/f'l{lanes}.log'
         script.write_text(f'read_slang --top comparison -GLANES={lanes} '+shlex.quote(str(model))+
                           '\nprep -top comparison -flatten\ncheck -assert\n'

@@ -68,6 +68,7 @@ module conv_im2col_prefetch #(
   input wire logic i_row_wrap,
   input wire logic signed [p_coord_w-1:0] i_next_row_ix,
   input wire logic [31:0] i_prefetch_address_sum,
+  input wire logic [31:0] i_prefetch_byte_offset,
   input wire logic [31:0] i_prefetch_pixel_sum,
   input wire logic [1:0][47:0] i_shared_channel_product,
   output logic o_pf_valid,
@@ -76,7 +77,7 @@ module conv_im2col_prefetch #(
   output logic [31:0] o_pf_epoch,
   output logic o_pf_index_valid,
   output logic [3:0] o_prefetch_phase,
-  output logic [31:0] o_pf_channel_product,
+  output logic [31:0] o_pf_address_term,
   output logic signed [p_coord_w-1:0] o_pfa_y,
   output logic [31:0] o_pfa_channel,
   output logic [31:0] o_pf0_x,
@@ -118,6 +119,7 @@ module conv_im2col_prefetch #(
   logic [2:0] unused_pf_prepare_carry;
   logic signed [16:0] pf_y_delta;
   logic signed [17:0] pf_y_wrap_delta;
+  logic unit_row_lookahead;
   logic [15:0] pf_y_step;
   logic pf_coordinate_valid;
   logic pf_next_fragment;
@@ -157,51 +159,52 @@ module conv_im2col_prefetch #(
   logic [p_coord_w-1:0] prefetch_horizontal_sum;
   logic unused_prefetch_horizontal_carry;
   logic signed [32:0] pf_window_dx_next;
-  logic signed [p_coord_w-1:0] prefetch_horizontal_delta_next;
   logic prefetch_horizontal_low_carry;
   logic prefetch_horizontal_low_carry_q;
   logic [15:0] unused_prefetch_horizontal_prepare_sum;
   logic unused_prefetch_horizontal_low_carry;
 
-  // 引用信息在接收、坐标准备、像素计算三个阶段保持对应关系。
+  // 同一预取只保存一份引用上下文，各阶段共用其地址和元数据。
   typedef struct packed {
     logic [31:0] address, index, epoch;
     logic index_valid;
   } prefetch_reference_t;
-  prefetch_reference_t reference_q [3];
-  logic [31:0] channel_q [3];
-  logic [31:0] reference_retire_q [2];
-  logic [31:0] epoch_q [2];
-  logic fragment_q [2];
-  logic coordinate_valid_q [2];
+  prefetch_reference_t reference_q;
+  logic [31:0] channel_q [2];
+  logic [31:0] reference_retire_q;
+  logic fragment_q;
+  logic coordinate_valid_q;
   logic signed [p_coord_w-1:0] accepted_coordinate_q [2];
   logic [31:0] projected_coordinate_q [2];
   logic [31:0] output_coordinate_q [2];
   logic [31:0] tile_extent_q [2];
   assign o_pf0_x = projected_coordinate_q[0];
   assign o_pf0_y = projected_coordinate_q[1];
-  assign o_pf1_channel = channel_q[2];
-  assign o_pf1_coordinate_valid = coordinate_valid_q[1];
-  assign o_pf1_fragment = fragment_q[1];
-  assign o_pf1_ref_addr = reference_q[2].address;
-  assign o_pf1_ref_epoch = reference_q[2].epoch;
-  assign o_pf1_ref_index = reference_q[2].index;
-  assign o_pf1_ref_index_valid = reference_q[2].index_valid;
-  assign o_pf1_ref_retire = reference_retire_q[1];
+  assign o_pf1_channel = channel_q[1];
+  assign o_pf1_coordinate_valid = coordinate_valid_q;
+  assign o_pf1_fragment = fragment_q;
+  assign o_pf1_ref_addr = reference_q.address;
+  assign o_pf1_ref_epoch = reference_q.epoch;
+  assign o_pf1_ref_index = reference_q.index;
+  assign o_pf1_ref_index_valid = reference_q.index_valid;
+  assign o_pf1_ref_retire = reference_retire_q;
   assign o_pfa_channel = channel_q[0];
   assign o_pfa_y = accepted_coordinate_q[1];
 
   // 预读上下文在第一阶段准备纵向增量，第二阶段并行保存两种行坐标。
-  // 第三阶段仅按横坐标是否跨行选择结果，保持原有预读输出周期。
+  // 横向增量先保存低位进位，再与纵向结果共同组成预取坐标。
   assign pf_y_step = pf_stream_lookahead || i_c.kernel_h == 16'd1 ? i_c.stride_h : i_c.dilation_h;
-  assign pf_y_delta = pf_stream_lookahead && i_c.stride_h == 16'd1 && i_c.dilation_h == 16'd1 ?
+  assign unit_row_lookahead = pf_stream_lookahead && i_c.stride_h == 16'd1 && i_c.dilation_h == 16'd1;
+  assign pf_y_delta = unit_row_lookahead ?
     $signed({1'b0, i_c.kernel_h}) - 17'sd1 - $signed({1'b0, pfa_kernel_y}) : 17'sd0;
-  assign pf_y_wrap_delta = 18'(pf_y_delta) + $signed({2'b0, pf_y_step});
+  assign pf_y_wrap_delta = unit_row_lookahead ?
+      $signed({2'b0, i_c.kernel_h}) - $signed({2'b0, pfa_kernel_y}) :
+      $signed({2'b0, pf_y_step});
   assign pf_prepare_i_a = {pfa_kernel_x, 32'(accepted_coordinate_q[1]), 32'(accepted_coordinate_q[1])};
   assign pf_prepare_i_b = {pf_distance_q, 32'(pf_y_wrap_delta_q), 32'(pf_y_delta_q)};
   assign pf_prepare_i_carry = 1'b0;
   for (genvar source = 0; source < 3; source++) begin : g_prefetch_prepare
-    parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_sum (
+    parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_sum (
       .i_a(pf_prepare_i_a[source]), .i_b(pf_prepare_i_b[source]), .i_carry(pf_prepare_i_carry),
       .o_sum(pf_prepare_o_sum[source]), .o_carry(unused_pf_prepare_carry[source])
     );
@@ -211,15 +214,15 @@ module conv_im2col_prefetch #(
 
   assign prefetch_wrap_i_a = 32'(accepted_coordinate_q[0]);
   assign prefetch_wrap_i_b = ~{16'd0, i_c.input_w};
-  parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_prefetch_wrap_base (
+  parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_prefetch_wrap_base (
     .i_a(prefetch_wrap_i_a), .i_b(prefetch_wrap_i_b), .i_carry(1'b1),
     .o_sum(prefetch_wrap_base), .o_carry(unused_prefetch_x_carry[0])
   );
-  parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_prefetch_x (
+  parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_prefetch_x (
     .i_a(32'(accepted_coordinate_q[0])), .i_b(pf_step_q), .i_carry(1'b0),
     .o_sum(prefetch_next_x), .o_carry(unused_prefetch_x_carry[1])
   );
-  parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_prefetch_wrapped_x (
+  parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_prefetch_wrapped_x (
     .i_a(prefetch_wrap_base_q), .i_b(pf_step_q), .i_carry(1'b0),
     .o_sum(prefetch_wrapped_x), .o_carry(unused_prefetch_x_carry[2])
   );
@@ -262,16 +265,14 @@ module conv_im2col_prefetch #(
   // 核行片段和跨步窗口共用横坐标加法，模式选择在既有准备阶段完成。
   assign pf_window_ahead = !pf_stream_lookahead && i_c.windowed && tile_extent_q[0] == 32'd1 &&
       tile_extent_q[1] <= 32'(i_c.group_c) && (i_c.stride_h > 16'd1 || i_c.stride_w > 16'd1);
-  // 窗口位移与低十六位进位在同一准备阶段保存，后级保留完整三十五位和值。
+  // 窗口位移先保存，下一阶段计算低十六位进位，最终保留完整三十五位和值。
   always_comb begin
     if (i_c.output_w == 16'd1) pf_window_dx_next = 33'sd0;
     else if (pf_wrap_once) pf_window_dx_next = pf_ahead_two ? i_row_pair_dx : i_row_wrap_dx;
     else pf_window_dx_next = $signed(33'(i_c.stride_w) << pf_ahead_two);
   end
-  assign prefetch_horizontal_delta_next = pf_window_ahead ?
-      $signed(p_coord_w'(pf_window_dx_next)) : $signed(p_coord_w'(fragment_delta));
   parallel_prefix_add #(.p_width(16), .p_group_width(4), .p_preserve_groups(1'b0)) u_prefetch_horizontal_prepare (
-    .i_a(accepted_coordinate_q[0][15:0]), .i_b(prefetch_horizontal_delta_next[15:0]), .i_carry(1'b0),
+    .i_a(accepted_coordinate_q[0][15:0]), .i_b(pf_horizontal_delta[15:0]), .i_carry(1'b0),
     .o_sum(unused_prefetch_horizontal_prepare_sum), .o_carry(prefetch_horizontal_low_carry)
   );
 
@@ -330,7 +331,7 @@ module conv_im2col_prefetch #(
       (!pf_window_ahead_q || (pf_window_row_valid_q && pf_window_x>=0 && pf_window_y>=0));
     pf_channel=i_epoch_o_sum[4];
     // 两路缓存分别保存当前和后续通道片段，引用标签采用实际物理地址。
-    pf_next_fragment=i_fragment_image_fits && reference_q[0].index_valid && tile_extent_q[0]==1 &&
+    pf_next_fragment=i_fragment_image_fits && reference_q.index_valid && tile_extent_q[0]==1 &&
       tile_extent_q[1]==p_line_bytes && !i_c.input_s16 &&
       ((32'(i_c.group_offset)+pfa_origin_channel)&(p_line_bytes-1))==0 &&
       pfa_origin_channel+2*p_line_bytes<=32'(i_c.group_c) &&
@@ -359,10 +360,14 @@ module conv_im2col_prefetch #(
       4: o_prefetch_phase <= 5;
       5: o_prefetch_phase <= 6;
       6: o_prefetch_phase <= 7;
-      7: begin
-        pf_offer_valid <= fragment_q[1] || (coordinate_valid_q[1] &&
-            (o_pf_addr >> $clog2(p_line_bytes)) != (reference_q[2].address >> $clog2(p_line_bytes)));
-        o_prefetch_phase <= 8;
+      7: o_prefetch_phase <= 8;
+      8: o_prefetch_phase <= 9;
+      9: o_prefetch_phase <= 10;
+      10: o_prefetch_phase <= 11;
+      11: begin
+        pf_offer_valid <= fragment_q || (coordinate_valid_q &&
+            (o_pf_addr >> $clog2(p_line_bytes)) != (reference_q.address >> $clog2(p_line_bytes)));
+        o_prefetch_phase <= 12;
       end
       default: o_prefetch_phase <= 0;
     endcase
@@ -393,10 +398,10 @@ module conv_im2col_prefetch #(
           tile_extent_q[0] <= !p_register_cache_request && i_incoming_context ? 32'(i_tile_rows) : 32'(i_rows_q);
           tile_extent_q[1] <= !p_register_cache_request && i_incoming_context ?
               (i_tile_cols=='0 ? 32'(p_size) : 32'(i_tile_cols)) : 32'(i_cols_q);
-          reference_q[0].address <= p_register_cache_request ? i_request_addr_q : i_cache_req_addr;
-          reference_q[0].index <= p_register_cache_request ? i_request_index_q : i_req_index;
-          reference_q[0].epoch <= p_register_cache_request ? i_request_epoch_q : i_req_epoch;
-          reference_q[0].index_valid <= p_register_cache_request ? i_request_index_valid_q : i_req_index_valid;
+          reference_q.address <= p_register_cache_request ? i_request_addr_q : i_cache_req_addr;
+          reference_q.index <= p_register_cache_request ? i_request_index_q : i_req_index;
+          reference_q.epoch <= p_register_cache_request ? i_request_epoch_q : i_req_epoch;
+          reference_q.index_valid <= p_register_cache_request ? i_request_index_valid_q : i_req_index_valid;
         end
         1: begin
           prefetch_wrap_base_q <= prefetch_wrap_base;
@@ -420,7 +425,6 @@ module conv_im2col_prefetch #(
             pf_step_q <= i_pf_step_base * pf_distance_q;
           pf_fragment_dx_q <= fragment_delta;
           pf_window_dx_q <= pf_window_dx_next;
-          prefetch_horizontal_low_carry_q <= prefetch_horizontal_low_carry;
           pf_window_dy_q<=pf_wrap_twice ? (17'(i_c.stride_h)<<1) :
                             pf_wrap_once ? 17'(i_c.stride_h) : 17'd0;
           pf_window_row_valid_q<=pf_wrap_twice ?
@@ -428,30 +432,26 @@ module conv_im2col_prefetch #(
               (!pf_wrap_once || output_coordinate_q[1]<32'(i_retire_last_row_q));
         end
         3: begin
-          projected_coordinate_q[0] <= pf_x; projected_coordinate_q[1] <= pf_y; channel_q[1] <= pf_channel;
-          epoch_q[0] <= reference_q[0].epoch;
-          reference_q[1].address <= reference_q[0].address; reference_q[1].index <= reference_q[0].index;
-          reference_q[1].epoch <= reference_q[0].epoch; reference_retire_q[0] <= i_retirement_result[1];
-          reference_q[1].index_valid <= reference_q[0].index_valid; fragment_q[0] <= pf_next_fragment;
-          coordinate_valid_q[0] <= pf_coordinate_valid;
+          prefetch_horizontal_low_carry_q <= prefetch_horizontal_low_carry;
         end
         4: begin
-          o_pf1_pixel <= i_prefetch_pixel_sum;
-          channel_q[2] <= channel_q[1]; epoch_q[1] <= epoch_q[0]; o_pf1_retire <= i_retirement_result[1];
-          reference_q[2].address <= reference_q[1].address; reference_q[2].index <= reference_q[1].index;
-          reference_q[2].epoch <= reference_q[1].epoch; reference_retire_q[1] <= reference_retire_q[0];
-          reference_q[2].index_valid <= reference_q[1].index_valid; fragment_q[1] <= fragment_q[0];
-          coordinate_valid_q[1] <= coordinate_valid_q[0] && projected_coordinate_q[0]<32'(i_c.input_w) && projected_coordinate_q[1]<32'(i_c.input_h);
-        end
-        5: begin
-          o_pf_channel_product <= i_shared_channel_product[1][31:0];
+          projected_coordinate_q[0] <= pf_x;
+          projected_coordinate_q[1] <= pf_y;
+          channel_q[1] <= pf_channel;
+          reference_retire_q <= i_retirement_result[1];
+          fragment_q <= pf_next_fragment;
+          coordinate_valid_q <= pf_coordinate_valid;
         end
         6: begin
-          o_pf_addr<=pf_address_calc;
+          o_pf1_pixel <= i_prefetch_pixel_sum;
+          o_pf1_retire <= i_retirement_result[1];
+          coordinate_valid_q <= coordinate_valid_q &&
+              projected_coordinate_q[0] < 32'(i_c.input_w) &&
+              projected_coordinate_q[1] < 32'(i_c.input_h);
         end
-        7: begin
-          ;
-        end
+        8: o_pf_address_term <= i_shared_channel_product[1][31:0];
+        9: o_pf_address_term <= i_prefetch_byte_offset;
+        10: o_pf_addr <= pf_address_calc;
         default: ;
       endcase
     end
@@ -459,13 +459,13 @@ module conv_im2col_prefetch #(
 
   always_comb begin
     pf_address_calc=i_prefetch_address_sum;
-    o_pf_index_valid=reference_q[2].index_valid; o_pf_index=o_pf1_pixel; o_pf_epoch=epoch_q[1];
+    o_pf_index_valid=reference_q.index_valid; o_pf_index=o_pf1_pixel; o_pf_epoch=reference_q.epoch;
     if (i_short_pixel_q)
       o_pf_index=o_pf1_pixel>>i_window_index_shift_q;
-    if (!coordinate_valid_q[1] && fragment_q[1]) begin
-      pf_address_calc=reference_q[2].address;o_pf_index=reference_q[2].index;o_pf_epoch=reference_q[2].epoch;
+    if (!coordinate_valid_q && fragment_q) begin
+      pf_address_calc=reference_q.address;o_pf_index=reference_q.index;o_pf_epoch=reference_q.epoch;
     end
-    o_pf_valid=o_prefetch_phase==8 && pf_offer_valid;
+    o_pf_valid=o_prefetch_phase==12 && pf_offer_valid;
   end
 
 endmodule

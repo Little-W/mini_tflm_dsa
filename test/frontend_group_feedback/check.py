@@ -33,7 +33,7 @@ def unit(source: str, lanes: int) -> str:
         'transfer_selected[step] &&', 'chunk_selected[step] &&')
     return f'''module comparison #(
   parameter int LANES={lanes},
-  parameter int p_saved_group_lanes=LANES>4 ? 8 : 4,
+  parameter int p_saved_group_lanes=LANES<=4 ? 4 : (1 << $clog2(LANES)),
   parameter int CHUNK_COUNT_W=$clog2(LANES+1)
 ) (
   input logic [15:0] group_c,ch_q,
@@ -80,7 +80,7 @@ def guard_unit(source: str, lanes: int, contiguous: bool, narrow_lanes: int) -> 
     data = re.search(r'    assign chunk_data_allowed\[lane\] =.*?;', source, re.S).group(0)
     actual = re.search(r'      chunk_lane_allowed\[lane\] =.*?;', source, re.S).group(0).strip()
     return f'''module comparison #(
-parameter int LANES={lanes},NARROW_LANES={narrow_lanes},p_saved_group_lanes=LANES>4?8:4,
+parameter int LANES={lanes},NARROW_LANES={narrow_lanes},p_saved_group_lanes=LANES<=4?4:(1 << $clog2(LANES)),
 parameter bit p_contiguous_chunk=1'b{int(contiguous)}
 )(
 input logic [p_saved_group_lanes:0] group_range_q,
@@ -150,13 +150,13 @@ endmodule
 def four_state(source: str, out: Path) -> dict:
     rtl = out / 'row_four_state.sv'
     text = []
-    for lanes in (1, 2, 4, 8):
+    for lanes in (1, 2, 4, 8, 16):
         text.append(row_unit(source, lanes, min(lanes, 4)).replace('module comparison #(', f'module comparison_{lanes} #('))
     text.append('''module tb;
-logic [7:0] group_lane,word_s8,word_s16;
-logic [8:0] active_lane,column_lane;
+logic [15:0] group_lane,word_s8,word_s16;
+logic [16:0] active_lane,column_lane;
 logic narrow,word_output,past_active,input_s16;
-logic [3:0] actual_end,expected_end,equivalent;
+logic [4:0] actual_end,expected_end,equivalent;
 integer seed=32'h64a193d7;
 integer comparisons=0;
 function automatic logic random_bit;
@@ -168,7 +168,7 @@ function automatic logic random_bit;
  endcase
 endfunction
 ''')
-    for index, lanes in enumerate((1, 2, 4, 8)):
+    for index, lanes in enumerate((1, 2, 4, 8, 16)):
         text.append(f'''comparison_{lanes} u_lanes_{lanes}(
 .group_lane_allowed(group_lane[{lanes-1}:0]),.word_s8(word_s8[{lanes-1}:0]),.word_s16(word_s16[{lanes-1}:0]),
 .active_lane_allowed_q(active_lane[{lanes}:0]),.column_lane_allowed_q(column_lane[{lanes}:0]),
@@ -178,16 +178,16 @@ endfunction
     text.append('''initial begin
  seed=$urandom(seed);
  for(integer sample=0;sample<100000;sample++)begin
-  for(integer bit_index=0;bit_index<8;bit_index++)begin
+  for(integer bit_index=0;bit_index<16;bit_index++)begin
    group_lane[bit_index]=random_bit();word_s8[bit_index]=random_bit();word_s16[bit_index]=random_bit();
   end
-  for(integer bit_index=0;bit_index<9;bit_index++)begin
+  for(integer bit_index=0;bit_index<17;bit_index++)begin
    active_lane[bit_index]=random_bit();column_lane[bit_index]=random_bit();
   end
   narrow=random_bit();word_output=random_bit();past_active=random_bit();input_s16=random_bit();
   #1;
-  if(equivalent!==4'b1111)$fatal(1,"row completion four-state mismatch");
-  comparisons+=4;
+  if(equivalent!==5'b11111)$fatal(1,"row completion four-state mismatch");
+  comparisons+=5;
  end
  $display("FRONTEND_ROW_FOUR_STATE_PASS comparisons=%0d",comparisons);
  $finish;
@@ -202,9 +202,9 @@ endmodule
                        stdout=stream, stderr=subprocess.STDOUT, check=True)
     with run_log.open('w') as stream:
         subprocess.run([shutil.which('vvp') or 'vvp', str(simulator)], stdout=stream, stderr=subprocess.STDOUT, check=True)
-    if 'FRONTEND_ROW_FOUR_STATE_PASS comparisons=400000' not in run_log.read_text():
+    if 'FRONTEND_ROW_FOUR_STATE_PASS comparisons=500000' not in run_log.read_text():
         raise RuntimeError('行末四态比较未完成')
-    return {'passed': True, 'comparisons': 400000, 'rtl_sha256': digest(rtl),
+    return {'passed': True, 'comparisons': 500000, 'rtl_sha256': digest(rtl),
             'run_log_sha256': digest(run_log)}
 
 
@@ -217,13 +217,13 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
     source_path, source = read_module(root, 'stream')
     rows = []
-    cases = [(f'lanes_{lanes}', lanes, unit(source, lanes)) for lanes in range(1, 9)]
+    cases = [(f'lanes_{lanes}', lanes, unit(source, lanes)) for lanes in range(1, 17)]
     cases += [(f'guard_lanes_{lanes}_narrow_{narrow_lanes}_contiguous_{int(contiguous)}', lanes,
                guard_unit(source, lanes, contiguous, narrow_lanes))
-              for lanes in range(1, 9) for narrow_lanes in sorted({min(4,lanes), min(8,lanes)})
+              for lanes in range(1, 17) for narrow_lanes in sorted({min(4,lanes), min(8,lanes)})
               for contiguous in (False, True)]
     cases += [(f'row_lanes_{lanes}_narrow_{narrow_lanes}', lanes, row_unit(source, lanes, narrow_lanes))
-              for lanes in range(1,9) for narrow_lanes in sorted({min(4,lanes),min(8,lanes)})]
+              for lanes in range(1,17) for narrow_lanes in sorted({min(4,lanes),min(8,lanes)})]
     for name, lanes, text in cases:
         rtl, script, log = [out / (name + ext) for ext in ('.sv', '.ys', '.log')]
         rtl.write_text(text)

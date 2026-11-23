@@ -7,6 +7,7 @@ import hashlib
 import json
 import runpy
 import re
+import shlex
 import subprocess
 import sys
 
@@ -30,7 +31,8 @@ relative_sources = [
     'rtl/common/add_equal.sv', 'rtl/common/parallel_prefix_add.sv',
     'rtl/common/unsigned_compare.sv',
 ]
-resolve_sources = runpy.run_path(str(ROOT/'scripts/rtl/source_files.py'))['with_dependencies']
+source_tools = runpy.run_path(str(ROOT/'scripts/rtl/source_files.py'))
+resolve_sources = source_tools['with_dependencies']
 results = {}
 prepared_sources = {}
 sources = [('current', args.source_root.resolve())]
@@ -41,10 +43,13 @@ for name, source in sources:
     log = OUT / (name + '.log')
     netlist = OUT / (name + '.json')
     resolved = resolve_sources([source/path for path in relative_sources], source)
-    prepared_sources[name] = {str(path): hashlib.sha256(Path(path).read_bytes()).hexdigest() for path in resolved}
+    prepared_sources[name] = {str(path): hashlib.sha256(path.read_bytes()).hexdigest()
+                             for path in source_tools['input_files'](resolved, source)}
     script.write_text('read_slang --top conv_im2col_frontend -D ASIC_SYNTHESIS=1 -D SYNTHESIS=1 '
                      '-GSIZE=16 -GSLOT_W=6 -GLANES=16 -GBUS_WIDTH=64 -GCACHE_SETS=16 '
                      '-GCACHE_WAYS=2 -GLINE_BYTES=128 -GCACHE_RESPONSE_DEPTH=2 ' +
+                     '-I'+shlex.quote(str(source/'include'))+' ' +
+                     '-I'+shlex.quote(str(source/'asic/rtl'))+' ' +
                      ' '.join(map(str, resolved)) + '\n'
                      'proc\nflatten\nopt\nwreduce\nopt\nmemory_collect\nstat\n'
                      f'write_json {netlist}\n')

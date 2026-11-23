@@ -20,7 +20,7 @@ module conv_coordinate_step #(
   logic unused_difference_carry;
   logic high_zero, low_less;
 
-  parallel_prefix_add #(.p_width(p_width), .p_group_width(4), .p_preserve_groups(1'b1)) u_coordinate (
+  parallel_prefix_add #(.p_width(p_width), .p_group_width(8), .p_preserve_groups(1'b1)) u_coordinate (
     .i_a(i_base), .i_b(i_delta), .i_carry(1'b0),
     .o_sum(coordinate_sum), .o_carry(unused_coordinate_carry)
   );

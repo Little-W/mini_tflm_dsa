@@ -5,7 +5,7 @@
 module conv_im2col_frontend #(
   parameter int SIZE=16,
   parameter int SLOT_W=3,
-  parameter int LANES=2,       // Corrected values written into independent IA banks
+  parameter int LANES=2,       // 独立 IA 存储组的校正数据写入通道数。
   parameter int CACHE_SETS=128,
   parameter int CACHE_WAYS=2,
   parameter int LINE_BYTES=16,
@@ -25,15 +25,14 @@ module conv_im2col_frontend #(
   input wire logic cfg_valid,
   output logic cfg_ready,
   input wire conv_im2col_pkg::conv_cfg_t cfg,
-  // Native IA scheduler context. Zero groups disables the geometry policy for
-  // standalone clients that do not promise the native descriptor order.
+  // IA 调度上下文中的组数为零时关闭几何预测，支持任意描述符顺序。
   input wire logic [31:0] cfg_sched_r = 32'd0,
   input wire logic [31:0] cfg_sched_groups = 32'd0,
   input wire logic tile_valid,
   output logic tile_ready,
   input wire logic [31:0] tile_p0, tile_q0,
   input wire logic [RW-1:0] tile_rows,
-  input wire logic [RW-1:0] tile_cols = '0, // Zero selects the full SIZE columns.
+  input wire logic [RW-1:0] tile_cols = '0, // 零值选择完整的 SIZE 列。
   input wire logic [SLOT_W-1:0] tile_slot,
   input wire logic [31:0] tile_group = 32'd0,
   input wire logic tile_narrow = 1'b0,
@@ -64,45 +63,25 @@ module conv_im2col_frontend #(
   localparam int p_cache_read_bytes = p_lane_bytes < LINE_BYTES ? p_lane_bytes : LINE_BYTES;
   localparam int p_cache_read_width = 8 * p_cache_read_bytes;
   localparam int p_word_shift = $clog2(p_cache_read_bytes);
-  localparam bit p_saved_word_range = LANES <= 8 && LANES <= p_cache_read_bytes;
   localparam int p_row_low_w = RW < 32 ? RW : 31;
   localparam int p_row_high_w = 32 - p_row_low_w;
   localparam int TILE_COUNT_W = $clog2(SIZE+1);
   localparam int CHUNK_COUNT_W = $clog2(LANES+1);
-  localparam int p_group_low_w = LANES > 1 && LANES <= 32768 ? $clog2(LANES) : 1;
-  localparam int p_group_high_w = 16 - p_group_low_w;
-  localparam int p_saved_group_lanes = LANES > 4 && LANES <= 8 ? 8 : 4;
+  localparam int p_saved_group_lanes = LANES <= 16 ? p_lane_bytes : 4;
   localparam int COORD_W = 35;
-  localparam logic signed [COORD_W-1:0] p_coord_max = {1'b0,{(COORD_W-1){1'b1}}};
-  localparam bit p_contiguous_chunk = LANES <= 8 && LANES <= (1 << TILE_COUNT_W);
-  localparam int p_prefetch_count_width = $clog2(LINE_BYTES + 2);
-  typedef struct packed {
-    logic invalid, fast, padding, word_hit, output_position_update, output_wrap, kernel_last;
-    logic geometry, narrow_output;
-    logic [31:0] position, reduction, group_index;
-    logic [TILE_COUNT_W-1:0] rows, columns, active_columns;
-    logic [SLOT_W-1:0] slot;
-    logic [32:0] next_group, skip_group;
-    logic [31:0] tap, channel, kernel_x, kernel_y;
-    logic signed [COORD_W-1:0] input_x, input_y;
-    logic [31:0] pixel, address, group_address;
-    logic [15:0] output_x, output_y;
-    logic [p_saved_group_lanes:0] channel_range;
-    logic [8:0] padding_select, padding_value;
-    logic [31-p_word_shift:0] word_address;
-    logic saved_word_valid;
-    logic [9:0] operation;
-    logic row_wrap;
-  } prepared_tile_t;
+  localparam int p_prepared_count_w = TILE_COUNT_W;
+  localparam int p_prepared_slot_w = SLOT_W;
+  localparam int p_prepared_coord_w = COORD_W;
+  `include "conv_im2col_prepared_tile.svh"
   (* fsm_encoding = "none" *) st_t state;
   logic word_output_q;
   conv_cfg_t c;
   logic configured;
   logic cfg_ok;
   logic cfg_basic_valid;
-  logic [1:0] cfg_prepare_phase;
+  logic [2:0] cfg_prepare_phase;
   logic [63:0] cfg_input_bytes;
-  logic [63:0] cfg_red;
+  logic [31:0] cfg_red;
   logic [31:0] cfg_positions;
   logic [31:0] reduction_len;
   logic [31:0] position_count;
@@ -134,6 +113,7 @@ module conv_im2col_frontend #(
   logic past_active_q;
   logic narrow_output;
   logic [LANES-1:0] chunk_lane_allowed;
+  logic [LANES:0] chunk_selected;
   (* keep = 1 *) logic chunk_reaches_end;
   logic [15:0] ox_q;
   logic [15:0] oy_q;
@@ -154,11 +134,14 @@ module conv_im2col_frontend #(
   logic [32:0] q_current;
   logic signed [COORD_W-1:0] ix;
   logic signed [COORD_W-1:0] iy;
-  logic ix_step_below_limit;
-  logic [COORD_W-1:0] ix_increment;
   logic [31:0] pixel_index;
   logic [3:0][31:0] coordinate_product_q;
   logic [1:0][32:0] coordinate_sum_q;
+  logic [1:0] coordinate_borrow_q;
+  logic [1:0][16:0] coordinate_low_difference;
+  logic [1:0] address_axis_valid;
+  logic address_position_valid;
+  logic address_reduction_valid, unused_address_reduction_equal;
   logic [31:0] pixel_product;
   logic [31:0] channel_product;
   logic [31:0] group_base_addr;
@@ -216,7 +199,6 @@ module conv_im2col_frontend #(
   logic [15:0] last_output_col_q;
   logic [15:0] second_last_col_q;
   logic [15:0] last_kernel_col_q;
-  logic [15:0] last_input_col_q;
   logic kernel_width_valid_q;
   logic request_geometry_q;
   logic request_event_first_q;
@@ -242,7 +224,7 @@ module conv_im2col_frontend #(
   logic last_p_valid;
   logic [31:0] last_p;
   logic last_p_overflow_q;
-  logic [16:0] history_limit_low_sum;
+  logic history_limit_carry;
   logic [15:0] last_y;
   logic [15:0] last_x;
   logic p_fast_valid;
@@ -274,7 +256,7 @@ module conv_im2col_frontend #(
   logic [31:0] pf_epoch;
   logic pf_index_valid;
   logic [3:0] prefetch_phase;
-  logic [31:0] pf_channel_product;
+  logic [31:0] pf_address_term;
   logic signed [COORD_W-1:0] pfa_y;
   logic [31:0] pfa_channel;
   logic [31:0] pf0_x;
@@ -325,7 +307,6 @@ module conv_im2col_frontend #(
   logic row_base_valid;
   logic coordinate_address_valid;
   logic row_coordinate_valid;
-  logic current_coordinate_valid;
   logic signed [COORD_W-1:0] row_base_ix;
   logic signed [COORD_W-1:0] row_base_iy;
   logic [31:0] row_base_pixel;
@@ -366,13 +347,13 @@ module conv_im2col_frontend #(
   logic kernel_shape_o_valid;
   logic [4:0] group_width_shift;
   logic [4:0] kernel_width_shift;
-  logic linear_channel_layout_q;
   logic [5:0] k_decode_value;
   logic [1:0][32:0] coordinate_product_sum;
   logic signed [COORD_W-1:0] coordinate_padded_x;
   logic signed [COORD_W-1:0] coordinate_padded_y;
   logic [31:0] group_address_sum;
   logic [31:0] prefetch_address_sum;
+  logic [31:0] prefetch_byte_offset;
   logic [31:0] prefetch_pixel_sum;
   logic [3:0][31:0] shared_coordinate_product;
   logic [1:0][47:0] shared_channel_product;
@@ -380,7 +361,6 @@ module conv_im2col_frontend #(
   logic kernel_decode_last;
   logic [2:0][5:0] cfg_idle_groups;
   logic [2:0] cfg_idle_group_clear;
-  logic [31:0] pixel_increment;
   logic group_end_o_equal;
   logic [31:0] decode_index_advance;
   logic [31:0] decode_inner_advance;
@@ -419,6 +399,7 @@ module conv_im2col_frontend #(
     .i_pixel_index(pixel_index),
     .i_coordinate_product_q(coordinate_product_q),
     .i_coordinate_sum_q(coordinate_sum_q),
+    .i_coordinate_borrow_q(coordinate_borrow_q),
     .i_channel_product(channel_product),
     .i_group_base_addr(group_base_addr),
     .o_channel_addr(channel_addr),
@@ -427,6 +408,7 @@ module conv_im2col_frontend #(
     .o_next_row_group_base(next_row_group_base),
     .i_addr(addr),
     .i_chunk_count(chunk_count),
+    .i_chunk_selected(chunk_selected),
     .i_decode_index(decode_index),
     .i_decode_outer(decode_outer),
     .i_decode_inner(decode_inner),
@@ -440,13 +422,12 @@ module conv_im2col_frontend #(
     .o_last_output_col_q(last_output_col_q),
     .o_second_last_col_q(second_last_col_q),
     .o_last_kernel_col_q(last_kernel_col_q),
-    .o_last_input_col_q(last_input_col_q),
     .o_kernel_width_valid_q(kernel_width_valid_q),
     .i_p_cache_valid(p_cache_valid),
     .i_last_p_valid(last_p_valid),
     .i_last_p(last_p),
     .i_last_p_overflow_q(last_p_overflow_q),
-    .o_history_limit_low_sum(history_limit_low_sum),
+    .o_history_limit_carry(history_limit_carry),
     .i_last_y(last_y),
     .i_last_x(last_x),
     .o_p_fast_valid(p_fast_valid),
@@ -460,7 +441,7 @@ module conv_im2col_frontend #(
     .o_window_index_valid_q(window_index_valid_q),
     .o_window_index_shift_q(window_index_shift_q),
     .i_prefetch_phase(prefetch_phase),
-    .i_pf_channel_product(pf_channel_product),
+    .i_pf_address_term(pf_address_term),
     .i_pfa_y(pfa_y),
     .i_pfa_channel(pfa_channel),
     .i_pf0_x(pf0_x),
@@ -519,13 +500,14 @@ module conv_im2col_frontend #(
     .o_kernel_shape_o_valid(kernel_shape_o_valid),
     .o_group_width_shift(group_width_shift),
     .o_kernel_width_shift(kernel_width_shift),
-    .o_linear_channel_layout_q(linear_channel_layout_q),
     .o_k_decode_value(k_decode_value),
     .o_coordinate_product_sum(coordinate_product_sum),
+    .o_coordinate_low_difference(coordinate_low_difference),
     .o_coordinate_padded_x(coordinate_padded_x),
     .o_coordinate_padded_y(coordinate_padded_y),
     .o_group_address_sum(group_address_sum),
     .o_prefetch_address_sum(prefetch_address_sum),
+    .o_prefetch_byte_offset(prefetch_byte_offset),
     .o_prefetch_pixel_sum(prefetch_pixel_sum),
     .o_shared_coordinate_product(shared_coordinate_product),
     .o_shared_channel_product(shared_channel_product)
@@ -686,15 +668,12 @@ module conv_im2col_frontend #(
     .i_past_active_q(past_active_q),
     .i_narrow_output(narrow_output),
     .o_chunk_lane_allowed(chunk_lane_allowed),
+    .o_chunk_selected(chunk_selected),
     .o_chunk_reaches_end(chunk_reaches_end),
     .o_ch_q(ch_q),
     .i_ch0_q(ch0_q),
     .i_ch0(ch0),
     .i_q_current(q_current),
-    .i_ix(ix),
-    .o_ix_step_below_limit(ix_step_below_limit),
-    .o_ix_increment(ix_increment),
-    .i_pixel_index(pixel_index),
     .i_channel_addr(channel_addr),
     .i_pad_q(pad_q),
     .o_addr(addr),
@@ -723,7 +702,6 @@ module conv_im2col_frontend #(
     .i_window_next_ch(window_next_ch),
     .o_incoming_tile_group_fits(incoming_tile_group_fits),
     .o_cache_req_addr(cache_req_addr),
-    .i_last_input_col_q(last_input_col_q),
     .i_cache_rsp_data(cache_rsp_data),
     .i_pred_cfg_busy(pred_cfg_busy),
     .i_cache_cfg_pending(cache_cfg_pending),
@@ -741,8 +719,6 @@ module conv_im2col_frontend #(
     .i_row_base_valid(row_base_valid),
     .i_coordinate_address_valid(coordinate_address_valid),
     .i_row_coordinate_valid(row_coordinate_valid),
-    .i_current_coordinate_valid(current_coordinate_valid),
-    .i_tap_wrap(tap_wrap),
     .i_next_row_padding(next_row_padding),
     .i_next_tap_padding(next_tap_padding),
     .i_incoming_tap_wrap_q(incoming_tap_wrap_q),
@@ -757,8 +733,6 @@ module conv_im2col_frontend #(
     .i_next_row_word_match(next_row_word_match),
     .i_incoming_advanced_word_match(incoming_advanced_word_match),
     .i_group_shape_o_valid(group_shape_o_valid),
-    .i_linear_channel_layout_q(linear_channel_layout_q),
-    .o_pixel_increment(pixel_increment),
     .o_group_end_o_equal(group_end_o_equal),
     .o_stream_advance_state(stream_advance_state)
   );
@@ -818,7 +792,7 @@ module conv_im2col_frontend #(
     .o_pf_epoch(pf_epoch),
     .o_pf_index_valid(pf_index_valid),
     .o_prefetch_phase(prefetch_phase),
-    .o_pf_channel_product(pf_channel_product),
+    .o_pf_address_term(pf_address_term),
     .o_pfa_y(pfa_y),
     .o_pfa_channel(pfa_channel),
     .o_pf0_x(pf0_x),
@@ -845,6 +819,7 @@ module conv_im2col_frontend #(
     .i_row_wrap(row_wrap),
     .i_next_row_ix(next_row_ix),
     .i_prefetch_address_sum(prefetch_address_sum),
+    .i_prefetch_byte_offset(prefetch_byte_offset),
     .i_prefetch_pixel_sum(prefetch_pixel_sum),
     .i_shared_channel_product(shared_channel_product)
   );
@@ -878,14 +853,32 @@ module conv_im2col_frontend #(
 
   // 配置阶段的像素步长各经过独立寄存器，完整加法结果用于自然算术推断。
 
+  for (genvar axis = 0; axis < 2; axis++) begin : g_address_bounds
+    logic [COORD_W-1:0] coordinate;
+    logic [15:0] limit_value;
+    logic low_less, unused_low_equal;
+    assign coordinate = axis == 0 ? ix : iy;
+    assign limit_value = axis == 0 ? c.input_w : c.input_h;
+    unsigned_compare #(.p_width(16)) u_limit (
+      .i_a(coordinate[15:0]), .i_b(limit_value),
+      .o_less(low_less), .o_equal(unused_low_equal)
+    );
+    assign address_axis_valid[axis] = !(|coordinate[COORD_W-1:16]) && low_less;
+  end
+  unsigned_compare #(.p_width(33)) u_address_reduction (
+    .i_a(q_current), .i_b({1'b0, reduction_len}),
+    .o_less(address_reduction_valid), .o_equal(unused_address_reduction_equal)
+  );
+  assign address_position_valid = (&address_axis_valid) && address_reduction_valid;
+
   assign row_pair_dx_sum = row_wrap_dx + $signed(33'(c.stride_w));
   assign row_wrap_pixel_sum = row_y_pixels + row_wrap_dx;
   assign tap_wrap_pixel_sum = tap_y_pixels + tap_wrap_dx;
 
   // 配置接收并行检查各组状态，缓存就绪参与末级条件。
 
-  assign cfg_idle_groups[0] = {request_pending, !state[$clog2(IDLE)], 4'b0000};
-  assign cfg_idle_groups[1] = {cfg_prepare_phase, address_step_phase, prefetch_phase[1:0]};
+  assign cfg_idle_groups[0] = {request_pending, !state[$clog2(IDLE)], cfg_prepare_phase[2], 3'b000};
+  assign cfg_idle_groups[1] = {cfg_prepare_phase[1:0], address_step_phase, prefetch_phase[1:0]};
   assign cfg_idle_groups[2] = {prefetch_phase[3:2], pred_busy, pred_cfg_busy, pred_cfg_pending, cache_cfg_pending};
   for (genvar group_index = 0; group_index < 3; group_index++) begin : g_cfg_idle_group
     assign cfg_idle_group_clear[group_index] = !(|cfg_idle_groups[group_index]);
@@ -912,8 +905,7 @@ module conv_im2col_frontend #(
   assign wr_last = row_last_q && chunk_reaches_end;
 
   assign pred_start = state[$clog2(ADDRESS)] && geometry_tile && col_idx==0 &&
-    q_current<{1'b0,reduction_len} && ix>=0 && iy>=0 &&
-    ix<$signed(COORD_W'(c.input_w)) && iy<$signed(COORD_W'(c.input_h)) &&
+    address_position_valid &&
     !pred_busy && !cache_hint_pending;
   generate if (SIZE==16 && LINE_BYTES==16 && CACHE_POLICY!=0) begin : g_next_use
     logic [31:0] predictor_cfg_r, predictor_position, group_q;
@@ -948,18 +940,17 @@ module conv_im2col_frontend #(
   end endgenerate
 
   assign byte_offset_sum={2'b0,addr[p_word_shift-1:0]}+((p_word_shift+2)'(chunk_count)<<c.input_s16);
-  // The registered trigger consumes the accepted configuration. Cache setup
-  // waits until the predictor has produced its new eligibility flag.
+  // 配置触发位在接收后保存；预测器生成可用标志后开始配置缓存。
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) pred_cfg_pending<=1'b0;
-    else if (cfg_prepare_phase==2)
+    else if (cfg_prepare_phase==4)
       pred_cfg_pending<=cfg_ok && SIZE==16 && LINE_BYTES==16 && CACHE_POLICY!=0;
     else pred_cfg_pending<=1'b0;
   end
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) cache_cfg_pending <= 1'b0;
     else if (cfg_valid && cfg_ready) cache_cfg_pending <= 1'b0;
-    else if (cfg_prepare_phase==2) cache_cfg_pending <= cfg_ok;
+    else if (cfg_prepare_phase==4) cache_cfg_pending <= cfg_ok;
     else if (cache_config_valid && cache_cfg_ready) cache_cfg_pending <= 1'b0;
   end
   // 请求地址、窗口索引和有效位同时寄存，缓存只接收已保存的完整请求。
@@ -1056,7 +1047,7 @@ module conv_im2col_frontend #(
       address_step_phase<=0;row_wrap_dx <= 33'(0);tap_wrap_dx <= 33'(0);row_pair_dx<=0;
       row_y_pixels <= 33'(0);tap_y_pixels <= 33'(0);row_wrap_pixels <= 33'(0);tap_wrap_pixels <= 33'(0);
       row_step_bytes<=0;tap_step_bytes<=0;row_wrap_bytes<=0;tap_wrap_bytes<=0;
-      row_base_valid<=0;coordinate_address_valid<=0;row_coordinate_valid<=0;current_coordinate_valid<=0;
+      row_base_valid<=0;coordinate_address_valid<=0;row_coordinate_valid<=0;
       row_base_ix <= COORD_W'(0);row_base_iy <= COORD_W'(0);row_base_pixel <= 32'(0);row_base_addr<=0;
     end else begin
       tile_done<=finishing_tile; tile_error<=0;
@@ -1069,22 +1060,27 @@ module conv_im2col_frontend #(
         tap_wrap_pixels <= tap_wrap_pixel_sum;
         address_step_phase<=1;
       end else if (address_step_phase==1) begin
+        address_step_phase<=3;
+      end else if (address_step_phase==3) begin
         row_wrap_bytes <= shared_channel_product[0][31:0] << c.input_s16;
         tap_wrap_bytes <= shared_channel_product[1][31:0] << c.input_s16;
         address_step_phase<=0;
       end
-      if (cfg_prepare_phase == 2'd1) begin
+      if (cfg_prepare_phase == 3'd1) row_y_pixels <= {1'b0, shared_coordinate_product[3]};
+      if (cfg_prepare_phase == 3'd2) begin
         // 先保存无符号乘积，下一阶段计算有符号回绕位移。
         row_wrap_dx <= {1'b0, shared_coordinate_product[0]};
         tap_wrap_dx <= {1'b0, shared_coordinate_product[1]};
         tap_y_pixels <= {1'b0, shared_coordinate_product[2]};
         row_step_bytes <= shared_coordinate_product[3] << c.input_s16;
       end
-      if (cfg_prepare_phase==2) begin
+      if (cfg_prepare_phase==3) begin
         row_wrap_dx <= 33'(c.stride_w) - row_wrap_dx;
         tap_wrap_dx <= 33'(c.dilation_w) - tap_wrap_dx;
         tap_step_bytes <= shared_coordinate_product[3] << c.input_s16;
         address_step_phase <= 2'd2;
+      end
+      if (cfg_prepare_phase==4) begin
         configured<=cfg_ok;error<=!cfg_ok;
         reduction_len<=32'(cfg_red);position_count<=cfg_positions;tensor_bytes<=32'(cfg_input_bytes);
         // 配置边沿同时保存位置上限及其高位减一值，供低位进位时比较。
@@ -1111,8 +1107,7 @@ module conv_im2col_frontend #(
         groups_q<=cfg_sched_groups;geometry_tile<=0;line_hint_valid<=0;
         p_cache_valid<=0;last_p_valid<=0;
         address_step_phase <= 2'd0;
-        row_base_valid<=0;coordinate_address_valid<=0;row_coordinate_valid<=0;current_coordinate_valid<=0;
-        row_y_pixels <= {1'b0, shared_coordinate_product[3]};
+        row_base_valid<=0;coordinate_address_valid<=0;row_coordinate_valid<=0;
 
         end
         tile_commit: begin
@@ -1131,7 +1126,7 @@ module conv_im2col_frontend #(
           row_idx<=0; col_idx<=0; slot_q<=committing_tile.slot;
           narrow_output <= committing_tile.narrow_output;
 
-          row_base_valid<=0;coordinate_address_valid<=0;row_coordinate_valid<=0;current_coordinate_valid<=0;
+          row_base_valid<=0;coordinate_address_valid<=0;row_coordinate_valid<=0;
           geometry_tile<=committing_tile.geometry;
           if (committing_tile.fast) begin
             tap0<=committing_tile.tap; ch0_q<=16'(committing_tile.channel);
@@ -1148,7 +1143,7 @@ module conv_im2col_frontend #(
             pixel_index<=committing_tile.pixel;
             if (!REGISTER_DESCRIPTOR) pad_q<=committing_tile.padding;
             tap_group_base<=committing_tile.group_address; row_group_base<=committing_tile.group_address;
-            row_base_valid<=1;coordinate_address_valid<=1;row_coordinate_valid<=1;current_coordinate_valid<=1;
+            row_base_valid<=1;coordinate_address_valid<=1;row_coordinate_valid<=1;
             row_base_ix<=committing_tile.input_x; row_base_iy<=committing_tile.input_y;
             row_base_pixel<=committing_tile.pixel; row_base_addr<=committing_tile.address;
             if (REGISTER_DESCRIPTOR) {word_output_q, state} <= {state_uses_word(DESCRIPTOR_CHECK), DESCRIPTOR_CHECK};
@@ -1156,7 +1151,9 @@ module conv_im2col_frontend #(
             else if (committing_tile.word_hit) {word_output_q, state} <= {state_uses_word(STREAM), STREAM};
             else if (REGISTER_CACHE_REQUEST || REGISTER_DESCRIPTOR) {word_output_q, state} <= {state_uses_word(FETCH), FETCH};
             else {word_output_q, state} <= {state_uses_word(cache_req_ready ? WAIT_WORD : FETCH), cache_req_ready ? WAIT_WORD : FETCH};
-          end else {word_output_q, state} <= {state_uses_word(P_DECODE), P_DECODE};
+          end else if (REGISTER_DESCRIPTOR)
+            {word_output_q, state} <= {state_uses_word(P_HISTORY), P_HISTORY};
+          else {word_output_q, state} <= {state_uses_word(P_DECODE), P_DECODE};
         end
         end
         state[$clog2(DESCRIPTOR_CHECK)]: begin
@@ -1221,7 +1218,7 @@ module conv_im2col_frontend #(
                   tap_wrap_q <= kernel_width_valid_q && tap_next_o_equal;
                 end
                 ix <= COORD_W'(next_tap_ix);iy <= COORD_W'(next_tap_iy);pixel_index <= 32'(next_tap_pixel); pad_q<=next_tap_padding;tap_group_base<=next_tap_addr;
-              end else if (current_coordinate_valid) begin
+              end else begin
                 if (tap_wrap) begin kx_q<=0; tap_wrap_q <= kernel_width_valid_q && (16'(0) == last_kernel_col_q);ky_q<=16'(ky+1);end
                 else begin
                   kx_q <= 16'(kx+1);
@@ -1229,24 +1226,17 @@ module conv_im2col_frontend #(
                 end
                 ix<=next_tap_ix;iy<=next_tap_iy;
                 coordinate_address_valid<=0;
-              end else if (tap_wrap) begin kx_q <= 16'(0);
-              tap_wrap_q <= kernel_width_valid_q && (16'(0) == last_kernel_col_q);
-              ky_q <= 16'(ky+1);
-              end
-              else begin
-                kx_q <= 16'(kx+1); tap_wrap_q <= kernel_width_valid_q && tap_next_o_equal;
-                if (!pad_q && linear_channel_layout_q &&
-                    ix_step_below_limit) begin
-                  ix <= $signed(ix_increment);pixel_index <= pixel_increment;
-                end
               end
             end
           end
         end
         end
+        state[$clog2(P_HISTORY)]: begin
+          {word_output_q, state} <= {state_uses_word(P_DECODE), P_DECODE};
+        end
         state[$clog2(P_DECODE)]: if (p_fast_valid) begin
           oy_q <= 16'(p_fast_y);ox_q <= 16'(p_fast_x); row_wrap_q <= p_fast_wrap;{word_output_q, state} <= {state_uses_word(Q_DECODE), Q_DECODE};
-          last_p_valid<=1;last_p<=p0;last_p_overflow_q <= (&p0[31:16]) && history_limit_low_sum[16];last_y<=16'(p_fast_y);last_x<=16'(p_fast_x);
+          last_p_valid<=1;last_p<=p0;last_p_overflow_q <= (&p0[31:16]) && history_limit_carry;last_y<=16'(p_fast_y);last_x<=16'(p_fast_x);
           p_cache_valid[p_cache_select]<=1;
         end else {word_output_q, state} <= {state_uses_word(P_START), P_START};
         state[$clog2(P_START)]: begin {word_output_q, state} <= {state_uses_word(P_WAIT), P_WAIT};end
@@ -1255,7 +1245,7 @@ module conv_im2col_frontend #(
           ox_q <= 16'(decode_inner);
           row_wrap_q <= c.output_w != 16'd0 && (16'(decode_inner) == last_output_col_q);
           {word_output_q, state} <= {state_uses_word(Q_DECODE), Q_DECODE};
-          last_p_valid<=1;last_p<=p0;last_p_overflow_q <= (&p0[31:16]) && history_limit_low_sum[16];last_y<=16'(decode_outer);last_x<=16'(decode_inner);
+          last_p_valid<=1;last_p<=p0;last_p_overflow_q <= (&p0[31:16]) && history_limit_carry;last_y<=16'(decode_outer);last_x<=16'(decode_inner);
           p_cache_valid[p_cache_select]<=1;
         end
         state[$clog2(Q_DECODE)]: begin
@@ -1313,16 +1303,18 @@ module conv_im2col_frontend #(
           {word_output_q, state} <= {state_uses_word(COORD), COORD};
         end
         state[$clog2(COORD)]: begin
-          coordinate_address_valid<=0;current_coordinate_valid<=0;
+          coordinate_address_valid<=0;
 
           {word_output_q, state} <= {state_uses_word(COORD_SUM), COORD_SUM};
         end
         state[$clog2(COORD_SUM)]: begin
-
+          {word_output_q, state} <= {state_uses_word(COORD_BORROW), COORD_BORROW};
+        end
+        state[$clog2(COORD_BORROW)]: begin
           {word_output_q, state} <= {state_uses_word(COORD_PAD), COORD_PAD};
         end
         state[$clog2(COORD_PAD)]: begin
-          current_coordinate_valid<=1;
+
           ix<=coordinate_padded_x;
           iy<=coordinate_padded_y;
           {word_output_q, state} <= {state_uses_word(ADDRESS), ADDRESS};
@@ -1331,8 +1323,7 @@ module conv_im2col_frontend #(
           if (col_idx==0) begin
             row_coordinate_valid<=1;row_base_ix<=ix;row_base_iy<=iy;
           end
-          if (q_current >= {1'b0,reduction_len} || ix<0 || iy<0 ||
-              ix >= $signed(COORD_W'(c.input_w)) || iy >= $signed(COORD_W'(c.input_h))) begin
+          if (!address_position_valid) begin
             pad_q<=1; {word_output_q, state} <= {state_uses_word(ZERO_STREAM), ZERO_STREAM};
           end else if (!geometry_tile || col_idx!=0 || (!pred_busy && !cache_hint_pending)) begin
 
@@ -1344,7 +1335,9 @@ module conv_im2col_frontend #(
           {word_output_q, state} <= {state_uses_word(ADDRESS_PRODUCT), ADDRESS_PRODUCT};
         end
         state[$clog2(ADDRESS_PRODUCT)]: begin
-
+          {word_output_q, state} <= {state_uses_word(ADDRESS_MERGE), ADDRESS_MERGE};
+        end
+        state[$clog2(ADDRESS_MERGE)]: begin
           {word_output_q, state} <= {state_uses_word(ADDRESS_BASE), ADDRESS_BASE};
         end
         state[$clog2(ADDRESS_BASE)]: begin
@@ -1359,7 +1352,13 @@ module conv_im2col_frontend #(
             row_base_addr<=channel_addr;
             row_group_base<=group_base_addr;
           end
-          {word_output_q, state} <= {state_uses_word(FETCH), FETCH};
+          {word_output_q, state} <= {state_uses_word(ADDRESS_MATCH), ADDRESS_MATCH};
+        end
+        state[$clog2(ADDRESS_MATCH)]: begin
+          pad_q <= !address_position_valid;
+          if (!address_position_valid)
+            {word_output_q, state} <= {state_uses_word(ZERO_STREAM), ZERO_STREAM};
+          else {word_output_q, state} <= {state_uses_word(FETCH), FETCH};
         end
         state[$clog2(FETCH)]: begin
           if (current_word_hit) {word_output_q, state} <= {state_uses_word(STREAM), STREAM};
@@ -1433,16 +1432,21 @@ module conv_im2col_frontend #(
         state[$clog2(COORD_SUM)]: begin
           coordinate_sum_q <= coordinate_product_sum;
         end
+        state[$clog2(COORD_BORROW)]: begin
+          for (int axis = 0; axis < 2; axis++) begin
+            coordinate_sum_q[axis][15:0] <= coordinate_low_difference[axis][15:0];
+            coordinate_borrow_q[axis] <= coordinate_low_difference[axis][16];
+          end
+        end
         state[$clog2(COORD_PAD)]: ;
         state[$clog2(ADDRESS)]: begin
-          if (q_current >= {1'b0, reduction_len} || ix < 0 || iy < 0 ||
-              ix >= $signed(COORD_W'(c.input_w)) || iy >= $signed(COORD_W'(c.input_h))) begin
+          if (!address_position_valid) begin
           end else if (!geometry_tile || col_idx != 0 || (!pred_busy && !cache_hint_pending)) begin
             pixel_product <= shared_coordinate_product[0];
           end
         end
         state[$clog2(ADDRESS_PIXEL)]: ;
-        state[$clog2(ADDRESS_PRODUCT)]: channel_product <= shared_channel_product[0][31:0];
+        state[$clog2(ADDRESS_MERGE)]: channel_product <= shared_channel_product[0][31:0];
         state[$clog2(ADDRESS_BASE)]: group_base_addr <= group_address_sum;
         state[$clog2(ADDRESS_CHANNEL)]: ;
         state[$clog2(FETCH)]: ;
@@ -1460,7 +1464,7 @@ module conv_im2col_frontend #(
 `ifdef NPU_SIM_ASSERT
   initial forever @(posedge clk) if (rst_n) begin
     assert ($onehot(state));
-    if (p_contiguous_chunk)
+    if (LANES <= 16 && LANES <= (1 << TILE_COUNT_W))
       assert ((chunk_lane_allowed & (chunk_lane_allowed + 1'b1)) == '0);
     if (wr_valid) begin
       assert (wr_mask!='0 && chunk_count!=0);
