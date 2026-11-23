@@ -47,6 +47,21 @@ PROFILES = [
     (32, 256, 16, 2, 1, 8, 0),
 ]
 
+# 保持模式覆盖整字掩码映射、多个读取端口、填充位和行为存储回退。
+PROFILES = [(*profile, 0) for profile in PROFILES] + [
+    (64, 512, 8, 1, 1, 0, 4, 1),
+    (128, 256, 8, 1, 1, 16, 0, 1),
+    (14, 128, 14, 1, 1, 1, 0, 0),
+    (14, 128, 7, 1, 1, 1, 0, 1),
+    (32, 256, 8, 2, 1, 8, 0, 1),
+    (16, 64, 1, 1, 1, 1, 0, 1),
+    (16, 48, 8, 1, 1, 0, 0, 1),
+    (19, 128, 1, 1, 1, 2, 0, 1),
+    (513, 1024, 171, 1, 1, 0, 33, 1),
+    (64, 512, 8, 1, 0, 0, 0, 1),
+    (16, 130, 4, 1, 1, 2, 0, 1),
+]
+
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -56,6 +71,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--simulation-only", action="store_true")
+    parser.add_argument("--rtl", action="store_true", help="检查不定义 ASIC_SRAM 的行为存储")
     parser.add_argument("--profiles", nargs="+", type=int,
                         help="选择 PROFILES 中的配置序号，省略时检查全部配置")
     args = parser.parse_args()
@@ -72,19 +88,21 @@ def main():
         snapshots.append(target)
     hashes = {str(path.relative_to(out)): digest(path) for path in snapshots}
     report = {"passed": False, "source_sha256": hashes, "profiles": [],
-              "macro_model": "同步功能模型，物理端口同址读写立即报告失败"}
+              "macro_model": "同步功能模型，物理端口同址读写立即报告失败",
+              "asic_sram_defined": not args.rtl}
     if args.profiles is not None and any(index < 0 or index >= len(PROFILES) for index in args.profiles):
         parser.error("配置序号超出 PROFILES 范围")
     profiles = PROFILES if args.profiles is None else [PROFILES[index] for index in args.profiles]
-    for width, depth, unit, ports, sync, macros128, macros1024 in profiles:
-        name = f"w{width}_d{depth}_u{unit}_r{ports}_s{sync}"
+    for width, depth, unit, ports, sync, macros128, macros1024, no_change in profiles:
+        name = f"w{width}_d{depth}_u{unit}_r{ports}_s{sync}_n{no_change}"
         folder = out / name
         folder.mkdir(exist_ok=True)
         binary = folder / "simulation.vvp"
-        command = ["iverilog", "-g2012", "-DASIC_SRAM", "-s", "tb_regfile_asic",
+        defines = [] if args.rtl else ["-DASIC_SRAM"]
+        command = ["iverilog", "-g2012", *defines, "-s", "tb_regfile_asic",
                    f"-Ptb_regfile_asic.p_width={width}", f"-Ptb_regfile_asic.p_depth={depth}",
                    f"-Ptb_regfile_asic.p_unit={unit}", f"-Ptb_regfile_asic.p_ports={ports}",
-                   f"-Ptb_regfile_asic.p_sync={sync}", "-o", str(binary),
+                   f"-Ptb_regfile_asic.p_sync={sync}", f"-Ptb_regfile_asic.p_no_change={no_change}", "-o", str(binary),
                    *map(str, snapshots[:4])]
         with (folder / "compile.log").open("w") as log:
             subprocess.run(command, check=True, stdout=log, stderr=subprocess.STDOUT)
@@ -97,21 +115,21 @@ def main():
             script = folder / "structure.ys"
             mapped = folder / "structure.json"
             script.write_text(
-                "read_slang --top regfile -D ASIC_SRAM=1 --blackboxed-module RAMTP128X16 "
+                "read_slang --top regfile " + ("" if args.rtl else "-D ASIC_SRAM=1 ") + "--blackboxed-module RAMTP128X16 "
                 "--blackboxed-module RAMTP1024X16 "
                 f"-Gp_data_width={width} -Gp_depth={depth} -Gp_write_unit={unit} "
-                f"-Gp_read_ports={ports} -Gp_sync_read={sync} " +
+                f"-Gp_read_ports={ports} -Gp_sync_read={sync} -Gp_no_change_collision={no_change} " +
                 shlex.join(map(str, [*snapshots[:2], snapshots[4]])) +
                 "\nprep -top regfile -flatten\nopt_clean\nwrite_json " + shlex.quote(str(mapped)) + "\n")
             run_stage(script, folder / "structure.log", dict(os.environ))
             cells = json.loads(mapped.read_text())["modules"]["regfile"]["cells"]
             counts = Counter(cell["type"] for cell in cells.values() if cell["type"].startswith("RAMTP"))
-            expected = Counter({"RAMTP128X16": macros128, "RAMTP1024X16": macros1024})
+            expected = Counter() if args.rtl else Counter({"RAMTP128X16": macros128, "RAMTP1024X16": macros1024})
             if counts != +expected:
                 raise RuntimeError(f"{name}: 宏数量不符，observed={dict(counts)}, expected={dict(+expected)}")
             record["macro_instances"] = dict(counts)
             record["logical_storage_bits"] = width * depth
-            record["physical_storage_bits"] = macros128 * 128 * 16 + macros1024 * 1024 * 16
+            record["physical_storage_bits"] = counts["RAMTP128X16"] * 128 * 16 + counts["RAMTP1024X16"] * 1024 * 16
         report["profiles"].append(record)
         (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
         print(json.dumps(record), flush=True)

@@ -262,7 +262,8 @@ module bias_loader_buffer #(
     end
   end
 
-  // 偏置存储按字节写入并同步读取，具体存储资源由综合工具选择。
+  // 两个 bank 分别承担装载和执行，按字节写入并同步读取。
+  // 同地址写入时保持存储输出，字节掩码由存储器统一处理。
   logic storage_i_wr_en, storage_i_rd_en;
   logic [RAM_ADDR_W-1:0] storage_i_wr_addr, storage_i_rd_addr;
   logic [RAM_WIDTH-1:0] storage_i_wr_data, storage_o_rd_data;
@@ -276,7 +277,7 @@ module bias_loader_buffer #(
   assign read_data = storage_o_rd_data;
   regfile #(
       .p_data_width(RAM_WIDTH), .p_depth(2*(1<<BANK_ADDR_W)),
-      .p_addr_width(RAM_ADDR_W), .p_write_unit(8)
+      .p_addr_width(RAM_ADDR_W), .p_write_unit(8), .p_no_change_collision(1'b1)
   ) u_storage (
       .clk(clk), .i_wr_en(storage_i_wr_en), .i_wr_addr(storage_i_wr_addr),
       .i_wr_data(storage_i_wr_data), .i_wr_mask(storage_i_wr_mask),

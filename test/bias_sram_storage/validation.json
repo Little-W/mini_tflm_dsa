@@ -1,0 +1,1479 @@
+{
+  "passed": true,
+  "reference_commit": "820c2b18f6b918298c2f8760e3fd6028060f557b",
+  "storage": {
+    "logical_width": 64,
+    "write_unit_bits": 8,
+    "p_no_change_collision": true,
+    "synchronous_read_cycles": 1
+  },
+  "current_source_sha256": {
+    "rtl/npu/loaders/bias_loader.sv": "5d1313aa825bebb1a44c53343dacec9a2deb20ae8ba7daac4d419b63be375cbf",
+    "rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+    "rtl/npu/loaders/bias_loader_ctrl.sv": "edd39e9cccc4be512d23c98c8c74fddf9e8c6fc080fb029deaf495b049611e06",
+    "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+    "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+    "asic/rtl/smic40_sram_1r1w.sv": "f7bbcc1fe4f661ec1b5a7ec475001a69cfd0a23660abc302763164fc14438de9",
+    "test/asic_regfile/sram_model.sv": "4fc274be34a817c4ffb5c660aa8cfc93fe9e474dd01a1b2af701cf293f50fd55"
+  },
+  "four_state": {
+    "cycles": 199158,
+    "comparisons": 3584844,
+    "profiles": [
+      {
+        "cycles": 33297,
+        "comparisons": 599346,
+        "partial_writes": 23721,
+        "single_byte_writes": 9532,
+        "unknown_inputs": 3766,
+        "mode_changes": 1058,
+        "same_bank_cycles": 18979,
+        "resets": 35,
+        "initializations": 129,
+        "passed": true,
+        "BUS_WIDTH": 32,
+        "GROUP_BLOCKS_MAX": 16,
+        "command": [
+          "iverilog",
+          "-g2012",
+          "-DASIC_SRAM",
+          "-s",
+          "tb_bias_sram_storage",
+          "-Ptb_bias_sram_storage.p_bus_width=32",
+          "-Ptb_bias_sram_storage.p_group_blocks=16",
+          "-Ptb_bias_sram_storage.p_cycles=32768",
+          "-o",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/bus32_groups16/simulation.vvp",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/npu/loaders/bias_loader_buffer.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/common/parallel_prefix_add.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/common/regfile.v",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/asic/rtl/smic40_sram_1r1w.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/test/asic_regfile/sram_model.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/test/bias_sram_storage/tb_storage.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/reference.sv"
+        ],
+        "build_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "run_log_sha256": "67bba257bd9a1ba4aa77bdd899ab14ed4532bc2ddfa6b13a834e3ac00d6c7b11"
+      },
+      {
+        "cycles": 33041,
+        "comparisons": 594738,
+        "partial_writes": 26325,
+        "single_byte_writes": 4522,
+        "unknown_inputs": 3766,
+        "mode_changes": 1058,
+        "same_bank_cycles": 19766,
+        "resets": 35,
+        "initializations": 129,
+        "passed": true,
+        "BUS_WIDTH": 64,
+        "GROUP_BLOCKS_MAX": 16,
+        "command": [
+          "iverilog",
+          "-g2012",
+          "-DASIC_SRAM",
+          "-s",
+          "tb_bias_sram_storage",
+          "-Ptb_bias_sram_storage.p_bus_width=64",
+          "-Ptb_bias_sram_storage.p_group_blocks=16",
+          "-Ptb_bias_sram_storage.p_cycles=32768",
+          "-o",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/bus64_groups16/simulation.vvp",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/npu/loaders/bias_loader_buffer.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/common/parallel_prefix_add.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/common/regfile.v",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/asic/rtl/smic40_sram_1r1w.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/test/asic_regfile/sram_model.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/test/bias_sram_storage/tb_storage.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/reference.sv"
+        ],
+        "build_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "run_log_sha256": "89c0ef874339b05277be72d6c0e2ec19095408e84db528635e704288ef67032f"
+      },
+      {
+        "cycles": 33809,
+        "comparisons": 608562,
+        "partial_writes": 23699,
+        "single_byte_writes": 9404,
+        "unknown_inputs": 3766,
+        "mode_changes": 1058,
+        "same_bank_cycles": 18974,
+        "resets": 35,
+        "initializations": 129,
+        "passed": true,
+        "BUS_WIDTH": 32,
+        "GROUP_BLOCKS_MAX": 32,
+        "command": [
+          "iverilog",
+          "-g2012",
+          "-DASIC_SRAM",
+          "-s",
+          "tb_bias_sram_storage",
+          "-Ptb_bias_sram_storage.p_bus_width=32",
+          "-Ptb_bias_sram_storage.p_group_blocks=32",
+          "-Ptb_bias_sram_storage.p_cycles=32768",
+          "-o",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/bus32_groups32/simulation.vvp",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/npu/loaders/bias_loader_buffer.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/common/parallel_prefix_add.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/common/regfile.v",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/asic/rtl/smic40_sram_1r1w.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/test/asic_regfile/sram_model.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/test/bias_sram_storage/tb_storage.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/reference.sv"
+        ],
+        "build_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "run_log_sha256": "ce213c8998911f356e8b2ab61d09f3e810dd1d8d59bd40322f4e3edaf71daab5"
+      },
+      {
+        "cycles": 33297,
+        "comparisons": 599346,
+        "partial_writes": 26303,
+        "single_byte_writes": 4520,
+        "unknown_inputs": 3766,
+        "mode_changes": 1058,
+        "same_bank_cycles": 19846,
+        "resets": 35,
+        "initializations": 129,
+        "passed": true,
+        "BUS_WIDTH": 64,
+        "GROUP_BLOCKS_MAX": 32,
+        "command": [
+          "iverilog",
+          "-g2012",
+          "-DASIC_SRAM",
+          "-s",
+          "tb_bias_sram_storage",
+          "-Ptb_bias_sram_storage.p_bus_width=64",
+          "-Ptb_bias_sram_storage.p_group_blocks=32",
+          "-Ptb_bias_sram_storage.p_cycles=32768",
+          "-o",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/bus64_groups32/simulation.vvp",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/npu/loaders/bias_loader_buffer.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/common/parallel_prefix_add.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/common/regfile.v",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/asic/rtl/smic40_sram_1r1w.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/test/asic_regfile/sram_model.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/test/bias_sram_storage/tb_storage.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/reference.sv"
+        ],
+        "build_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "run_log_sha256": "5e179432cc0fab4395a1f36dede8454cba2f2bec0ddb83bd58295271a74b472a"
+      },
+      {
+        "cycles": 32881,
+        "comparisons": 591858,
+        "partial_writes": 23589,
+        "single_byte_writes": 9491,
+        "unknown_inputs": 3766,
+        "mode_changes": 1058,
+        "same_bank_cycles": 19001,
+        "resets": 35,
+        "initializations": 129,
+        "passed": true,
+        "BUS_WIDTH": 32,
+        "GROUP_BLOCKS_MAX": 3,
+        "command": [
+          "iverilog",
+          "-g2012",
+          "-DASIC_SRAM",
+          "-s",
+          "tb_bias_sram_storage",
+          "-Ptb_bias_sram_storage.p_bus_width=32",
+          "-Ptb_bias_sram_storage.p_group_blocks=3",
+          "-Ptb_bias_sram_storage.p_cycles=32768",
+          "-o",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/bus32_groups3/simulation.vvp",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/npu/loaders/bias_loader_buffer.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/common/parallel_prefix_add.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/common/regfile.v",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/asic/rtl/smic40_sram_1r1w.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/test/asic_regfile/sram_model.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/test/bias_sram_storage/tb_storage.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/reference.sv"
+        ],
+        "build_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "run_log_sha256": "37f9d2bd2bb8ea31cbb61db8b12be7af52043edf751b9bf952893d1641b54836"
+      },
+      {
+        "cycles": 32833,
+        "comparisons": 590994,
+        "partial_writes": 26306,
+        "single_byte_writes": 4510,
+        "unknown_inputs": 3766,
+        "mode_changes": 1058,
+        "same_bank_cycles": 19807,
+        "resets": 35,
+        "initializations": 129,
+        "passed": true,
+        "BUS_WIDTH": 64,
+        "GROUP_BLOCKS_MAX": 3,
+        "command": [
+          "iverilog",
+          "-g2012",
+          "-DASIC_SRAM",
+          "-s",
+          "tb_bias_sram_storage",
+          "-Ptb_bias_sram_storage.p_bus_width=64",
+          "-Ptb_bias_sram_storage.p_group_blocks=3",
+          "-Ptb_bias_sram_storage.p_cycles=32768",
+          "-o",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/bus64_groups3/simulation.vvp",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/npu/loaders/bias_loader_buffer.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/common/parallel_prefix_add.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/rtl/common/regfile.v",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/asic/rtl/smic40_sram_1r1w.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/test/asic_regfile/sram_model.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/test/bias_sram_storage/tb_storage.sv",
+          "/workspace/scratch/e1a5fa683a84/r21_bias/final_four_state/compiled/reference.sv"
+        ],
+        "build_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "run_log_sha256": "f82a77fd1c78304a0abaa03308a72329f3ea80055376aa05879b18fde1c44a37"
+      }
+    ],
+    "source_sha256": {
+      "rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+      "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+      "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+      "asic/rtl/smic40_sram_1r1w.sv": "f7bbcc1fe4f661ec1b5a7ec475001a69cfd0a23660abc302763164fc14438de9",
+      "test/asic_regfile/sram_model.sv": "4fc274be34a817c4ffb5c660aa8cfc93fe9e474dd01a1b2af701cf293f50fd55",
+      "test/bias_sram_storage/tb_storage.sv": "8369a3bb89108fa1df782e6ad1a29478d07ba0857d2c6ae185ee7776997874fb"
+    },
+    "runner_sha256": "3db08fdc899c3c67ffa36bc13e0847c0b8652d4ed7cd78b5ce204fa477e700a8",
+    "all_public_outputs_compared_each_cycle": true,
+    "four_state_comparison": true,
+    "macro_collision_assertions": true,
+    "source_unchanged": true
+  },
+  "protocol_equivalence": {
+    "passed": true,
+    "profiles": [
+      {
+        "passed": true,
+        "IS_MODE": 0,
+        "BUS_WIDTH": 32,
+        "GROUP_BLOCKS_MAX": 16,
+        "comparisons": {
+          "controls": 13839,
+          "scalar_values": 0,
+          "vector_values": 119040
+        },
+        "storage_access": {
+          "is_mode": 0,
+          "bus": 32,
+          "capacity": 16,
+          "scalar_reads": 0,
+          "vector_reads": 1152,
+          "inactive_read_collisions": 0
+        },
+        "build_log_sha256": "94fe31b3686e794bf224b2f3ee5bac4e1d6630c8241a45ac3112bcf047e883aa",
+        "run_log_sha256": "93f8ec1fd7ca7c60b0a77fa5768b77d2ba88a8b9ca90e61efab6363f32044a18",
+        "numeric_scenarios": 21
+      },
+      {
+        "passed": true,
+        "IS_MODE": 0,
+        "BUS_WIDTH": 64,
+        "GROUP_BLOCKS_MAX": 16,
+        "comparisons": {
+          "controls": 11514,
+          "scalar_values": 0,
+          "vector_values": 119040
+        },
+        "storage_access": {
+          "is_mode": 0,
+          "bus": 64,
+          "capacity": 16,
+          "scalar_reads": 0,
+          "vector_reads": 1152,
+          "inactive_read_collisions": 0
+        },
+        "build_log_sha256": "09e4e773d0341176423f744c33e94779126ff810488397574bcb234b05d98064",
+        "run_log_sha256": "5729a8175db7b2d75ad97764bc67ea70d6e839cef350adb02c23f7a72b473aaf",
+        "numeric_scenarios": 21
+      },
+      {
+        "passed": true,
+        "IS_MODE": 1,
+        "BUS_WIDTH": 32,
+        "GROUP_BLOCKS_MAX": 16,
+        "comparisons": {
+          "controls": 12834,
+          "scalar_values": 10051,
+          "vector_values": 0
+        },
+        "storage_access": {
+          "is_mode": 1,
+          "bus": 32,
+          "capacity": 16,
+          "scalar_reads": 10030,
+          "vector_reads": 0,
+          "inactive_read_collisions": 40
+        },
+        "build_log_sha256": "14d4daacb98ed5d4e2d84f4b833a948ae6f949cd9212cb978bd849f87d142812",
+        "run_log_sha256": "67ac8fe1c9b6c1e95e5014321885aa8642eebe0b89b35184f7a670e5956604c6",
+        "numeric_scenarios": 21
+      },
+      {
+        "passed": true,
+        "IS_MODE": 1,
+        "BUS_WIDTH": 64,
+        "GROUP_BLOCKS_MAX": 16,
+        "comparisons": {
+          "controls": 10511,
+          "scalar_values": 8912,
+          "vector_values": 0
+        },
+        "storage_access": {
+          "is_mode": 1,
+          "bus": 64,
+          "capacity": 16,
+          "scalar_reads": 8891,
+          "vector_reads": 0,
+          "inactive_read_collisions": 20
+        },
+        "build_log_sha256": "7ec3cf4e8f274a3228536d35b126404e7c4bd9cf01c905505572b5bf0752b8c4",
+        "run_log_sha256": "4edf7f30a3f857dc28da1cb67e0eab3d7ecd854d04b1bb9dd206d4cf732ca868",
+        "numeric_scenarios": 21
+      },
+      {
+        "passed": true,
+        "IS_MODE": 0,
+        "BUS_WIDTH": 32,
+        "GROUP_BLOCKS_MAX": 32,
+        "comparisons": {
+          "controls": 19575,
+          "scalar_values": 0,
+          "vector_values": 157952
+        },
+        "storage_access": {
+          "is_mode": 0,
+          "bus": 32,
+          "capacity": 32,
+          "scalar_reads": 0,
+          "vector_reads": 1664,
+          "inactive_read_collisions": 0
+        },
+        "build_log_sha256": "e0ba39c02718311e9d9a56480cfcc47e5a5200731bcd5864d57b9d72db3e0bc0",
+        "run_log_sha256": "33695b5cd326006b8c52a64f84ccb22c0b086b55623205a2e62c2c7006ceedda",
+        "numeric_scenarios": 21
+      },
+      {
+        "passed": true,
+        "IS_MODE": 0,
+        "BUS_WIDTH": 64,
+        "GROUP_BLOCKS_MAX": 32,
+        "comparisons": {
+          "controls": 15882,
+          "scalar_values": 0,
+          "vector_values": 157952
+        },
+        "storage_access": {
+          "is_mode": 0,
+          "bus": 64,
+          "capacity": 32,
+          "scalar_reads": 0,
+          "vector_reads": 1664,
+          "inactive_read_collisions": 0
+        },
+        "build_log_sha256": "cbda006016b00716a9e2a8da734b519a32f4b18bcb95a561a50149fea4e47f59",
+        "run_log_sha256": "eaba043e1daf9f551ceb248efc484c75780a3e98c008d3fdcba8be4d1b4be4fd",
+        "numeric_scenarios": 21
+      },
+      {
+        "passed": true,
+        "IS_MODE": 1,
+        "BUS_WIDTH": 32,
+        "GROUP_BLOCKS_MAX": 32,
+        "comparisons": {
+          "controls": 18126,
+          "scalar_values": 14660,
+          "vector_values": 0
+        },
+        "storage_access": {
+          "is_mode": 1,
+          "bus": 32,
+          "capacity": 32,
+          "scalar_reads": 14639,
+          "vector_reads": 0,
+          "inactive_read_collisions": 40
+        },
+        "build_log_sha256": "7465209a52289e159b7eaca956c550278571183f75f8057fec8d6cd3140b7d2e",
+        "run_log_sha256": "036b24f29ae2795e529a5995d347f1550af51cab144d215978050102badec342",
+        "numeric_scenarios": 21
+      },
+      {
+        "passed": true,
+        "IS_MODE": 1,
+        "BUS_WIDTH": 64,
+        "GROUP_BLOCKS_MAX": 32,
+        "comparisons": {
+          "controls": 14439,
+          "scalar_values": 12498,
+          "vector_values": 0
+        },
+        "storage_access": {
+          "is_mode": 1,
+          "bus": 64,
+          "capacity": 32,
+          "scalar_reads": 12477,
+          "vector_reads": 0,
+          "inactive_read_collisions": 20
+        },
+        "build_log_sha256": "8634e65c5d3765bf05230b008518fe7b0e002279f28988e346e4edf20dc0abaa",
+        "run_log_sha256": "5fe2130f1427b97da889378e6863c0dfb8dc03f1fd6545b97fc9bd9999c60155",
+        "numeric_scenarios": 21
+      }
+    ],
+    "source_sha256": {
+      "current": {
+        "rtl/npu/loaders/bias_loader.sv": "5d1313aa825bebb1a44c53343dacec9a2deb20ae8ba7daac4d419b63be375cbf",
+        "rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+        "rtl/npu/loaders/bias_loader_ctrl.sv": "edd39e9cccc4be512d23c98c8c74fddf9e8c6fc080fb029deaf495b049611e06",
+        "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+        "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+        "asic/rtl/smic40_sram_1r1w.sv": "f7bbcc1fe4f661ec1b5a7ec475001a69cfd0a23660abc302763164fc14438de9",
+        "test/asic_regfile/sram_model.sv": "4fc274be34a817c4ffb5c660aa8cfc93fe9e474dd01a1b2af701cf293f50fd55"
+      },
+      "reference": {
+        "rtl/npu/loaders/bias_loader.sv": "5d1313aa825bebb1a44c53343dacec9a2deb20ae8ba7daac4d419b63be375cbf",
+        "rtl/npu/loaders/bias_loader_buffer.sv": "4b170ececffe545852067643e778eed521e866a5f131bb3e0edd19d7e9cef413",
+        "rtl/npu/loaders/bias_loader_ctrl.sv": "edd39e9cccc4be512d23c98c8c74fddf9e8c6fc080fb029deaf495b049611e06",
+        "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+        "rtl/common/regfile.v": "7146a36bf67310337c67435987be9e1a3b7262b5454faf54ddcfc1cb4e2a9275"
+      }
+    },
+    "testbench_sha256": "0aa5f9c9e8247be40bd1947db4d17f06155cdfa78a5ba275ca8fe86f8fdb7126",
+    "runner_sha256": "e97fefa243c3c1ca0c7c059b5088b69816cff2b42abe6f2d9b6b84c6b929c4c9",
+    "control_cycle_comparisons": 116720,
+    "scalar_value_comparisons": 46121,
+    "vector_value_comparisons": 553984
+  },
+  "non_power_of_two_capacity": {
+    "passed": true,
+    "case_count": 48,
+    "profiles": [
+      {
+        "IS_MODE": 0,
+        "BUS_WIDTH": 32,
+        "GROUP_BLOCKS_MAX": 3,
+        "COUNT_WIDTH": 29,
+        "ASIC_SRAM": true,
+        "source_sha256": {
+          "rtl/npu/loaders/bias_loader.sv": "5d1313aa825bebb1a44c53343dacec9a2deb20ae8ba7daac4d419b63be375cbf",
+          "rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+          "rtl/npu/loaders/bias_loader_ctrl.sv": "edd39e9cccc4be512d23c98c8c74fddf9e8c6fc080fb029deaf495b049611e06",
+          "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+          "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+          "asic/rtl/smic40_sram_1r1w.sv": "f7bbcc1fe4f661ec1b5a7ec475001a69cfd0a23660abc302763164fc14438de9",
+          "test/asic_regfile/sram_model.sv": "4fc274be34a817c4ffb5c660aa8cfc93fe9e474dd01a1b2af701cf293f50fd55"
+        },
+        "testbench_sha256": "5cc92172bda545b6ab3684b37878e25d5410c8d574e5e929633d44ded2b5630c",
+        "passed": true,
+        "case_count": 12,
+        "cases": [
+          {
+            "is_mode": 0,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 7,
+            "step": 1,
+            "repeats": 5,
+            "dma_commands": 1,
+            "cycles": 101
+          },
+          {
+            "is_mode": 0,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 32,
+            "step": 1,
+            "repeats": 4,
+            "dma_commands": 1,
+            "cycles": 298
+          },
+          {
+            "is_mode": 0,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 17,
+            "step": 1,
+            "repeats": 3,
+            "dma_commands": 2,
+            "cycles": 178
+          },
+          {
+            "is_mode": 0,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 48,
+            "step": 1,
+            "repeats": 3,
+            "dma_commands": 1,
+            "cycles": 351
+          },
+          {
+            "is_mode": 0,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 16,
+            "step": 1,
+            "repeats": 2,
+            "dma_commands": 1,
+            "cycles": 84
+          },
+          {
+            "is_mode": 0,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 16,
+            "step": 1,
+            "repeats": 2,
+            "dma_commands": 1,
+            "cycles": 84
+          },
+          {
+            "is_mode": 0,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 64,
+            "step": 2,
+            "repeats": 4,
+            "dma_commands": 2,
+            "cycles": 502
+          },
+          {
+            "is_mode": 0,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 49,
+            "step": 2,
+            "repeats": 3,
+            "dma_commands": 3,
+            "cycles": 344
+          },
+          {
+            "is_mode": 0,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 33,
+            "step": 2,
+            "repeats": 3,
+            "dma_commands": 2,
+            "cycles": 249
+          },
+          {
+            "is_mode": 0,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 96,
+            "step": 2,
+            "repeats": 2,
+            "dma_commands": 6,
+            "cycles": 632
+          },
+          {
+            "is_mode": 0,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 23,
+            "step": 2,
+            "repeats": 4,
+            "dma_commands": 2,
+            "cycles": 176
+          },
+          {
+            "is_mode": 0,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 31,
+            "step": 2,
+            "repeats": 3,
+            "dma_commands": 2,
+            "cycles": 178
+          }
+        ],
+        "storage_access": [
+          {
+            "is_mode": 0,
+            "bus": 32,
+            "capacity": 3,
+            "scalar_reads": 0,
+            "vector_reads": 280,
+            "inactive_read_collisions": 0
+          }
+        ],
+        "build_log_sha256": "c233b5210798b57fca3864d794db10b8ab0d176845eb34cf1b119b9ae01d78ed",
+        "run_log_sha256": "c7a4050d5e758c80729bb615efbedae99857ac01764fb106f39905899587e701",
+        "binary_sha256": "857a0fc6ea8abd8e6111ff8895be87c961955cce993d71fc68754e36265e5f9f"
+      },
+      {
+        "IS_MODE": 0,
+        "BUS_WIDTH": 64,
+        "GROUP_BLOCKS_MAX": 3,
+        "COUNT_WIDTH": 29,
+        "ASIC_SRAM": true,
+        "source_sha256": {
+          "rtl/npu/loaders/bias_loader.sv": "5d1313aa825bebb1a44c53343dacec9a2deb20ae8ba7daac4d419b63be375cbf",
+          "rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+          "rtl/npu/loaders/bias_loader_ctrl.sv": "edd39e9cccc4be512d23c98c8c74fddf9e8c6fc080fb029deaf495b049611e06",
+          "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+          "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+          "asic/rtl/smic40_sram_1r1w.sv": "f7bbcc1fe4f661ec1b5a7ec475001a69cfd0a23660abc302763164fc14438de9",
+          "test/asic_regfile/sram_model.sv": "4fc274be34a817c4ffb5c660aa8cfc93fe9e474dd01a1b2af701cf293f50fd55"
+        },
+        "testbench_sha256": "5cc92172bda545b6ab3684b37878e25d5410c8d574e5e929633d44ded2b5630c",
+        "passed": true,
+        "case_count": 12,
+        "cases": [
+          {
+            "is_mode": 0,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 7,
+            "step": 1,
+            "repeats": 5,
+            "dma_commands": 1,
+            "cycles": 97
+          },
+          {
+            "is_mode": 0,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 32,
+            "step": 1,
+            "repeats": 4,
+            "dma_commands": 1,
+            "cycles": 278
+          },
+          {
+            "is_mode": 0,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 17,
+            "step": 1,
+            "repeats": 3,
+            "dma_commands": 2,
+            "cycles": 169
+          },
+          {
+            "is_mode": 0,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 48,
+            "step": 1,
+            "repeats": 3,
+            "dma_commands": 1,
+            "cycles": 319
+          },
+          {
+            "is_mode": 0,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 16,
+            "step": 1,
+            "repeats": 2,
+            "dma_commands": 1,
+            "cycles": 72
+          },
+          {
+            "is_mode": 0,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 16,
+            "step": 1,
+            "repeats": 2,
+            "dma_commands": 1,
+            "cycles": 72
+          },
+          {
+            "is_mode": 0,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 64,
+            "step": 2,
+            "repeats": 4,
+            "dma_commands": 2,
+            "cycles": 447
+          },
+          {
+            "is_mode": 0,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 49,
+            "step": 2,
+            "repeats": 3,
+            "dma_commands": 3,
+            "cycles": 299
+          },
+          {
+            "is_mode": 0,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 33,
+            "step": 2,
+            "repeats": 3,
+            "dma_commands": 2,
+            "cycles": 228
+          },
+          {
+            "is_mode": 0,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 96,
+            "step": 2,
+            "repeats": 2,
+            "dma_commands": 6,
+            "cycles": 457
+          },
+          {
+            "is_mode": 0,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 23,
+            "step": 2,
+            "repeats": 4,
+            "dma_commands": 2,
+            "cycles": 161
+          },
+          {
+            "is_mode": 0,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 31,
+            "step": 2,
+            "repeats": 3,
+            "dma_commands": 2,
+            "cycles": 157
+          }
+        ],
+        "storage_access": [
+          {
+            "is_mode": 0,
+            "bus": 64,
+            "capacity": 3,
+            "scalar_reads": 0,
+            "vector_reads": 280,
+            "inactive_read_collisions": 0
+          }
+        ],
+        "build_log_sha256": "8714f4694770f338c628de4befa00d2387f64b9b4f9b9e4db6582c9574fc472e",
+        "run_log_sha256": "5475d2ca0bd6714a5824a95dafe575063f34de49357704a3a591e84d6f817e27",
+        "binary_sha256": "9dc64a597a6c23b4d2936000f63b3c407f64572d152799838893865dba3c4903"
+      },
+      {
+        "IS_MODE": 1,
+        "BUS_WIDTH": 32,
+        "GROUP_BLOCKS_MAX": 3,
+        "COUNT_WIDTH": 29,
+        "ASIC_SRAM": true,
+        "source_sha256": {
+          "rtl/npu/loaders/bias_loader.sv": "5d1313aa825bebb1a44c53343dacec9a2deb20ae8ba7daac4d419b63be375cbf",
+          "rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+          "rtl/npu/loaders/bias_loader_ctrl.sv": "edd39e9cccc4be512d23c98c8c74fddf9e8c6fc080fb029deaf495b049611e06",
+          "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+          "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+          "asic/rtl/smic40_sram_1r1w.sv": "f7bbcc1fe4f661ec1b5a7ec475001a69cfd0a23660abc302763164fc14438de9",
+          "test/asic_regfile/sram_model.sv": "4fc274be34a817c4ffb5c660aa8cfc93fe9e474dd01a1b2af701cf293f50fd55"
+        },
+        "testbench_sha256": "5cc92172bda545b6ab3684b37878e25d5410c8d574e5e929633d44ded2b5630c",
+        "passed": true,
+        "case_count": 12,
+        "cases": [
+          {
+            "is_mode": 1,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 7,
+            "step": 1,
+            "repeats": 5,
+            "dma_commands": 1,
+            "cycles": 101
+          },
+          {
+            "is_mode": 1,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 32,
+            "step": 1,
+            "repeats": 4,
+            "dma_commands": 1,
+            "cycles": 249
+          },
+          {
+            "is_mode": 1,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 17,
+            "step": 1,
+            "repeats": 3,
+            "dma_commands": 2,
+            "cycles": 141
+          },
+          {
+            "is_mode": 1,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 48,
+            "step": 1,
+            "repeats": 3,
+            "dma_commands": 1,
+            "cycles": 293
+          },
+          {
+            "is_mode": 1,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 16,
+            "step": 1,
+            "repeats": 2,
+            "dma_commands": 1,
+            "cycles": 84
+          },
+          {
+            "is_mode": 1,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 16,
+            "step": 1,
+            "repeats": 2,
+            "dma_commands": 1,
+            "cycles": 84
+          },
+          {
+            "is_mode": 1,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 64,
+            "step": 2,
+            "repeats": 4,
+            "dma_commands": 2,
+            "cycles": 448
+          },
+          {
+            "is_mode": 1,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 49,
+            "step": 2,
+            "repeats": 3,
+            "dma_commands": 3,
+            "cycles": 309
+          },
+          {
+            "is_mode": 1,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 33,
+            "step": 2,
+            "repeats": 3,
+            "dma_commands": 2,
+            "cycles": 210
+          },
+          {
+            "is_mode": 1,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 96,
+            "step": 2,
+            "repeats": 2,
+            "dma_commands": 6,
+            "cycles": 631
+          },
+          {
+            "is_mode": 1,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 23,
+            "step": 2,
+            "repeats": 4,
+            "dma_commands": 2,
+            "cycles": 176
+          },
+          {
+            "is_mode": 1,
+            "bus": 32,
+            "capacity": 3,
+            "channels": 31,
+            "step": 2,
+            "repeats": 3,
+            "dma_commands": 2,
+            "cycles": 178
+          }
+        ],
+        "storage_access": [
+          {
+            "is_mode": 1,
+            "bus": 32,
+            "capacity": 3,
+            "scalar_reads": 2208,
+            "vector_reads": 0,
+            "inactive_read_collisions": 22
+          }
+        ],
+        "build_log_sha256": "f654b3cddba7f5f5e7ca90e9e81146d0712a9684341f795c0eac3953f1e833bb",
+        "run_log_sha256": "f7386fe205ed03080dd5fa7e49345a74805f33f3b3d3505e962415936ead9880",
+        "binary_sha256": "14a26cc045c21b30a497ac169f33b61edafbbac8392c430d43f441217ce165b0"
+      },
+      {
+        "IS_MODE": 1,
+        "BUS_WIDTH": 64,
+        "GROUP_BLOCKS_MAX": 3,
+        "COUNT_WIDTH": 29,
+        "ASIC_SRAM": true,
+        "source_sha256": {
+          "rtl/npu/loaders/bias_loader.sv": "5d1313aa825bebb1a44c53343dacec9a2deb20ae8ba7daac4d419b63be375cbf",
+          "rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+          "rtl/npu/loaders/bias_loader_ctrl.sv": "edd39e9cccc4be512d23c98c8c74fddf9e8c6fc080fb029deaf495b049611e06",
+          "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+          "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+          "asic/rtl/smic40_sram_1r1w.sv": "f7bbcc1fe4f661ec1b5a7ec475001a69cfd0a23660abc302763164fc14438de9",
+          "test/asic_regfile/sram_model.sv": "4fc274be34a817c4ffb5c660aa8cfc93fe9e474dd01a1b2af701cf293f50fd55"
+        },
+        "testbench_sha256": "5cc92172bda545b6ab3684b37878e25d5410c8d574e5e929633d44ded2b5630c",
+        "passed": true,
+        "case_count": 12,
+        "cases": [
+          {
+            "is_mode": 1,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 7,
+            "step": 1,
+            "repeats": 5,
+            "dma_commands": 1,
+            "cycles": 97
+          },
+          {
+            "is_mode": 1,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 32,
+            "step": 1,
+            "repeats": 4,
+            "dma_commands": 1,
+            "cycles": 229
+          },
+          {
+            "is_mode": 1,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 17,
+            "step": 1,
+            "repeats": 3,
+            "dma_commands": 2,
+            "cycles": 132
+          },
+          {
+            "is_mode": 1,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 48,
+            "step": 1,
+            "repeats": 3,
+            "dma_commands": 1,
+            "cycles": 262
+          },
+          {
+            "is_mode": 1,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 16,
+            "step": 1,
+            "repeats": 2,
+            "dma_commands": 1,
+            "cycles": 75
+          },
+          {
+            "is_mode": 1,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 16,
+            "step": 1,
+            "repeats": 2,
+            "dma_commands": 1,
+            "cycles": 75
+          },
+          {
+            "is_mode": 1,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 64,
+            "step": 2,
+            "repeats": 4,
+            "dma_commands": 2,
+            "cycles": 396
+          },
+          {
+            "is_mode": 1,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 49,
+            "step": 2,
+            "repeats": 3,
+            "dma_commands": 3,
+            "cycles": 268
+          },
+          {
+            "is_mode": 1,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 33,
+            "step": 2,
+            "repeats": 3,
+            "dma_commands": 2,
+            "cycles": 191
+          },
+          {
+            "is_mode": 1,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 96,
+            "step": 2,
+            "repeats": 2,
+            "dma_commands": 6,
+            "cycles": 458
+          },
+          {
+            "is_mode": 1,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 23,
+            "step": 2,
+            "repeats": 4,
+            "dma_commands": 2,
+            "cycles": 159
+          },
+          {
+            "is_mode": 1,
+            "bus": 64,
+            "capacity": 3,
+            "channels": 31,
+            "step": 2,
+            "repeats": 3,
+            "dma_commands": 2,
+            "cycles": 159
+          }
+        ],
+        "storage_access": [
+          {
+            "is_mode": 1,
+            "bus": 64,
+            "capacity": 3,
+            "scalar_reads": 2033,
+            "vector_reads": 0,
+            "inactive_read_collisions": 11
+          }
+        ],
+        "build_log_sha256": "2d5be888717cf0f542ee742ffc4a752adda7d4991856b7821f534da7b7c508bb",
+        "run_log_sha256": "8262c5829e5c3069dff32acdcd517fbfaa733c6f2146e9b51664cf9ceff0a514",
+        "binary_sha256": "ed1354a0e418edeffcb7c1ee13954086e7a094bf36b60b07ac4809e59165a2c6"
+      }
+    ],
+    "source_sha256": {
+      "rtl/npu/loaders/bias_loader.sv": "5d1313aa825bebb1a44c53343dacec9a2deb20ae8ba7daac4d419b63be375cbf",
+      "rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+      "rtl/npu/loaders/bias_loader_ctrl.sv": "edd39e9cccc4be512d23c98c8c74fddf9e8c6fc080fb029deaf495b049611e06",
+      "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+      "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+      "asic/rtl/smic40_sram_1r1w.sv": "f7bbcc1fe4f661ec1b5a7ec475001a69cfd0a23660abc302763164fc14438de9",
+      "test/asic_regfile/sram_model.sv": "4fc274be34a817c4ffb5c660aa8cfc93fe9e474dd01a1b2af701cf293f50fd55"
+    },
+    "runner_sha256": "dbffb01d67eca68d9345691d7bd5a96ae3f0ffeebfe25ecaf39d4984cf8c51ea"
+  },
+  "numeric_scenarios": 216,
+  "access_checks": {
+    "valid_read_collisions": 0,
+    "scalar_read_cycles": 50278,
+    "ws_ram_read_cycles": 6192,
+    "initial_load_read_collisions": 153
+  },
+  "control_and_logical_ports_formal": {
+    "passed": true,
+    "reference": "caace947",
+    "source_sha256": {
+      "reference/rtl/npu/loaders/bias_loader_ctrl.sv": "ec11d0479a38d1e1a03f911e24014494a3e3e8f90fcd59f31389d529f797f1af",
+      "reference/rtl/npu/loaders/bias_loader_buffer.sv": "4299d2d37341d1eaa88e35b5a8542f71b3f374fc8d13487153282ad1154a9206",
+      "reference/rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+      "current/rtl/npu/loaders/bias_loader_ctrl.sv": "edd39e9cccc4be512d23c98c8c74fddf9e8c6fc080fb029deaf495b049611e06",
+      "current/rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+      "current/rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d"
+    },
+    "profiles": [
+      {
+        "kind": "buffer",
+        "SIZE": 16,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 29,
+        "GROUP_BLOCKS_MAX": 32,
+        "p_share_load_index": 0,
+        "source_sha256": {
+          "reference/rtl/npu/loaders/bias_loader_ctrl.sv": "ec11d0479a38d1e1a03f911e24014494a3e3e8f90fcd59f31389d529f797f1af",
+          "reference/rtl/npu/loaders/bias_loader_buffer.sv": "4299d2d37341d1eaa88e35b5a8542f71b3f374fc8d13487153282ad1154a9206",
+          "reference/rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+          "current/rtl/npu/loaders/bias_loader_ctrl.sv": "edd39e9cccc4be512d23c98c8c74fddf9e8c6fc080fb029deaf495b049611e06",
+          "current/rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+          "current/rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d"
+        },
+        "script_sha256": "5e70c2b535c49b8058cd4baee05566274dd77388e4565a2fa748fe4f46f0f0e9",
+        "passed": true,
+        "equivalent_bits": 2183,
+        "log_sha256": "0eafb8ebedb8754db3fcfd2d4e89f6fe7f6a2051b07cbc4abe0d6bf941abad89",
+        "inputs_constrained": false,
+        "memory_return": "arbitrary shared 64-bit logical row input",
+        "physical_storage_compared": false
+      },
+      {
+        "kind": "buffer",
+        "SIZE": 16,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 29,
+        "GROUP_BLOCKS_MAX": 32,
+        "p_share_load_index": 1,
+        "source_sha256": {
+          "reference/rtl/npu/loaders/bias_loader_ctrl.sv": "ec11d0479a38d1e1a03f911e24014494a3e3e8f90fcd59f31389d529f797f1af",
+          "reference/rtl/npu/loaders/bias_loader_buffer.sv": "4299d2d37341d1eaa88e35b5a8542f71b3f374fc8d13487153282ad1154a9206",
+          "reference/rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+          "current/rtl/npu/loaders/bias_loader_ctrl.sv": "edd39e9cccc4be512d23c98c8c74fddf9e8c6fc080fb029deaf495b049611e06",
+          "current/rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+          "current/rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d"
+        },
+        "script_sha256": "dc6899a311c938772d1b1f13436dc1d884e4a82c529489f88a97a24c00fd2288",
+        "passed": true,
+        "equivalent_bits": 1875,
+        "log_sha256": "2dbf3799faabe935e8fe6207f07d11515effaf8a58c2bd1fe14ff1bf40865855",
+        "inputs_constrained": false,
+        "memory_return": "arbitrary shared 64-bit logical row input",
+        "physical_storage_compared": false
+      },
+      {
+        "kind": "buffer",
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 29,
+        "GROUP_BLOCKS_MAX": 32,
+        "p_share_load_index": 0,
+        "source_sha256": {
+          "reference/rtl/npu/loaders/bias_loader_ctrl.sv": "ec11d0479a38d1e1a03f911e24014494a3e3e8f90fcd59f31389d529f797f1af",
+          "reference/rtl/npu/loaders/bias_loader_buffer.sv": "4299d2d37341d1eaa88e35b5a8542f71b3f374fc8d13487153282ad1154a9206",
+          "reference/rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+          "current/rtl/npu/loaders/bias_loader_ctrl.sv": "edd39e9cccc4be512d23c98c8c74fddf9e8c6fc080fb029deaf495b049611e06",
+          "current/rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+          "current/rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d"
+        },
+        "script_sha256": "3f4aa3d4f889eaaedbf061582fb1379c4ae89d4f1f903265d20c1f663b608ad5",
+        "passed": true,
+        "equivalent_bits": 2187,
+        "log_sha256": "3832037926a1a159687efbea7115e0a04f8db6c5965df51109b62e27619f4502",
+        "inputs_constrained": false,
+        "memory_return": "arbitrary shared 64-bit logical row input",
+        "physical_storage_compared": false
+      },
+      {
+        "kind": "buffer",
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 29,
+        "GROUP_BLOCKS_MAX": 32,
+        "p_share_load_index": 1,
+        "source_sha256": {
+          "reference/rtl/npu/loaders/bias_loader_ctrl.sv": "ec11d0479a38d1e1a03f911e24014494a3e3e8f90fcd59f31389d529f797f1af",
+          "reference/rtl/npu/loaders/bias_loader_buffer.sv": "4299d2d37341d1eaa88e35b5a8542f71b3f374fc8d13487153282ad1154a9206",
+          "reference/rtl/common/parallel_prefix_add.sv": "f632432a888c1d027c4e1e1c3bfd77b33b10f6c48867ccfc57ce0497e994686f",
+          "current/rtl/npu/loaders/bias_loader_ctrl.sv": "edd39e9cccc4be512d23c98c8c74fddf9e8c6fc080fb029deaf495b049611e06",
+          "current/rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+          "current/rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d"
+        },
+        "script_sha256": "77ba5960159662354115730ce854ffc6d5f4eb9c4d5df0a37d5c5efc18dae13b",
+        "passed": true,
+        "equivalent_bits": 1879,
+        "log_sha256": "4e48c6850852790dc0f3de281e55117300faf437f312b44484bc8b057c31578c",
+        "inputs_constrained": false,
+        "memory_return": "arbitrary shared 64-bit logical row input",
+        "physical_storage_compared": false
+      }
+    ],
+    "equivalent_bits": 8124,
+    "inputs_constrained": false,
+    "runner_sha256": "0d877cf32b73888f4bfbc59edb623d727bb509e91c2fd6acf109b4eccc29bf92"
+  },
+  "mapping": [
+    {
+      "configuration": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 29,
+        "GROUP_BLOCKS_MAX": 16,
+        "p_share_load_index": 1
+      },
+      "variants": [
+        {
+          "variant": "reference",
+          "macro_instances": {
+            "RAMTP128X16": 16
+          },
+          "logical_storage_bits": 16384,
+          "physical_storage_bits": 32768,
+          "utilization": 0.5,
+          "reused_fpga_mapping": false,
+          "fpga_resources": {
+            "logic_lut_cells": 613,
+            "distributed_ram_lut_sites_nominal": 0,
+            "shift_register_lut_sites_nominal": 0,
+            "lut_sites_nominal_before_packing": 613,
+            "physical_lut_sites_after_placement": null,
+            "flip_flops": 743,
+            "dsp48e1": 0,
+            "ramb36e1": 1,
+            "ramb18e1": 0,
+            "carry4": 17,
+            "unclassified_distributed_ram_types": [],
+            "cell_counts": {
+              "CARRY4": 17,
+              "FDCE": 229,
+              "FDPE": 1,
+              "FDRE": 513,
+              "INV": 2,
+              "LUT2": 183,
+              "LUT3": 141,
+              "LUT4": 110,
+              "LUT5": 102,
+              "LUT6": 77,
+              "MUXF7": 10,
+              "MUXF8": 4,
+              "RAMB36E1": 1
+            },
+            "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+          },
+          "longest_register_path_cells": 8,
+          "asic_structure_sha256": "998e1bf6448de4a82812b473f2c4d54d3e1bdf643300d80a92f0bbd3d7e2eafd",
+          "fpga_metrics_sha256": "313d1c8abdc3db11a81abb3f9193fedb886c86e47e38ee8bc9c3cc834daf9559",
+          "fpga_mapped_sha256": "5e2ccfdee87b9636c727f90bc8b5e33c0249538bbe71fe1b944ed16322df8ae1"
+        },
+        {
+          "variant": "current",
+          "macro_instances": {
+            "RAMTP128X16": 8
+          },
+          "logical_storage_bits": 16384,
+          "physical_storage_bits": 16384,
+          "utilization": 1.0,
+          "reused_fpga_mapping": false,
+          "fpga_resources": {
+            "logic_lut_cells": 611,
+            "distributed_ram_lut_sites_nominal": 0,
+            "shift_register_lut_sites_nominal": 0,
+            "lut_sites_nominal_before_packing": 611,
+            "physical_lut_sites_after_placement": null,
+            "flip_flops": 743,
+            "dsp48e1": 0,
+            "ramb36e1": 1,
+            "ramb18e1": 0,
+            "carry4": 17,
+            "unclassified_distributed_ram_types": [],
+            "cell_counts": {
+              "CARRY4": 17,
+              "FDCE": 229,
+              "FDPE": 1,
+              "FDRE": 513,
+              "INV": 2,
+              "LUT2": 179,
+              "LUT3": 133,
+              "LUT4": 110,
+              "LUT5": 112,
+              "LUT6": 77,
+              "MUXF7": 2,
+              "RAMB36E1": 1
+            },
+            "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+          },
+          "longest_register_path_cells": 10,
+          "asic_structure_sha256": "6cf69394c880950fb61567e5eecc1b2ea64467bd9833e0c3d78d54201c7f4ad5",
+          "fpga_metrics_sha256": "0e86482a665424cc272c36f12f0b73ae98ee956edf938edd3c3de53c95f102e7",
+          "fpga_mapped_sha256": "aabbf5c99b2370aa302a9e3e69bfd11a473bd4895bebfffe4e6b067d7500ba6c"
+        }
+      ],
+      "source_sha256": {
+        "reference": {
+          "rtl/npu/loaders/bias_loader_buffer.sv": "4b170ececffe545852067643e778eed521e866a5f131bb3e0edd19d7e9cef413",
+          "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+          "rtl/common/regfile.v": "7146a36bf67310337c67435987be9e1a3b7262b5454faf54ddcfc1cb4e2a9275",
+          "asic/rtl/smic40_sram_1r1w.sv": "5bb02279e789396724f8a6bd8a4f1b8a669e913506f636767bc056440103a64c",
+          "test/requant_group_buffer_npu/sram_blackboxes.sv": "1f5358d1aab08554d9db269aabc0d3666baf81e192ea2f3cc7a8ee463bf2e6d4"
+        },
+        "current": {
+          "rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+          "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+          "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+          "asic/rtl/smic40_sram_1r1w.sv": "f7bbcc1fe4f661ec1b5a7ec475001a69cfd0a23660abc302763164fc14438de9",
+          "test/requant_group_buffer_npu/sram_blackboxes.sv": "1f5358d1aab08554d9db269aabc0d3666baf81e192ea2f3cc7a8ee463bf2e6d4"
+        }
+      },
+      "current_paths": [
+        {
+          "combinational_cells": 10,
+          "startpoint": "bank_block_idx [32]",
+          "endpoint": "ws_cache_valid",
+          "endpoint_port": "CE"
+        },
+        {
+          "combinational_cells": 10,
+          "startpoint": "bank_block_idx [32]",
+          "endpoint": "ws_busy",
+          "endpoint_port": "D"
+        },
+        {
+          "combinational_cells": 10,
+          "startpoint": "bank_block_idx [32]",
+          "endpoint": "ws_issue_count [0]",
+          "endpoint_port": "CE"
+        }
+      ],
+      "register_graph_complete": true
+    },
+    {
+      "configuration": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 29,
+        "GROUP_BLOCKS_MAX": 32,
+        "p_share_load_index": 1
+      },
+      "variants": [
+        {
+          "variant": "reference",
+          "macro_instances": {
+            "RAMTP1024X16": 8
+          },
+          "logical_storage_bits": 32768,
+          "physical_storage_bits": 131072,
+          "utilization": 0.25,
+          "reused_fpga_mapping": true,
+          "fpga_resources": {
+            "logic_lut_cells": 594,
+            "distributed_ram_lut_sites_nominal": 0,
+            "shift_register_lut_sites_nominal": 0,
+            "lut_sites_nominal_before_packing": 594,
+            "physical_lut_sites_after_placement": null,
+            "flip_flops": 747,
+            "dsp48e1": 0,
+            "ramb36e1": 1,
+            "ramb18e1": 0,
+            "carry4": 19,
+            "unclassified_distributed_ram_types": [],
+            "cell_counts": {
+              "CARRY4": 19,
+              "FDCE": 233,
+              "FDPE": 1,
+              "FDRE": 513,
+              "INV": 2,
+              "LUT2": 182,
+              "LUT3": 141,
+              "LUT4": 99,
+              "LUT5": 96,
+              "LUT6": 76,
+              "MUXF7": 2,
+              "MUXF8": 1,
+              "RAMB36E1": 1
+            },
+            "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+          },
+          "longest_register_path_cells": 9,
+          "asic_structure_sha256": "7c8c1495bf46b37afc02f52bde6932da797b30e83b90746a65cb78119761bf50",
+          "fpga_metrics_sha256": "8a2f8f3142edd455d449b5bca9e1bbdfa586ac6553a044f5283de57a7dace423",
+          "fpga_mapped_sha256": "e7f9c125eca1a40451692cc97ebd4578f11faf1101a4427980142af8edfcfce6"
+        },
+        {
+          "variant": "current",
+          "macro_instances": {
+            "RAMTP1024X16": 4
+          },
+          "logical_storage_bits": 32768,
+          "physical_storage_bits": 65536,
+          "utilization": 0.5,
+          "reused_fpga_mapping": false,
+          "fpga_resources": {
+            "logic_lut_cells": 625,
+            "distributed_ram_lut_sites_nominal": 0,
+            "shift_register_lut_sites_nominal": 0,
+            "lut_sites_nominal_before_packing": 625,
+            "physical_lut_sites_after_placement": null,
+            "flip_flops": 747,
+            "dsp48e1": 0,
+            "ramb36e1": 1,
+            "ramb18e1": 0,
+            "carry4": 19,
+            "unclassified_distributed_ram_types": [],
+            "cell_counts": {
+              "CARRY4": 19,
+              "FDCE": 233,
+              "FDPE": 1,
+              "FDRE": 513,
+              "INV": 2,
+              "LUT2": 191,
+              "LUT3": 140,
+              "LUT4": 103,
+              "LUT5": 107,
+              "LUT6": 84,
+              "MUXF7": 2,
+              "MUXF8": 1,
+              "RAMB36E1": 1
+            },
+            "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+          },
+          "longest_register_path_cells": 10,
+          "asic_structure_sha256": "67ef147ed124d623fc660b29ab628ca4e18eae150c4b36745d8c96e81057423f",
+          "fpga_metrics_sha256": "0e48d60170c879e8fdc86a8caece34de931466c7d2b64d4676cc39f6de3b7f9f",
+          "fpga_mapped_sha256": "20c35fbf20831e0e4404e8a5becb447e77587edf4c8643d6b83c12bd5d458afd"
+        }
+      ],
+      "source_sha256": {
+        "reference": {
+          "rtl/npu/loaders/bias_loader_buffer.sv": "4b170ececffe545852067643e778eed521e866a5f131bb3e0edd19d7e9cef413",
+          "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+          "rtl/common/regfile.v": "7146a36bf67310337c67435987be9e1a3b7262b5454faf54ddcfc1cb4e2a9275",
+          "asic/rtl/smic40_sram_1r1w.sv": "5bb02279e789396724f8a6bd8a4f1b8a669e913506f636767bc056440103a64c",
+          "test/requant_group_buffer_npu/sram_blackboxes.sv": "1f5358d1aab08554d9db269aabc0d3666baf81e192ea2f3cc7a8ee463bf2e6d4"
+        },
+        "current": {
+          "rtl/npu/loaders/bias_loader_buffer.sv": "5add67deac00b7328810217e12096d1e6adf6258ae3f575779a8127c7dae08c5",
+          "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+          "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+          "asic/rtl/smic40_sram_1r1w.sv": "f7bbcc1fe4f661ec1b5a7ec475001a69cfd0a23660abc302763164fc14438de9",
+          "test/requant_group_buffer_npu/sram_blackboxes.sv": "1f5358d1aab08554d9db269aabc0d3666baf81e192ea2f3cc7a8ee463bf2e6d4"
+        }
+      },
+      "current_paths": [
+        {
+          "combinational_cells": 10,
+          "startpoint": "bank_block_idx [32]",
+          "endpoint": "ws_cache_valid",
+          "endpoint_port": "D"
+        },
+        {
+          "combinational_cells": 10,
+          "startpoint": "bank_block_idx [32]",
+          "endpoint": "ws_cache_bank",
+          "endpoint_port": "CE"
+        },
+        {
+          "combinational_cells": 10,
+          "startpoint": "bank_block_idx [32]",
+          "endpoint": "ws_cache_block [0]",
+          "endpoint_port": "D"
+        }
+      ],
+      "register_graph_complete": true
+    }
+  ],
+  "native_dc_total_area": null,
+  "native_asic_timing": null,
+  "input_report_sha256": {
+    "four_state": "88caaf017594005eb4df06874bd6cd9c2bcc80ccb98cc594a08f4892a2241510",
+    "protocol": "25c0a51e77ecbaaf74ab328829aeb845da7c4adbf7b42d5b0747d5073b72ef86",
+    "boundary_numeric": "5f7f20f032df6ab2047b3e3c2709c43e95fb8db28d48252a4f0a656a3c2e48e7",
+    "control_formal": "1f63a941d81b88f60a8b8c4b20c0c39ea5a27700e24e32a0596fe0f4a65c9c46",
+    "mapping16": "ab96817237843a4bf479689bf1a8153d8baab256788e11cf2e155e0d08d0d918",
+    "mapping32": "48a66ec1422936ea9e8fd67561da4f9b68e1c18bec17b2e907583e89f8c2a863"
+  }
+}

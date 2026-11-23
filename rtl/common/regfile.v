@@ -9,8 +9,10 @@ module regfile #(
     parameter int p_write_unit = 8,
     parameter int p_read_ports = 1,
     parameter bit p_sync_read = 1'b1,
-    // Packed string keeps the synthesis attribute compatible with Vivado.
-    parameter [8*16-1:0] p_ram_style = "auto"
+    // 使用定宽字符串兼容 Vivado 的存储类型属性。
+    parameter [8*16-1:0] p_ram_style = "auto",
+    // 同址写入时保持整个读输出，适用于读写分别使用独立存储区域的缓冲区。
+    parameter bit p_no_change_collision = 1'b0
 ) (
     input  wire logic clk,
     input  wire logic i_wr_en,
@@ -22,18 +24,112 @@ module regfile #(
     output logic [p_read_ports-1:0][p_data_width-1:0] o_rd_data
 );
 
+    //! 0. 常量与内部信号
+    //! --------------------
+
+    localparam int p_segments = p_data_width / p_write_unit;
+    logic [p_segments-1:0] accepted_write_mask;
+    logic accepted_write;
+    logic [p_read_ports-1:0] read_accept;
+
 `ifdef ASIC_SRAM
     // 同步存储按写入分段选择 SRAM，每个分段保存完整的逻辑地址范围。
     // 容量条件计入分段填充和读端复制，避免小数组占用低利用率的宏。
     localparam int p_asic_macro_depth = (p_depth <= 384) ? 128 : 1024;
-    localparam longint p_asic_macros_per_segment = ((64'(p_write_unit) + 15) / 16) *
+    localparam int p_asic_segment_width = p_no_change_collision ? p_data_width : p_write_unit;
+    localparam longint p_asic_macros_per_segment = ((64'(p_asic_segment_width) + 15) / 16) *
         ((64'(p_depth) + 64'(p_asic_macro_depth) - 1) / 64'(p_asic_macro_depth));
     // 较深的宏每位面积更低，允许其采用较低的容量利用率。
     localparam int p_asic_min_bits_per_macro = (p_asic_macro_depth == 128) ? 1024 : 4096;
-    if (p_sync_read && p_depth >= 32 &&
-        64'(p_depth) * p_write_unit >= 64'(p_read_ports) * p_asic_macros_per_segment * p_asic_min_bits_per_macro &&
-        p_data_width % p_write_unit == 0) begin : g_asic_storage
-        localparam int p_segments = p_data_width / p_write_unit;
+    localparam bit p_asic_eligible = p_sync_read && p_depth >= 32 &&
+        64'(p_depth) * p_asic_segment_width >=
+            64'(p_read_ports) * p_asic_macros_per_segment * p_asic_min_bits_per_macro &&
+        p_data_width % p_write_unit == 0;
+
+`endif
+
+    //! 1. 读写请求处理
+    //! ------------------
+
+    // 只接收合法地址和明确有效的写入分段，未知控制与行为数组的 if 语义相同。
+    always_comb begin
+        accepted_write_mask = '0;
+        if (i_wr_en) begin
+            if ({1'b0, i_wr_addr} < (p_addr_width+1)'(p_depth)) begin
+                for (int segment = 0; segment < p_segments; segment++) begin
+                    if (i_wr_mask[segment]) begin
+                        accepted_write_mask[segment] = 1'b1;
+                    end
+                end
+            end
+        end
+    end
+    assign accepted_write = |accepted_write_mask;
+
+    for (genvar port_index = 0; port_index < p_read_ports; port_index++) begin : g_read_accept
+        // 保持模式只关闭发生实际写入的同址读取，零掩码写入不会阻止读取。
+        always_comb begin
+            read_accept[port_index] = i_rd_en[port_index];
+            if (p_no_change_collision && p_sync_read && accepted_write) begin
+                if (i_rd_addr[port_index] == i_wr_addr) begin
+                    read_accept[port_index] = 1'b0;
+                end
+            end
+        end
+    end
+
+    //! 2. 存储更新与读出
+    //! --------------------
+
+`ifdef ASIC_SRAM
+    if (p_asic_eligible && p_no_change_collision) begin : g_asic_masked_storage
+        logic storage_i_wr_en;
+        logic [p_addr_width-1:0] storage_i_wr_addr;
+        logic [p_data_width-1:0] storage_i_wr_data, storage_i_wr_mask;
+        assign storage_i_wr_en = accepted_write;
+        assign storage_i_wr_addr = i_wr_addr;
+        assign storage_i_wr_data = i_wr_data;
+        for (genvar segment = 0; segment < p_segments; segment++) begin : g_write_mask
+            assign storage_i_wr_mask[segment*p_write_unit +: p_write_unit] =
+                {p_write_unit{accepted_write_mask[segment]}};
+        end
+        for (genvar port_index = 0; port_index < p_read_ports; port_index++) begin : g_read_port
+            logic invalid_address;
+            logic storage_i_rd_en;
+            logic [p_addr_width-1:0] storage_i_rd_addr;
+            logic [p_data_width-1:0] storage_o_rd_data;
+
+            // 全字共享位写掩码，同址读取已由 read_accept 关闭，宏端口不会冲突。
+            always_comb begin
+                storage_i_rd_en = 1'b0;
+                if (read_accept[port_index]) begin
+                    if ({1'b0, i_rd_addr[port_index]} < (p_addr_width+1)'(p_depth)) begin
+                        storage_i_rd_en = 1'b1;
+                    end
+                end
+            end
+            always_ff @(posedge clk) begin
+                if (read_accept[port_index]) begin
+                    if ({1'b0, i_rd_addr[port_index]} < (p_addr_width+1)'(p_depth)) begin
+                        invalid_address <= 1'b0;
+                    end else begin
+                        invalid_address <= 1'b1;
+                    end
+                end
+            end
+            assign storage_i_rd_addr = i_rd_addr[port_index];
+            assign o_rd_data[port_index] = invalid_address ? 'x : storage_o_rd_data;
+            smic40_sram_1r1w #(
+                .DATA_WIDTH(p_data_width), .DEPTH(p_depth), .ADDR_WIDTH(p_addr_width),
+                .MACRO_DEPTH(p_asic_macro_depth)
+            ) u_storage (
+                .clk(clk), .write_enable(storage_i_wr_en), .write_address(storage_i_wr_addr),
+                .write_data(storage_i_wr_data), .write_mask(storage_i_wr_mask),
+                .read_enable(storage_i_rd_en), .read_address(storage_i_rd_addr),
+                .read_data(storage_o_rd_data)
+            );
+        end
+    end else if (p_asic_eligible) begin : g_asic_storage
         logic [p_addr_width-1:0] pending_address_q;
         logic [p_data_width-1:0] pending_data_q;
         logic [p_segments-1:0] pending_mask_q;
@@ -121,9 +217,9 @@ module regfile #(
 
     for (genvar port_index = 0; port_index < p_read_ports; port_index++) begin : g_read_port
         if (p_sync_read) begin : g_sync
-            // 同步读取保持未使能时的输出，同周期同地址读写返回写入前的内容。
+            // 同步读取保持未使能时的输出，同址写入按所选读取模式处理。
             always_ff @(posedge clk) begin
-                if (i_rd_en[port_index]) begin
+                if (read_accept[port_index]) begin
                     o_rd_data[port_index] <= mem[i_rd_addr[port_index]];
                 end
             end

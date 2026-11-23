@@ -20,6 +20,8 @@ module bias_reuse_case #(parameter int GROUP_BLOCKS = 1, parameter int BUS_WIDTH
   int transfer_word = 0, transfer_rows = 0, transfer_cols = 0, delay_left = 0;
   logic [31:0] transfer_base;
   logic transfer_bank;
+  logic scalar_context_valid = 0;
+  int inactive_read_collisions = 0, scalar_read_checks = 0, vector_read_checks = 0;
 
   function automatic logic [31:0] memory_word(input logic [31:0] address);
     return (32'h31415926 ^ (address * 32'h10203)) + 32'(generation * 1777);
@@ -38,6 +40,25 @@ module bias_reuse_case #(parameter int GROUP_BLOCKS = 1, parameter int BUS_WIDTH
     .ext_dma_busy(dma_busy), .ext_dma_done(dma_done), .ext_dma_wr_slot(wr_slot),
     .ext_dma_wr_row(wr_row), .ext_dma_wr_col_base(wr_col), .ext_dma_wr_data(wr_data),
     .ext_dma_wr_valid(wr_valid), .ext_dma_wr_use_16bits(1'b0));
+
+  // 执行中的 IS 标量与 WS 向量读取都必须避开正在写入的物理地址。
+  always @(posedge clk) begin
+    if (!rst_n || init_cfg) scalar_context_valid <= 0;
+    else if (group_read_start) begin
+      assert(group_valid) else $fatal(1, "Bias scalar start before loaded group");
+      scalar_context_valid <= 1;
+    end
+    if (rst_n && !init_cfg && dut.u_buffer.storage_i_rd_en) begin
+      if (IS_MODE && scalar_context_valid) scalar_read_checks <= scalar_read_checks + 1;
+      if (!IS_MODE && dut.u_buffer.ws_read_issue) vector_read_checks <= vector_read_checks + 1;
+      if (dut.u_buffer.storage_i_wr_en &&
+          dut.u_buffer.storage_i_wr_addr == dut.u_buffer.storage_i_rd_addr) begin
+        assert(IS_MODE && !scalar_context_valid && !group_read_start)
+          else $fatal(1, "Consumed Bias read overlaps a masked write");
+        inactive_read_collisions <= inactive_read_collisions + 1;
+      end
+    end
+  end
 
   always @(posedge clk) begin
     cycle <= cycle + 1;
@@ -199,6 +220,8 @@ module bias_reuse_case #(parameter int GROUP_BLOCKS = 1, parameter int BUS_WIDTH
       @(negedge clk);
       assert(!req && !dma_start) else $fatal(1,"Unexpected DMA for absent bias");
     end
+    $display("BIAS_STORAGE_ACCESS_PASS is_mode=%0d bus=%0d capacity=%0d scalar_reads=%0d vector_reads=%0d inactive_read_collisions=%0d",
+             IS_MODE, BUS_WIDTH, GROUP_BLOCKS, scalar_read_checks, vector_read_checks, inactive_read_collisions);
     finished = 1;
   end
 endmodule

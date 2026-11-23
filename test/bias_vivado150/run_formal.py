@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""比较偏置控制器和缓冲区的完整控制、数据以及存储端口。"""
+"""比较偏置控制器和缓冲区的完整控制、数据以及逻辑存储端口。"""
 from __future__ import annotations
 
 import argparse
@@ -74,13 +74,17 @@ def observe_buffer(text, reference):
 """ + text[port:]
     start = text.index('  regfile #(')
     end = text.index('\n  );', start) + len('\n  );')
-    text = text[:start] + """  assign storage_o_rd_data = formal_ram_data;
-  assign formal_write_addr = 32'(storage_i_wr_addr);
-  assign formal_read_addr = 32'(storage_i_rd_addr);
-  assign formal_write_data = storage_i_wr_data;
-  assign formal_write_mask = storage_i_wr_mask;
-  assign formal_write_en = storage_i_wr_en;
-  assign formal_read_en = storage_i_rd_en;""" + text[end:]
+    # 控制与向量缓存使用64位逻辑存储接口，物理存储行为由独立SRAM测试检查。
+    text = text[:start] + """  assign storage_o_rd_data = '0;
+  assign formal_write_addr = 32'(write_address);
+  assign formal_read_addr = 32'(read_address);
+  assign formal_write_data = write_data;
+  assign formal_write_mask = write_enable;
+  assign formal_write_en = |write_enable;
+  assign formal_read_en = read_enable;""" + text[end:]
+    text, count = re.subn(r'assign read_data = [^;]+;', 'assign read_data = formal_ram_data;', text)
+    if count != 1:
+        raise RuntimeError('Expected one logical Bias storage read assignment')
     if reference:
         view = """
   logic [BANK_ADDR_W-1:0] load_row_index_q;
@@ -187,7 +191,8 @@ def main():
             passed = result.returncode == 0 and 'Equivalence successfully proven' in text
             row = dict(configuration, passed=passed, equivalent_bits=int(matches[-1][0]) if matches else None,
                        log_sha256=digest(log), inputs_constrained=False,
-                       memory_return='arbitrary shared 64-bit input' if kind == 'buffer' else None)
+                       memory_return='arbitrary shared 64-bit logical row input' if kind == 'buffer' else None,
+                       physical_storage_compared=False if kind == 'buffer' else None)
             report.write_text(json.dumps(row, indent=2) + '\n')
             rows.append(row)
             print(json.dumps({'profile': name, 'passed': passed, 'equivalent_bits': row['equivalent_bits']}), flush=True)

@@ -5,6 +5,7 @@ module tb_regfile_asic #(
     parameter int p_unit = 32,
     parameter int p_ports = 1,
     parameter bit p_sync = 1,
+    parameter bit p_no_change = 0,
     parameter int p_address_width = (p_depth <= 1) ? 1 : $clog2(p_depth)
 );
     logic clk = 0;
@@ -20,6 +21,15 @@ module tb_regfile_asic #(
     logic [p_ports-1:0][p_width-1:0] reference_output;
     int checks = 0, collisions = 0, held = 0, unknown_controls = 0, invalid_reads = 0;
     int seed;
+    logic reference_write;
+    always_comb begin
+        reference_write = 0;
+        if (write_enable && write_address < p_depth) begin
+            for (int segment = 0; segment < p_width/p_unit; segment++) begin
+                if (write_mask[segment]) reference_write = 1;
+            end
+        end
+    end
 
     // 按三十二位片段生成数据，覆盖超过总线宽度的完整存储行。
     function automatic logic [p_width-1:0] random_data();
@@ -33,7 +43,8 @@ module tb_regfile_asic #(
 
     regfile #(
         .p_data_width(p_width), .p_depth(p_depth), .p_addr_width(p_address_width),
-        .p_write_unit(p_unit), .p_read_ports(p_ports), .p_sync_read(p_sync)
+        .p_write_unit(p_unit), .p_read_ports(p_ports), .p_sync_read(p_sync),
+        .p_no_change_collision(p_no_change)
     ) dut (
         .clk(clk), .i_wr_en(write_enable), .i_wr_addr(write_address),
         .i_wr_data(write_data), .i_wr_mask(write_mask),
@@ -43,7 +54,13 @@ module tb_regfile_asic #(
     // 参考数组直接在接受写入的边沿更新，同步读取采样该边沿之前的内容。
     always @(posedge clk) begin
         for (int port_index = 0; port_index < p_ports; port_index++) begin
-            if (read_enable[port_index]) reference_output[port_index] <= reference_memory[read_address[port_index]];
+            if (read_enable[port_index]) begin
+                if (p_no_change && reference_write && read_address[port_index] == write_address) begin
+                    // 同址写入时整个同步输出保持，其他地址按原有周期返回数据。
+                end else begin
+                    reference_output[port_index] <= reference_memory[read_address[port_index]];
+                end
+            end
         end
         if (write_enable) begin
             for (int segment = 0; segment < p_width/p_unit; segment++) begin
@@ -129,8 +146,8 @@ module tb_regfile_asic #(
 `ifndef VERILATOR
         if (unknown_controls == 0) $fatal(1, "Insufficient unknown-control coverage");
 `endif
-        $display("ASIC_REGFILE_PASS width=%0d depth=%0d unit=%0d ports=%0d sync=%0d checks=%0d collisions=%0d held=%0d unknown=%0d invalid=%0d",
-            p_width, p_depth, p_unit, p_ports, p_sync, checks, collisions, held, unknown_controls, invalid_reads);
+        $display("ASIC_REGFILE_PASS width=%0d depth=%0d unit=%0d ports=%0d sync=%0d no_change=%0d checks=%0d collisions=%0d held=%0d unknown=%0d invalid=%0d",
+            p_width, p_depth, p_unit, p_ports, p_sync, p_no_change, checks, collisions, held, unknown_controls, invalid_reads);
         $finish;
     end
 endmodule

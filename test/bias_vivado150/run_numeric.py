@@ -25,6 +25,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--verilator', default='verilator')
+    parser.add_argument('--asic', action='store_true',
+                        help='使用 ASIC SRAM 功能模型，检查物理端口同址冲突')
     parser.add_argument('--lock-file', type=Path, default=ROOT.parent / 'r20_heavy.lock')
     parser.add_argument('--profiles', nargs='+', default=[f'{mode}:{bus}:{groups}' for mode in (0, 1) for bus in (32, 64) for groups in (1, 2, 4, 8, 16, 32)])
     parser.add_argument('--resume', action='store_true')
@@ -34,6 +36,9 @@ def main():
     (out / 'summary.json').unlink(missing_ok=True)
     source_root = out / 'source'
     sources = with_dependencies([ROOT / 'rtl/npu/loaders/bias_loader.sv'], ROOT)
+    if args.asic:
+        sources += [ROOT / 'asic/rtl/smic40_sram_1r1w.sv',
+                    ROOT / 'test/asic_regfile/sram_model.sv']
     hashes = {}
     copied = []
     for source in sources:
@@ -72,6 +77,7 @@ endmodule
         folder.mkdir(exist_ok=True)
         result_path, log = folder / 'result.json', folder / 'simulation.log'
         configuration = dict(IS_MODE=mode, BUS_WIDTH=bus, GROUP_BLOCKS_MAX=groups, COUNT_WIDTH=29,
+                             ASIC_SRAM=args.asic,
                              source_sha256=hashes, testbench_sha256=digest(bench))
         if args.resume and result_path.exists():
             previous = json.loads(result_path.read_text())
@@ -87,7 +93,8 @@ endmodule
                    '-CFLAGS', '-std=c++20',
                    '-MAKEFLAGS', 'OPT_FAST=-O0 OPT_SLOW=-O0', '--top-module', 'tb_bias_vivado150',
                    '--Mdir', str(obj), f'-GGROUP_BLOCKS={groups}', f'-GBUS_WIDTH={bus}', f'-GIS_MODE={mode}',
-                   '-DSYNTHESIS=1', '-DXILINX_FPGA=1', *map(str, copied), str(bench)]
+                   '-DSYNTHESIS=1', '-DASIC_SRAM=1' if args.asic else '-DXILINX_FPGA=1',
+                   *map(str, copied), str(bench)]
         with args.lock_file.open('a+') as lock:
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
             with build.open('w') as stream:
@@ -98,8 +105,11 @@ endmodule
         output = log.read_text()
         cases = [dict((key, int(value)) for key, value in re.findall(r'(\w+)=(\d+)', line))
                  for line in output.splitlines() if line.startswith('BIAS_REUSE_PASS ')]
+        storage_access = [dict((key, int(value)) for key, value in re.findall(r'(\w+)=(\d+)', line))
+                          for line in output.splitlines() if line.startswith('BIAS_STORAGE_ACCESS_PASS ')]
         passed = result.returncode == 0 and 'BIAS_NUMERIC_PASS' in output
         row = dict(configuration, passed=passed, case_count=len(cases), cases=cases,
+                   storage_access=storage_access,
                    command=command, build_log_sha256=digest(build), run_log_sha256=digest(log),
                    binary_sha256=digest(binary))
         result_path.write_text(json.dumps(row, indent=2) + '\n')

@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT / "scripts/fpga"))
 from open_fpga_synth import process_tree_rss
 
 
-def proof_source(width, depth, unit, ports):
+def proof_source(width, depth, unit, ports, no_change=0):
     address_width = max(1, (depth - 1).bit_length())
     macro_depth = 128 if depth <= 384 else 1024
     low_width = 7 if macro_depth == 128 else 10
@@ -39,7 +39,7 @@ def proof_source(width, depth, unit, ports):
     logic [{address_width-1}:0] previous_watch;
     logic started;
     regfile #(.p_data_width({width}), .p_depth({depth}), .p_write_unit({unit}),
-        .p_read_ports({ports}), .p_sync_read(1'b1)) dut (
+        .p_read_ports({ports}), .p_sync_read(1'b1), .p_no_change_collision({no_change})) dut (
         .clk(clk), .i_wr_en(i_wr_en), .i_wr_addr(i_wr_addr), .i_wr_data(i_wr_data),
         .i_wr_mask(i_wr_mask), .i_rd_en(i_rd_en), .i_rd_addr(i_rd_addr), .o_rd_data(actual_output)
     );
@@ -52,7 +52,8 @@ def proof_source(width, depth, unit, ports):
         previous_watch <= i_watch;
         started <= 1'b1;
         for (int port_index=0; port_index<{ports}; port_index++) begin
-            if (i_rd_en[port_index]) begin
+            if (i_rd_en[port_index] && !({no_change} && i_wr_en && (|i_wr_mask) &&
+                i_wr_addr < {depth} && i_rd_addr[port_index] == i_wr_addr)) begin
                 reference_output[port_index] <= reference_word;
                 watched_output[port_index] <= i_rd_addr[port_index] == i_watch;
             end
@@ -71,23 +72,28 @@ def proof_source(width, depth, unit, ports):
     end
 """]
     for port in range(ports):
-        for segment in range(width // unit):
+        segment_width = width if no_change else unit
+        for segment in range(width // segment_width):
             name = f"p{port}_s{segment}"
-            lines.append(f"    wire [{unit-1}:0] {name}_bank [{banks}];")
+            lines.append(f"    wire [{segment_width-1}:0] {name}_bank [{banks}];")
             for bank in range(banks):
-                for lane in range((unit + 15) // 16):
-                    count = min(16, unit - lane * 16)
-                    memory = (f"dut.g_asic_storage.g_read_port[{port}].g_write_segment[{segment}]."
-                              f"u_storage.g_bank[{bank}].g_lane[{lane}].g_{macro_depth}.u_sram.u_model.watched_word")
+                for lane in range((segment_width + 15) // 16):
+                    count = min(16, segment_width - lane * 16)
+                    scope = (f"dut.g_asic_masked_storage.g_read_port[{port}]." if no_change else
+                             f"dut.g_asic_storage.g_read_port[{port}].g_write_segment[{segment}].")
+                    memory = (scope + f"u_storage.g_bank[{bank}].g_lane[{lane}]."
+                              f"g_{macro_depth}.u_sram.u_model.watched_word")
                     lines.append(f"    assign {name}_bank[{bank}][{lane*16}+:{count}] = "
                                  f"{memory}[{count-1}:0];")
-            lines.append(f"    wire [{unit-1}:0] {name}_physical = {name}_bank[i_watch >> {low_width}];")
-            lines.append(f"    wire [{unit-1}:0] {name}_logical = "
-                         f"dut.g_asic_storage.pending_mask_q[{segment}] && "
-                         f"dut.g_asic_storage.pending_address_q == i_watch ? "
-                         f"dut.g_asic_storage.pending_data_q[{segment*unit}+:{unit}] : {name}_physical;")
+            lines.append(f"    wire [{segment_width-1}:0] {name}_physical = {name}_bank[i_watch >> {low_width}];")
+            logical = f"{name}_physical"
+            if not no_change:
+                logical = (f"dut.g_asic_storage.pending_mask_q[{segment}] && "
+                           f"dut.g_asic_storage.pending_address_q == i_watch ? "
+                           f"dut.g_asic_storage.pending_data_q[{segment*unit}+:{unit}] : {name}_physical")
+            lines.append(f"    wire [{segment_width-1}:0] {name}_logical = {logical};")
             lines.append(f"    always_comb if (started) assert "
-                         f"(reference_word[{segment*unit}+:{unit}] == {name}_logical);")
+                         f"(reference_word[{segment*segment_width}+:{segment_width}] == {name}_logical);")
     return "\n".join(lines) + "\nendmodule\n"
 
 
@@ -135,7 +141,9 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--profiles", nargs="+", default=["16:64:16:1", "64:512:8:1", "32:256:32:1",
         "32:256:32:2", "16:384:16:1", "16:385:16:1", "16:1100:16:1",
-        "19:128:19:1", "32:256:8:1"])
+        "19:128:19:1", "32:256:8:1", "14:128:14:1",
+        "128:256:8:1:1", "64:512:8:1:1", "14:128:7:1:1",
+        "32:256:8:2:1", "19:128:1:1:1", "16:130:4:1:1"])
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -155,16 +163,21 @@ def main():
     macro_model.write_text(formal_macro_model(snapshots[2].read_text()))
     report["formal_macro_model_sha256"] = hashlib.sha256(macro_model.read_bytes()).hexdigest()
     for profile in args.profiles:
-        width, depth, unit, ports = map(int, profile.split(":"))
+        values = tuple(map(int, profile.split(":")))
+        if len(values) not in (4, 5):
+            parser.error("配置格式为 width:depth:write_unit:read_ports[:no_change]")
+        width, depth, unit, ports = values[:4]
+        no_change = values[4] if len(values) == 5 else 0
         macro_depth = 128 if depth <= 384 else 1024
-        macro_count = ((unit + 15) // 16) * ((depth + macro_depth - 1) // macro_depth)
+        segment_width = width if no_change else unit
+        macro_count = ((segment_width + 15) // 16) * ((depth + macro_depth - 1) // macro_depth)
         min_bits = 1024 if macro_depth == 128 else 4096
-        if depth < 32 or width % unit or depth * unit < ports * macro_count * min_bits:
+        if depth < 32 or width % unit or depth * segment_width < ports * macro_count * min_bits:
             parser.error(f"{profile} 使用行为级存储，不适用于 SRAM 形式检查")
         folder = out / profile.replace(":", "_")
         folder.mkdir(exist_ok=True)
         source = folder / "proof.sv"
-        source.write_text(proof_source(width, depth, unit, ports))
+        source.write_text(proof_source(width, depth, unit, ports, no_change))
         script = folder / "run.ys"
         script.write_text("read_slang --top regfile_asic_proof -D ASIC_SRAM=1 " +
                           shlex.join(map(str, [*snapshots[:2], macro_model, source])) +
@@ -172,7 +185,7 @@ def main():
                           "async2sync\nchformal -lower\nsat -seq 2 -tempinduct -maxsteps 4 -set-init-zero "
                           "-set-assumes -prove-asserts -verify -timeout 60\n")
         stage = run_limited(script, folder / "proof.log")
-        record = {"width": width, "depth": depth, "unit": unit, "ports": ports, "passed": True, **stage}
+        record = {"width": width, "depth": depth, "unit": unit, "ports": ports, "no_change": no_change, "passed": True, **stage}
         report["profiles"].append(record)
         (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
         print(json.dumps(record), flush=True)
