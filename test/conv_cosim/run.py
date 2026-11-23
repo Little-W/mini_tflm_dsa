@@ -4,6 +4,8 @@ from pathlib import Path
 import argparse, hashlib, json, os, re, shlex, subprocess, sys
 HERE=Path(__file__).resolve().parent
 ROOT=HERE.parents[1]
+sys.path.insert(0, str(ROOT/'scripts/rtl'))
+from source_files import input_files, with_dependencies
 
 def run(cmd, log, timeout=900):
     with log.open('w') as f:
@@ -16,7 +18,7 @@ def run(cmd, log, timeout=900):
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--size',type=int,default=4)
+    ap.add_argument('--size',type=int,default=16)
     ap.add_argument('--out',type=Path)
     mode=ap.add_mutually_exclusive_group()
     mode.add_argument('--axil-protocol-only',action='store_true')
@@ -27,7 +29,12 @@ def main():
     ap.add_argument('--verilator',default='verilator')
     ap.add_argument('--jobs',type=int,default=2)
     ap.add_argument('--skip-build',action='store_true')
+    ap.add_argument('--lint-only',action='store_true')
     a=ap.parse_args()
+    if a.size != 16:
+        ap.error('完整矩阵协同测试仅支持 SIZE=16，并使用共享 IA SRAM')
+    if a.lint_only and a.skip_build:
+        ap.error('--lint-only 与 --skip-build 不能同时使用')
     profile=('disabled_per_channel' if a.disabled_per_channel else 'disabled_is' if a.disabled_is else
              'narrow_kernel' if a.narrow_kernel else 'axil' if a.axil_protocol_only else '')
     suffix='_'+profile if profile else ''
@@ -46,12 +53,15 @@ def main():
     svsrc += sorted((ROOT/'rtl/common').glob('regfile.v')) + sorted((ROOT/'rtl/common').glob('onehot_check.sv')) + sorted((ROOT/'rtl/common').glob('add_equal.sv'))
     svsrc += [ROOT/'rtl/common/pseudo_dual_port_ram.v',ROOT/'rtl/axi_top/npu_axil_reg_if.sv',
         ROOT/'rtl/axi_top/npu_axil_top.sv',ROOT/'test/models/soc_axi_ram.sv',HERE/'conv_cosim_top.sv']
+    svsrc=with_dependencies(svsrc, ROOT)
+    storage_defines=['-DGEMPACT_PS_COMPRESS=1','-DGEMMORA_PS_POOL_BYTES=49152','-DGEMMORA_PS_FORCE_RAW=1']
+    software_defines=['-DDSA_PS_COMPRESS=1','-DDSA_PS_POOL_BYTES=49152','-DDSA_PS_FORCE_RAW=1']
     cflags=['-std=c11','-O2','-Wall','-Wextra','-Werror','-DDSA_MMIO_CUSTOM',f'-DDSA_TILE_SIZE={a.size}',
             '-DDSA_PS_FRAME_COUNT=16','-include',ROOT/'test/conv_driver/host_compat.h',
-            '-I',nn/'Include','-I',ROOT/'drivers']
+            '-I',nn/'Include','-I',ROOT/'drivers',*software_defines]
     simulator_config=ROOT/'test/conv_npu/simulator.vlt'
-    inputs=set(csrc+svsrc+[HERE/'main.cpp',Path(__file__),simulator_config])
-    inputs.update(npu.rglob('*.svh'))
+    inputs=set(input_files(csrc+svsrc+[HERE/'main.cpp',Path(__file__),simulator_config,
+                                    ROOT/'scripts/rtl/source_files.py'], ROOT))
     # Capture actual C headers before deciding whether --skip-build is safe.
     # The common planner and NMSIS headers are not standalone compile sources.
     for src in csrc:
@@ -62,10 +72,22 @@ def main():
     status={'verification_level':'production NMSIS C and MMIO driver + real npu_axil_top RTL + production soc_axi_ram',
         'size':a.size,'enable_per_channel':int(not a.disabled_per_channel),
         'enable_is_mode':int(not a.disabled_is),'weight_width':8 if a.narrow_kernel else 16,
+        'shared_bank_bytes':8192,'shared_bank_count':7,'shared_total_bytes':57344,
+        'ps_compress':True,'force_raw':True,
         'verilator':subprocess.check_output([a.verilator,'--version'],text=True).strip(),
         'gcc':subprocess.check_output(['gcc','--version'],text=True).splitlines()[0],
         'source_sha256':{str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(inputs)},'tests':[]}
     manifest=build/'build_manifest.json'
+    if a.lint_only:
+        cmd=[a.verilator,'--lint-only','--assert','--top-module','conv_cosim_top','-Wno-fatal',
+             f'-I{ROOT/"include"}',f'-I{npu/"ps_compact"}',*storage_defines,
+             f'-GSIZE={a.size}',f'-GENABLE_PER_CHANNEL={int(not a.disabled_per_channel)}',
+             f'-GENABLE_IS_MODE={int(not a.disabled_is)}',f'-GWEIGHT_WIDTH={8 if a.narrow_kernel else 16}',
+             simulator_config,*svsrc]
+        rc=run(cmd,out/'lint.log')
+        status.update(passed=rc==0,lint_only=True,command=list(map(str,cmd)))
+        (out/'status.json').write_text(json.dumps(status,indent=2)+'\n')
+        return rc
     if a.skip_build:
         if not manifest.exists():
             raise RuntimeError('No recorded build manifest; run without --skip-build')
@@ -84,9 +106,9 @@ def main():
                 print((out/f'c{i}_build.log').read_text());return 1
         lib=build/'libdriver.a'
         if run(['ar','rcs',lib,*objects],out/'archive.log'):return 1
-        cppflags=f'-std=c++17 -O1 -D__GNUC_PYTHON__ -DDSA_MMIO_CUSTOM -DDSA_TILE_SIZE={a.size} -DDSA_PS_FRAME_COUNT=16 -I{nn/"Include"} -I{ROOT/"drivers"}'
+        cppflags=f'-std=c++17 -O1 -D__GNUC_PYTHON__ -DDSA_MMIO_CUSTOM -DDSA_TILE_SIZE={a.size} -DDSA_PS_FRAME_COUNT=16 -I{nn/"Include"} -I{ROOT/"drivers"} '+ ' '.join(software_defines)
         cmd=[a.verilator,'--cc','--exe','--build','--assert','--top-module','conv_cosim_top','-Wno-fatal',
-            f'-I{npu/"ps_compact"}',f'-GSIZE={a.size}',f'-GENABLE_PER_CHANNEL={int(not a.disabled_per_channel)}',
+            f'-I{ROOT/"include"}',f'-I{npu/"ps_compact"}',*storage_defines,f'-GSIZE={a.size}',f'-GENABLE_PER_CHANNEL={int(not a.disabled_per_channel)}',
             f'-GENABLE_IS_MODE={int(not a.disabled_is)}',f'-GWEIGHT_WIDTH={8 if a.narrow_kernel else 16}',
             '--Mdir',build/'obj','-j',a.jobs,
             '-CFLAGS',cppflags,'-LDFLAGS',str(lib),'-MAKEFLAGS','OPT_FAST=-O1 OPT_SLOW=-O0',simulator_config,*svsrc,HERE/'main.cpp']

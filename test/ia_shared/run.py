@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify shared IA RAM against local synchronous RAM and an integer model."""
+"""Verify shared IA RAM against a synchronous RAM model and an integer model."""
 import argparse
 import hashlib
 import json
@@ -42,7 +42,8 @@ def main():
                  if path.suffix in ('.sv', '.v'))
     rtl += [source_root / 'rtl/npu/compute/select_add.sv',
             source_root / 'rtl/npu/loaders/ia_loader_cache_mgr.sv',
-            source_root / 'rtl/npu/buffers/ia_ps_shared_ram.sv', HERE / 'cache_tb.sv']
+            source_root / 'rtl/npu/buffers/ia_ps_shared_ram.sv', HERE / 'cache_tb.sv',
+            ROOT / 'test/common/ia_shared_ram_model.sv']
     cpp = HERE / 'cache_test.cpp'
     rtl = with_dependencies(rtl, source_root)
     sources = input_files([Path(__file__).resolve(), ROOT / "scripts/rtl/source_files.py", *rtl, cpp], source_root)

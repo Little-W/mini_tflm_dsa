@@ -3,11 +3,13 @@
 import argparse,hashlib,json,re,shlex,subprocess,sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT/'test'))
+from rtl_reference import shared_ia_options
 SOURCES=[Path('rtl/npu/loaders')/(name+'.sv')for name in ('ia_loader','ia_loader_ctrl','ia_loader_cache_mgr')]+[Path('rtl/npu/compute/select_add.sv')]
 CASES={
- 'production':dict(SIZE=16,BUS_WIDTH=64,COUNT_WIDTH=29,CACHE_BLOCKS=32,EXTERNAL_RAM=1,ORDERED_JOB=1,PS_FRAME_COUNT=16,p_dma_source_layout=1,p_shared_write_stage=1),
- 'generic':dict(SIZE=16,BUS_WIDTH=32,COUNT_WIDTH=8,CACHE_BLOCKS=4,EXTERNAL_RAM=1,ORDERED_JOB=0),
- 'small':dict(SIZE=4,BUS_WIDTH=32,COUNT_WIDTH=8,CACHE_BLOCKS=2,EXTERNAL_RAM=0,ORDERED_JOB=1),
+ 'production':dict(SIZE=16,BUS_WIDTH=64,COUNT_WIDTH=29,CACHE_BLOCKS=32,ORDERED_JOB=1,PS_FRAME_COUNT=16,p_dma_source_layout=1,p_shared_write_stage=1),
+ 'generic':dict(SIZE=16,BUS_WIDTH=32,COUNT_WIDTH=8,CACHE_BLOCKS=4,ORDERED_JOB=0),
+ 'small':dict(SIZE=16,BUS_WIDTH=32,COUNT_WIDTH=8,CACHE_BLOCKS=2,ORDERED_JOB=1),
 }
 def digest(path):
  return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -15,6 +17,7 @@ p=argparse.ArgumentParser(description=__doc__);p.add_argument('--tool-root',type
 roots={'reference':a.reference_root.resolve(),'current':a.source_root.resolve()};paths={};wrappers={};hashes={}
 for label,root in roots.items():
  paths[label]=[root/f for f in SOURCES]+sorted(q for q in(root/'rtl/common').iterdir()if q.suffix in('.v','.sv'))
+ paths[label]+=[root/'rtl/npu/loaders'/name for name in ('ia_ordered_coordinate_equal.sv','ia_ordered_coordinate_same.sv') if(root/'rtl/npu/loaders'/name).is_file()]
  hashes[label]={str(q.relative_to(root)):digest(q)for q in paths[label]}
  source=(root/SOURCES[0]).read_text();header=source[:source.index(');')+2].replace('module ia_loader #(','module ia_loader_valid #(',1)
  parameters=re.findall(r'parameter\s+(?:int\s+unsigned|bit|integer)\s+(\w+)\s*=',header)
@@ -41,7 +44,8 @@ for name in a.cases:
  opts=['-DSYNTHESIS=1','-DXILINX_FPGA=1','-GRAM_WORD_ADDR_WIDTH=12']+['-G'+k+'='+str(v)for k,v in CASES[name].items()]
  commands=[]
  for label in ('reference','current'):
-  commands+=['read_slang --top ia_loader_valid '+shlex.join(opts+[str(q)for q in paths[label]+[wrappers[label]]]),'prep -top ia_loader_valid -flatten','memory_map','async2sync','opt_clean','rename -hide w:*ram_port_wr_data* w:*ram_shared_wr_data* w:raw_port_data w:raw_shared_data w:*cache_slot_rows* w:*u_cache_mgr.slot_rows w:u_core.load_ia_granted w:u_core.load_ia_req','rename ia_loader_valid '+label,'design -stash '+label]
+  selected_options=shared_ia_options(opts,wrappers[label].read_text())
+  commands+=['read_slang --top ia_loader_valid '+shlex.join(selected_options+[str(q)for q in paths[label]+[wrappers[label]]]),'prep -top ia_loader_valid -flatten','memory_map','async2sync','opt_clean','rename -hide w:*ram_port_wr_data* w:*ram_shared_wr_data* w:raw_port_data w:raw_shared_data w:*cache_slot_rows* w:*u_cache_mgr.slot_rows w:u_core.load_ia_granted w:u_core.load_ia_req','rename ia_loader_valid '+label,'design -stash '+label]
  commands+=['design -copy-from reference -as reference reference','design -copy-from current -as current current','equiv_make reference current equivalent','hierarchy -top equivalent','equiv_simple -seq 2','opt_clean','equiv_induct -seq 3','equiv_status -assert']
  ys=a.out/(name+'.ys');log=a.out/(name+'.log');ys.write_text('\n'.join(commands)+'\n')
  with log.open('w')as f:r=subprocess.run([sys.executable,str(a.tool_root.resolve()/'scripts/fpga/open_fpga_synth.py'),'--worker',str(ys)],stdout=f,stderr=subprocess.STDOUT,timeout=600)

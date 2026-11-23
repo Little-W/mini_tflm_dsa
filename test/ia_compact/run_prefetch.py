@@ -5,10 +5,14 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import shlex
+import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / "scripts/rtl"))
+from source_files import input_files, with_dependencies
 
 
 def digest(path):
@@ -22,25 +26,29 @@ def main():
     parser.add_argument('--reuse-build', action='store_true')
     parser.add_argument('--ordered-job', action='store_true')
     args = parser.parse_args()
+    verilator_root = Path(subprocess.check_output(
+        [args.verilator, "--getenv", "VERILATOR_ROOT"], text=True).strip())
+    runtime_include = "-isystem " + shlex.quote(str(verilator_root / "include"))
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     rtl = [ROOT / 'rtl/common/regfile.v', ROOT / 'rtl/common/pseudo_dual_port_ram.v',
            ROOT / 'rtl/common/add_equal.sv',
            ROOT / 'rtl/npu/loaders/ia_loader_cache_mgr.sv',
            ROOT / 'rtl/npu/loaders/ia_loader_ctrl.sv',
-           ROOT / 'rtl/npu/loaders/ia_loader.sv', HERE / 'prefetch_tb.sv']
+           ROOT / 'rtl/npu/loaders/ia_loader.sv', HERE / 'prefetch_tb.sv', ROOT / 'test/common/ia_shared_ram_model.sv']
+    rtl = with_dependencies(rtl, ROOT)
     cpp = HERE / 'prefetch_test.cpp'
-    sources = [Path(__file__).resolve(), *rtl, cpp]
+    sources = input_files([Path(__file__).resolve(), ROOT / "scripts/rtl/source_files.py", *rtl, cpp], ROOT)
     hashes = {str(path.relative_to(ROOT)): digest(path) for path in sources}
     rules = out / 'compile_rules.mk'
     rules.write_text('%.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_FAST) -c -o $@ $<\n'
-                     '$(VK_OBJS_FAST): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_FAST) -c -o $@ $<\n'
-                     '$(VK_OBJS_SLOW): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_SLOW) -c -o $@ $<\n'
-                     '$(VK_GLOBAL_OBJS): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_GLOBAL) -c -o $@ $<\n')
+                     '$(VK_OBJS_FAST): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(filter-out -Wall -Wextra -Werror,$(CXXFLAGS) $(CPPFLAGS)) $(OPT_FAST) -c -o $@ $<\n'
+                     '$(VK_OBJS_SLOW): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(filter-out -Wall -Wextra -Werror,$(CXXFLAGS) $(CPPFLAGS)) $(OPT_SLOW) -c -o $@ $<\n'
+                     '$(VK_GLOBAL_OBJS): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(filter-out -Wall -Wextra -Werror,$(CXXFLAGS) $(CPPFLAGS)) $(OPT_GLOBAL) -c -o $@ $<\n')
     command = [args.verilator, '--cc', '--exe', '--build', '--assert', '-j', '1',
                '--top-module', 'ia_prefetch_tb', '--Mdir', str(out / 'obj'), '-Wno-fatal',
                '--output-groups', '0', '--output-split', '10000',
-               '-CFLAGS', '-std=c++17 -O1 -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all',
+               '-CFLAGS', '-std=c++17 -O1 -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all ' + runtime_include,
                '-LDFLAGS', '-fsanitize=undefined', '-MAKEFLAGS',
                f'OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}',
                *map(str, rtl), str(cpp)]

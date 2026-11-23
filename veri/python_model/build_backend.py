@@ -60,6 +60,8 @@ def main():
         ap.error("ps must be positive")
     if args.mem_words < 1 or args.jobs < 1:
         ap.error("memory words and compiler jobs must be positive")
+    if args.size != 16 or not args.ps_compress:
+        ap.error("matrix backend requires SIZE=16 and shared IA/PS storage (--ps-compress)")
     if args.ps_compress and (args.size != 16 or args.ps_pool_bytes < 64 or args.ps_pool_bytes % 64):
         ap.error("compressed PS requires SIZE=16 and a pool divisible by 64 bytes")
     if args.force_raw and not args.ps_compress:
@@ -70,6 +72,8 @@ def main():
                   args.cache*args.size*args.size*2+args.ps_pool_bytes)
     shared_enabled=bool(args.ps_compress and args.size==16 and
         shared_total%args.shared_bank_bytes==0 and 6<=shared_total//args.shared_bank_bytes<=9)
+    if not shared_enabled:
+        ap.error("matrix backend requires 6 to 9 complete shared memory banks")
     effective_pool=shared_total-args.shared_bank_bytes if shared_enabled else args.ps_pool_bytes
     tag = (f"s{args.size}_c{args.cache}_p{args.ps}_axi{args.bus_width}"
            f"_b{args.shared_bank_bytes}n{args.shared_bank_count}_im2col{args.im2col_cache_bytes}")

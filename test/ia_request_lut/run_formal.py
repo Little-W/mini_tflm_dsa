@@ -12,22 +12,22 @@ import sys
 from models import prepare_models
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_current_source, read_rtl_source
+from rtl_reference import read_current_source, read_rtl_source_group as read_rtl_source, shared_ia_options
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = [Path('rtl/npu/loaders') / (name + '.sv')
            for name in ('ia_loader', 'ia_loader_ctrl', 'ia_loader_cache_mgr')]
 CASES = {
     'production': ['-DXILINX_FPGA=1', '-GSIZE=16', '-GBUS_WIDTH=64', '-GCOUNT_WIDTH=29',
-                   '-GCACHE_BLOCKS=32', '-GEXTERNAL_RAM=1', '-GORDERED_JOB=1'],
+                   '-GCACHE_BLOCKS=32', '-GORDERED_JOB=1'],
     'full_count': ['-DXILINX_FPGA=1', '-GSIZE=16', '-GBUS_WIDTH=64', '-GCOUNT_WIDTH=32',
-                   '-GCACHE_BLOCKS=32', '-GEXTERNAL_RAM=1', '-GORDERED_JOB=1'],
+                   '-GCACHE_BLOCKS=32', '-GORDERED_JOB=1'],
     'large_cache': ['-DXILINX_FPGA=1', '-GSIZE=16', '-GBUS_WIDTH=64', '-GCOUNT_WIDTH=29',
-                    '-GCACHE_BLOCKS=64', '-GEXTERNAL_RAM=1', '-GORDERED_JOB=1'],
-    'local_size3': ['-DXILINX_FPGA=1', '-GSIZE=3', '-GBUS_WIDTH=32', '-GCOUNT_WIDTH=8',
-                    '-GCACHE_BLOCKS=4', '-GEXTERNAL_RAM=0', '-GORDERED_JOB=1'],
+                    '-GCACHE_BLOCKS=64', '-GORDERED_JOB=1'],
+    'small_cache': ['-DXILINX_FPGA=1', '-GSIZE=16', '-GBUS_WIDTH=32', '-GCOUNT_WIDTH=8',
+                    '-GCACHE_BLOCKS=4', '-GORDERED_JOB=1'],
     'asic': ['-DASIC_SYNTHESIS=1', '-GSIZE=16', '-GBUS_WIDTH=64', '-GCOUNT_WIDTH=29',
-             '-GCACHE_BLOCKS=32', '-GEXTERNAL_RAM=1', '-GORDERED_JOB=1'],
+             '-GCACHE_BLOCKS=32', '-GORDERED_JOB=1'],
 }
 
 
@@ -49,7 +49,7 @@ def run_script(out, name, commands):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference-rev', default='75f9862e')
+    parser.add_argument('--reference-rev', default='7ff66a59')
     parser.add_argument('--cases', nargs='+', choices=tuple(CASES), default=list(CASES))
     args = parser.parse_args()
     out = args.out.resolve()
@@ -110,7 +110,8 @@ def main():
     for name in args.cases:
         commands = []
         for label in ('reference', 'current'):
-            commands += ['read_slang --top ia_loader ' + ' '.join(CASES[name]) + ' ' +
+            options = shared_ia_options(CASES[name], snapshots[label][0].read_text())
+            commands += ['read_slang --top ia_loader ' + ' '.join(options) + ' ' +
                          ' '.join(shlex.quote(str(path)) for path in snapshots[label] + common + [model]),
                          'prep -top ia_loader -flatten', 'memory_map', 'async2sync', 'opt_clean',
                          'rename ia_loader ' + label, 'design -stash ' + label]

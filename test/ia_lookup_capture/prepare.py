@@ -7,9 +7,11 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
-import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'test'))
+from rtl_reference import read_rtl_source_group, read_current_source, shared_ia_parameters
 SOURCE = Path('rtl/npu/loaders/ia_loader.sv')
 DEPENDENCIES = (
     Path('rtl/npu/loaders/ia_loader_ctrl.sv'),
@@ -17,8 +19,8 @@ DEPENDENCIES = (
     Path('rtl/npu/compute/select_add.sv'),
 )
 PARAMETERS = {
-    'SIZE': 16, 'BUS_WIDTH': 64, 'DMA_LANES': 8, 'COUNT_WIDTH': 29,
-    'CACHE_BLOCKS': 32, 'EXTERNAL_RAM': 1, 'ORDERED_JOB': 1,
+    'DATA_WIDTH': 16, 'SIZE': 16, 'BUS_WIDTH': 64, 'DMA_LANES': 8, 'COUNT_WIDTH': 29,
+    'CACHE_BLOCKS': 32, 'ORDERED_JOB': 1,
     'RAM_WORD_ADDR_WIDTH': 12, 'p_register_dma_request': 1,
     'p_dma_source_layout': 1, 'p_shared_write_stage': 1,
 }
@@ -27,7 +29,7 @@ PARAMETERS = {
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source-root', type=Path, default=ROOT)
-    parser.add_argument('--reference', default='ef0dc75')
+    parser.add_argument('--reference', default='7ff66a59')
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
     source, out = args.source_root.resolve(), args.out.resolve()
@@ -39,17 +41,24 @@ def main() -> None:
         for relative in (SOURCE, *DEPENDENCIES):
             target = folder / relative
             target.parent.mkdir(parents=True, exist_ok=True)
-            if label == 'reference' and relative == SOURCE:
-                content = subprocess.check_output(['git', 'show', f'{args.reference}:{SOURCE}'], cwd=ROOT)
+            if label == 'reference':
+                content = read_rtl_source_group(f'{args.reference}:{relative}', cwd=ROOT)
             else:
-                content = (source / relative).read_bytes()
+                content = read_current_source(source / relative).encode()
             target.write_bytes(content)
             hashes[label][str(relative)] = hashlib.sha256(content).hexdigest()
         shutil.copytree(source / 'rtl/common', folder / 'rtl/common', dirs_exist_ok=True)
+        wrapper = folder / 'measure.sv'
+        wrapper_source = (ROOT / 'test/ia_lookup_capture/measure.sv').read_text()
+        if 'EXTERNAL_RAM' in shared_ia_parameters({}, (folder / SOURCE).read_text()):
+            wrapper_source = wrapper_source.replace('.COMPACT_S8(COMPACT_S8),',
+                '.COMPACT_S8(COMPACT_S8),\n        .EXTERNAL_RAM(1),')
+        wrapper.write_text(wrapper_source)
+        hashes[label]['measure.sv'] = hashlib.sha256(wrapper_source.encode()).hexdigest()
         cases['current' if label == 'candidate' else label] = {
             'top': 'ia_lookup_capture_measure',
             'sources': [str(folder / relative) for relative in (SOURCE, *DEPENDENCIES)] +
-                       [str(ROOT / 'test/ia_lookup_capture/measure.sv')],
+                       [str(wrapper)],
             'options': ['-D', 'SYNTHESIS=1', '-D', 'XILINX_FPGA=1'] +
                        [f'-G{name}={value}' for name, value in PARAMETERS.items()],
             'parameters': PARAMETERS,

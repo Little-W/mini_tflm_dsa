@@ -11,7 +11,7 @@ import sys
 
 from helpers import ROOT
 sys.path.insert(0, str(ROOT / 'test'))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_current_source, read_rtl_source_group as read_rtl_source, shared_ia_options
 sys.path.insert(0, str(ROOT / 'test/ia_write_output_depth'))
 from primitives import prepare_models
 
@@ -22,7 +22,7 @@ def digest(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--reference', default='d4f8c0ad')
+    parser.add_argument('--reference', default='7ff66a59')
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
     out = args.out.resolve()
@@ -40,15 +40,16 @@ def main():
         sources = []
         for relative in relatives:
             data = (read_rtl_source(args.reference + ':' + relative, cwd=ROOT)
-                    if label == 'reference' else (ROOT / relative).read_bytes())
+                    if label == 'reference' else read_current_source(ROOT / relative).encode())
             path = folder / Path(relative).name
             path.write_bytes(data)
             sources.append(path)
         options = ('-DYOSYS=1 -DVERIFIC=1 -DXILINX_FPGA=1 -GSIZE=16 -GBUS_WIDTH=64 '
-                   '-GCOUNT_WIDTH=29 -GCACHE_BLOCKS=32 -GEXTERNAL_RAM=1 -GORDERED_JOB=1 '
+                   '-GCOUNT_WIDTH=29 -GCACHE_BLOCKS=32 -GORDERED_JOB=1 '
                    '-GRAM_WORD_ADDR_WIDTH=12 -GPS_FRAME_COUNT=16')
         if label == 'current':
             options += ' -Gp_shared_write_stage=1'
+        options = shlex.join(shared_ia_options(shlex.split(options), sources[0].read_text()))
         commands += ['read_slang --top ia_loader ' + options + ' ' +
                      ' '.join(shlex.quote(str(p)) for p in sources + common + [model]),
                      'prep -top ia_loader -flatten',

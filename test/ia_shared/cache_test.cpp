@@ -174,16 +174,16 @@ void tick(Via_shared_cache_tb& dut) {
     dut.clk = 1;
     dut.eval();
     require(!dut.capacity_fault, "Shared RAM capacity fault");
-    require(dut.shared_valid == dut.local_valid, "Local/shared row valid");
-    require(dut.shared_init == dut.local_init, "Local/shared init");
-    require(dut.shared_final == dut.local_final, "Local/shared final");
-    require(dut.shared_tile_done == dut.local_tile_done, "Local/shared tile completion");
-    require(dut.shared_l1_done == dut.local_l1_done, "Local/shared group completion");
-    require(dut.shared_tile_start == dut.local_tile_start, "Local/shared tile start");
+    require(dut.shared_valid == dut.model_valid, "Model/shared row valid");
+    require(dut.shared_init == dut.model_init, "Model/shared init");
+    require(dut.shared_final == dut.model_final, "Model/shared final");
+    require(dut.shared_tile_done == dut.model_tile_done, "Model/shared tile completion");
+    require(dut.shared_l1_done == dut.model_l1_done, "Model/shared group completion");
+    require(dut.shared_tile_start == dut.model_tile_start, "Model/shared tile start");
     control_checks += 6;
     for (unsigned lane = 0; lane < 16; ++lane) {
-        require(dut.shared_out[lane] == dut.local_out[lane],
-                "Local/shared row value at lane " + std::to_string(lane));
+        require(dut.shared_out[lane] == dut.model_out[lane],
+                "Model/shared row value at lane " + std::to_string(lane));
         ++cycle_value_checks;
     }
     for (unsigned bank = 0; bank < 4; ++bank)

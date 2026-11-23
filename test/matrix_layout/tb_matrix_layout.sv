@@ -12,9 +12,23 @@
 `ifndef TB_ENABLE_IS_MODE
 `define TB_ENABLE_IS_MODE 1
 `endif
-// Complete AXI-Lite register interface, matrix core, and in-order AXI memory.
+`ifndef TB_SHARED_BANK_BYTES
+`define TB_SHARED_BANK_BYTES 4096
+`endif
+`ifndef TB_SHARED_BANK_COUNT
+`define TB_SHARED_BANK_COUNT 9
+`endif
+// 完整 AXI-Lite 接口、共享矩阵存储和按序响应的 AXI 存储模型。
 module tb_matrix_layout;
     localparam int SIZE=16, WORDS=131072, BYTES=WORDS*4;
+    localparam int p_shared_max_ia_banks=(`TB_SHARED_BANK_COUNT>=8)?4:2;
+    localparam int p_shared_reuse_max=p_shared_max_ia_banks*`TB_SHARED_BANK_BYTES/(SIZE*SIZE*2)/2;
+    localparam int p_matrix_reuse_max=(`TB_IA_CACHE_BLOCKS<2)?1:`TB_IA_CACHE_BLOCKS/2;
+    localparam int p_output_bank_limit=(p_shared_reuse_max>32)?p_shared_reuse_max:32;
+    localparam int p_requested_output_banks=(16*p_matrix_reuse_max>p_shared_reuse_max)?
+        16*p_matrix_reuse_max:p_shared_reuse_max;
+    localparam int p_s8_output_banks=(p_requested_output_banks<p_output_bank_limit)?
+        p_requested_output_banks:p_output_bank_limit;
     logic clk=0;
     always #5 clk=~clk;
     logic rst_n=0,new_job=0;
@@ -46,6 +60,8 @@ module tb_matrix_layout;
 
     npu_axil_top #(.SIZE(SIZE),.IA_CACHE_BLOCKS(`TB_IA_CACHE_BLOCKS),.PS_FRAME_COUNT(16),
         .PS_STORAGE_ROWS(`TB_PS_STORAGE_ROWS),.OA_S16_FIFO_BANKS_MAX(`TB_S16_BANKS),
+        .IA_COMPACT_ENABLE(0),.SHARED_IA_PS_ENABLE(1),
+        .SHARED_BANK_BYTES(`TB_SHARED_BANK_BYTES),.SHARED_BANK_COUNT(`TB_SHARED_BANK_COUNT),
         .ENABLE_IS_MODE(`TB_ENABLE_IS_MODE),
         .AXI_READ_OUTSTANDING(4),.AXI_WRITE_OUTSTANDING(4),.ENABLE_CLOCK_GATING(1),
         .CONV_CACHE_SETS(128),.CONV_CACHE_WAYS(2),.CONV_CACHE_POLICY(3)) u_dut(
@@ -80,7 +96,7 @@ module tb_matrix_layout;
     // Unused rows in the final packed tile are excluded by the access bitmap.
     integer max_s16_used=0,max_s16_ready=0,s16_full_cycles=0,write_stall_cycles=0;
     integer ar_stall_cycles=0,r_wait_cycles=0,page_end_reads=0,page_end_writes=0;
-    integer s16_tile_count=0;
+    integer s16_tile_count=0,frame_commands=0,max_frame_rows=0;
     // 已完成存储块与当前写入中的存储块共同构成实际占用量。
     wire [31:0] s16_used_bank_count =
         32'(u_dut.u_npu_top.u_matrix_engine.u_output_pipeline.u_vec_s16_to_fifo.ready_bank_count_q) +
@@ -93,8 +109,16 @@ module tb_matrix_layout;
         if(!rst_n || new_job)begin
             max_s16_used=0;max_s16_ready=0;s16_full_cycles=0;write_stall_cycles=0;
             ar_stall_cycles=0;r_wait_cycles=0;page_end_reads=0;page_end_writes=0;s16_tile_count=0;
+            frame_commands=0;max_frame_rows=0;
             old_aw_stall=0;old_w_stall=0;
         end else begin
+            if(u_dut.u_npu_top.u_matrix_engine.frame_command_start)begin
+                frame_commands++;
+                if(int'(u_dut.u_npu_top.u_matrix_engine.frame_command_rows)>max_frame_rows)
+                    max_frame_rows=int'(u_dut.u_npu_top.u_matrix_engine.frame_command_rows);
+                assert(u_dut.u_npu_top.frame_mode_q)
+                    else $fatal(1,"frame command requires frame execution mode");
+            end
             if(arvalid&&arready)begin
                 for(int b=0;b<((int'(arlen)+1)<<arsize);b++)begin
                     assert(access_kind[araddr+32'(b)][0])
@@ -177,7 +201,14 @@ module tb_matrix_layout;
     task automatic register_checks;
         expect_reg('he4,{8'd16,8'd16,8'(`TB_IA_CACHE_BLOCKS),8'(3|(`TB_ENABLE_IS_MODE ? 4:0))});
         expect_reg('he8,32'(`TB_PS_STORAGE_ROWS));
-        expect_reg('hec,{16'(`TB_S16_BANKS),16'd32});
+        expect_reg('hec,{16'(`TB_S16_BANKS),16'(p_s8_output_banks)});
+        expect_reg('h100,32'(`TB_SHARED_BANK_BYTES*`TB_SHARED_BANK_COUNT));
+        expect_reg('h104,32'(`TB_SHARED_BANK_BYTES));
+        expect_reg('h10c,32'h16);
+        expect_reg('h108,32'd1);
+        // 不支持三个存储体的分配；拒绝写入后保持既有值，再接受合法分配。
+        wr('h108,32'd3,4'hf,2'b10);expect_reg('h108,32'd1);
+        wr('h108,32'd2);expect_reg('h108,32'd2);
         foreach(cfg[i])cfg[i]=0;
         wr('h0,32'h600,4'h2,0,1);expect_reg('h0,32'h600);
         wr('h0,32'h00e,4'h1,0,2);expect_reg('h0,32'h60e);
@@ -188,11 +219,15 @@ module tb_matrix_layout;
         wr('he4,0);wr('he8,0);wr('hec,0);
         expect_reg('he4,{8'd16,8'd16,8'(`TB_IA_CACHE_BLOCKS),8'(3|(`TB_ENABLE_IS_MODE ? 4:0))});
         expect_reg('he8,32'(`TB_PS_STORAGE_ROWS));
-        expect_reg('hec,{16'(`TB_S16_BANKS),16'd32});
+        expect_reg('hec,{16'(`TB_S16_BANKS),16'(p_s8_output_banks)});
         wr('h0,0);$display("MATRIX_REGISTERS_PASS ia=%0d ps_rows=%0d s16_banks=%0d",`TB_IA_CACHE_BLOCKS,`TB_PS_STORAGE_ROWS,`TB_S16_BANKS);
     endtask
 
     task automatic configure;
+        wr('h108,cfg[60]);expect_reg('h108,cfg[60]);
+        expect_reg('h138,cfg[60]*32'(`TB_SHARED_BANK_BYTES));
+        expect_reg('h134,(32'(`TB_SHARED_BANK_COUNT)-cfg[60])*32'(`TB_SHARED_BANK_BYTES));
+        wr('h120,cfg[61]);
         wr('h10,cfg[14]);wr('h14,cfg[15]);wr('h18,cfg[17]);wr('h1c,cfg[16]);
         wr('h20,cfg[3]);wr('h24,cfg[4]);wr('h28,cfg[5]);
         wr('h2c,cfg[18]);wr('h30,cfg[19]);wr('h34,cfg[20]);
@@ -272,7 +307,11 @@ module tb_matrix_layout;
                 if(cfg[52]==0)begin
                     assert(write_bytes==64'(cfg[3])*64'(cfg[5])*(cfg[28][0]?2:1))else $fatal(1,"output byte count mismatch");
                 end
-                $display("MATRIX_TASK_PASS task=%0d error=%0d cycles=%0d ar_bytes=%0d ar_requests=%0d write_bytes=%0d max_s16_used=%0d max_s16_ready=%0d s16_full_cycles=%0d s16_tiles=%0d write_stall_cycles=%0d ar_stall_cycles=%0d r_wait_cycles=%0d page_end_reads=%0d page_end_writes=%0d",task_number,status[4:3],end_cycle-job_start,read_bytes,read_requests,write_bytes,max_s16_used,max_s16_ready,s16_full_cycles,s16_tile_count,write_stall_cycles,ar_stall_cycles,r_wait_cycles,page_end_reads,page_end_writes);
+                if(cfg[62]!=0)begin
+                    assert(frame_commands>1 && max_frame_rows<=int'(cfg[6])*SIZE)
+                        else $fatal(1,"shared frame coverage commands=%0d rows=%0d",frame_commands,max_frame_rows);
+                end
+                $display("MATRIX_TASK_PASS task=%0d error=%0d cycles=%0d ar_bytes=%0d ar_requests=%0d write_bytes=%0d max_s16_used=%0d max_s16_ready=%0d s16_full_cycles=%0d s16_tiles=%0d write_stall_cycles=%0d ar_stall_cycles=%0d r_wait_cycles=%0d page_end_reads=%0d page_end_writes=%0d frame_commands=%0d max_frame_rows=%0d ia_banks=%0d",task_number,status[4:3],end_cycle-job_start,read_bytes,read_requests,write_bytes,max_s16_used,max_s16_ready,s16_full_cycles,s16_tile_count,write_stall_cycles,ar_stall_cycles,r_wait_cycles,page_end_reads,page_end_writes,frame_commands,max_frame_rows,cfg[60]);
                 wr(4,4);rd(4,status);assert(!status[2]&&!busy)else $fatal(1,"completion status did not clear");
                 repeat(8)@(negedge clk);task_number++;
             end else if(fields!=-1)$fatal(1,"malformed suite");

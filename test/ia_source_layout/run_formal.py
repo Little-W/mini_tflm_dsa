@@ -18,6 +18,8 @@ from primitives import prepare_models
 SOURCES = [ROOT / 'rtl/npu/loaders' / (name + '.sv') for name in
            ('ia_loader', 'ia_loader_ctrl', 'ia_loader_cache_mgr')]
 SOURCES.append(ROOT / 'rtl/npu/compute/select_add.sv')
+SOURCES += [ROOT / 'rtl/npu/loaders' / name for name in
+            ('ia_ordered_coordinate_equal.sv', 'ia_ordered_coordinate_same.sv')]
 
 
 def digest(path):
@@ -30,7 +32,7 @@ def make_wrapper(module, path):
     header = re.sub(r'\bmodule\s+' + module, 'module source_layout', header)
     ports = port_declarations(source)
     parameters = ['DATA_WIDTH', 'SIZE', 'BUS_WIDTH', 'REG_WIDTH', 'CACHE_BLOCKS',
-                  'COMPACT_S8', 'EXTERNAL_RAM', 'RAM_WORD_ADDR_WIDTH', 'p_dma_source_layout',
+                  'COMPACT_S8', 'RAM_WORD_ADDR_WIDTH', 'p_dma_source_layout',
                   'p_shared_write_stage']
     if module == 'ia_loader':
         parameters += ['COUNT_WIDTH', 'ORDERED_JOB', 'PS_FRAME_COUNT']
@@ -73,7 +75,7 @@ def main():
         wrapper = out / (name + '.sv')
         make_wrapper(module, wrapper)
         options = ['-D YOSYS=1', '-D VERIFIC=1', '-DXILINX_FPGA=1', '-GSIZE=16',
-                   '-GBUS_WIDTH=64', '-GCACHE_BLOCKS=32', '-GEXTERNAL_RAM=1',
+                   '-GBUS_WIDTH=64', '-GCACHE_BLOCKS=32',
                    '-GRAM_WORD_ADDR_WIDTH=12']
         options += (['-Gp_compact_offset_width=9'] if name == 'cache' else
                     ['-GCOUNT_WIDTH=29', '-GORDERED_JOB=1', '-GPS_FRAME_COUNT=16'])

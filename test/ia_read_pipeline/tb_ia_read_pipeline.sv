@@ -1,4 +1,4 @@
-// 检查本地与外部 RAM 的连续读出、相邻组属性及复位清空。
+// 检查共享 RAM 端口的连续读出、相邻组属性及复位清空。
 module tb_ia_read_pipeline #(
     parameter bit COMPACT_ENABLE = 1'b1,
     parameter bit SHARED_WRITE_STAGE = 1'b1
@@ -22,9 +22,9 @@ module tb_ia_read_pipeline #(
     logic [WORD_WIDTH-1:0] write_address [2], read_address [2];
     logic [127:0] write_data [2], read_data [2], memory [RAM_WORDS];
     logic [15:0] write_mask [2];
-    logic signed [15:0] data [2][16];
-    logic valid [2], is_init [2], calc_done [2];
-    logic tile_done [2], group_done [2], tile_start [2];
+    logic signed [15:0] data [1][16];
+    logic valid [1], is_init [1], calc_done [1];
+    logic tile_done [1], group_done [1], tile_start [1];
     logic signed [15:0] reference_data [SLOT_BLOCKS][16][16];
     int written_columns [SLOT_BLOCKS];
     int write_offset, cycle_count = 0, queue_count = 0;
@@ -41,23 +41,23 @@ module tb_ia_read_pipeline #(
     } expected_row_t;
     expected_row_t expected_rows [1024];
 
-    for (genvar implementation = 0; implementation < 2; implementation++) begin : g_manager
+    for (genvar implementation = 0; implementation < 1; implementation++) begin : g_manager
         ia_loader_cache_mgr #(
             .DATA_WIDTH(16), .SIZE(16), .BUS_WIDTH(64), .DMA_LANES(8),
             .CACHE_BLOCKS(CACHE_BLOCKS), .COMPACT_S8(32'(COMPACT_ENABLE)),
-            .EXTERNAL_RAM(implementation == 1), .RAM_WORD_ADDR_WIDTH(WORD_WIDTH),
+            .RAM_WORD_ADDR_WIDTH(WORD_WIDTH),
             .p_compact_offset_width(9), .p_dma_source_layout(1'b1),
             .p_shared_write_stage(SHARED_WRITE_STAGE)
         ) u_manager (
             .clk, .rst_n, .compact_mode, .compact_offset,
             .cfg_cache_blocks(32'd0), .cfg_slot_mask('0), .slot_base('0),
-            .ram_port_wr_en(local_write_enable),
-            .ram_port_wr_addr(local_write_address),
-            .ram_port_wr_data(local_write_data),
-            .ram_port_wr_mask(local_write_mask),
+            .ram_port_wr_en(manager_write_enable),
+            .ram_port_wr_addr(manager_write_address),
+            .ram_port_wr_data(manager_write_data),
+            .ram_port_wr_mask(manager_write_mask),
             .ram_shared_wr_data(),
-            .ram_port_rd_en(local_read_enable),
-            .ram_port_rd_addr(local_read_address),
+            .ram_port_rd_en(manager_read_enable),
+            .ram_port_rd_addr(manager_read_address),
             .ram_port_rd_data(read_data),
             .wr_slot, .wr_row, .wr_col_base, .wr_data, .wr_valid, .wr_use_16bits(1'b0),
             .l1_start, .l1_slot_start, .l1_slot_end, .l1_is_init, .l1_calc_done,
@@ -67,17 +67,17 @@ module tb_ia_read_pipeline #(
             .ia_row_valid(valid[implementation]), .ia_is_init_data(is_init[implementation]),
             .ia_calc_done(calc_done[implementation])
         );
-        logic [1:0] local_write_enable, local_read_enable;
-        logic [WORD_WIDTH-1:0] local_write_address [2], local_read_address [2];
-        logic [127:0] local_write_data [2];
-        logic [15:0] local_write_mask [2];
-        if (implementation == 1) begin : g_external_ports
-            assign write_enable = local_write_enable;
-            assign write_address = local_write_address;
-            assign write_data = local_write_data;
-            assign write_mask = local_write_mask;
-            assign read_enable = local_read_enable;
-            assign read_address = local_read_address;
+        logic [1:0] manager_write_enable, manager_read_enable;
+        logic [WORD_WIDTH-1:0] manager_write_address [2], manager_read_address [2];
+        logic [127:0] manager_write_data [2];
+        logic [15:0] manager_write_mask [2];
+        if (implementation == 0) begin : g_external_ports
+            assign write_enable = manager_write_enable;
+            assign write_address = manager_write_address;
+            assign write_data = manager_write_data;
+            assign write_mask = manager_write_mask;
+            assign read_enable = manager_read_enable;
+            assign read_address = manager_read_address;
         end
     end
 
@@ -108,7 +108,7 @@ module tb_ia_read_pipeline #(
             expected_first |= expected_rows[index].first &&
                 expected_rows[index].due_cycle - 2 == cycle_count;
         if (rst_n)
-            for (int implementation = 0; implementation < 2; implementation++)
+            for (int implementation = 0; implementation < 1; implementation++)
                 assert (tile_start[implementation] == expected_first)
                     else $fatal(1, "Tile start cycle=%0d implementation=%0d", cycle_count, implementation);
         clk = 1;
@@ -117,7 +117,7 @@ module tb_ia_read_pipeline #(
         expected_index = -1;
         for (int index = 0; index < queue_count; index++)
             if (expected_rows[index].due_cycle == cycle_count) expected_index = index;
-        for (int implementation = 0; implementation < 2; implementation++) begin
+        for (int implementation = 0; implementation < 1; implementation++) begin
             assert (valid[implementation] == (expected_index >= 0 && rst_n))
                 else $fatal(1, "Row valid cycle=%0d implementation=%0d", cycle_count, implementation);
             if (expected_index >= 0 && rst_n) begin
@@ -236,7 +236,7 @@ module tb_ia_read_pipeline #(
             rst_n = 1;
             repeat (READ_STAGES + 1) tick();
         end
-        assert (value_checks > 1000 && row_checks > 100 && reset_checks == 8);
+        assert (value_checks > 1000 && row_checks > 100 && reset_checks == 4);
         $display("{\"passed\":true,\"compact_enabled\":%0d,\"shared_write_stage\":%0d,\"value_checks\":%0d,\"row_checks\":%0d,\"reset_checks\":%0d,\"physical_ram_bytes\":2048}",
             COMPACT_ENABLE, SHARED_WRITE_STAGE, value_checks, row_checks, reset_checks);
         $finish;

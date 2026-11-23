@@ -19,7 +19,7 @@ SOURCE_GROUPS = {
     'conv_read_cache.sv': ('conv_read_cache.sv', 'conv_read_cache_reference.sv',
                           'conv_windowed_cache.sv', 'conv_cache_metadata_way.sv',
                           'conv_cache_rank_table.sv'),
-    'ia_loader.sv': ('ia_loader.sv', 'ia_ordered_coordinate_equal.sv'),
+    'ia_loader.sv': ('ia_loader.sv', 'ia_ordered_coordinate_equal.sv', 'ia_ordered_coordinate_same.sv'),
     'kernel_loader.sv': ('kernel_loader.sv', 'kernel_request_idle.sv',
                          'kernel_candidate_equal.sv', 'kernel_burst_encode.sv'),
     'kernel_loader_ctrl.sv': ('kernel_loader_ctrl.sv', 'kernel_count_increment.sv',
@@ -39,6 +39,23 @@ SOURCE_GROUPS = {
 }
 
 
+def shared_ia_parameters(parameters, module_source):
+    """各版本共用共享 SRAM 测试配置，参考模块按其声明选择外部存储。"""
+    selected = {name: value for name, value in parameters.items() if name != 'EXTERNAL_RAM'}
+    if re.search(r'\bparameter\s+(?:(?:bit|logic|int|integer|unsigned|signed)\s+)*EXTERNAL_RAM\b',
+                 module_source):
+        selected['EXTERNAL_RAM'] = 1
+    return selected
+
+
+def shared_ia_options(options, module_source):
+    """为 read_slang 的同一共享 SRAM 配置生成对应版本的参数选项。"""
+    selected = [option for option in options if not option.startswith('-GEXTERNAL_RAM=')]
+    if 'EXTERNAL_RAM' in shared_ia_parameters({}, module_source):
+        selected.append('-GEXTERNAL_RAM=1')
+    return selected
+
+
 def read_current_source(path, *args, **kwargs):
     """为局部提取与版本比较读取一个功能模块及其独立子模块。"""
     path = Path(path)
@@ -46,9 +63,7 @@ def read_current_source(path, *args, **kwargs):
     group = SOURCE_GROUPS.get(path.name)
     if group is None or len(re.findall(r'^\s*module\s+\w+', content, re.M)) != 1:
         return content
-    files = [path.with_name(name) for name in group]
-    if not all(source.is_file() for source in files):
-        return content
+    files = [path.with_name(name) for name in group if path.with_name(name).is_file()]
     return '\n'.join(source.read_text(*args, **kwargs) for source in files)
 
 
@@ -101,3 +116,24 @@ def read_rtl_source(revision_path, *, cwd=ROOT, text=False):
         content = re.sub(rb'\bREGFILE\b', b'regfile', content)
         content = optional_shared_write_port(content, path, cwd)
     return content.decode() if text else content
+
+
+def read_rtl_source_group(revision_path, *, cwd=ROOT, text=False):
+    """读取指定版本的功能模块与当时存在的独立子模块。"""
+    revision, _, name = str(revision_path).partition(':')
+    path = Path(name)
+    content = read_rtl_source(revision_path, cwd=cwd, text=True)
+    group = SOURCE_GROUPS.get(path.name)
+    if group is not None and len(re.findall(r'^\s*module\s+\w+', content, re.M)) == 1:
+        parts = {}
+        for member in group:
+            relative = path.with_name(member)
+            if member == path.name:
+                parts[member] = content
+                continue
+            exists = subprocess.run(['git', 'cat-file', '-e', f'{revision}:{relative}'],
+                                    cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if exists.returncode == 0:
+                parts[member] = read_rtl_source(f'{revision}:{relative}', cwd=cwd, text=True)
+        content = '\n'.join(parts[member] for member in group if member in parts)
+    return content if text else content.encode()

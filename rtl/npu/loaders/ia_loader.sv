@@ -16,7 +16,6 @@ module ia_loader #(
     parameter int unsigned COUNT_WIDTH  = REG_WIDTH,
     parameter int unsigned CACHE_BLOCKS = 4,
     parameter int unsigned COMPACT_S8 = 1,
-    parameter bit EXTERNAL_RAM = 1'b0,
     // Job configuration is fixed until cache_flush; tile origins are SIZE aligned.
     parameter bit ORDERED_JOB = 1'b0,
     parameter int unsigned RAM_WORD_ADDR_WIDTH = 10,
@@ -1228,7 +1227,6 @@ module ia_loader #(
         .REG_WIDTH   (REG_WIDTH),
         .CACHE_BLOCKS(CACHE_BLOCKS),
         .COMPACT_S8(COMPACT_S8),
-        .EXTERNAL_RAM(EXTERNAL_RAM),
         .RAM_WORD_ADDR_WIDTH(RAM_WORD_ADDR_WIDTH),
         .p_compact_offset_width((DATA_WIDTH == 16) ? 9 : DATA_WIDTH),
         .p_dma_source_layout(p_dma_source_layout),

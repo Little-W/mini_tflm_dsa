@@ -26,11 +26,11 @@ module ia_shared_cache_tb #(
     input logic [SLOT_BITS-1:0] l1_slot_start, l1_slot_end,
     input logic l1_is_init, l1_calc_done,
     input logic [4:0] slot_rows [0:SLOT_BLOCKS-1],
-    output logic signed [15:0] shared_out [0:15], local_out [0:15],
+    output logic signed [15:0] shared_out [0:15], model_out [0:15],
     output logic shared_valid, shared_init, shared_final,
     output logic shared_tile_done, shared_l1_done, shared_tile_start,
-    output logic local_valid, local_init, local_final,
-    output logic local_tile_done, local_l1_done, local_tile_start,
+    output logic model_valid, model_init, model_final,
+    output logic model_tile_done, model_l1_done, model_tile_start,
     output logic capacity_fault,
     output logic [1:0] ia_write_en, ia_read_en,
     output logic [WORD_BITS-1:0] ia_write_addr [0:1], ia_read_addr [0:1],
@@ -44,10 +44,15 @@ module ia_shared_cache_tb #(
     output logic physical_address_collision
 );
     logic [127:0] ia_read_data [0:1];
+    logic [1:0] ram_port_wr_en, ram_port_rd_en;
+    logic [WORD_BITS-1:0] ram_port_wr_addr [0:1], ram_port_rd_addr [0:1];
+    logic [127:0] ram_port_wr_data [0:1], ram_port_rd_data [0:1];
+    logic [15:0] ram_port_wr_mask [0:1];
+    ia_shared_ram_model #(.WORD_COUNT(CACHE_BLOCKS*32), .ADDRESS_WIDTH(WORD_BITS)) u_model_memory (.*);
 
     ia_loader_cache_mgr #(
         .DATA_WIDTH(16), .SIZE(16), .BUS_WIDTH(BUS_WIDTH), .DMA_LANES(DMA_LANES), .CACHE_BLOCKS(CACHE_BLOCKS),
-        .COMPACT_S8(1), .EXTERNAL_RAM(1), .RAM_WORD_ADDR_WIDTH(WORD_BITS),
+        .COMPACT_S8(1), .RAM_WORD_ADDR_WIDTH(WORD_BITS),
         .p_compact_offset_width(COMPACT_OFFSET_WIDTH),
         .p_dma_source_layout(BUS_WIDTH == 64 && DMA_LANES == 8),
         .p_shared_write_stage(SHARED_WRITE_STAGE)
@@ -68,19 +73,19 @@ module ia_shared_cache_tb #(
 
     ia_loader_cache_mgr #(
         .DATA_WIDTH(16), .SIZE(16), .BUS_WIDTH(BUS_WIDTH), .DMA_LANES(DMA_LANES), .CACHE_BLOCKS(CACHE_BLOCKS),
-        .COMPACT_S8(1), .EXTERNAL_RAM(0), .RAM_WORD_ADDR_WIDTH(WORD_BITS)
-    ) u_local_manager (
+        .COMPACT_S8(1), .RAM_WORD_ADDR_WIDTH(WORD_BITS)
+    ) u_model_manager (
         .clk, .rst_n, .compact_mode, .compact_offset, .cfg_cache_blocks,
-        .ram_port_wr_en(), .ram_port_wr_addr(), .ram_port_wr_data(),
+        .ram_port_wr_en, .ram_port_wr_addr, .ram_port_wr_data,
         .ram_shared_wr_data(),
-        .ram_port_wr_mask(), .ram_port_rd_en(), .ram_port_rd_addr(),
-        .ram_port_rd_data('{default:'0}),
+        .ram_port_wr_mask, .ram_port_rd_en, .ram_port_rd_addr,
+        .ram_port_rd_data,
         .wr_slot, .wr_row, .wr_col_base, .wr_data, .wr_valid, .wr_use_16bits,
         .l1_start, .l1_slot_start, .l1_slot_end, .l1_is_init, .l1_calc_done,
-        .slot_rows, .tile_done(local_tile_done), .l1_done(local_l1_done),
-        .ia_tile_start(local_tile_start), .ia_out(local_out),
-        .ia_row_valid(local_valid), .ia_is_init_data(local_init),
-        .ia_calc_done(local_final)
+        .slot_rows, .tile_done(model_tile_done), .l1_done(model_l1_done),
+        .ia_tile_start(model_tile_start), .ia_out(model_out),
+        .ia_row_valid(model_valid), .ia_is_init_data(model_init),
+        .ia_calc_done(model_final)
     );
 
     ia_ps_shared_ram #(.TOTAL_BYTES(BANK_BYTES*BANK_COUNT), .BANK_BYTES(BANK_BYTES)) u_shared_ram (

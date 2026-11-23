@@ -2,7 +2,7 @@
 // Test-only second AXI master loads/checks the unmodified production SoC RAM.
 // The CPU-side production driver uses the actual NPU AXI-Lite slave below.
 module conv_cosim_top #(
-  parameter int SIZE=4,
+  parameter int SIZE=16,
   parameter int ENABLE_PER_CHANNEL=1,
   parameter int ENABLE_IS_MODE=1,
   parameter int WEIGHT_WIDTH=16,
@@ -49,6 +49,7 @@ module conv_cosim_top #(
   wire [1:0] ram_rresp,ram_bresp;
 
   npu_axil_top #(.SIZE(SIZE),.PS_FRAME_COUNT(16),.ENABLE_PER_CHANNEL(ENABLE_PER_CHANNEL),
+    .SHARED_BANK_BYTES(8192),.SHARED_BANK_COUNT(7),
     .ENABLE_IS_MODE(ENABLE_IS_MODE),.WEIGHT_WIDTH(WEIGHT_WIDTH),.ENABLE_CLOCK_GATING(1)) dut (
     .clk,.rst_n,.s_axil_awaddr,.s_axil_awprot(3'd0),.s_axil_awvalid,.s_axil_awready,
     .s_axil_wdata,.s_axil_wstrb,.s_axil_wvalid,.s_axil_wready,

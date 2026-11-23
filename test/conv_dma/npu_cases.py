@@ -54,6 +54,8 @@ def check_planner(case, lib):
 
 def prepare(out, size, ref, lib, smoke=False):
     """Every command runs in one simulation, with no intervening hardware reset."""
+    if size != 16:
+        raise ValueError('完整矩阵测试要求 SIZE=16 并使用共享 IA SRAM')
     common = dict(h=5, w=5, c=3, kh=3, kw=3, ph=1, pw=1, co=size+1,
                   requested_r=0, requested_w=0)
     def conv(name, **kwargs):
@@ -82,10 +84,14 @@ def prepare(out, size, ref, lib, smoke=False):
 
 def current_binary(out, size, args):
     expected = {'size': size, 'cache_sets': args.cache_sets, 'cache_ways': 2,
-                'cache_line_bytes': 16, 'cache_policy': args.cache_policy}
+                'cache_line_bytes': 16, 'cache_policy': args.cache_policy,
+                'ps_compress': True, 'shared_bank_bytes': 8192, 'shared_bank_count': 7,
+                'pool_bytes': 49152, 'force_raw': True}
     if not args.skip_build:
         return npu.build(out, size, args.verilator, args.jobs,
-                         cache_sets=args.cache_sets, cache_policy=args.cache_policy)
+                         cache_sets=args.cache_sets, cache_policy=args.cache_policy,
+                         ps_compress=True, pool_bytes=49152, force_raw=True,
+                         shared_bank_bytes=8192, shared_bank_count=7)
     existing = args.reuse_builds_root.resolve()/out.name if args.reuse_builds_root else out
     manifest = json.loads((existing/'build.json').read_text())
     if manifest.get('returncode') or not manifest.get('sources_unchanged_during_build'):
@@ -106,7 +112,7 @@ def current_binary(out, size, args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, default=ROOT/'build/conv_dma/npu')
-    parser.add_argument('--sizes', type=int, nargs='+', default=[4, 16])
+    parser.add_argument('--sizes', type=int, nargs='+', default=[16])
     parser.add_argument('--verilator', default='verilator')
     parser.add_argument('--jobs', type=int, default=2)
     parser.add_argument('--cache-sets', type=int, default=32)
@@ -117,6 +123,8 @@ def main():
     parser.add_argument('--reuse-builds-root', type=Path,
                         help='Optional compiled profiles; source hashes and elaboration parameters must match')
     args = parser.parse_args()
+    if any(size != 16 for size in args.sizes):
+        parser.error('完整矩阵测试仅支持 --sizes 16；共享 IA SRAM 要求 16×16 阵列')
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     ref = npu.make_reference(out)

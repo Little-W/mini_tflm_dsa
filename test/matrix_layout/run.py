@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Exercise packed GEMM/Conv, fixed PS capacity, and S16 FIFO backpressure."""
+"""检查分块矩阵、共享部分和帧调度与 INT16 输出反压。"""
 from __future__ import annotations
 import argparse
 import hashlib
@@ -16,10 +16,22 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / 'veri/top_regression'))
 from host_tiling import plan
 sys.path.insert(0, str(ROOT / 'scripts/rtl'))
-from source_files import with_dependencies
+from source_files import input_files, with_dependencies
 
 SIZE, WORDS = 16, 131072
+SHARED_BANK_BYTES, SHARED_BANK_COUNT = 4096, 9
 SENTINEL = bytes.fromhex('c33ca55a')
+
+
+def shared_profile(ia: int) -> dict:
+    """任务复用预算与共享物理容量分别记录，普通行使用至少两个存储体。"""
+    banks = 4 if ia == 16 else 2
+    return dict(ia_cache_budget=ia, shared_ia_banks=banks,
+                shared_bank_bytes=SHARED_BANK_BYTES, shared_bank_count=SHARED_BANK_COUNT,
+                shared_total_bytes=SHARED_BANK_BYTES*SHARED_BANK_COUNT,
+                active_ia_cache_blocks=banks*SHARED_BANK_BYTES//(SIZE*SIZE*2),
+                active_ps_bytes=(SHARED_BANK_COUNT-banks)*SHARED_BANK_BYTES,
+                ia_compact_enable=0)
 
 
 def rne(value: int, amount: int) -> int:
@@ -65,7 +77,8 @@ def case(out: Path, name: str, ia: int, *, m=17, n=23, k=19, layout=3,
          mode=0, input16=False, output16=False, channel=True, zp=True,
          requested_r=2, requested_w=2, error=0, injection=0, hold=0,
          require_full=False, check_busy=False, crossing=False, conv=False,
-         exact_reuse=False, injection_address=0, rounding_ties=False, seed=1) -> Path:
+         exact_reuse=False, injection_address=0, rounding_ties=False, seed=1,
+         shared_ia_banks=None, require_frame=False) -> Path:
     directory = out / name
     directory.mkdir(parents=True, exist_ok=True)
     rng = random.Random(seed)
@@ -181,6 +194,8 @@ def case(out: Path, name: str, ia: int, *, m=17, n=23, k=19, layout=3,
                col_groups=(tc+requested_w-1)//requested_w,
                col_tail_tiles=(tc-1)%requested_w+1)
     config = [0]*64
+    storage = shared_profile(ia)
+    banks = storage['shared_ia_banks'] if shared_ia_banks is None else shared_ia_banks
     values = {0:0x4e505531,1:SIZE,2:ia,3:m,4:k,5:n,6:p['ia_reuse'],7:p['w_reuse'],8:mode,9:16,
               10:WORDS,11:WORDS,12:int(input16),13:int(channel),14:a_base,15:b_base,16:bias_base,
               17:dst,18:a_stride,19:b_stride,20:dst_stride,21:0 if conv else a_offset,22:b_offset,23:dst_offset,
@@ -188,7 +203,7 @@ def case(out: Path, name: str, ia: int, *, m=17, n=23, k=19, layout=3,
               28:int(output16),29:layout,30:p['row_groups']|(p['col_groups']<<16),
               31:p['row_tail_tiles']|(p['col_tail_tiles']<<16),52:error,53:injection,
               54:hold,55:int(check_busy),56:int(require_full),57:int(crossing),58:int(crossing),
-              59:injection_address,**conv_fields}
+              59:injection_address,60:banks,61:1,62:int(require_frame),**conv_fields}
     for index,value in values.items():
         config[index]=value&0xffffffff
     (directory/'config.mem').write_text(''.join(f'{v:08x}\n' for v in config))
@@ -199,7 +214,9 @@ def case(out: Path, name: str, ia: int, *, m=17, n=23, k=19, layout=3,
                     dataflow='IS' if mode and not output16 else 'WS',
                     requested_dataflow='IS' if mode else 'WS',input16=input16,
                     output16=output16,per_channel=channel,lhs_offset=a_offset,rhs_offset=b_offset,
-                    output_offset=dst_offset,seed=seed,tiling=p,ps_required_rows=((p['ia_reuse']+1)*SIZE-1)*(p['w_reuse']+1),
+                    output_offset=dst_offset,seed=seed,tiling=p,storage=storage,
+                    selected_shared_ia_banks=banks,require_frame=require_frame,
+                    ps_group_payload_bytes=min(n if mode and not output16 else m,p['ia_reuse']*SIZE)*p['w_reuse']*SIZE*4,
                     expected_error=error,injection=injection,write_hold_cycles=hold,check_busy=check_busy,
                     injection_address=injection_address,rounding_ties=rounding_ties,
                     operands=[a_info,b_info],output_sha256=hashlib.sha256(expected_output).hexdigest(),
@@ -237,31 +254,33 @@ def cases(out: Path, ia: int, compact: bool) -> list[Path]:
     add('s16_write_error',output16=True,error=3,injection=2)
     add('s16_after_error',output16=True,layout=2)
     add('s16_output_forced_ws',mode=1,output16=True,layout=3)
-    add('s16_output_forced_ws_ps799',m=32,n=256,k=17,mode=1,output16=True,
-        layout=3,requested_r=2,requested_w=16)
+    add('s16_output_forced_ws_frame_r2',m=32,n=256,k=17,mode=1,output16=True,
+        layout=3,requested_r=2,requested_w=16,require_frame=True)
     add('is_bias_tail_error',mode=1,error=3,injection=1,injection_address=0x21040)
     add('is_after_bias_tail_error',mode=1,layout=2)
-    # The PS payload is exactly (47 rows/frame)*(17 frames) = 799 rows.
-    add('ps799_exact_ws',m=32,n=256,k=17,layout=3,requested_r=2,requested_w=16)
-    add('ps799_exact_is',m=256,n=32,k=17,layout=3,mode=1,requested_r=2,requested_w=16)
+    # 宽列组超过共享池中完整分组的容量，帧调度按有效行分片执行。
+    add('shared_frame_r2_ws',m=32,n=256,k=17,layout=3,requested_r=2,requested_w=16,require_frame=True)
+    add('shared_frame_r2_is',m=256,n=32,k=17,layout=3,mode=1,requested_r=2,requested_w=16,require_frame=True)
+    add('ordinary_one_bank_rejected',layout=3,shared_ia_banks=1,error=1)
+    add('after_bank_configuration_error',layout=2,check_busy=True)
     if ia>=8:
-        add('s16_output_forced_ws_capacity',m=64,n=256,k=17,mode=1,output16=True,
-            layout=3,requested_r=4,requested_w=16,error=1)
-        add('s16_output_after_mode_capacity',mode=1,output16=True,layout=3)
+        add('s16_output_forced_ws_frame_r4',m=64,n=256,k=17,mode=1,output16=True,
+            layout=3,requested_r=4,requested_w=16,require_frame=True)
+        add('s16_output_after_frame_group',mode=1,output16=True,layout=3)
         for m,n,k,r,w in [(1,64,17,4,1),(1,63,40,4,1),(17,64,40,4,1),(17,63,17,4,2)]:
             for layout in (0,2,3):
                 add(f'is_r{r}_w{w}_m{m}_n{n}_k{k}_layout{layout}',m=m,n=n,k=k,
                     mode=1,layout=layout,requested_r=r,requested_w=w,exact_reuse=True)
-        add('ps799_exceeded_ws',m=64,n=256,k=17,layout=3,requested_r=4,requested_w=16,error=1)
-        add('after_capacity_error_ws',layout=2)
-        add('ps799_exceeded_is',m=256,n=64,k=17,layout=3,mode=1,requested_r=4,requested_w=16,error=1)
-        add('after_capacity_error_is',layout=1,mode=1)
+        add('shared_frame_r4_ws',m=64,n=256,k=17,layout=3,requested_r=4,requested_w=16,require_frame=True)
+        add('after_frame_group_ws',layout=2)
+        add('shared_frame_r4_is',m=256,n=64,k=17,layout=3,mode=1,requested_r=4,requested_w=16,require_frame=True)
+        add('after_frame_group_is',layout=1,mode=1)
         add('single_reduction_tile_no_ps',m=64,n=256,k=16,layout=3,requested_r=4,requested_w=16)
     if ia>=16:
         for mode,m,n in [(0,128,64),(1,64,128),(1,64,127)]:
             for layout in (0,2,3):
-                add(f'ps715_r8_w4_mode{mode}_m{m}_n{n}_layout{layout}',m=m,n=n,k=33,
-                    mode=mode,layout=layout,requested_r=8,requested_w=4,exact_reuse=True)
+                add(f'shared_frame_r8_w4_mode{mode}_m{m}_n{n}_layout{layout}',m=m,n=n,k=33,
+                    mode=mode,layout=layout,requested_r=8,requested_w=4,exact_reuse=True,require_frame=True)
         add('s16_reservation_exceeded',m=128,n=64,k=16,layout=3,output16=True,
             requested_r=8,requested_w=4,error=1)
         add('after_s16_capacity_error',layout=3,output16=True)
@@ -281,16 +300,18 @@ def command(argv: list, log: Path, timeout=1200) -> int:
 def build(directory: Path, ia: int, args) -> Path:
     enable_is_mode=int(not getattr(args, 'ws_only', False))
     lint_only=bool(getattr(args, 'lint_only', False))
-    npu=ROOT/'rtl/npu'
+    source_root=Path(getattr(args, 'source_root', ROOT)).resolve()
+    npu=source_root/'rtl/npu'
     package=npu/'conv/conv_im2col_pkg.sv'
     packages=[package,npu/'conv/vector_engine_pkg.sv']
     sources=packages+[p for p in sorted(npu.rglob('*.sv')) if p not in packages]+sorted(npu.rglob('*.v'))
-    sources += sorted((ROOT/'rtl/common').glob('regfile.v'))
-    sources += [ROOT/'rtl/common/pseudo_dual_port_ram.v',ROOT/'rtl/axi_top/npu_axil_reg_if.sv',
-                ROOT/'rtl/axi_top/npu_axil_top.sv',ROOT/'test/conv_npu/axi_memory.sv',HERE/'tb_matrix_layout.sv']
+    sources += sorted((source_root/'rtl/common').glob('regfile.v'))
+    sources += [source_root/'rtl/common/pseudo_dual_port_ram.v',source_root/'rtl/axi_top/npu_axil_reg_if.sv',
+                source_root/'rtl/axi_top/npu_axil_top.sv',ROOT/'test/conv_npu/axi_memory.sv',HERE/'tb_matrix_layout.sv']
     sources += [Path(path) for path in getattr(args, 'extra_sources', [])]
-    sources=with_dependencies(sources, ROOT)
-    hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
+    sources=with_dependencies(sources, source_root)
+    tracked=input_files(sources,source_root)
+    hashes={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in tracked}
     binary=directory/'obj/Vtb_matrix_layout'
     manifest=directory/('lint.json' if lint_only else 'build.json')
     log_path=directory/('lint.log' if lint_only else 'compile.log')
@@ -302,15 +323,20 @@ def build(directory: Path, ia: int, args) -> Path:
             raise RuntimeError('compiled dataflow support differs')
         return binary
     argv=[args.verilator,'--lint-only' if lint_only else '--binary','--timing','--assert','-sv','--top-module','tb_matrix_layout','-Wno-fatal',
-          f'-I{npu/"ps_compact"}',f'-DTB_IA_CACHE_BLOCKS={ia}','-DTB_PS_STORAGE_ROWS=799','-DTB_S16_BANKS=4',
+          f'-I{source_root/"include"}',f'-I{npu/"ps_compact"}',
+          '-DGEMPACT_PS_COMPRESS=1','-DGEMMORA_PS_FORCE_RAW=1',
+          f'-DGEMMORA_PS_POOL_BYTES={(SHARED_BANK_COUNT-1)*SHARED_BANK_BYTES}',
+          f'-DTB_SHARED_BANK_BYTES={SHARED_BANK_BYTES}',f'-DTB_SHARED_BANK_COUNT={SHARED_BANK_COUNT}',
+          f'-DTB_IA_CACHE_BLOCKS={ia}','-DTB_PS_STORAGE_ROWS=799','-DTB_S16_BANKS=4',
           f'-DTB_ENABLE_IS_MODE={enable_is_mode}',
+          '--output-groups','0','--output-split','10000','--output-split-cfuncs','1000',
           '--Mdir',directory/'obj','-j',args.jobs,'-CFLAGS','-std=c++20 -O1',
           '-MAKEFLAGS','OPT_FAST=-O1 OPT_SLOW=-O0',*sources]
-    print(f'{"Lint" if lint_only else "Building"} IA={ia}, PS=799, S16 banks=4',flush=True)
+    print(f'{"Lint" if lint_only else "Building"} IA budget={ia}, shared banks={SHARED_BANK_COUNT}, bank bytes={SHARED_BANK_BYTES}',flush=True)
     code=command(argv,log_path)
-    after={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
+    after={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in tracked}
     manifest.write_text(json.dumps(dict(returncode=code,source_sha256=hashes,sources_unchanged_during_build=hashes==after,
-                          enable_is_mode=enable_is_mode,lint_only=lint_only,
+                          enable_is_mode=enable_is_mode,lint_only=lint_only,storage=shared_profile(ia),
                           log_sha256=hashlib.sha256(log_path.read_bytes()).hexdigest(),
                           command=[str(v) for v in argv],binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest() if code==0 and not lint_only else None),indent=2)+'\n')
     if code or hashes!=after:
@@ -339,6 +365,7 @@ def run(binary: Path,directory: Path,tasks: list[Path],random_wait: bool) -> dic
 def main() -> None:
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out',type=Path,default=ROOT/'build/matrix_layout')
+    parser.add_argument('--source-root',type=Path,default=ROOT,help='生产 RTL 与 include 目录所在的仓库或固定副本')
     parser.add_argument('--profiles',type=int,nargs='+',choices=[4,8,16],default=[8,4,16])
     parser.add_argument('--verilator',default='verilator')
     parser.add_argument('--jobs',type=int,default=2)
@@ -360,7 +387,7 @@ def main() -> None:
         directory.mkdir(parents=True,exist_ok=True)
         if args.lint_only:
             build(directory,ia,args)
-            summary['profiles'].append(dict(ia_cache_blocks=ia,ps_storage_rows=799,
+            summary['profiles'].append(dict(ia_cache_blocks=ia,storage=shared_profile(ia),matrix_ps_rows_register=799,
                 s16_fifo_banks=4,enable_is_mode=int(not args.ws_only),lint_only=True,passed=True))
             summary['passed']=True
             (args.out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
@@ -376,7 +403,7 @@ def main() -> None:
         runs=[run(binary,directory,tasks,False)]
         if runs[0]['passed'] and not args.fixed_only:
             runs.append(run(binary,directory,tasks,True))
-        profile=dict(ia_cache_blocks=ia,ps_storage_rows=799,s16_fifo_banks=4,
+        profile=dict(ia_cache_blocks=ia,storage=shared_profile(ia),matrix_ps_rows_register=799,s16_fifo_banks=4,
                      enable_is_mode=int(not args.ws_only),runs=runs)
         summary['profiles'].append(profile)
         passed=passed and all(r['passed'] for r in runs)

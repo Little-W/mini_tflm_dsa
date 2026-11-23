@@ -1,0 +1,349 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "reference_commit": "7ff66a593e0b1e6a30ca17e75257acd9d3d90a08",
+  "source_sha256": {
+    "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+    "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+    "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+    "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+    "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+    "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+    "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+    "rtl/common/unsigned_compare.sv": "2f8a56bf2356ab9ef3bbe1691290758e110f275409a55b2ebee2025cdefb74dc",
+    "rtl/npu/buffers/ia_ps_shared_ram.sv": "7518cee5a1d81104b41d13d7e4b797d22b40aaec1e0b191823bd419026a5e22c",
+    "rtl/npu/buffers/shared_ram_read_mux.sv": "04bc84b261ab034ae979078cedfe14521783b08ce86d6fdf2b86a442434be93c",
+    "rtl/npu/compute/select_add.sv": "153f79592cd6a3d2ea19261df572736292475f00dbc0fb7af3d1555508afc8d0",
+    "rtl/npu/loaders/ia_loader.sv": "7e04a035c39fb7ff3b3e0ec928a1b114c962eafb49bcaa5d107d7eb6a999ef67",
+    "rtl/npu/loaders/ia_loader_cache_mgr.sv": "705c4f9f1c5ec4003b757d4511949c12078f22af3fb98a98be4a0ba2fc3301cb",
+    "rtl/npu/loaders/ia_loader_ctrl.sv": "e4968fd60999d42d8af3f311e47a8cd4a04a87343f98976ed4068acce1c729cf",
+    "rtl/npu/loaders/ia_ordered_coordinate_equal.sv": "e1beb76ef3032ea6b987d3ca2ac70b373db1d0007e6a21dec9da32602b939498",
+    "rtl/npu/loaders/ia_ordered_coordinate_same.sv": "b2c355e08e6c0ccfad15feedb3c59b1bd13aa1d3743557594a65eb8ed350a3a8",
+    "scripts/rtl/source_files.py": "7d3b3b13a1f11e0ac91d3c75d9e98cdb4d6c08accd3e9dbfc1bef0fc57a2f46d",
+    "test/common/ia_shared_ram_model.sv": "15afdfd628b19b9746dc5ba876e133e422cf5db79bebea0e3b3e84c67b492daa",
+    "test/frontend_vivado150/ia_tb.sv": "77ca842f91efda16ee7fadfb9d05299594b90118de62c99f2f89b38518ee07ed",
+    "test/frontend_vivado150/ia_test.cpp": "165bce9a1cf2257055fa7defb591414e47825e1bb127e115ec5d2a7f4d50eee7",
+    "test/frontend_vivado150/run_ia.py": "46588e792e786d7320a54a30d6a6f71fa2f93f0651361f2526ae609868768250",
+    "test/ia_compact/cache_tb.sv": "ff1219a72d6d13cac39764f7aebc28eb8268cfb0b575229a9440f3425081fd65",
+    "test/ia_compact/cache_test.cpp": "6ecddbe42fbef3f72c1aed6a68a131c9b0484b49b6cd4cae342211781e746d55",
+    "test/ia_compact/loader_tb.sv": "77c4fc6cedb47dd397999cb203d3daa631d386c468ec02d23894e431bcd3f91e",
+    "test/ia_compact/loader_test.cpp": "acfac917acc60434feab65c61fa439e37944dae992c5a447d353f7c8136bf5f4",
+    "test/ia_compact/run.py": "3194b13812c0e66d107d952f6ff2bcc8a281830274114b3a566105cab997b1dc",
+    "test/ia_read_pipeline/check_structure.py": "72f4084a19ee1fc57f4116977945009ef7504dddf47a3d291e7cc86ceb2e1a7a",
+    "test/ia_read_pipeline/run.py": "1590dfa5c4d93892e0b4886c35b45bc26e57b48e272da4e74233a55875b14553",
+    "test/ia_read_pipeline/run_external_equivalence.py": "3f0fc6dc32614c53bcb6aa0a80c22a5bda290141823ab3cacf755c188305d008",
+    "test/ia_read_pipeline/tb_ia_read_pipeline.sv": "e8885842319db06d460081dc4967147c56772c5303bd771fde55c5a0f4000054",
+    "test/ia_request_stage/request_observer.sv": "a6ff38f2544f2c5f880a6886682b936b94b7560e75c0ebb5ae730cc1e1802c6a",
+    "test/ia_shared/cache_tb.sv": "b00e73ac738f6582034d38a48ec696096575066506186ce509d421aa4633ff69",
+    "test/ia_shared/cache_test.cpp": "9a8dd9ad3d1593324a4905fe0261c959ba62dbf23daa0aa678f33fc8539aa35d",
+    "test/ia_shared/run.py": "e1ec138b949a7bb45cb1f247ad1d3b8471fcfd228f030e6711b93a05c9f79e23"
+  },
+  "cache_equivalence": {
+    "method": "Yosys equiv_simple 与 equiv_induct，比较缓存管理器全部公开接口的逐周期行为。",
+    "dma_lanes": [
+      8,
+      16
+    ],
+    "compact_compile_options": [
+      0,
+      1
+    ],
+    "cache_blocks": 32,
+    "shared_write_stage": 1,
+    "passed_cases": 4,
+    "loader_composition": "ia_loader 仅删除存储选择参数及实例参数传递；其余源码、ia_loader_ctrl 与公共辅助模块均与参考提交相同。"
+  },
+  "read_control": {
+    "method": "Verilator 行数据及旁带控制检查，覆盖尾行、累加标志、偏移保持、槽位回绕与复位清空。",
+    "physical_ram_bytes": 2048,
+    "cases": [
+      {
+        "compact_enabled": 0,
+        "shared_write_stage": 0,
+        "value_checks": 3408,
+        "row_checks": 213,
+        "reset_checks": 4
+      },
+      {
+        "compact_enabled": 0,
+        "shared_write_stage": 1,
+        "value_checks": 3408,
+        "row_checks": 213,
+        "reset_checks": 4
+      },
+      {
+        "compact_enabled": 1,
+        "shared_write_stage": 0,
+        "value_checks": 5584,
+        "row_checks": 349,
+        "reset_checks": 4
+      },
+      {
+        "compact_enabled": 1,
+        "shared_write_stage": 1,
+        "value_checks": 5584,
+        "row_checks": 349,
+        "reset_checks": 4
+      }
+    ],
+    "total_value_checks": 17984,
+    "total_row_checks": 1124,
+    "total_reset_checks": 16
+  },
+  "shared_ram": {
+    "method": "真实共享 SRAM、独立双端口模型与整数参考模型同步比较。",
+    "shared_data_ram_bytes": 14336,
+    "physical_banks": 7,
+    "allocation_bank_bytes": 2048,
+    "bus_width": 64,
+    "dma_lanes": 8,
+    "shared_write_stage": 1,
+    "value_checks": 3857056,
+    "cycle_value_checks": 11880880,
+    "control_checks": 7900934,
+    "port_checks": 2992362,
+    "ps_word_checks": 2545804,
+    "mask_patterns": 1280,
+    "simultaneous_ia_rw_cycles": 640,
+    "simultaneous_ia_ps_cycles": 739107,
+    "s8_offsets_per_profile": 256,
+    "s16_bit_patterns_per_wide_profile": 65536,
+    "wrapped_groups": 7,
+    "cycles": 742555,
+    "ia_bank_allocations": [
+      1,
+      2,
+      4
+    ]
+  },
+  "cache_numeric": {
+    "method": "Verilator 检查全部 INT8 数据与偏移组合、全部 INT16 位模式以及普通和紧凑格式切换。",
+    "data_ram_bytes": 2048,
+    "s8_offsets": 256,
+    "s16_bit_patterns": 65536,
+    "value_checks": 592832,
+    "zero_checks": 2663,
+    "cycles": 186763
+  },
+  "generic_loader": {
+    "method": "ORDERED_JOB=0，检查共享端口加载、缓存复用、尾块、存储格式及 frame 标志。",
+    "cases": 75,
+    "compact_cases": 54,
+    "wide_cases": 21,
+    "dma_requests": 855,
+    "cache_hits": 33,
+    "value_checks": 389280,
+    "slot_wraps": 122,
+    "frame_id_checks": 678,
+    "cycles": 66150
+  },
+  "ordered_loader": {
+    "method": "ORDERED_JOB=1，分别使用受阻授予与持续授予，检查预取、取消、任务切换和全部输出数据。",
+    "runs": [
+      {
+        "mode": "blocked",
+        "commands": 253,
+        "value_checks": 181440,
+        "cycles": 59605,
+        "demand_dma_requests": 372,
+        "prefetch_dma_requests": 124,
+        "cache_hits": 427,
+        "cache_hits_during_prefetch": 140,
+        "different_k_tail_hits": 1,
+        "init_while_prefetch_active": 83,
+        "output_cycles_during_prefetch": 3868,
+        "cancelled_requests": 1,
+        "slot_wraps": 88
+      },
+      {
+        "mode": "sustained",
+        "commands": 253,
+        "value_checks": 181440,
+        "cycles": 59548,
+        "demand_dma_requests": 372,
+        "prefetch_dma_requests": 124,
+        "cache_hits": 427,
+        "cache_hits_during_prefetch": 140,
+        "different_k_tail_hits": 1,
+        "init_while_prefetch_active": 83,
+        "output_cycles_during_prefetch": 3873,
+        "cancelled_requests": 1,
+        "slot_wraps": 88
+      }
+    ]
+  },
+  "structure": {
+    "method": "Yosys read_slang 展开后检查共享端口、存储数组、紧凑逻辑及读出寄存器边界。",
+    "cases": [
+      {
+        "compact_enabled": 0,
+        "local_data_ram_instances": 0,
+        "control_arrays": {
+          "rd_addr_pipe": {
+            "entries": 16,
+            "width": 6
+          },
+          "rd_en_pipe": {
+            "entries": 16,
+            "width": 1
+          },
+          "read_metadata_q": {
+            "entries": 2,
+            "width": 16
+          },
+          "slot_written_cols": {
+            "entries": 4,
+            "width": 5
+          }
+        },
+        "data_register_bits": 0,
+        "restore_lanes": 0,
+        "slot_address_bits": 2,
+        "ram_to_output_combinational_path": true,
+        "compact_input_users": {
+          "compact_mode": 0,
+          "compact_offset": 0
+        }
+      },
+      {
+        "compact_enabled": 1,
+        "local_data_ram_instances": 0,
+        "control_arrays": {
+          "rd_addr_pipe": {
+            "entries": 16,
+            "width": 7
+          },
+          "rd_en_pipe": {
+            "entries": 16,
+            "width": 1
+          },
+          "read_metadata_q": {
+            "entries": 3,
+            "width": 16
+          },
+          "slot_written_cols": {
+            "entries": 8,
+            "width": 5
+          }
+        },
+        "data_register_bits": 256,
+        "restore_lanes": 16,
+        "slot_address_bits": 3,
+        "ram_to_output_combinational_path": false,
+        "compact_input_users": {
+          "compact_mode": 21,
+          "compact_offset": 2
+        }
+      }
+    ]
+  },
+  "unavailable_shared_storage": {
+    "method": "完整 npu_top，覆盖 WS/IS、INT8/INT16、普通与帧调度；检查请求发出前的配置错误完成及完成接收暂停。",
+    "tasks": 8,
+    "checked_cycles": 183,
+    "axi_transactions": 0,
+    "dma_initializations": 0,
+    "workspace_and_isolated_sources_passed": true
+  },
+  "independent_commit_check": {
+    "method": "从参考提交导出源码，仅叠加本组文件，独立编译并运行完整 NPU 非共享配置测试、缓存等价和结构检查。",
+    "overlay_files": 25,
+    "primary_test_inputs": 34,
+    "independently_checked_inputs": 111,
+    "primary_inputs_match_parent_or_overlay": true,
+    "isolated_inputs_match_parent_or_overlay": true,
+    "isolated_input_manifest_sha256": "d0916fc2a44eedca3679c982bd7aab5f3a8a5386c016cab6e0dea726104ceb4c"
+  },
+  "matrix_entrypoints": {
+    "method": "完整矩阵入口使用共享 SRAM；检查配置解析、构建前拒绝、C 参考配置生成和 RTL 编译，并运行独立源码副本的尾块 GEMM。",
+    "source_sha256": {
+      "test/conv_dma/npu_cases.py": "6b709d9643fcfa105bfca57311e8641fcc1198f7169e8be91518c389b4535dc0",
+      "test/conv_dma/operand_drain/run.py": "083f3678472e38bacbecf1bf468761cdb20b333a31fa5c9bb4dd1f4d33f161fd",
+      "test/conv_dma/operand_drain/tb_operand_drain.sv": "ee6929c4ecfc50a3054e96cc71cac029fa3c333944d217fd06033cb6cfaebedd",
+      "test/conv_cosim/run.py": "6160be0fbe43e5b5cbbbccdb55dbc9dd2e99576b1548f2f90d28a706741ca50c",
+      "test/conv_cosim/conv_cosim_top.sv": "8f16abd271507c260d9a100f847660b786fd6f9d6fe6c8f6e282cb2652b55a47",
+      "test/conv_cosim/main.cpp": "30834638fe9e8d5c31275b774d1459ea21edeb1ec012b5581ac72eed5527429f",
+      "test/conv_regression/run.py": "5761bd993f8f661b4f85df2d6e42f507df8709688cc8d3901fd6f815952e4b08",
+      "test/conv_regression/tb_npu_top.sv": "b051d51ab1b1e3b8d2fb0d3c449980ef78883b45ffc64287d48b372b159cebb6",
+      "test/model_benchmark/build_sim.py": "1f586f5a0ce2c568491987c15bb7d0983100b70b31e7cc721afca85bc88a1f1a",
+      "test/model_benchmark/run.py": "57c0cd2a3774daf9b02356a892a4aa16ac10c61435c03b800f71b9f6e6d82c88",
+      "test/model_benchmark/run_suite.py": "d797e75b24ce05a6ed8892c5e9b0e8418e2f9d092bfad3eb68a5aca07dc81fca"
+    },
+    "accepted_storage_configurations": 3,
+    "rejected_storage_configurations": 6,
+    "cli_rejections_before_build": [
+      {
+        "script": "test/conv_dma/npu_cases.py",
+        "configuration_rejected_before_build": true
+      },
+      {
+        "script": "test/conv_cosim/run.py",
+        "configuration_rejected_before_build": true
+      },
+      {
+        "script": "test/conv_regression/run.py",
+        "configuration_rejected_before_build": true
+      },
+      {
+        "script": "test/model_benchmark/build_sim.py",
+        "configuration_rejected_before_build": true
+      },
+      {
+        "script": "test/model_benchmark/run.py",
+        "configuration_rejected_before_build": true
+      },
+      {
+        "script": "test/model_benchmark/run_suite.py",
+        "configuration_rejected_before_build": true
+      }
+    ],
+    "prepared_dma_tasks": 8,
+    "dma_reference": "标量 C 卷积与 NMSIS 定点量化结果；分块参数使用生产 C planner 交叉检查。",
+    "rtl_lint_passed": [
+      "test/conv_regression/run.py",
+      "test/conv_cosim/run.py",
+      "test/conv_dma/operand_drain/run.py"
+    ],
+    "isolated_gemm": {
+      "reference_commit": "7ff66a593e0b1e6a30ca17e75257acd9d3d90a08",
+      "production_rtl_overlay": {
+        "rtl/npu/loaders/ia_loader_cache_mgr.sv": "705c4f9f1c5ec4003b757d4511949c12078f22af3fb98a98be4a0ba2fc3301cb",
+        "rtl/npu/loaders/ia_loader.sv": "7e04a035c39fb7ff3b3e0ec928a1b114c962eafb49bcaa5d107d7eb6a999ef67",
+        "rtl/npu/top/npu_matrix_engine.sv": "2c790dc4414a91b10799419a6536a359345a26ca4b7daef280cd2782cb66eb90"
+      },
+      "size": 16,
+      "rows": 19,
+      "reduction": 37,
+      "columns": 21,
+      "input_dtype": "INT8",
+      "output_dtype": "INT8",
+      "dataflow": "WS",
+      "ia_compact_enable": 1,
+      "shared_bank_bytes": 8192,
+      "shared_bank_count": 7,
+      "ia_banks": 2,
+      "ps_force_raw": true,
+      "random_axi_latency": true,
+      "full_memory_words_checked": 131072,
+      "metrics": {
+        "completed": 1,
+        "cycles": 2368,
+        "ar_requests": 122,
+        "ar_bytes": 2032,
+        "r_beats": 508,
+        "w_bytes": 399,
+        "ps_total_bytes": 57344,
+        "ps_bank_bytes": 8192,
+        "ps_ia_banks": 2,
+        "ps_rows": 76
+      },
+      "assertions": [
+        "输出张量及完整内存数值",
+        "AXI 背压期间信号稳定",
+        "突发不跨越 4 KiB",
+        "写入地址位于输出张量",
+        "共享部分和写入"
+      ]
+    }
+  }
+}

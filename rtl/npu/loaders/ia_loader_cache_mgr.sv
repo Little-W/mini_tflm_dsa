@@ -10,7 +10,6 @@ module ia_loader_cache_mgr #(
     parameter int unsigned REG_WIDTH    = 32,
     parameter int unsigned CACHE_BLOCKS = 4,
     parameter int unsigned COMPACT_S8 = 1,
-    parameter bit EXTERNAL_RAM = 1'b0,
     parameter int unsigned RAM_WORD_ADDR_WIDTH = 10,
     parameter int unsigned p_compact_offset_width = DATA_WIDTH,
     // 八通道 DMA 按列起点的低三位和高一位分别排列数据。
@@ -74,7 +73,6 @@ module ia_loader_cache_mgr #(
   localparam int LOG2_SIZE     = $clog2(SIZE);
   localparam int RAM_DEPTH     = SLOT_BLOCKS * SIZE;
   localparam int ADDR_W        = $clog2(RAM_DEPTH);
-  localparam int PHYSICAL_ADDR_W = $clog2(CACHE_BLOCKS * SIZE);
   localparam bit p_compact_supported = (COMPACT_S8 != 0) && (DATA_WIDTH == 16);
   localparam int unsigned p_read_stages = p_compact_supported ? 3 : 2;
   logic compact_active;
@@ -94,13 +92,12 @@ module ia_loader_cache_mgr #(
   read_metadata_t read_metadata_q [p_read_stages];
 
   // =====================================================================
-  // 紧凑功能启用时，每个 16 位通道使用两个字节存储体。
-  // 紧凑模式由槽位高位选择字节，普通模式同时读写两个字节。
+  // 两个 128 位端口访问共享存储，紧凑格式每行使用一个存储字。
+  // 普通格式每行使用两个连续存储字，元数据单独保存有效列范围。
   // =====================================================================
   // 写端口：LOAD 阶段从 AXI DMA 响应写入
   // Read every lane of the selected row in the same cycle.
   logic              ram_wr_en   [SIZE];
-  logic [ADDR_W-1:0] ram_wr_addr [SIZE];
   logic signed [DATA_WIDTH-1:0] ram_wr_data [SIZE];
 
   logic              ram_rd_en   [SIZE];
@@ -136,45 +133,7 @@ module ia_loader_cache_mgr #(
     assign ram_rd_data = ram_rd_raw_data;
   end
 
-  generate if (!EXTERNAL_RAM) begin : g_local_ram
-    assign ram_shared_wr_data = '0;
-    assign ram_port_wr_en = '0;
-    assign ram_port_rd_en = '0;
-    assign ram_port_wr_addr = '{default:'0};
-    assign ram_port_wr_data = '{default:'0};
-    assign ram_port_wr_mask = '{default:'0};
-    assign ram_port_rd_addr = '{default:'0};
-    for (genvar j = 0; j < SIZE; j++) begin : g_ram_bank
-      if (p_compact_supported) begin : g_byte_banks
-        logic [7:0] bank_data [2];
-        logic read_bank_q;
-        wire [7:0] original_s8 = 8'(ram_wr_data[j] - compact_offset);
-        wire [7:0] selected_byte = read_bank_q ? bank_data[1] : bank_data[0];
-        always_ff @(posedge clk) begin
-          if (!rst_n) read_bank_q <= 1'b0;
-          else if (ram_rd_en[j]) read_bank_q <= ram_rd_addr[j][PHYSICAL_ADDR_W];
-        end
-        for (genvar b = 0; b < 2; b++) begin : g_bank
-          wire write_enable = ram_wr_en[j] &&
-              (!compact_active || ram_wr_addr[j][PHYSICAL_ADDR_W] == 1'(b));
-          wire read_enable = ram_rd_en[j] &&
-              (!read_metadata_q[0].compact || ram_rd_addr[j][PHYSICAL_ADDR_W] == 1'(b));
-          wire [7:0] write_byte = compact_active ? original_s8 : ram_wr_data[j][b*8 +: 8];
-          pseudo_dual_port_ram #(.DATA_WIDTH(8), .ADDR_WIDTH(PHYSICAL_ADDR_W)) u_ram (
-              .clk(clk), .ena(write_enable), .enb(read_enable), .wea(1'b1),
-              .addra(ram_wr_addr[j][PHYSICAL_ADDR_W-1:0]), .dia(write_byte),
-              .addrb(ram_rd_addr[j][PHYSICAL_ADDR_W-1:0]), .dob(bank_data[b]));
-        end
-        assign ram_rd_raw_data[j] = {bank_data[1],
-            read_metadata_q[1].compact ? selected_byte : bank_data[0]};
-      end else begin : g_word_bank
-        pseudo_dual_port_ram #(.DATA_WIDTH(DATA_WIDTH), .ADDR_WIDTH(ADDR_W)) u_ram (
-            .clk(clk), .ena(ram_wr_en[j]), .enb(ram_rd_en[j]), .wea(1'b1),
-            .addra(ram_wr_addr[j]), .dia(ram_wr_data[j]),
-            .addrb(ram_rd_addr[j]), .dob(ram_rd_raw_data[j]));
-      end
-    end
-  end else begin : g_external_ram
+  generate begin : g_external_ram
     localparam int p_compact_lanes = (DMA_LANES < SIZE) ? DMA_LANES : SIZE;
     logic [1:0] write_en;
     logic [RAM_WORD_ADDR_WIDTH-1:0] write_addr [0:1];
@@ -372,7 +331,6 @@ module ia_loader_cache_mgr #(
   assign write_shifted_mask = write_source_mask << wr_col_base;
   for (genvar col = 0; col < SIZE; col++) begin : g_write_select
     assign ram_wr_en[col] = write_shifted_mask[col];
-    assign ram_wr_addr[col] = ADDR_W'({wr_slot, wr_row});
     assign ram_wr_data[col] = write_shifted_data[col*DATA_WIDTH+:DATA_WIDTH];
   end
 

@@ -10,22 +10,22 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_current_source, read_rtl_source_group as read_rtl_source, shared_ia_options
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = [Path('rtl/npu/loaders')/(name+'.sv')
            for name in ('ia_loader_ctrl', 'ia_loader', 'ia_loader_cache_mgr')]
 CASES = {
     'loader_production': ('ia_loader', ['-GSIZE=16', '-GBUS_WIDTH=64', '-GCACHE_BLOCKS=32',
-                                      '-GCOUNT_WIDTH=29', '-GEXTERNAL_RAM=1', '-GORDERED_JOB=1']),
+                                      '-GCOUNT_WIDTH=29', '-GORDERED_JOB=1']),
     'loader_full_count': ('ia_loader', ['-GSIZE=16', '-GBUS_WIDTH=64', '-GCACHE_BLOCKS=32',
-                                      '-GEXTERNAL_RAM=1', '-GORDERED_JOB=1']),
+                                      '-GORDERED_JOB=1']),
     'loader_generic': ('ia_loader', ['-GSIZE=16', '-GBUS_WIDTH=32', '-GCACHE_BLOCKS=4',
-                                   '-GCOUNT_WIDTH=8', '-GEXTERNAL_RAM=1', '-GORDERED_JOB=0']),
-    'loader_local3': ('ia_loader', ['-GSIZE=3', '-GBUS_WIDTH=32', '-GCACHE_BLOCKS=4',
-                                  '-GCOUNT_WIDTH=8', '-GEXTERNAL_RAM=0', '-GORDERED_JOB=1']),
-    'loader_small': ('ia_loader', ['-GSIZE=4', '-GBUS_WIDTH=32', '-GCACHE_BLOCKS=4',
-                                 '-GCOUNT_WIDTH=4', '-GEXTERNAL_RAM=0', '-GORDERED_JOB=1']),
+                                   '-GCOUNT_WIDTH=8', '-GORDERED_JOB=0']),
+    'loader_small_cache': ('ia_loader', ['-GSIZE=16', '-GBUS_WIDTH=32', '-GCACHE_BLOCKS=4',
+                                  '-GCOUNT_WIDTH=8', '-GORDERED_JOB=1']),
+    'loader_small': ('ia_loader', ['-GSIZE=16', '-GBUS_WIDTH=32', '-GCACHE_BLOCKS=4',
+                                 '-GCOUNT_WIDTH=5', '-GORDERED_JOB=1']),
     'ctrl3': ('ia_loader_ctrl', ['-GSIZE=3', '-GBUS_WIDTH=32', '-GCACHE_BLOCKS=4']),
     'ctrl16': ('ia_loader_ctrl', ['-GSIZE=16', '-GBUS_WIDTH=64', '-GCACHE_BLOCKS=32', '-GCOUNT_WIDTH=29']),
     'ctrl32': ('ia_loader_ctrl', ['-GSIZE=32', '-GBUS_WIDTH=64', '-GCACHE_BLOCKS=4']),
@@ -39,7 +39,7 @@ def digest(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference-rev', default='a0e01073')
+    parser.add_argument('--reference-rev', default='7ff66a59')
     parser.add_argument('--cases', nargs='+', choices=tuple(CASES), default=list(CASES))
     parser.add_argument('--resume', action='store_true')
     args = parser.parse_args()
@@ -55,16 +55,16 @@ def main():
         snapshots[label] = []
         for relative in SOURCES:
             text = (read_rtl_source(f'{args.reference_rev}:{relative}', cwd=ROOT, text=True)
-                    if label == 'reference' else (ROOT/relative).read_text())
+                    if label == 'reference' else read_current_source(ROOT/relative))
             if relative.name == 'ia_loader_ctrl.sv':
                 # 完整保留派生复用数的各位，逐位检查其组合对应关系。
                 text = text.replace('  count_t r_cur;', '  (* keep *) count_t r_cur;', 1)
-            if label == 'reference' and relative.name == 'ia_loader_ctrl.sv':
+            if label == 'reference' and relative.name == 'ia_loader_ctrl.sv' and 'cfg_frame_rows_last' not in text:
                 # 闲置端口只用于对应新增输入；参考控制逻辑仍使用原始组合公式。
                 text = text.replace('    // ---- 顶层握手 ----',
                                     "    input logic [31:0] cfg_frame_rows_last = '0,\n\n"
                                     '    // ---- 顶层握手 ----', 1)
-            if label == 'reference' and relative.name == 'ia_loader.sv':
+            if label == 'reference' and relative.name == 'ia_loader.sv' and 'frame_last_rows_q' not in text:
                 # 同名观察表达式直接描述已保存配置的尾组行数。
                 observer = '''
     localparam int p_formal_count_width = COUNT_WIDTH > 0 ? COUNT_WIDTH : 1;
@@ -102,7 +102,9 @@ def main():
         top, options = CASES[name]
         commands = []
         for label in ('reference', 'current'):
-            commands += [f'read_slang --top {top} '+' '.join(options)+' '+
+            selected_options = (shared_ia_options(options, snapshots[label][1].read_text())
+                                if top == 'ia_loader' else options)
+            commands += [f'read_slang --top {top} '+' '.join(selected_options)+' '+
                          ' '.join(shlex.quote(str(p)) for p in snapshots[label]+common),
                          f'prep -top {top} -flatten', 'memory_map', 'async2sync', 'opt_clean',
                          f'rename {top} {label}', f'design -stash {label}']

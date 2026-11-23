@@ -44,11 +44,13 @@ module tb_npu_top;
     npu_top #(
         .SIZE(`TB_SIZE),.DATA_WIDTH(`TB_DATA_WIDTH),.WEIGHT_WIDTH(`TB_WEIGHT_WIDTH),
         .IA_CACHE_BLOCKS(`TB_IA_CACHE_BLOCKS),.PS_FRAME_COUNT(`TB_PS_FRAME_COUNT),
+        .SHARED_BANK_BYTES(8192),.SHARED_BANK_COUNT(7),
         .AXI_READ_OUTSTANDING(`TB_AXI_READ_OUTSTANDING)
     ) u_dut (
         .clk,.rst_n,.calc_start,.sa_ready,.done_valid,.done_ready(1'b1),.err_code,
         .cfg_operand_fetch64(1'b0),.cfg_16bits_ia(cfg[12][0]),.cfg_16x8(cfg[28][0]),
         .cfg_dataflow_mode(cfg[8][0]),.cfg_ia_reuse_num(cfg[6]),.cfg_w_reuse_num(cfg[7]),
+        .cfg_shared_ia_banks(32'd2),.cfg_ps_control(32'd1),
         .cfg_row_groups({16'b0,cfg[30][15:0]}),.cfg_col_groups({16'b0,cfg[30][31:16]}),
         .cfg_row_tail_tiles({16'b0,cfg[31][15:0]}),.cfg_col_tail_tiles({16'b0,cfg[31][31:16]}),
         .lhs_base(cfg[14]),.rhs_base(cfg[15]),.bias_base(cfg[16]),.dst_base(cfg[17]),
@@ -73,19 +75,17 @@ module tb_npu_top;
     );
 
 `ifdef GEMPACT_PS_COMPRESS
-    longint unsigned ps_rows=0,ps_compressed_rows=0;
+    longint unsigned ps_rows=0;
     initial begin
-        assert(u_dut.SHARED_RAM_ENABLED && u_dut.SHARED_TOTAL_BYTES==14336 &&
-               u_dut.SHARED_BANK_BYTES==2048)
+        assert(u_dut.SHARED_RAM_ENABLED && u_dut.SHARED_TOTAL_BYTES==57344 &&
+               u_dut.SHARED_BANK_BYTES==8192)
             else $fatal(1,"Shared IA/PS configuration differs");
     end
     always @(posedge clk) if(rst_n && u_dut.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_valid) begin
         ps_rows++;
-        if(u_dut.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.tb_observer.encode_commit_words<4)
-            ps_compressed_rows++;
     end
-    final $display("[PS_STORAGE_METRICS] total_bytes=14336 bank_bytes=2048 rows=%0d compressed_rows=%0d",
-                   ps_rows,ps_compressed_rows);
+    final $display("[PS_STORAGE_METRICS] total_bytes=57344 bank_bytes=8192 ia_banks=2 rows=%0d",
+                   ps_rows);
 `endif
 
     logic ar_stalled=0,aw_stalled=0,w_stalled=0;
@@ -151,8 +151,8 @@ module tb_npu_top;
         end
         assert(errors==0) else $fatal(1,"Memory comparison failed for %0d words",errors);
 `ifdef GEMPACT_PS_COMPRESS
-        assert(ps_rows!=0 && ps_compressed_rows!=0 && !u_dut.u_matrix_engine.ps_force_raw_q)
-            else $fatal(1,"The compressed storage cases must retain compressed partial sums");
+        assert(ps_rows!=0 && u_dut.u_matrix_engine.ps_force_raw_q)
+            else $fatal(1,"The shared storage cases must write raw partial sums");
 `endif
         $display("[TB] PASS checked_words=%0d",words);
         $finish;

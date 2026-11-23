@@ -10,24 +10,24 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_current_source, read_rtl_source_group as read_rtl_source, shared_ia_options
 
 ROOT = Path(__file__).resolve().parents[2]
 CASES = {
     "ctrl3": {"top": "ia_loader_ctrl", "options": ["-GSIZE=3", "-GBUS_WIDTH=32", "-GCACHE_BLOCKS=4"]},
     "ctrl16": {"top": "ia_loader_ctrl", "options": ["-GSIZE=16", "-GBUS_WIDTH=64", "-GCACHE_BLOCKS=32"]},
     "ctrl32": {"top": "ia_loader_ctrl", "options": ["-GSIZE=32", "-GBUS_WIDTH=64", "-GCACHE_BLOCKS=32"]},
-    "loader_ordered": {"top": "ia_loader", "options": ["-GSIZE=16", "-GBUS_WIDTH=64", "-GCACHE_BLOCKS=32", "-GEXTERNAL_RAM=1", "-GORDERED_JOB=1"]},
-    "loader_generic": {"top": "ia_loader", "options": ["-GSIZE=16", "-GBUS_WIDTH=32", "-GCACHE_BLOCKS=4", "-GEXTERNAL_RAM=1", "-GORDERED_JOB=0"]},
-    "loader_local3": {"top": "ia_loader", "options": ["-GSIZE=3", "-GBUS_WIDTH=32", "-GCACHE_BLOCKS=4", "-GEXTERNAL_RAM=0", "-GORDERED_JOB=1"]},
-    "loader_ordered29": {"top": "ia_loader", "options": ["-GSIZE=16", "-GBUS_WIDTH=64", "-GCACHE_BLOCKS=32", "-GCOUNT_WIDTH=29", "-GEXTERNAL_RAM=1", "-GORDERED_JOB=1"]},
+    "loader_ordered": {"top": "ia_loader", "options": ["-GSIZE=16", "-GBUS_WIDTH=64", "-GCACHE_BLOCKS=32", "-GORDERED_JOB=1"]},
+    "loader_generic": {"top": "ia_loader", "options": ["-GSIZE=16", "-GBUS_WIDTH=32", "-GCACHE_BLOCKS=4", "-GORDERED_JOB=0"]},
+    "loader_small_cache": {"top": "ia_loader", "options": ["-GSIZE=16", "-GBUS_WIDTH=32", "-GCACHE_BLOCKS=4", "-GORDERED_JOB=1"]},
+    "loader_ordered29": {"top": "ia_loader", "options": ["-GSIZE=16", "-GBUS_WIDTH=64", "-GCACHE_BLOCKS=32", "-GCOUNT_WIDTH=29", "-GORDERED_JOB=1"]},
 }
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--reference-rev", default="aa2ef9a3")
+    parser.add_argument("--reference-rev", default="7ff66a59")
     parser.add_argument("--source-root", type=Path, default=ROOT)
     parser.add_argument("--reference-root", type=Path)
     parser.add_argument("--cases", nargs="+", choices=tuple(CASES), default=list(CASES))
@@ -52,7 +52,7 @@ def main():
         for name in paths:
             path = folder / Path(name).name
             source = ((args.reference_root / name).read_text() if args.reference_root else
-                      read_rtl_source(args.reference_rev + ":" + name, cwd=ROOT, text=True)) if label == "reference" else (source_root / name).read_text()
+                      read_rtl_source(args.reference_rev + ":" + name, cwd=ROOT, text=True)) if label == "reference" else read_current_source(source_root / name)
             if (label == "reference" and name.endswith("/ia_loader_ctrl.sv") and
                     re.search(r"\bcfg_packed_k_tiles\b", current_ctrl) and
                     not re.search(r"\bcfg_packed_k_tiles\b", source)):
@@ -104,7 +104,9 @@ def main():
         commands = []
         for variant in ("reference", "current"):
             sources = snapshots[variant] + common
-            commands += ["read_slang --top " + top + " " + " ".join(case["options"]) + " " +
+            options = (shared_ia_options(case["options"], snapshots[variant][1].read_text())
+                       if top == "ia_loader" else case["options"])
+            commands += ["read_slang --top " + top + " " + " ".join(options) + " " +
                          " ".join(shlex.quote(str(path)) for path in sources),
                          "prep -top " + top + " -flatten", "memory_map", "async2sync", "opt_clean",
                          "rename " + top + " " + variant, "design -stash " + variant]

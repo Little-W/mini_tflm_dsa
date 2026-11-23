@@ -21,7 +21,7 @@ module receive_write_tb;
   integer col, source, n;
 
   ia_loader_cache_mgr #(.DATA_WIDTH(16), .SIZE(16), .BUS_WIDTH(64),
-      .CACHE_BLOCKS(4), .EXTERNAL_RAM(1), .RAM_WORD_ADDR_WIDTH(10),
+      .CACHE_BLOCKS(4), .RAM_WORD_ADDR_WIDTH(10),
       .p_dma_source_layout(1), .p_shared_write_stage(1)) dut (
     .clk, .rst_n, .compact_mode, .compact_offset, .cfg_cache_blocks(32'd0),
     .slot_base(3'd0), .ram_port_wr_en(en), .ram_port_wr_addr(addr),

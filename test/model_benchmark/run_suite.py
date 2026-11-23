@@ -8,7 +8,7 @@ from pathlib import Path
 import time
 
 from build_firmware import build_firmware
-from build_sim import CPU_PROFILES, build_sim
+from build_sim import CPU_PROFILES, build_sim, shared_configuration
 from model_data import MODELS, validate_model
 from run import HARDWARE_MODE, create_case, digest, execute_case, verify_sources, write_json
 from report import summarize
@@ -25,12 +25,12 @@ def main():
     p.add_argument('--icache', type=int, choices=(0,1), default=1)
     p.add_argument('--first-read-latency',type=int,default=8)
     p.add_argument('--bus-width', type=int, choices=(32,64), default=64)
-    p.add_argument('--ia-cache-blocks', type=int, default=8)
+    p.add_argument('--ia-cache-blocks', type=int)
     p.add_argument('--ps-storage-rows', type=int, default=799)
     p.add_argument('--s16-output-banks', type=int, default=4)
-    p.add_argument('--ps-pool-bytes', type=int, default=0)
+    p.add_argument('--ps-pool-bytes', type=int)
     p.add_argument('--ps-frame-count', type=int)
-    p.add_argument('--force-raw', action='store_true')
+    p.add_argument('--force-raw', action=argparse.BooleanOptionalAction, default=None)
     p.add_argument('--shared-bank-bytes', type=int, choices=(2048,4096,8192))
     p.add_argument('--shared-bank-count', type=int, choices=range(6,10))
     p.add_argument('--jobs', type=int, default=1)
@@ -50,8 +50,14 @@ def main():
         p.error('Job counts must be positive')
     if a.ps_frame_count is not None and not 1 <= a.ps_frame_count <= 64:
         p.error('--ps-frame-count must be in 1..64')
-    if a.force_raw and not a.ps_pool_bytes:
-        p.error('--force-raw requires --ps-pool-bytes')
+    try:
+        storage = shared_configuration(ps_pool_bytes=a.ps_pool_bytes, hardware_raw=a.force_raw,
+            shared_bank_bytes=a.shared_bank_bytes, shared_bank_count=a.shared_bank_count,
+            ia_cache_blocks=a.ia_cache_blocks, ps_frame_count=a.ps_frame_count)
+    except ValueError as error:
+        p.error(str(error))
+    for name, value in storage.items():
+        setattr(a, 'force_raw' if name == 'hardware_raw' else name, value)
     out = a.out.resolve(); prepared_root = a.prepared.resolve()
     out.mkdir(parents=True, exist_ok=True)
     prepared = {}

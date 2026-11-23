@@ -59,7 +59,7 @@ def main():
                             f"-GRAM_ADDR_BITS={(banks*(bank_bytes//16)-1).bit_length()} "
                             "rtl/npu/ps_compact/ps_frame_store.sv rtl/npu/ps_compact/ps_adaptive_encoder.sv rtl/npu/ps_compact/ps_adaptive_decoder.sv")
                 else:
-                    read = ("read_slang --top ia_loader_cache_mgr -D SYNTHESIS -GEXTERNAL_RAM=1 "
+                    read = ("read_slang --top ia_loader_cache_mgr -D SYNTHESIS "
                             f"-GDATA_WIDTH=16 -GSIZE=16 -GCACHE_BLOCKS={bank_bytes//128} "
                             f"-GRAM_WORD_ADDR_WIDTH={(banks*(bank_bytes//16)-1).bit_length()} "
                             "rtl/npu/loaders/ia_loader_cache_mgr.sv rtl/common/pseudo_dual_port_ram.v")

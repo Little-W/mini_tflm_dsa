@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference-rev', default='75f9862e')
+    parser.add_argument('--reference-rev', default='7ff66a59')
     parser.add_argument('--verilator', default='verilator')
     args = parser.parse_args()
     out = args.out.resolve()

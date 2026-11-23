@@ -134,7 +134,7 @@ SOC_PERF_DDR_CMD_MAX_LAT ?= 3
 SOC_PERF_DDR_W_MAX_LAT ?= 2
 SOC_PERF_DDR_RSP_MAX_LAT ?= 8
 SOC_PERF_RAM_FIXED_LAT ?=
-TOP_REGRESS_SIZE ?= 4
+TOP_REGRESS_SIZE ?= 16
 TOP_REGRESS_IA_CACHE_BLOCKS ?= 4
 TOP_REGRESS_PS_FRAME_COUNT ?= 8
 TOP_REGRESS_AXI_READ_OUTSTANDING ?= 4
@@ -785,10 +785,10 @@ help:
 > @echo "  make force_com [DUT_MODE=axil|axi_soc]  # rebuild simv"
 > @echo "  make sim   [DUT_MODE=axil|axi_soc] [case=<UVM_TESTNAME>] [seed=<int>]"
 > @echo "  make soc_regress [SOC_REGRESS_ITERS=<n>] [SOC_REGRESS_START_SEED=<int>] [SOC_MIN_DIM=<n>] [SOC_MAX_DIM=<n>] [SOC_REGRESS_DIM_MULTIPLE=<n>]"
-> @echo "                   [SOC_SIZE_LIST='8 16'] [SOC_CACHE_BLOCKS_LIST='2 4'] [SOC_REGRESS_DDR_RAND_LAT=1] [SOC_REGRESS_UNALIGNED_LAYOUT=1]"
-> @echo "  make soc_perf_sweep [SOC_PERF_DIMS='32x32x32'] [SOC_PERF_SIZE_LIST='8 16'] [SOC_PERF_CACHE_BLOCKS_LIST='2 4']"
+> @echo "                   [SOC_SIZE_LIST='16'] [SOC_CACHE_BLOCKS_LIST='2 4'] [SOC_REGRESS_DDR_RAND_LAT=1] [SOC_REGRESS_UNALIGNED_LAYOUT=1]"
+> @echo "  make soc_perf_sweep [SOC_PERF_DIMS='32x32x32'] [SOC_PERF_SIZE_LIST='16'] [SOC_PERF_CACHE_BLOCKS_LIST='2 4']"
 > @echo "                      [SOC_PERF_INCLUDE_AUTO=1] [SOC_PERF_FORCE_COMPILE=1] [SOC_PERF_JOBS=4] [SOC_PERF_DDR_RAND_LAT=1]"
-> @echo "  make npu_top_regress [TOP_REGRESS_SIZE=4] [TOP_REGRESS_IA_CACHE_BLOCKS=4] [TOP_REGRESS_COUNT=20]"
+> @echo "  make npu_top_regress [TOP_REGRESS_SIZE=16] [TOP_REGRESS_IA_CACHE_BLOCKS=4] [TOP_REGRESS_COUNT=20]"
 > @echo "  make run COV=1 DUT_MODE=axil case=ai_mem_gen_smoke_test seed=1  # collect VCS code coverage"
 > @echo "  make coverage COVERAGE_GOAL=95                                 # clean, run curated suite, and sign off VCS code coverage"
 > @echo "             [COV_ACCEL_SCOPE=1] limits coverage to the accelerator hierarchy"

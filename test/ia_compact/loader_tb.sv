@@ -1,6 +1,7 @@
 module ia_compact_loader_tb #(
     parameter int CACHE_BLOCKS=4,
-    localparam int SLOT_BITS=$clog2(2*CACHE_BLOCKS)
+    localparam int SLOT_BITS=$clog2(2*CACHE_BLOCKS),
+    localparam int RAM_WORD_BITS=$clog2(CACHE_BLOCKS*32)
 ) (
     input logic clk, rst_n, init_cfg,
     input logic cfg_im2col, cfg_tile_packed, cfg_compact, cfg_preserve_cache, cache_flush,
@@ -34,12 +35,18 @@ module ia_compact_loader_tb #(
     output logic [31:0] ps_frame_rows, ps_frame_id,
     output logic ps_frame_init, ps_frame_final
 );
-    ia_loader #(.CACHE_BLOCKS(CACHE_BLOCKS), .COMPACT_S8(1), .PS_FRAME_COUNT(16)) u_loader (
+    logic [1:0] ram_port_wr_en, ram_port_rd_en;
+    logic [RAM_WORD_BITS-1:0] ram_port_wr_addr [0:1], ram_port_rd_addr [0:1];
+    logic [127:0] ram_port_wr_data [0:1], ram_port_rd_data [0:1];
+    logic [15:0] ram_port_wr_mask [0:1];
+    ia_shared_ram_model #(.WORD_COUNT(CACHE_BLOCKS*32), .ADDRESS_WIDTH(RAM_WORD_BITS)) u_memory (.*);
+
+    ia_loader #(.CACHE_BLOCKS(CACHE_BLOCKS), .RAM_WORD_ADDR_WIDTH(RAM_WORD_BITS), .COMPACT_S8(1), .PS_FRAME_COUNT(16)) u_loader (
         .*, .ext_dma_is_write(), .ext_dma_linear_read_mode(),
         .bias_at_end(1'b0), .bias_load_sleep(),
-        .ram_port_wr_en(), .ram_port_wr_addr(), .ram_port_wr_data(), .ram_port_wr_mask(),
+        .ram_port_wr_en, .ram_port_wr_addr, .ram_port_wr_data, .ram_port_wr_mask,
         .ram_shared_wr_data(),
-        .ram_port_rd_en(), .ram_port_rd_addr(), .ram_port_rd_data('{default:'0}),
+        .ram_port_rd_en, .ram_port_rd_addr, .ram_port_rd_data,
         .cfg_prefetch_enable(1'b0), .cfg_global_reduction(32'd0), .prefetch_idle(),
         .ia_is_init_data(), .ia_calc_done(), .ia_tile_start(),
         .ia_output_pending(), .bias_sleep(), .bias_switch(), .bias_last_loop(), .ia_l1_switch()

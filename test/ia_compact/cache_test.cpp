@@ -1,4 +1,4 @@
-#include "Via_loader_cache_mgr.h"
+#include "Via_compact_cache_tb.h"
 #include "verilated.h"
 
 #include <array>
@@ -23,7 +23,7 @@ std::int16_t signed16(std::uint16_t value) {
 void require(bool ok, const std::string& message) {
   if (!ok) throw std::runtime_error(message);
 }
-void tick(Via_loader_cache_mgr& dut) {
+void tick(Via_compact_cache_tb& dut) {
   dut.clk = 0;
   dut.eval();
   dut.clk = 1;
@@ -32,10 +32,10 @@ void tick(Via_loader_cache_mgr& dut) {
   dut.eval();
   ++cycles;
 }
-void clear_write(Via_loader_cache_mgr& dut) {
+void clear_write(Via_compact_cache_tb& dut) {
   for (int i = 0; i < 4; ++i) dut.wr_valid[i] = 0;
 }
-void drive_write(Via_loader_cache_mgr& dut, int slot, int row, int column) {
+void drive_write(Via_compact_cache_tb& dut, int slot, int row, int column) {
   dut.wr_slot = slot;
   dut.wr_row = row;
   dut.wr_col_base = column;
@@ -44,7 +44,7 @@ void drive_write(Via_loader_cache_mgr& dut, int slot, int row, int column) {
     dut.wr_data[i] = static_cast<std::uint16_t>(expected[slot][row][column + i]);
   }
 }
-void write_slots(Via_loader_cache_mgr& dut, int slots) {
+void write_slots(Via_compact_cache_tb& dut, int slots) {
   for (int slot = 0; slot < slots; ++slot)
     for (int row = 0; row < kSize; ++row)
       for (int column = 0; column < kSize; column += 4) {
@@ -53,7 +53,7 @@ void write_slots(Via_loader_cache_mgr& dut, int slots) {
       }
   clear_write(dut);
 }
-void read_group(Via_loader_cache_mgr& dut, int first, int last,
+void read_group(Via_compact_cache_tb& dut, int first, int last,
                 const std::function<void(int)>& concurrent = {}) {
   const int slots = dut.compact_mode ? 8 : 4;
   std::vector<std::pair<int, int>> order;
@@ -108,7 +108,7 @@ void read_group(Via_loader_cache_mgr& dut, int first, int last,
 int main(int argc, char** argv) {
   Verilated::commandArgs(argc, argv);
   try {
-    Via_loader_cache_mgr dut;
+    Via_compact_cache_tb dut;
     dut.rst_n = 0;
     tick(dut);
     tick(dut);
@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
     tick(dut);
     for (int slot = 0; slot < 8; ++slot) dut.slot_rows[slot] = kSize;
 
-    // Every source byte at every legal additive offset is stored in both banks.
+    // 每个合法偏移均覆盖全部 INT8 位型与紧凑槽位。
     dut.compact_mode = 1;
     for (int offset = -127; offset <= 128; ++offset) {
       dut.compact_offset = static_cast<std::uint16_t>(offset);
@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
       read_group(dut, 0, 7);
     }
 
-    // Every S16 bit pattern passes through the two byte banks unchanged.
+    // 全部 INT16 位型经共享端口写入和读取。
     dut.compact_mode = 0;
     for (int batch = 0; batch < 64; ++batch) {
       for (int slot = 0; slot < 4; ++slot)
@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
       read_group(dut, slots - 2, 1);
     }
 
-    // Writes to the other compact half overlap a continuous read from slots 0..3.
+    // 读取前四个槽位时，同时向另一半紧凑槽位写入。
     dut.compact_mode = 1;
     dut.compact_offset = 128;
     for (int slot = 0; slot < 8; ++slot) {

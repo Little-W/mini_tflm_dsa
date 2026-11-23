@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compile and verify physical IA byte banks and grouped loader control."""
+"""验证共享 IA 存储端口的数据格式及分组加载控制。"""
 import argparse
 import hashlib
 import json
@@ -27,9 +27,10 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     common = [ROOT / 'rtl/common/regfile.v', ROOT / 'rtl/common/pseudo_dual_port_ram.v',
-              ROOT / 'rtl/npu/loaders/ia_loader_cache_mgr.sv']
+              ROOT / 'rtl/npu/loaders/ia_loader_cache_mgr.sv',
+              ROOT / 'test/common/ia_shared_ram_model.sv']
     targets = {
-        'cache': ('ia_loader_cache_mgr', common, HERE / 'cache_test.cpp'),
+        'cache': ('ia_compact_cache_tb', common + [HERE / 'cache_tb.sv'], HERE / 'cache_test.cpp'),
         'loader': ('ia_compact_loader_tb', common + [
             ROOT / 'rtl/common/add_equal.sv',
             ROOT / 'rtl/npu/loaders/ia_loader.sv', ROOT / 'rtl/npu/loaders/ia_loader_ctrl.sv',

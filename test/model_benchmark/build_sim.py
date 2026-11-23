@@ -71,20 +71,46 @@ def filelist_sources(path,cwd,picorv32):
     return sources,arguments
 
 
+def shared_configuration(*, ps_pool_bytes=None, shared_bank_bytes=None,
+                         shared_bank_count=None, ia_cache_blocks=None,
+                         ps_frame_count=None, hardware_raw=None):
+    """解析完整矩阵 SoC 的共享存储配置，供模拟器和固件共同使用。"""
+    selected = selected_config()
+    bank_bytes = selected['SHARED_BANK_BYTES'] if shared_bank_bytes is None else shared_bank_bytes
+    bank_count = selected['SHARED_BANK_COUNT'] if shared_bank_count is None else shared_bank_count
+    pool_bytes = (bank_count - 1) * bank_bytes if ps_pool_bytes is None else ps_pool_bytes
+    cache_blocks = selected['IA_CACHE_BLOCKS'] if ia_cache_blocks is None else ia_cache_blocks
+    frames = selected['PS_FRAME_COUNT'] if ps_frame_count is None else ps_frame_count
+    if bank_bytes not in (2048, 4096, 8192) or bank_count not in range(6, 10):
+        raise ValueError('完整矩阵 SoC 要求 6..9 个共享 SRAM bank，每个 bank 为 2048、4096 或 8192 字节')
+    if type(pool_bytes) is not int or pool_bytes < 64 or pool_bytes % 64:
+        raise ValueError('完整矩阵 SoC 要求共享 IA SRAM，ps_pool_bytes 必须为正的 64 字节倍数')
+    if cache_blocks < 1 or not 1 <= frames <= 64:
+        raise ValueError('IA 缓存块数必须为正，PS frame 数必须位于 1..64')
+    direct_store = 'ps_adaptive_encoder' not in read_rtl_text(ROOT/'rtl/npu/ps_compact/ps_frame_store.sv')
+    raw = direct_store if hardware_raw is None else bool(hardware_raw)
+    if direct_store != raw:
+        raise ValueError('部分和存储模式与所选 RTL 实现不一致')
+    return dict(ps_pool_bytes=pool_bytes, shared_bank_bytes=bank_bytes,
+                shared_bank_count=bank_count, ia_cache_blocks=cache_blocks,
+                ps_frame_count=frames, hardware_raw=raw)
+
+
 def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=524288,pe_count=8,picorv32=None,
-              ia_cache_blocks=None,ps_storage_rows=None,s16_output_banks=4,cpu_profile='performance',dma_max_bytes=None,bus_width=None,first_read_latency=8,ps_pool_bytes=0,
-              shared_bank_bytes=None,shared_bank_count=None,im2col_cache_bytes=None,ps_frame_count=None,hardware_raw=False):
+              ia_cache_blocks=None,ps_storage_rows=None,s16_output_banks=4,cpu_profile='performance',dma_max_bytes=None,bus_width=None,first_read_latency=8,ps_pool_bytes=None,
+              shared_bank_bytes=None,shared_bank_count=None,im2col_cache_bytes=None,ps_frame_count=None,hardware_raw=None):
+    storage = shared_configuration(ps_pool_bytes=ps_pool_bytes, shared_bank_bytes=shared_bank_bytes,
+        shared_bank_count=shared_bank_count, ia_cache_blocks=ia_cache_blocks,
+        ps_frame_count=ps_frame_count, hardware_raw=hardware_raw)
+    ps_pool_bytes, shared_bank_bytes, shared_bank_count = (
+        storage[key] for key in ('ps_pool_bytes', 'shared_bank_bytes', 'shared_bank_count'))
+    ia_cache_blocks, ps_frame_count, hardware_raw = (
+        storage[key] for key in ('ia_cache_blocks', 'ps_frame_count', 'hardware_raw'))
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=True)
     bus_width=axi_data_width(bus_width)
     selected=selected_config()
-    if ia_cache_blocks is None:
-        ia_cache_blocks=selected['IA_CACHE_BLOCKS'] if ps_pool_bytes else 8
-    if ps_frame_count is None:
-        ps_frame_count=selected['PS_FRAME_COUNT'] if ps_pool_bytes else 16
     if ps_storage_rows is None:
         ps_storage_rows=((3*16)-1)*(ps_frame_count+1)
-    shared_bank_bytes=selected['SHARED_BANK_BYTES'] if shared_bank_bytes is None else shared_bank_bytes
-    shared_bank_count=selected['SHARED_BANK_COUNT'] if shared_bank_count is None else shared_bank_count
     im2col_cache_bytes=selected['IM2COL_CACHE_BYTES'] if im2col_cache_bytes is None else im2col_cache_bytes
     if (type(im2col_cache_bytes) is not int or not 512 <= im2col_cache_bytes <= 65536 or
             im2col_cache_bytes & (im2col_cache_bytes-1)):
@@ -97,11 +123,6 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
         ia_cache_blocks<1 or ps_frame_count<1 or ps_frame_count>64 or ps_storage_rows<0 or s16_output_banks<0 or cpu_profile not in CPU_PROFILES or
         bus_width not in (32,64) or ram_words*32%bus_width or dma_max_bytes!=protocol_max_bytes or first_read_latency<1):
         raise ValueError('Invalid simulator configuration')
-    if ps_pool_bytes and (ps_pool_bytes < 64 or ps_pool_bytes % 64):
-        raise ValueError('PS pool must contain complete 64-byte bank groups')
-    direct_store='ps_adaptive_encoder' not in read_rtl_text(ROOT/'rtl/npu/ps_compact/ps_frame_store.sv')
-    if ps_pool_bytes and direct_store != hardware_raw:
-        raise ValueError('Partial-sum implementation selection differs from the RTL source')
     if picorv32 is None:
         picorv32=os.environ.get('PICORV32_ROOT')
     if picorv32 is None:
@@ -341,8 +362,8 @@ def main():
     parser.add_argument('--ps-frame-count',type=int)
     parser.add_argument('--ps-storage-rows',type=int)
     parser.add_argument('--s16-output-banks',type=int,default=4)
-    parser.add_argument('--ps-pool-bytes',type=int,default=0)
-    parser.add_argument('--force-raw',action='store_true')
+    parser.add_argument('--ps-pool-bytes',type=int,help='共享 PS 容量；默认保留一个 IA bank 后的物理容量')
+    parser.add_argument('--force-raw',action=argparse.BooleanOptionalAction,default=None)
     parser.add_argument('--picorv32',type=Path)
     parser.add_argument('--out',type=Path)
     parser.add_argument('--mem',type=Path)

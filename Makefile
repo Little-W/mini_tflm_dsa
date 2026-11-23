@@ -22,7 +22,7 @@ PCR_DEFINES = $(if $(filter 1,$(PCR_ENGINE)),+define+GEMPACT_PS_COMPRESS+GEMMORA
 LOG_NAME ?= sim
 COUNT ?= 20
 RANDOM_GEN_ARGS ?= --random --random_quant --lhs_dtype 0 --min_dim 1 --max_dim 32
-SIZES ?= 4 8 16
+SIZES ?= 16
 CACHE_BLOCKS_LIST ?= 2 4 8
 COMPUTE_DATA_DIR ?= $(UNIT_BUILD)/compute_case
 -include drivers/tflm/model_selection.mk
@@ -216,9 +216,9 @@ VERILATOR ?= verilator
 YOSYS ?= yosys
 CONV_BUILD_DIR ?= $(ROOT)/build/conv_verify
 CONV_JOBS ?= 2
-CONV_SIZES ?= 4 8 16
+CONV_SIZES ?= 16
 CONV_DMA_SIZES ?= 4 16
-CONV_COSIM_SIZES ?= 4 16
+CONV_COSIM_SIZES ?= 16
 CONV_RISCV_GCC ?= riscv64-unknown-elf-gcc
 CONV_SOC_FLAGS ?=
 CONV_RUNTIME_ROOT ?=
@@ -268,7 +268,7 @@ conv-pcr-guard:
 conv-dma:
 	$(PYTHON) test/conv_dma/run.py --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --sizes $(CONV_DMA_SIZES) --out '$(CONV_BUILD_DIR)/dma/matrix'
 	$(PYTHON) test/conv_dma/run.py --legacy-only --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --out '$(CONV_BUILD_DIR)/dma/legacy'
-	$(PYTHON) test/conv_dma/npu_cases.py --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --sizes $(CONV_DMA_SIZES) --out '$(CONV_BUILD_DIR)/dma/npu'
+	$(PYTHON) test/conv_dma/npu_cases.py --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --sizes $(CONV_SIZES) --out '$(CONV_BUILD_DIR)/dma/npu'
 	$(MAKE) conv-operand-drain
 
 conv-operand-drain:
@@ -359,7 +359,7 @@ vector-engine-disabled:
 vector-engine-regression:
 	$(PYTHON) test/conv_dma/run.py --verilator '$(VERILATOR)' --jobs $(VECTOR_JOBS) --legacy-only --out '$(VECTOR_BUILD_DIR)/regression/legacy'
 	$(PYTHON) test/conv_dma/run.py --verilator '$(VERILATOR)' --jobs $(VECTOR_JOBS) --sizes 4 16 --out '$(VECTOR_BUILD_DIR)/regression/matrix'
-	$(PYTHON) test/conv_npu/run.py --verilator '$(VERILATOR)' --jobs $(VECTOR_JOBS) --sizes 4 --out '$(VECTOR_BUILD_DIR)/regression/conv'
+	$(PYTHON) test/conv_npu/run.py --verilator '$(VERILATOR)' --jobs $(VECTOR_JOBS) --sizes 16 --out '$(VECTOR_BUILD_DIR)/regression/conv'
 
 vector-engine-sweep:
 	$(PYTHON) test/vector_engine/run.py --verilator '$(VERILATOR)' --jobs $(VECTOR_JOBS) --tile $(VECTOR_TILE) --pes $(VECTOR_PE_SWEEP) --perf --out '$(VECTOR_BUILD_DIR)/pe_sweep'

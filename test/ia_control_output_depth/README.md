@@ -44,7 +44,7 @@ python3 test/ia_control_output_depth/prepare_measurement.py \
 python3 test/ia_timing/run_formal.py \
   --source-root build/ia_control_output_inputs/current \
   --reference-root build/ia_control_output_inputs/reference \
-  --cases loader_ordered loader_generic loader_local3 loader_ordered29 \
+  --cases loader_ordered loader_generic loader_small_cache loader_ordered29 \
   --out build/ia_control_output_formal
 python3 test/ia_write_output_depth/run_formal.py \
   --source-root build/ia_control_output_inputs/current \

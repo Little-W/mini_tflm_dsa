@@ -10,13 +10,9 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source_group as read_rtl_source, shared_ia_parameters
 
 ROOT = Path(__file__).resolve().parents[2]
-PARAMETERS = ("DATA_WIDTH", "SIZE", "BUS_WIDTH", "REG_WIDTH", "COUNT_WIDTH",
-              "CACHE_BLOCKS", "COMPACT_S8", "EXTERNAL_RAM", "ORDERED_JOB",
-              "RAM_WORD_ADDR_WIDTH", "PS_FRAME_COUNT")
-
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -53,7 +49,7 @@ def port_declarations(source):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--reference-rev", default="aa2ef9a3")
+    parser.add_argument("--reference-rev", default="7ff66a59")
     parser.add_argument("--verilator", default="verilator")
     parser.add_argument("--cases", nargs="+", choices=("prefetch_generic", "prefetch_ordered", "grouped32"),
                         default=("prefetch_generic", "prefetch_ordered", "grouped32"))
@@ -69,6 +65,11 @@ def main():
     ports = port_declarations(current)
     reference_source = read_rtl_source(args.reference_rev +
         ":rtl/npu/loaders/ia_loader.sv", cwd=ROOT, text=True)
+    pattern = r'\bparameter\s+(?:int\s+unsigned|int|bit|integer)\s+(\w+)\s*='
+    current_parameters = set(re.findall(pattern, current[:current.index(') (')]))
+    reference_parameters = re.findall(pattern, reference_source[:reference_source.index(') (')])
+    parameters = shared_ia_parameters({name: name for name in reference_parameters
+                                      if name in current_parameters}, reference_source)
     reference_ports = {name for _, _, name, _ in port_declarations(reference_source)}
     added_outputs = {name for direction, _, name, _ in ports
                      if direction == "output" and name not in reference_ports}
@@ -81,7 +82,7 @@ def main():
     # 关闭共享写数据预选时，新增输出的公开定义为零。
     suffix += [f"    assign reference_{name} = '0;" for name in sorted(added_outputs)]
     suffix += ["    ia_loader_reference #(",
-               ",\n".join(f"        .{name}({name})" for name in PARAMETERS),
+               ",\n".join(f"        .{name}({value})" for name, value in parameters.items()),
                "    ) u_reference (",
                ",\n".join(f"        .{name}({'reference_' if direction == 'output' else ''}{name})"
                            for direction, _, name, _ in ports if name in reference_ports),
@@ -98,21 +99,23 @@ def main():
         original = re.sub(r"\bia_loader_ctrl\b", "ia_loader_ctrl_reference", original)
         original = re.sub(r"\bia_loader_cache_mgr\b", "ia_loader_cache_mgr_reference", original)
         original = re.sub(r"\bia_loader\b", "ia_loader_reference", original)
+        for helper in ("ia_ordered_coordinate_equal", "ia_ordered_coordinate_same"):
+            original = re.sub(r"\b" + helper + r"\b", helper + "_reference", original)
         path = out / (module + "_reference.sv")
         path.write_text(original)
         reference_paths.append(path)
     wrapper = out / "verilator_compare"
     # 将 Verilator 自带的 C++ 头文件作为系统头文件，测试代码仍按其原有警告配置编译。
-    wrapper.write_text("#!" + sys.executable + "\nimport os, shlex, sys\nfrom pathlib import Path\n" +
+    wrapper.write_text("#!" + sys.executable + "\nimport os, sys\n" +
                        "arguments = [" + repr(str(checked_path)) + " if argument == " +
                        repr(str(current_path)) + " else argument for argument in sys.argv[1:]]\n" +
-                       "make_flags = shlex.split(arguments[arguments.index('-MAKEFLAGS') + 1])\n" +
-                       "rules = Path(make_flags[make_flags.index('-f') + 1])\n" +
-                       "rules.write_text(rules.read_text() + '\\n$(VK_GLOBAL_OBJS): override CPPFLAGS += -Wno-sign-compare\\n" +
-                       "$(VK_OBJS_FAST) $(VK_OBJS_SLOW): override CPPFLAGS += -Wno-unused-variable -Wno-unused-parameter -Wno-unused-but-set-variable\\n')\n" +
+                       "if '--getenv' not in arguments and '--version' not in arguments:\n" +
+                       "    arguments += ['-CFLAGS', " +
+                       repr("-isystem " + str(Path(vendor_root) / "include") +
+                            " -Wno-sign-compare -Wno-unused-variable -Wno-unused-parameter -Wno-unused-but-set-variable") +
+                       "] + " + repr([str(path) for path in reference_paths]) + "\n" +
                        "os.execv(" + repr(verilator) + ", [" + repr(verilator) +
-                       ", '-CFLAGS', " + repr("-isystem " + str(Path(vendor_root) / "include")) +
-                       "] + arguments + " + repr([str(path) for path in reference_paths]) + ")\n")
+                       "] + arguments)\n")
     wrapper.chmod(0o755)
     summary = {"reference_rev": args.reference_rev, "compared_outputs": outputs,
                "source_sha256": {str(path.relative_to(ROOT)): digest(path) for path in

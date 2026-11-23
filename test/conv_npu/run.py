@@ -341,8 +341,8 @@ def source_files(source_root=None):
     return sources,includes,list(dict.fromkeys(tracked))
 
 def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
-          ps_compress=False,pool_bytes=16384,force_raw=False,lint_only=False,
-          bus_width=None,shared_bank_bytes=2048,shared_bank_count=0,ps_frame_count=16,
+          ps_compress=True,pool_bytes=16384,force_raw=False,lint_only=False,
+          bus_width=None,shared_bank_bytes=8192,shared_bank_count=7,ps_frame_count=16,
           build_timeout=7200,source_root=None,cache_line_bytes=16,
           address_width=19,vector_pe_count=None,ps_storage_rows=0,oa_s16_fifo_banks_max=0):
     bus_width=axi_data_width(bus_width)
@@ -353,6 +353,9 @@ def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
         raise ValueError('Cache sets must be a power of two >=2')
     if shared_bank_bytes not in (2048,4096,8192) or shared_bank_count not in (0,6,7,8,9):
         raise ValueError('Shared RAM requires 2/4/8 KiB banks and 6..9 physical banks')
+    shared_total=shared_bank_count*shared_bank_bytes if shared_bank_count else 4*size*size*2+pool_bytes
+    if size!=16 or not ps_compress or not 6*shared_bank_bytes<=shared_total<=9*shared_bank_bytes or shared_total%shared_bank_bytes:
+        raise ValueError('Matrix execution requires SIZE=16 and six to nine shared SRAM banks')
     out=Path(out).resolve()
     source_root = ROOT if source_root is None else Path(source_root).resolve()
     sources,includes,tracked=source_files(source_root)
@@ -419,14 +422,14 @@ def run_suite(binary,out,name,tasks,no_random=False,force_codec=False,timeout=30
     return result
 
 def main():
-    a=argparse.ArgumentParser(description=__doc__);a.add_argument('--sizes',type=int,nargs='+',default=[4,8,16]);a.add_argument('--out',type=Path,default=ROOT/'build/conv_npu');a.add_argument('--verilator',default='verilator');a.add_argument('--jobs',type=int,default=1);a.add_argument('--cache-policy',type=int,choices=[0,1,2,3],default=3);a.add_argument('--cache-sets',type=int);a.add_argument('--smoke',action='store_true');a.add_argument('--skip-build',action='store_true');a.add_argument('--reuse-audit',action='store_true',help='Focused byte-level AXI reuse audit, including output-channel group replay')
+    a=argparse.ArgumentParser(description=__doc__);a.add_argument('--sizes',type=int,nargs='+',choices=(16,),default=[16]);a.add_argument('--out',type=Path,default=ROOT/'build/conv_npu');a.add_argument('--verilator',default='verilator');a.add_argument('--jobs',type=int,default=1);a.add_argument('--cache-policy',type=int,choices=[0,1,2,3],default=3);a.add_argument('--cache-sets',type=int);a.add_argument('--smoke',action='store_true');a.add_argument('--skip-build',action='store_true');a.add_argument('--reuse-audit',action='store_true',help='Focused byte-level AXI reuse audit, including output-channel group replay')
     a.add_argument('--cache-bytes',type=int,help='Input cache capacity in bytes; defaults to IM2COL_CACHE_BYTES')
     a.add_argument('--cache-line-bytes',type=int,choices=(16,32,64,128),default=16)
     a.add_argument('--address-width',type=int,choices=range(16,33),default=19)
     a.add_argument('--vector-pe-count',type=int)
     a.add_argument('--ps-storage-rows',type=int,default=0)
     a.add_argument('--oa-s16-fifo-banks-max',type=int,default=0)
-    a.add_argument('--ps-compress',action='store_true')
+    a.add_argument('--ps-compress',action='store_true',default=True,help='Enable the shared IA/PS storage configuration')
     a.add_argument('--pool-bytes',type=int,default=16384)
     a.add_argument('--force-raw',action='store_true',help='Use RAW records in the shared compressed-store datapath')
     a.add_argument('--force-codec',action='store_true',help='Testbench override: exercise adaptive records for every frame')

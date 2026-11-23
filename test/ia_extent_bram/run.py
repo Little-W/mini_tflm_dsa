@@ -9,7 +9,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'test'))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source, shared_ia_parameters
 sys.path.insert(0, str(ROOT / 'test/cache_prefetch_payload'))
 from measure import compress_completed, run_limited
 
@@ -17,7 +17,7 @@ SOURCE = 'rtl/npu/loaders/ia_loader_cache_mgr.sv'
 MARKER = '  logic [ROW_CNT_W-1:0] slot_written_cols [SLOT_BLOCKS];'
 CURRENT = MARKER.replace('logic', '(* ram_style = "block" *) logic', 1)
 PARAMETERS = dict(DATA_WIDTH=16, SIZE=16, BUS_WIDTH=64, REG_WIDTH=32,
-    CACHE_BLOCKS=32, COMPACT_S8=1, EXTERNAL_RAM=1, RAM_WORD_ADDR_WIDTH=12,
+    CACHE_BLOCKS=32, COMPACT_S8=1, RAM_WORD_ADDR_WIDTH=12,
     p_compact_offset_width=9, p_dma_source_layout=1, p_shared_write_stage=1)
 
 
@@ -72,14 +72,14 @@ def check_memory(design):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference', default='c96e9378')
+    parser.add_argument('--reference', default='7ff66a59')
+    parser.add_argument('--prepare-only', action='store_true')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     reference = read_rtl_source(f'{args.reference}:{SOURCE}', cwd=ROOT, text=True)
     current = (ROOT / SOURCE).read_text()
-    assert reference.count(MARKER) == current.count(CURRENT) == 1
-    assert current.replace(CURRENT, MARKER, 1) == reference
+    assert current.count(CURRENT) == 1
     hashes, cases = {}, {}
     for label, content in (('reference', reference), ('current', current)):
         folder = out / 'sources' / label
@@ -87,15 +87,20 @@ def main():
         source = folder / 'ia_loader_cache_mgr.sv'
         source.write_text(content)
         hashes[label] = hashlib.sha256(content.encode()).hexdigest()
+        parameters = shared_ia_parameters(PARAMETERS, content)
         cases[label] = {'top': 'ia_loader_cache_mgr',
-            'sources': [str(source), 'rtl/npu/compute/select_add.sv'], 'parameters': PARAMETERS,
+            'sources': [str(source), 'rtl/npu/compute/select_add.sv'], 'parameters': parameters,
             'options': ['-D', 'SYNTHESIS=1', '-D', 'XILINX_FPGA=1'] +
-                       [f'-G{key}={value}' for key, value in PARAMETERS.items()],
+                       [f'-G{key}={value}' for key, value in parameters.items()],
             'configuration': '生产 IA 缓存，64 个逻辑槽位的同步列数存储'}
     config = out / 'cases.json'
     config.write_text(json.dumps(cases, ensure_ascii=False, indent=2) + '\n')
+    if args.prepare_only:
+        (out / 'inputs.json').write_text(json.dumps(dict(reference=args.reference, source_sha256=hashes), indent=2) + '\n')
+        print(json.dumps(dict(prepared=True, cases=len(cases))))
+        return
     report = {'passed': False, 'reference_ref': args.reference, 'source_sha256': hashes,
-        'parameters': PARAMETERS, 'rtl_identical_after_removing_ram_attribute': True,
+        'parameters': PARAMETERS, 'comparison_scope': 'historical and current shared-memory implementations',
         'mapping': {'mode': 'physical-cost', 'small_lut_area_cost': 1, 'max_lut_inputs': 6,
                     'wire_delay_ps': 500, 'delay_target_ps': 6667},
         'results': {}, 'physical_placement_performed': False}

@@ -58,7 +58,7 @@ def main():
         script = out / f'compact_{compact}.ys'
         log = out / f'compact_{compact}.log'
         script.write_text('\n'.join([
-            'read_slang --top ia_loader_cache_mgr -GEXTERNAL_RAM=1 '
+            'read_slang --top ia_loader_cache_mgr '
             '-GBUS_WIDTH=64 -GDMA_LANES=8 -Gp_compact_offset_width=9 '
             f'-GCOMPACT_S8={compact} ' + ' '.join(shlex.quote(str(path)) for path in rtl),
             'prep -top ia_loader_cache_mgr', 'opt',
@@ -71,6 +71,16 @@ def main():
         names = module['netnames']
         local_ram_names = [name for name in (*names, *module['cells']) if 'g_local_ram' in name]
         assert not local_ram_names, local_ram_names
+        control_arrays = {name: {
+            'entries': int(cell['parameters']['SIZE'], 2),
+            'width': int(cell['parameters']['WIDTH'], 2),
+        } for name, cell in module['cells'].items() if cell['type'] == '$mem_v2'}
+        assert set(control_arrays) <= {
+            'rd_addr_pipe', 'rd_en_pipe', 'read_metadata_q', 'slot_written_cols'
+        }, control_arrays
+        assert control_arrays['slot_written_cols'] == {
+            'entries': 8 if compact else 4, 'width': 5
+        }, control_arrays
         register_bits = sum(len(net['bits']) for name, net in names.items()
             if 'g_read_register' in name and name.endswith('.data_q'))
         restore_lanes = sum(1 for name in names if 'g_read_register' in name and name.endswith('.restore_sum'))
@@ -91,6 +101,7 @@ def main():
             assert not any('u_restore' in name for name in names)
             assert not any(compact_input_users.values())
         case = dict(compact_enabled=compact, external_ram=True, local_data_ram_instances=0,
+            control_arrays=control_arrays,
             data_register_bits=register_bits,
             restore_lanes=restore_lanes, slot_address_bits=slot_bits,
             ram_to_output_combinational_path=direct_path, compact_input_users=compact_input_users,

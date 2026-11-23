@@ -11,7 +11,7 @@ import re
 import struct
 
 from build_firmware import abi_fields, abi_constant
-from build_sim import CPU_PROFILES, build_sim, run_sim
+from build_sim import CPU_PROFILES, build_sim, run_sim, shared_configuration
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -372,6 +372,10 @@ def main():
     parser.add_argument('--cpu-profile', choices=CPU_PROFILES, default='performance')
     parser.add_argument('--first-read-latency',type=int,default=8)
     parser.add_argument('--bus-width', type=int, choices=(32,64), default=64)
+    parser.add_argument('--ps-pool-bytes', type=int)
+    parser.add_argument('--shared-bank-bytes', type=int, choices=(2048,4096,8192))
+    parser.add_argument('--shared-bank-count', type=int, choices=range(6,10))
+    parser.add_argument('--force-raw', action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument('--pe-count', type=int, choices=[4, 8], default=8)
     parser.add_argument('--ram-words', type=int, default=524288)
     parser.add_argument('--latency', type=int, default=0)
@@ -380,6 +384,11 @@ def main():
     args = parser.parse_args()
     if args.jobs < 1 or args.run_jobs < 1:
         parser.error('Job counts must be positive')
+    try:
+        storage = shared_configuration(ps_pool_bytes=args.ps_pool_bytes, hardware_raw=args.force_raw,
+            shared_bank_bytes=args.shared_bank_bytes, shared_bank_count=args.shared_bank_count)
+    except ValueError as error:
+        parser.error(str(error))
     out = args.out.resolve();prepared_dir = args.prepared.resolve();fw_dir = args.firmware.resolve()
     prepared = json.loads((prepared_dir/'manifest.json').read_text())
     firmware = json.loads((fw_dir/'firmware.json').read_text())
@@ -391,7 +400,8 @@ def main():
             raise RuntimeError('Firmware payload differs: ' + name)
     binary = build_sim(args.simulator, args.verilator, args.jobs, skip=args.skip_sim_build,
                        icache=args.icache, ram_words=args.ram_words, pe_count=args.pe_count,
-                       cpu_profile=args.cpu_profile,bus_width=args.bus_width,first_read_latency=args.first_read_latency)
+                       cpu_profile=args.cpu_profile,bus_width=args.bus_width,first_read_latency=args.first_read_latency,
+                       **storage)
     samples = [s for s in prepared['samples'] if args.samples is None or s['sample_index'] in args.samples]
     if not samples:
         parser.error('No prepared samples selected')

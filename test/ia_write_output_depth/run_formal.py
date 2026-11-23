@@ -11,7 +11,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source, shared_ia_options
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/loaders/ia_loader_cache_mgr.sv')
@@ -40,34 +40,31 @@ def observe_write_masks(source, label):
 
 def cases():
     result = {'production': dict(SIZE=16, BUS_WIDTH=64, DATA_WIDTH=16,
-        CACHE_BLOCKS=32, EXTERNAL_RAM=1, COMPACT_S8=1, REG_WIDTH=32,
+        CACHE_BLOCKS=32, COMPACT_S8=1, REG_WIDTH=32,
         p_compact_offset_width=9, defines=['SYNTHESIS', 'XILINX_FPGA'])}
     for layout in (0, 1):
         result[f'shared_layout{layout}'] = dict(result['production'],
             p_dma_source_layout=layout, p_shared_write_stage=1)
-    for size, bus, data, blocks, external in (
-            (4, 32, 8, 2, 0), (8, 64, 16, 4, 0), (16, 8, 16, 32, 1),
-            (16, 32, 16, 32, 1), (16, 64, 16, 32, 1),
-            (16, 128, 16, 32, 1), (16, 256, 16, 32, 1)):
-        name = f'generic_s{size}_b{bus}_d{data}_c{blocks}_e{external}'
-        result[name] = dict(SIZE=size, BUS_WIDTH=bus, DATA_WIDTH=data,
-                            CACHE_BLOCKS=blocks, EXTERNAL_RAM=external, defines=[])
+    for bus, blocks in ((32, 2), (64, 4), (8, 32), (32, 32), (64, 32), (128, 32), (256, 32)):
+        name = f'generic_s16_b{bus}_d16_c{blocks}'
+        result[name] = dict(SIZE=16, BUS_WIDTH=bus, DATA_WIDTH=16,
+                            CACHE_BLOCKS=blocks, defines=[])
     for flags in itertools.product((False, True), repeat=3):
         names = ('XILINX_FPGA', 'SYNTHESIS', 'ASIC_SYNTHESIS')
         defines = [name for name, enabled in zip(names, flags) if enabled]
         name = '_'.join(defines).lower() if defines else 'generic_macros'
         result[name] = dict(SIZE=16, BUS_WIDTH=64, DATA_WIDTH=16,
-                            CACHE_BLOCKS=32, EXTERNAL_RAM=1, defines=defines)
+                            CACHE_BLOCKS=32, defines=defines)
     for bus in (8, 32, 128, 256):
         result[f'fpga_bus{bus}'] = dict(SIZE=16, BUS_WIDTH=bus, DATA_WIDTH=16,
-            CACHE_BLOCKS=32, EXTERNAL_RAM=1, defines=['XILINX_FPGA'])
+            CACHE_BLOCKS=32, defines=['XILINX_FPGA'])
     return result
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference', default='437a8d81')
+    parser.add_argument('--reference', default='7ff66a59')
     parser.add_argument('--source-root', type=Path, default=ROOT)
     parser.add_argument('--reference-root', type=Path)
     parser.add_argument('--valid-write-masks', action='store_true',
@@ -111,7 +108,8 @@ def main():
         options += ['-D' + define + '=1' for define in case['defines']]
         commands = []
         for label, source in (('reference', reference), ('current', current)):
-            command = ['read_slang', *options, str(source), *map(str, memories), str(model)]
+            selected_options = shared_ia_options(options, source.read_text())
+            command = ['read_slang', *selected_options, str(source), *map(str, memories), str(model)]
             commands += [' '.join(map(shlex.quote, command)),
                 'prep -top ia_loader_cache_mgr -flatten', 'memory_map', 'async2sync', 'opt_clean',
                 'rename ia_loader_cache_mgr ' + label, 'design -stash ' + label]

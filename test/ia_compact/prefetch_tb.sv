@@ -35,12 +35,18 @@ module ia_prefetch_tb #(parameter bit ORDERED_JOB = 0) (
     output logic [31:0] ps_frame_rows, ps_frame_id,
     output logic ps_frame_init, ps_frame_final
 );
+    logic [1:0] ram_port_wr_en, ram_port_rd_en;
+    logic [9:0] ram_port_wr_addr [0:1], ram_port_rd_addr [0:1];
+    logic [127:0] ram_port_wr_data [0:1], ram_port_rd_data [0:1];
+    logic [15:0] ram_port_wr_mask [0:1];
+    ia_shared_ram_model #(.WORD_COUNT(4*32)) u_memory (.*);
+
     ia_loader #(.CACHE_BLOCKS(4), .COMPACT_S8(1), .PS_FRAME_COUNT(16), .ORDERED_JOB(ORDERED_JOB)) u_loader (
         .*, .ext_dma_is_write(), .ext_dma_linear_read_mode(),
         .cfg_cache_blocks(32'd0), .bias_at_end(1'b0), .bias_load_sleep(),
-        .ram_port_wr_en(), .ram_port_wr_addr(), .ram_port_wr_data(), .ram_port_wr_mask(),
+        .ram_port_wr_en, .ram_port_wr_addr, .ram_port_wr_data, .ram_port_wr_mask,
         .ram_shared_wr_data(),
-        .ram_port_rd_en(), .ram_port_rd_addr(), .ram_port_rd_data('{default:'0}),
+        .ram_port_rd_en, .ram_port_rd_addr, .ram_port_rd_data,
         .ia_is_init_data(), .ia_calc_done(), .ia_tile_start(),
         .ia_output_pending(), .bias_sleep(), .bias_switch(), .bias_last_loop(), .ia_l1_switch()
     );

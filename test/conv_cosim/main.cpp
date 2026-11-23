@@ -382,6 +382,7 @@ static void runUnavailableConv(bool is_only) {
         {NPU_REG_Q_MULT,c.multiplier_base},{NPU_REG_Q_SHIFT,c.shift_base},
         {NPU_REG_ACT_MIN,uint32_t(-128)},{NPU_REG_ACT_MAX,127},
         {NPU_REG_IA_REUSE,1},{NPU_REG_W_REUSE,1},{NPU_REG_DATAFLOW,c.dataflow_mode},
+        {NPU_REG_IA_BANKS,2},{NPU_REG_PS_CONTROL,1},
         {NPU_REG_ROW_GROUPS,1},{NPU_REG_ROW_TAIL_TILES,1},{NPU_REG_COL_GROUPS,1},{NPU_REG_COL_TAIL_TILES,1},
         {NPU_REG_CONV_INPUT_BASE,c.input_base},{NPU_REG_CONV_INPUT_HW,0x00010001},
         {NPU_REG_CONV_CHANNELS,0x00010001},{NPU_REG_CONV_GROUP_OFFSET,0},

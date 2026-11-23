@@ -34,7 +34,8 @@ module tb_operand_drain;
   wire error_injected;
   logic [31:0] unused_ranges[4]='{default:'0};
 
-  npu_axil_top #(.SIZE(16),.PS_FRAME_COUNT(16),.ENABLE_CLOCK_GATING(1),.OPERAND_CACHE_ENABLE(1)) dut (
+  npu_axil_top #(.SIZE(16),.PS_FRAME_COUNT(16),.SHARED_BANK_BYTES(8192),.SHARED_BANK_COUNT(7),
+    .ENABLE_CLOCK_GATING(1),.OPERAND_CACHE_ENABLE(1)) dut (
     .clk,.rst_n,
     .s_axil_awaddr(awaddr),.s_axil_awprot(3'd0),.s_axil_awvalid(awvalid),.s_axil_awready(awready),
     .s_axil_wdata(wdata),.s_axil_wstrb(wstrb),.s_axil_wvalid(wvalid),.s_axil_wready(wready),
@@ -85,9 +86,9 @@ module tb_operand_drain;
     if (core_saw_rise && $time-core_last_rise != 5)
       $fatal(1,"short or extended core clock high pulse at %0t",$time);
   always @(posedge clk) if(rst_n) begin
-    if(dut.u_npu_top.cfg_start_event) starts++;
+    if(dut.u_npu_top.u_matrix_engine.cfg_start_event) starts++;
     if(dut.npu_done_valid && dut.npu_done_ready) done_handshakes++;
-    if(dut.u_npu_top.g_operand_cache.range_stage[2]) flushes++;
+    if(dut.u_npu_top.u_operand_cache_bridge.g_operand_cache.range_stage[2]) flushes++;
     case ({ma&&mar,mr&&mrr&&mrl})
       2'b10:external_reads++;
       2'b01:external_reads--;
@@ -120,6 +121,8 @@ module tb_operand_drain;
     @(negedge clk);rready=0;
   endtask
   task automatic common;
+    // 普通和紧凑数据共用两个 IA bank，其余五个 bank 保存部分和。
+    wr('h108,2);wr('h120,1);
     wr('h01c,0);wr('h038,0);wr('h03c,0);wr('h040,0);
     wr('h044,32'h40000000);wr('h048,0);wr('h04c,32'hffffff80);wr('h050,127);
     wr('h054,1);wr('h058,1);wr('h05c,0);
@@ -195,11 +198,11 @@ module tb_operand_drain;
            !dut.u_npu_top.engine_i_done_ready)
       else $fatal(1,"normal completion accepted on fault cycle");
 `ifdef GEMPACT_PS_COMPRESS
-    assert(!dut.u_npu_top.g_frame_schedule.u_scheduler.done_ready)
+    assert(!dut.u_npu_top.u_matrix_engine.g_frame_schedule.u_scheduler.done_ready)
       else $fatal(1,"frame completion accepted on fault cycle");
 `endif
     if(!dut.u_npu_top.frame_mode_q)
-      assert(!dut.u_npu_top.u_npu_controller.done_ready)
+      assert(!dut.u_npu_top.u_matrix_engine.u_npu_controller.done_ready)
         else $fatal(1,"controller completion accepted on fault cycle");
     @(posedge clk);#1;
     assert(done_handshakes==accepted_before_fault && !dut.u_npu_top.task_completion_pending)
@@ -251,9 +254,9 @@ module tb_operand_drain;
       @(negedge clk);timeout++;
       assert(timeout<10000)else $fatal(1,"no held completion: starts=%0d busy=%0d gate=%0d pending=%0d ready=%0d ctrl=%0d err=%0d hold=%0d extreads=%0d mem_active=%0d addr=%h left=%0d cachecount=%0d bypass=%0d fetch=%0d",
         starts,npu_busy,dut.npu_clk_gate_en,dut.npu_start_pending_q,dut.npu_sa_ready,
-        dut.u_npu_top.u_npu_controller.current_state,dut.npu_err_code,hold_tail,external_reads,
-        memory.rd_active,memory.rd_addr,memory.rd_left,dut.u_npu_top.g_operand_cache.u_cache.count,
-        dut.u_npu_top.g_operand_cache.single_group_bypass,dut.u_npu_top.g_operand_cache.fetch64_q);
+        dut.u_npu_top.u_matrix_engine.u_npu_controller.current_state,dut.npu_err_code,hold_tail,external_reads,
+        memory.rd_active,memory.rd_addr,memory.rd_left,dut.u_npu_top.u_operand_cache_bridge.g_operand_cache.u_cache.count,
+        dut.u_npu_top.u_operand_cache_bridge.g_operand_cache.single_group_bypass,dut.u_npu_top.u_operand_cache_bridge.g_operand_cache.fetch64_q);
     end
     assert(get_byte(GOUT)==68)else $fatal(1,"first GEMM data incorrect");
     assert(memory.rd_left==12 && external_reads==1)else $fatal(1,"wrong held burst state");
@@ -261,10 +264,10 @@ module tb_operand_drain;
     if(expect_red)begin
       repeat(12)@(negedge clk);rd('h004,status);
       assert(status[2] && dut.npu_sa_ready)else $fatal(1,"old early retirement was not reproduced");
-      assert(dut.u_npu_top.g_operand_cache.u_cache.count==1)else $fatal(1,"old suffix not retained");
+      assert(dut.u_npu_top.u_operand_cache_bridge.g_operand_cache.u_cache.count==1)else $fatal(1,"old suffix not retained");
       $display("OPERAND_DRAIN_RED_EARLY_DONE pending_reads=%0d remaining_beats=%0d",external_reads,memory.rd_left);
       conv();repeat(12)@(negedge clk);
-      assert(starts==2 && dut.u_npu_top.g_operand_cache.single_group_bypass && flushes>hold_flushes)
+      assert(starts==2 && dut.u_npu_top.u_operand_cache_bridge.g_operand_cache.single_group_bypass && flushes>hold_flushes)
         else $fatal(1,"old next task did not switch/flush pending traffic");
       assert(hold_tail && external_reads>=1)else $fatal(1,"pending suffix unexpectedly drained");
       $display("OPERAND_DRAIN_RED_REPRODUCED starts=%0d flushes=%0d remaining_beats=%0d",starts,flushes,memory.rd_left);
@@ -275,7 +278,7 @@ module tb_operand_drain;
         @(negedge clk);
         assert(!dut.npu_done_valid && !dut.npu_sa_ready && npu_busy)
           else $fatal(1,"completed or reopened job before prefetch suffix drained");
-        assert(dut.npu_clk_gate_en && !dut.u_npu_top.g_operand_cache.single_group_bypass)
+        assert(dut.npu_clk_gate_en && !dut.u_npu_top.u_operand_cache_bridge.g_operand_cache.single_group_bypass)
           else $fatal(1,"clock/route changed while prefetch suffix pending");
         assert(flushes==hold_flushes && starts==1 && done_handshakes==hold_done)
           else $fatal(1,"job side effect while suffix held");

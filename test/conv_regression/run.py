@@ -3,7 +3,33 @@
 import argparse, hashlib, json, os, re, subprocess, sys, tarfile, time
 from pathlib import Path
 
-a=argparse.ArgumentParser();a.add_argument('--root',type=Path,required=True);a.add_argument('--out',type=Path);a.add_argument('--verilator',required=True);a.add_argument('--sizes',nargs='+',type=int,default=[4,8,16]);a.add_argument('--pcr',action='store_true');a.add_argument('--skip-build',action='store_true');a.add_argument('--pcr-only',action='store_true');a.add_argument('--compare',type=Path);a.add_argument('--baseline-ref',help='Generate and run a baseline from this local Git commit before comparing current results');a.add_argument('--jobs',type=int,default=2);x=a.parse_args()
+HERE=Path(__file__).resolve().parent
+TOOLS_ROOT=HERE.parents[1]
+sys.path.insert(0,str(TOOLS_ROOT/'scripts/rtl'))
+from source_files import input_files, with_dependencies
+
+a=argparse.ArgumentParser()
+a.add_argument('--root',type=Path,required=True)
+a.add_argument('--out',type=Path)
+a.add_argument('--verilator',required=True)
+a.add_argument('--sizes',nargs='+',type=int,default=[16])
+a.add_argument('--pcr',action='store_true',help='同时运行较长的共享存储复用测试')
+a.add_argument('--skip-build',action='store_true')
+a.add_argument('--pcr-only',action='store_true',help='仅运行较长的共享存储复用测试')
+a.add_argument('--lint-only',action='store_true')
+a.add_argument('--case',help='只运行名称包含该字符串的用例')
+a.add_argument('--compare',type=Path)
+a.add_argument('--baseline-ref',help='与指定本地 Git 提交的运行结果比较')
+a.add_argument('--jobs',type=int,default=2)
+x=a.parse_args()
+if any(size != 16 for size in x.sizes):
+    a.error('完整矩阵测试仅支持 --sizes 16，并使用共享 IA SRAM')
+if x.jobs < 1:
+    a.error('--jobs 必须为正数')
+if x.lint_only and (x.skip_build or x.compare or x.baseline_ref):
+    a.error('--lint-only 不能与缓存构建或运行结果比较同时使用')
+if x.pcr_only:
+    x.pcr=True
 r=x.root.resolve();out=(x.out or r/'build/conv_regression').resolve();out.mkdir(parents=True,exist_ok=True)
 if x.compare and x.baseline_ref:
     a.error('--compare and --baseline-ref are mutually exclusive')
@@ -16,7 +42,7 @@ if x.baseline_ref:
         raise RuntimeError('baseline output directory belongs to another commit; choose a fresh --out')
     # Extract sources at runtime; no source snapshot or generated vector is
     # shipped as an input. Limit extraction to dependencies of the real benches.
-    selected=['rtl/npu','rtl/common','test/dep_modules',
+    selected=['rtl/npu','rtl/common','include','test/dep_modules',
               'veri/top_regression','drivers/gempact_tiling.h']
     proc=subprocess.Popen(['git','archive',commit,'--',*selected],cwd=r,stdout=subprocess.PIPE)
     extracted={}
@@ -38,6 +64,7 @@ if x.baseline_ref:
     if x.pcr:child.append('--pcr')
     if x.pcr_only:child.append('--pcr-only')
     if x.skip_build:child.append('--skip-build')
+    if x.case:child.extend(['--case',x.case])
     print('GENERATED_BASELINE',commit,flush=True)
     with (out/'baseline_run.log').open('w') as log:
         log.write('COMMAND: '+repr(list(map(str,child)))+'\n');log.flush()
@@ -65,7 +92,7 @@ module npu_metrics;
 endmodule
 bind tb_npu_top npu_metrics u_npu_metrics();
 ''')
-summary={'repository':str(r),'commit':json.loads((r/'baseline_source.json').read_text())['commit'] if (r/'baseline_source.json').exists() else subprocess.check_output(['git','rev-parse','HEAD'],cwd=r,text=True).strip(),'verilator':str(x.verilator),'version':subprocess.check_output([x.verilator,'--version'],text=True).strip(),'builds':{},'cases':[],'vectors_generated_each_run':True,'baseline_ref':x.baseline_ref}
+summary={'repository':str(r),'commit':json.loads((r/'baseline_source.json').read_text())['commit'] if (r/'baseline_source.json').exists() else subprocess.check_output(['git','rev-parse','HEAD'],cwd=r,text=True).strip(),'verilator':str(x.verilator),'version':subprocess.check_output([x.verilator,'--version'],text=True).strip(),'builds':{},'cases':[],'vectors_generated_each_run':not x.lint_only,'baseline_ref':x.baseline_ref,'lint_only':x.lint_only,'shared_bank_bytes':8192,'shared_bank_count':7,'shared_total_bytes':57344,'ia_bank_count':2,'ps_force_raw':True}
 def save(): (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
 def run(cmd,log,timeout=600):
     log.parent.mkdir(parents=True,exist_ok=True)
@@ -86,13 +113,16 @@ def build(size,pcr=False):
     src += sorted((r/'rtl/common').glob('unsigned_compare.sv'))
     src += [r/'test/dep_modules/ddr_axi_mem_model.sv',Path(__file__).resolve().parent/'tb_npu_top.sv']
     src += [metrics]
-    flags=['--binary','--timing','--assert','-sv','--top-module','tb_npu_top','-Wno-fatal','--output-groups','0','--output-split','10000',f'-I{r/"rtl/npu/ps_compact"}',f'-DTB_SIZE={size}','-DTB_IA_CACHE_BLOCKS=4','-DTB_PS_FRAME_COUNT=16','-DTB_AXI_READ_OUTSTANDING=4','-DTB_DATA_WIDTH=16','-DTB_WEIGHT_WIDTH=16','-DTB_MEM_WORDS=131072','--Mdir',str(d/'obj'),'-j',str(x.jobs),'-CFLAGS','-std=c++20 -O1','-MAKEFLAGS','CFG_CXXFLAGS_PCH_I=-include OPT_FAST=-O1 OPT_SLOW=-O0']
-    if pcr: flags += ['-DGEMPACT_PS_COMPRESS=1','-DGEMMORA_PS_POOL_BYTES=12288']
+    src=with_dependencies(src,r)
+    flags=['--lint-only' if x.lint_only else '--binary','--timing','--assert','-sv','--top-module','tb_npu_top','-Wno-fatal','--output-groups','0','--output-split','10000',f'-I{r/"include"}',f'-I{r/"rtl/npu/ps_compact"}',f'-DTB_SIZE={size}','-DTB_IA_CACHE_BLOCKS=4','-DTB_PS_FRAME_COUNT=16','-DTB_AXI_READ_OUTSTANDING=4','-DTB_DATA_WIDTH=16','-DTB_WEIGHT_WIDTH=16','-DTB_MEM_WORDS=131072','--Mdir',str(d/'obj'),'-j',str(x.jobs),'-CFLAGS','-std=c++20 -O1','-MAKEFLAGS','CFG_CXXFLAGS_PCH_I=-include OPT_FAST=-O1 OPT_SLOW=-O0']
+    flags += ['-DGEMPACT_PS_COMPRESS=1','-DGEMMORA_PS_POOL_BYTES=49152','-DGEMMORA_PS_FORCE_RAW=1']
     cmd=[x.verilator,*flags,*src]
-    dependencies=src+sorted((r/'rtl/npu').rglob('*.svh'))
+    dependencies=input_files(src+[Path(__file__),TOOLS_ROOT/'scripts/rtl/source_files.py'],r)
     source_before={str(p.relative_to(r)) if p.is_relative_to(r) else '@test/'+p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}
     manifest_path=d/'build.json'
-    expected={'size':size,'pcr':pcr,'flags':[str(flag).replace(str(r),'@ROOT').replace(str(out),'@OUT') for flag in flags]}
+    expected={'size':size,'pcr':pcr,'shared_bank_bytes':8192,'shared_bank_count':7,
+              'ia_bank_count':2,'force_raw':True,'lint_only':x.lint_only,
+              'flags':[str(flag).replace(str(r),'@ROOT').replace(str(out),'@OUT') for flag in flags]}
     print('BUILD',tag,flush=True)
     if x.skip_build:
         manifest=json.loads(manifest_path.read_text())
@@ -112,14 +142,16 @@ def build(size,pcr=False):
     if x.skip_build:
         summary['builds'][tag]={**manifest,'reused_binary':True,'source_and_flags_revalidated':True}
     else:
-        if code==0:
+        if code==0 and not x.lint_only:
             summary['builds'][tag]['binary_sha256']=hashlib.sha256((d/'obj/Vtb_npu_top').read_bytes()).hexdigest()
         manifest_path.write_text(json.dumps(summary['builds'][tag],indent=2)+'\n')
     save()
     if code: print('BUILD FAILED',tag,txt[-3000:],flush=True);return
+    if x.lint_only:return
     specs=[('ws_s8_tail',0,1,False,True),('is_s8_tail',1,1,False,True),('ws_s16_tail',0,2,False,True),('is_s16_per_channel',1,2,True,True),('ws_s16_output',0,2,False,True),('ws_s8_per_channel',0,1,True,True)]
     if pcr: specs=[('pcr_ws',0,1,False,True),('pcr_is',1,1,False,True)]
     for idx,(name,mode,dtype,pc,rand) in enumerate(specs):
+        if x.case and x.case not in name:continue
         cd=d/name;cd.mkdir(exist_ok=True);case=cd/'case'
         dims=([129,53,35] if mode else [35,53,129]) if pcr else [size+3,2*size+5,size+5]
         cmd=[sys.executable,r/'veri/top_regression/gen_mem.py','--out_dir',case,'--size',size,'--ia_cache_blocks',4,'--ps_frame_count',16,'--mem_words',131072,'--K',dims[0],'--N',dims[1],'--M',dims[2],'--lhs_dtype',dtype,'--dataflow_mode',mode,'--ia_reuse_num',2,'--w_reuse_num',8 if pcr else 2,'--random','--random_quant','--seed',1000+size*10+idx,'--lhs_zp',0 if pcr or name=='ws_s16_output' else 3,'--rhs_zp',0]
@@ -133,16 +165,15 @@ def build(size,pcr=False):
         ok=rc==0 and '[TB] PASS' in txt and '[TB] FAIL' not in txt and '[TB] FATAL' not in txt
         line=next((l for l in txt.splitlines() if '[NPU_METRICS]' in l),'')
         measurement={k:int(v) for k,v in re.findall(r'(\w+)=(\d+)',line)}
-        if pcr:
-            storage=next((l for l in txt.splitlines() if '[PS_STORAGE_METRICS]' in l),'')
-            measurement.update({'ps_'+k:int(v) for k,v in re.findall(r'(\w+)=(\d+)',storage)})
+        storage=next((l for l in txt.splitlines() if '[PS_STORAGE_METRICS]' in l),'')
+        measurement.update({'ps_'+k:int(v) for k,v in re.findall(r'(\w+)=(\d+)',storage)})
         summary['cases'].append({'tag':tag,'name':name,'returncode':rc,'passed':ok,'metrics':measurement,'generate_command':list(map(str,cmd)),'run_command':list(map(str,sim)),'log':str(cd/'run.log')});save()
         print(tag,name,'PASS' if ok else 'FAIL',measurement,flush=True)
         if not ok:print(txt[-1800:],flush=True)
 if not x.pcr_only:
     for s in x.sizes:build(s)
 if x.pcr:build(16,True)
-summary['passed']=all(v['returncode']==0 for v in summary['builds'].values()) and all(v['passed'] for v in summary['cases']) and bool(summary['cases']);save()
+summary['passed']=bool(summary['builds']) and all(v['returncode']==0 for v in summary['builds'].values()) and (x.lint_only or (bool(summary['cases']) and all(v['passed'] for v in summary['cases'])));save()
 if x.compare:
     baseline=json.loads(x.compare.read_text())
     before={(c['tag'],c['name']):c for c in baseline['cases']}
@@ -155,5 +186,5 @@ if x.compare:
     comparison_ok=len(comparisons)==len(before) and all(c['identical'] for c in comparisons)
     summary['baseline_comparison']={'reference':str(x.compare),'identical':comparison_ok,'cases':comparisons}
     summary['passed']=summary['passed'] and comparison_ok;save()
-print('BASELINE_RESULT',summary['passed'],len(summary['cases']),flush=True)
+print('NPU_REGRESSION_RESULT',summary['passed'],len(summary['cases']),flush=True)
 sys.exit(0 if summary['passed'] else 1)

@@ -8,8 +8,8 @@ ROOT = Path(__file__).resolve().parents[2]
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--out', type=Path, required=True)
 args = parser.parse_args()
-parameters = dict(SIZE=16, BUS_WIDTH=64, COUNT_WIDTH=29, CACHE_BLOCKS=32,
-                  EXTERNAL_RAM=1, ORDERED_JOB=1, RAM_WORD_ADDR_WIDTH=12,
+parameters = dict(DATA_WIDTH=16, SIZE=16, BUS_WIDTH=64, COUNT_WIDTH=29, CACHE_BLOCKS=32,
+                  ORDERED_JOB=1, RAM_WORD_ADDR_WIDTH=12,
                   PS_FRAME_COUNT=16, p_dma_source_layout=1, p_shared_write_stage=1,
                   p_register_dma_request=1)
 case = dict(top='ia_loader', parameters=parameters,

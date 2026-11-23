@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source_group as read_rtl_source, shared_ia_options
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--reference-rev", default="aa2ef9a3")
+    parser.add_argument("--reference-rev", default="7ff66a59")
     parser.add_argument("--count-width", type=int, default=32)
     parser.add_argument("--synth-script", type=Path, default=ROOT / "scripts/fpga/open_fpga_synth.py")
     parser.add_argument("--lock-file", type=Path)
@@ -33,13 +33,14 @@ def main():
     for label in ("reference", "candidate"):
         paths = [str(reference / (name + ".sv")) if label == "reference" else
                  "rtl/npu/loaders/" + name + ".sv" for name in modules]
+        module_source = (reference / "ia_loader.sv").read_text() if label == "reference" else (ROOT / paths[0]).read_text()
+        options = shared_ia_options(["-GSIZE=16", "-GBUS_WIDTH=64", "-GCACHE_BLOCKS=32",
+                                    "-GCOUNT_WIDTH=" + str(args.count_width), "-GORDERED_JOB=1"], module_source)
         cases["loader_" + label] = {
-            "top": "ia_loader", "options": ["-GSIZE=16", "-GBUS_WIDTH=64", "-GCACHE_BLOCKS=32",
-                                               "-GCOUNT_WIDTH=" + str(args.count_width),
-                                               "-GEXTERNAL_RAM=1", "-GORDERED_JOB=1"],
+            "top": "ia_loader", "options": options,
             "sources": paths,
             "configuration": "SIZE16 BUS64 CACHE32 COUNT_WIDTH" + str(args.count_width) +
-                             " EXTERNAL_RAM1 ORDERED_JOB1",
+                             " shared SRAM ORDERED_JOB1",
         }
     case_file = out / "cases.json"
     case_file.write_text(json.dumps(cases, indent=2) + "\n")

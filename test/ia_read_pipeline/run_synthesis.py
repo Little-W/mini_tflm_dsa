@@ -76,7 +76,7 @@ def main():
     reference_commit = subprocess.check_output(['git','rev-parse',args.reference_rev],
         cwd=ROOT, text=True).strip()
     common_options = ['-DSYNTHESIS=1', '-GSIZE=16', '-GDATA_WIDTH=16', '-GBUS_WIDTH=64',
-        '-GCACHE_BLOCKS=32', '-GEXTERNAL_RAM=1', '-GRAM_WORD_ADDR_WIDTH=12',
+        '-GCACHE_BLOCKS=32', '-GRAM_WORD_ADDR_WIDTH=12',
         '-Gp_compact_offset_width=9', '-Gp_dma_source_layout=1', '-Gp_shared_write_stage=1',
         '-Gp_precomputed_slot_mask=1', '-Gp_indexed_slot_rows=1']
     cases = {}
@@ -87,7 +87,7 @@ def main():
                 sources=['rtl/npu/loaders/ia_loader_cache_mgr.sv'],
                 configuration=f'IA 16384 bytes, SIZE16 DATA16 BUS64 DMA{lanes} COMPACT{compact}')
     cases['reference_dma16_compact1'] = dict(top='ia_loader_cache_mgr',
-        options=common_options + ['-GDMA_LANES=16', '-GCOMPACT_S8=1'],
+        options=common_options + ['-GDMA_LANES=16', '-GCOMPACT_S8=1', '-GEXTERNAL_RAM=1'],
         sources=[str(reference)], configuration='IA 16384 bytes, SIZE16 DATA16 BUS64 DMA16 COMPACT1')
     case_file = out / 'cases.json'
     case_file.write_text(json.dumps(cases, indent=2) + '\n')

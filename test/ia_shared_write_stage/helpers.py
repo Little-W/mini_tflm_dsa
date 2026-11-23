@@ -7,9 +7,9 @@ sys.path.insert(0, str(ROOT / 'test/ia_timing'))
 from run_interface import port_declarations
 
 SOURCES = ['rtl/npu/loaders/ia_loader_cache_mgr.sv',
-           'rtl/npu/buffers/ia_ps_shared_ram.sv', 'rtl/npu/compute/select_add.sv']
+           'rtl/npu/buffers/ia_ps_channel_ram.sv', 'rtl/npu/compute/select_add.sv']
 PARAMETERS = dict(DATA_WIDTH=16, SIZE=16, BUS_WIDTH=64, DMA_LANES=8, REG_WIDTH=32,
-                  CACHE_BLOCKS=32, COMPACT_S8=1, EXTERNAL_RAM=1,
+                  CACHE_BLOCKS=32, COMPACT_S8=1,
                   RAM_WORD_ADDR_WIDTH=12, p_compact_offset_width=9,
                   SLOT_BLOCKS=64, p_addr_width=12, p_bank_count_width=3)
 
@@ -18,8 +18,7 @@ def make_wrapper(path, formal=False):
     cache = (ROOT / SOURCES[0]).read_text()
     channel = (ROOT / SOURCES[1]).read_text()
     cache_ports = port_declarations(cache)
-    channel_ports = port_declarations('module ia_ps_channel_ram' +
-                                      channel.split('module ia_ps_channel_ram', 1)[1])
+    channel_ports = port_declarations(channel)
     ram_names = {name for _, _, name, _ in cache_ports if name.startswith('ram_')}
     ports = [port for port in cache_ports if port[2] not in ram_names]
     ports += [port for port in channel_ports if not port[2].startswith(('i_ia', 'o_ia'))

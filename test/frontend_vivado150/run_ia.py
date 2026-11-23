@@ -36,14 +36,15 @@ def main():
     rtl += [source / 'rtl/npu/compute/select_add.sv']
     rtl += [source / ('rtl/npu/loaders/' + name + '.sv')
             for name in ('ia_ordered_coordinate_equal', 'ia_ordered_coordinate_same', 'ia_loader_cache_mgr', 'ia_loader_ctrl', 'ia_loader')]
-    rtl += [HERE / 'ia_tb.sv', ROOT / 'test/ia_request_stage/request_observer.sv']
+    rtl += [HERE / 'ia_tb.sv', ROOT / 'test/common/ia_shared_ram_model.sv',
+            ROOT / 'test/ia_request_stage/request_observer.sv']
     cpp = HERE / 'ia_test.cpp'
     inputs = [Path(__file__), *rtl, cpp]
     hashes = {str(path): digest(path) for path in inputs}
     rules = out / 'compile_rules.mk'
     rules.write_text('%.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_FAST) -c -o $@ $<\n'
-                     '$(VK_OBJS_FAST): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_FAST) -c -o $@ $<\n'
-                     '$(VK_OBJS_SLOW): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_SLOW) -c -o $@ $<\n'
+                     '$(VK_OBJS_FAST): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(filter-out -Wall -Wextra -Werror,$(CXXFLAGS) $(CPPFLAGS)) $(OPT_FAST) -c -o $@ $<\n'
+                     '$(VK_OBJS_SLOW): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(filter-out -Wall -Wextra -Werror,$(CXXFLAGS) $(CPPFLAGS)) $(OPT_SLOW) -c -o $@ $<\n'
                      '$(VK_GLOBAL_OBJS): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(filter-out -Wall -Wextra -Werror,$(CXXFLAGS) $(CPPFLAGS)) $(OPT_GLOBAL) -c -o $@ $<\n')
     flags = []
     if args.fpga:

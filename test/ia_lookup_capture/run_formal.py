@@ -12,19 +12,21 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'test'))
+from rtl_reference import shared_ia_options
 SOURCES = tuple(Path('rtl/npu/loaders') / (name + '.sv') for name in
                 ('ia_loader', 'ia_loader_ctrl', 'ia_loader_cache_mgr'))
 CASES = {
     'production': ['-GSIZE=16', '-GBUS_WIDTH=64', '-GDMA_LANES=8', '-GCOUNT_WIDTH=29',
-                   '-GCACHE_BLOCKS=32', '-GEXTERNAL_RAM=1', '-GORDERED_JOB=1',
+                   '-GCACHE_BLOCKS=32', '-GORDERED_JOB=1',
                    '-GRAM_WORD_ADDR_WIDTH=12',
                    '-Gp_register_dma_request=1', '-Gp_dma_source_layout=1', '-Gp_shared_write_stage=1'],
     'generic': ['-GSIZE=16', '-GBUS_WIDTH=32', '-GCOUNT_WIDTH=8', '-GCACHE_BLOCKS=4',
-                '-GEXTERNAL_RAM=1', '-GORDERED_JOB=0'],
-    'small': ['-GSIZE=3', '-GBUS_WIDTH=32', '-GCOUNT_WIDTH=8', '-GCACHE_BLOCKS=4',
-              '-GEXTERNAL_RAM=0', '-GORDERED_JOB=1'],
+                '-GORDERED_JOB=0'],
+    'small': ['-GSIZE=16', '-GBUS_WIDTH=32', '-GCOUNT_WIDTH=8', '-GCACHE_BLOCKS=4',
+              '-GORDERED_JOB=1'],
     'wide_cache': ['-GSIZE=16', '-GBUS_WIDTH=64', '-GCOUNT_WIDTH=32', '-GCACHE_BLOCKS=64',
-                   '-GEXTERNAL_RAM=1', '-GORDERED_JOB=1', '-Gp_register_dma_request=1'],
+                   '-GORDERED_JOB=1', '-Gp_register_dma_request=1'],
 }
 
 
@@ -49,6 +51,9 @@ def main() -> None:
         common = sorted(path.relative_to(root) for path in (root / 'rtl/common').iterdir()
                         if path.suffix in ('.v', '.sv'))
         relatives = [*SOURCES, Path('rtl/npu/compute/select_add.sv'), *common]
+        relatives += [Path('rtl/npu/loaders') / helper for helper in
+                      ('ia_ordered_coordinate_equal.sv', 'ia_ordered_coordinate_same.sv')
+                      if (root / 'rtl/npu/loaders' / helper).is_file()]
         snapshots[label], hashes[label] = [], {}
         for relative in relatives:
             source = root / relative
@@ -64,8 +69,9 @@ def main() -> None:
         options = ['-DSYNTHESIS=1', '-DXILINX_FPGA=1', *CASES[name]]
         commands = []
         for label in ('reference', 'current'):
+            selected_options = shared_ia_options(options, snapshots[label][0].read_text())
             commands += [
-                'read_slang --top ia_loader ' + shlex.join(options + [str(p) for p in snapshots[label]]),
+                'read_slang --top ia_loader ' + shlex.join(selected_options + [str(p) for p in snapshots[label]]),
                 'prep -top ia_loader -flatten', 'memory_map', 'async2sync', 'opt_clean',
                 'rename ia_loader ' + label, 'design -stash ' + label,
             ]

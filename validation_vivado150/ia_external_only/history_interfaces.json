@@ -1,0 +1,300 @@
+{
+  "passed": true,
+  "scope": "共享 SRAM 接口的历史测试入口适配",
+  "reference_revision": "7ff66a593e0b1e6a30ca17e75257acd9d3d90a08",
+  "syntax": {
+    "passed": true,
+    "modified_ia_python_files": 38,
+    "owned_python_files": 22
+  },
+  "shared_loader_elaboration": {
+    "passed": true,
+    "reference_revision": "7ff66a59",
+    "checks": "read_slang and hierarchy -check",
+    "runs": [
+      {
+        "variant": "current",
+        "profile": "production",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "COUNT_WIDTH": 29,
+          "CACHE_BLOCKS": 32,
+          "ORDERED_JOB": 1,
+          "PS_FRAME_COUNT": 16,
+          "p_dma_source_layout": 1,
+          "p_shared_write_stage": 1
+        },
+        "options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "-GRAM_WORD_ADDR_WIDTH=12",
+          "-GSIZE=16",
+          "-GBUS_WIDTH=64",
+          "-GCOUNT_WIDTH=29",
+          "-GCACHE_BLOCKS=32",
+          "-GORDERED_JOB=1",
+          "-GPS_FRAME_COUNT=16",
+          "-Gp_dma_source_layout=1",
+          "-Gp_shared_write_stage=1"
+        ],
+        "passed": true,
+        "script_sha256": "e17dd7067375d842daa76571033b93b4b15f756029d7c888045c9ac77c3cf998",
+        "log_sha256": "ff38bddcd27daa056cb296b6a370435e447e9c1eeea02d2c8f2add73b36f536f"
+      },
+      {
+        "variant": "current",
+        "profile": "generic",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 8,
+          "CACHE_BLOCKS": 4,
+          "ORDERED_JOB": 0
+        },
+        "options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "-GRAM_WORD_ADDR_WIDTH=12",
+          "-GSIZE=16",
+          "-GBUS_WIDTH=32",
+          "-GCOUNT_WIDTH=8",
+          "-GCACHE_BLOCKS=4",
+          "-GORDERED_JOB=0"
+        ],
+        "passed": true,
+        "script_sha256": "e7366648a2037bd1a085cacc0f432ef0d12f880b9c37cfe9e7e730dc242aed50",
+        "log_sha256": "a6b29315e5ee214bbe77ca5f651efb51874fb81944d8b1587fd211d4c0cde9ec"
+      },
+      {
+        "variant": "current",
+        "profile": "small",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 8,
+          "CACHE_BLOCKS": 2,
+          "ORDERED_JOB": 1
+        },
+        "options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "-GRAM_WORD_ADDR_WIDTH=12",
+          "-GSIZE=16",
+          "-GBUS_WIDTH=32",
+          "-GCOUNT_WIDTH=8",
+          "-GCACHE_BLOCKS=2",
+          "-GORDERED_JOB=1"
+        ],
+        "passed": true,
+        "script_sha256": "d1330c84aa065e9af95105e3bf3fbab60be36110c91250bab37354ac8eb07f9b",
+        "log_sha256": "f41d55de46257012de671a44fc4aa4eebf85bc484fb6f6b4584d7863424e2419"
+      },
+      {
+        "variant": "current",
+        "profile": "minimum_count",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 5,
+          "CACHE_BLOCKS": 2,
+          "ORDERED_JOB": 0
+        },
+        "options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "-GRAM_WORD_ADDR_WIDTH=12",
+          "-GSIZE=16",
+          "-GBUS_WIDTH=32",
+          "-GCOUNT_WIDTH=5",
+          "-GCACHE_BLOCKS=2",
+          "-GORDERED_JOB=0"
+        ],
+        "passed": true,
+        "script_sha256": "72e3c8a19b4d4fe39b67eee75f1a41dc0c369c35f9be1eb54f79d1eab4484ea8",
+        "log_sha256": "d38dd3df3d59f4db43b3c493c80dd87a4ec64da96908445983c5f078b341ef33"
+      },
+      {
+        "variant": "reference",
+        "profile": "production",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "COUNT_WIDTH": 29,
+          "CACHE_BLOCKS": 32,
+          "ORDERED_JOB": 1,
+          "PS_FRAME_COUNT": 16,
+          "p_dma_source_layout": 1,
+          "p_shared_write_stage": 1
+        },
+        "options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "-GRAM_WORD_ADDR_WIDTH=12",
+          "-GSIZE=16",
+          "-GBUS_WIDTH=64",
+          "-GCOUNT_WIDTH=29",
+          "-GCACHE_BLOCKS=32",
+          "-GORDERED_JOB=1",
+          "-GPS_FRAME_COUNT=16",
+          "-Gp_dma_source_layout=1",
+          "-Gp_shared_write_stage=1",
+          "-GEXTERNAL_RAM=1"
+        ],
+        "passed": true,
+        "script_sha256": "801f3dd511d055a3e44f84bf0cd181382939f89721fbf2d01a27eadd0e9a04ba",
+        "log_sha256": "1e46b78f0a24a1b7e24117c5a30fc1ac9b81b38291615b1f8e37968cb9dd9d3c"
+      },
+      {
+        "variant": "reference",
+        "profile": "generic",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 8,
+          "CACHE_BLOCKS": 4,
+          "ORDERED_JOB": 0
+        },
+        "options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "-GRAM_WORD_ADDR_WIDTH=12",
+          "-GSIZE=16",
+          "-GBUS_WIDTH=32",
+          "-GCOUNT_WIDTH=8",
+          "-GCACHE_BLOCKS=4",
+          "-GORDERED_JOB=0",
+          "-GEXTERNAL_RAM=1"
+        ],
+        "passed": true,
+        "script_sha256": "6d221a365c85baf9c649c1358214e703574787e25b83b2cf3f9b3ccdf2ed41e6",
+        "log_sha256": "2bd1603ba382c5d693834d7f17a8d447eae3330f992e8f69db1ab9d2dc3f6d2c"
+      },
+      {
+        "variant": "reference",
+        "profile": "small",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 8,
+          "CACHE_BLOCKS": 2,
+          "ORDERED_JOB": 1
+        },
+        "options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "-GRAM_WORD_ADDR_WIDTH=12",
+          "-GSIZE=16",
+          "-GBUS_WIDTH=32",
+          "-GCOUNT_WIDTH=8",
+          "-GCACHE_BLOCKS=2",
+          "-GORDERED_JOB=1",
+          "-GEXTERNAL_RAM=1"
+        ],
+        "passed": true,
+        "script_sha256": "86715e4beb3d44705d942cab61269f4df6e88c89b7d336048552290f52f8e471",
+        "log_sha256": "5f909414feaaa947787ef8e550c0bf7af3e91a0341118085cda3785d1277bc42"
+      },
+      {
+        "variant": "reference",
+        "profile": "minimum_count",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 5,
+          "CACHE_BLOCKS": 2,
+          "ORDERED_JOB": 0
+        },
+        "options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "-GRAM_WORD_ADDR_WIDTH=12",
+          "-GSIZE=16",
+          "-GBUS_WIDTH=32",
+          "-GCOUNT_WIDTH=5",
+          "-GCACHE_BLOCKS=2",
+          "-GORDERED_JOB=0",
+          "-GEXTERNAL_RAM=1"
+        ],
+        "passed": true,
+        "script_sha256": "674984c23e6da121b29cf2e077934fe374f0dbc79af005df261b48af23a0ca95",
+        "log_sha256": "4c19f9b61071701357a42d471d6d0034b5228602f6476f26ebf4727956eca985"
+      }
+    ]
+  },
+  "source_layout_public_interface": {
+    "cycles": 200000,
+    "outputs": 15,
+    "comparisons": 3000000,
+    "passed": true,
+    "source_sha256": {
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "705c4f9f1c5ec4003b757d4511949c12078f22af3fb98a98be4a0ba2fc3301cb",
+      "rtl/npu/compute/select_add.sv": "153f79592cd6a3d2ea19261df572736292475f00dbc0fb7af3d1555508afc8d0",
+      "dc_compute_work/ia_history/source_layout/tb_source_layout.sv": "0b259e74ad8bc25c7f4e22ab48e5edaec30fe447bf710d6d00af2fed0580a08e",
+      "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+      "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+      "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+      "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+      "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+      "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+      "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+      "rtl/common/unsigned_compare.sv": "2f8a56bf2356ab9ef3bbe1691290758e110f275409a55b2ebee2025cdefb74dc"
+    },
+    "compared_outputs": [
+      "ram_port_wr_en",
+      "ram_port_wr_addr",
+      "ram_port_wr_data",
+      "ram_port_wr_mask",
+      "ram_shared_wr_data",
+      "ram_port_rd_en",
+      "ram_port_rd_addr",
+      "row_table_index",
+      "tile_done",
+      "l1_done",
+      "ia_tile_start",
+      "ia_out",
+      "ia_row_valid",
+      "ia_is_init_data",
+      "ia_calc_done"
+    ],
+    "binary_sha256": "84a7d7f442dc598890e8329d4d91d14d1fd3f9f21a71c3be45643027d051f82b"
+  },
+  "files_sha256": {
+    "test/rtl_reference.py": "d6f336604941906b7199595f6d08de61c7265bc1e02fc354143f57e9cb08ecca",
+    "test/ia_arbiter_request/run_ia_formal.py": "6d0ddf04be2eb3ae0f915bf49c121a25e2c6dc7fed46234057af6a20db0d6904",
+    "test/ia_frame_rows/run_formal.py": "f85588247968756c56fab653927fc58ef8ffa738b6bf9612f55166484d8dd0ba",
+    "test/ia_lookup_capture/run_formal.py": "a664ad6967c2066dc6eaf87756e6475e27da3cd83b78dafc93d26e1f699fa9b2",
+    "test/ia_lookup_capture/run_interface.py": "378df939d0e5dd6d3b9ac4ab58d63b5dd62025dfcfad5b93bcf1b9e226300184",
+    "test/ia_request_lut/run_formal.py": "8d83627a41b44d76e00c823ffa906fecf53a73e4fae558228e0a7df291b55545",
+    "test/ia_request_lut/run_interface.py": "b2ed509ac753d2e05769205987fe5b1891b288132b87478b288d57582d9634ce",
+    "test/ia_request_stage/run_formal.py": "b25539cf10bf89700b5a47f8e18c2476c5477107c31fa8b1673667b7e97a80eb",
+    "test/ia_reuse_admission/run_formal.py": "c67db29b9fc9ebc0faa71ae2bb7b1e37597b5f26e7da2831d00ffc6f771d2695",
+    "test/ia_shared_write_stage/run_public.py": "14e5d51f3c20df7b802c906076a8292eaa6493b53fc9ecc928c366d9df7c0b73",
+    "test/ia_slot_stage/run_boundary_formal.py": "bb901108d029578074e71ec710a1b93173fe11cbd179eaf5b0fe0ddf8d0f3251",
+    "test/ia_slot_stage/run_formal.py": "69543400c31153770c95fbf0ae3755a537072708ee5c9e400be7280cb4b809cb",
+    "test/ia_source_layout/run_formal.py": "6bb2246b4c0ed8ff1f2b10b0dfe0da5b7fc575a813f355a23e48baf24e640040",
+    "test/ia_source_layout/run_interface.py": "3ae3759308e799c00b57433fbf78b2e0ab8302117873db4e85500edd3ff3be2a",
+    "test/ia_timing/run_formal.py": "475c028557b1e6de9989056b8891f429a60db5143fc284a7e997d0a91893b276",
+    "test/ia_timing/run_interface.py": "6531b68b2f3afab88128ec96a4b5840d6fa83a664350f8f79a5797ba04ea75eb",
+    "test/ia_timing/run_synthesis.py": "c1206da3ced06cf18d9f72a34309c17dfcd7f1ae95be215653270bc6380a0b5d",
+    "test/ia_write_admission/run_interface.py": "82e93a3e84bc93f95fa3b7d5176320d47dc2bda72f927c071ede4a2f070709ec",
+    "test/ia_write_layout/run_formal.py": "71008f540ead54c7a240ee38a4a85412eb71d272f738a788b05eebf9c6607333",
+    "test/ia_write_layout/synthesis.py": "28444d58f11363689a322ca9ec0cc9b9674c12ac8a17b0bd69a50cc52fbb2c97",
+    "test/ia_write_output_depth/run_formal.py": "b237a407512bd3e445522e7566ee6fe8f8e9465633b95a1cefdf2e83fea0d6b2",
+    "test/shared_ia_ps/check_structure.py": "1d0bdbce14dda767e8c2b74d703e4639508d756ed229362f733d99886160ece1",
+    "test/ia_timing/REQUEST_MATCH.md": "212a079c1b4c419bc8181810e64e54686ebb27d5f2d3033ecc39819241c39fe6",
+    "test/ia_timing/CONFIG_TILES.md": "01cb116385db883adbb21735742da87d944d27c85eb0b5c7a45ecc0a8d9a0ecb",
+    "test/ia_control_output_depth/README.md": "9c89c601741d02201a7ba3ff22f644de9b56cdc19ce6921c74bde94628e16728"
+  },
+  "valid_rows_and_columns": {
+    "range": [
+      1,
+      16
+    ],
+    "coverage_source": "test/ia_shared/cache_test.cpp::tails_masks_and_overlap",
+    "included_partial_counts": [
+      3,
+      4
+    ]
+  }
+}

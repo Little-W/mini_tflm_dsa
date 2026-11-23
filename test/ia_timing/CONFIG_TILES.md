@@ -93,7 +93,7 @@ source /workspace/scratch/92f7be750f11/toolchain/env.sh
 python3 test/ia_timing/run_formal.py \
   --out build/ia_config_tiles/formal \
   --reference-rev b0ccc7a \
-  --cases ctrl3 ctrl16 ctrl32 loader_ordered29 loader_ordered loader_generic loader_local3
+  --cases ctrl3 ctrl16 ctrl32 loader_ordered29 loader_ordered loader_generic loader_small_cache
 python3 test/ia_timing/run_interface.py \
   --out build/ia_config_tiles/interface \
   --reference-rev b0ccc7a --verilator verilator-modern

@@ -467,6 +467,13 @@ typedef struct packed {
     logic [p_reg_width-1:0] stream_m;
     logic tile_calc_over;
     logic tiling_invalid;
+    logic matrix_storage_invalid, matrix_config_invalid;
+    logic [1:0] matrix_frame_config_error;
+
+    // 矩阵任务必须连接共享 IA 存储，非法配置使用既有错误完成流程。
+    assign matrix_storage_invalid = !p_shared_ram_enabled;
+    assign matrix_config_invalid = tiling_invalid || matrix_storage_invalid;
+    assign matrix_frame_config_error = matrix_storage_invalid ? 2'b01 : frame_config_error;
     logic use_16bits;
     logic use_frame_commands_s2;
     logic use_per_channel_eff;
@@ -639,7 +646,7 @@ typedef struct packed {
                 frame_ps_accepted <= 1'b0; frame_compute_seen <= 1'b0; frame_store_seen <= 1'b0;
                 frame_output_seen <= 1'b0; frame_output_armed <= 1'b0;
             end else begin
-                frame_dma_init_q <= o_cfg_stage2_fire && use_frame_commands_s2;
+                frame_dma_init_q <= o_cfg_stage2_fire && use_frame_commands_s2 && !matrix_storage_invalid;
                 if (o_cfg_stage2_fire) begin
                     o_frame_mode_q <= use_frame_commands_s2;
                     frame_whole_rows_q <= frame_slice_tiles_s2 == o_cfg_ia_reuse_q[2];
@@ -669,7 +676,7 @@ typedef struct packed {
                 .clk(clk), .rst_n(rst_n), .start(o_cfg_stage2_fire && use_frame_commands_s2),
                 .stream_rows(o_cfg_stream_k_q[2]), .stationary_rows(o_cfg_stream_m_q[2]), .reduction(cfg_n_q[2]),
                 .reuse_rows(o_cfg_ia_reuse_q[2]), .window_frames(o_cfg_w_reuse_q[2]),
-                .slice_tiles(frame_slice_tiles_s2), .config_error(frame_config_error),
+                .slice_tiles(frame_slice_tiles_s2), .config_error(matrix_frame_config_error),
                 .ready(o_frame_scheduler_ready), .done_valid(frame_scheduler_done),
                 .done_ready(i_task_completion_accept && !i_run_vector), .err_code(frame_scheduler_error),
                 .command_valid(frame_command_valid), .command_ready(frame_command_ready),
@@ -709,7 +716,7 @@ typedef struct packed {
         .calc_start       (ctrl_calc_start),
         .cfg_16bits_ia    (cfg_16bits_ia_eff | i_cfg_16x8),
         .cfg_dataflow_mode(i_cfg_dataflow_mode_eff),
-        .cfg_tiling_error (tiling_invalid),
+        .cfg_tiling_error (matrix_config_invalid),
         .sa_ready         (o_ctrl_sa_ready),
         .partial_sum_calc_over(partial_sum_calc_over),
         .partial_sum_advance_ready(partial_sum_advance_ready),
@@ -769,7 +776,6 @@ typedef struct packed {
                 .COUNT_WIDTH (DIM_COUNT_WIDTH),
                 .CACHE_BLOCKS(p_ia_max_cache_blocks),
                 .COMPACT_S8(p_ia_compact_enable),
-                .EXTERNAL_RAM(p_shared_ram_enabled),
                 .ORDERED_JOB(1'b1),
                 .p_register_dma_request(1'b1),
                 // 输入来自双模式 DMA，使用其固定的列位置和有效通道排列。

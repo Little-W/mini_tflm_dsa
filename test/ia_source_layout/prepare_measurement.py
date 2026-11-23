@@ -14,7 +14,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     parameters = dict(DATA_WIDTH=16, SIZE=16, BUS_WIDTH=64, REG_WIDTH=32,
-                      CACHE_BLOCKS=32, COMPACT_S8=1, EXTERNAL_RAM=1,
+                      CACHE_BLOCKS=32, COMPACT_S8=1,
                       RAM_WORD_ADDR_WIDTH=12, p_compact_offset_width=9)
     cases = {}
     for name, enabled in [('general', 0), ('production', 1)]:

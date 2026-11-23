@@ -28,7 +28,7 @@
 ```sh
 python3 test/ia_timing/run_formal.py \
   --out build/ia_request_formal --reference-rev d2c4b8f \
-  --cases loader_ordered loader_generic loader_local3
+  --cases loader_ordered loader_generic loader_small_cache
 python3 test/ia_timing/run_interface.py \
   --out build/ia_request_interface --reference-rev d2c4b8f \
   --verilator verilator-modern

@@ -23,14 +23,14 @@ def testbench(cycles):
     ports = port_declarations(SOURCE.read_text())
     lines = ['module tb_source_layout;',
              '    localparam int DATA_WIDTH=16, SIZE=16, BUS_WIDTH=64, REG_WIDTH=32;',
+             '    localparam int DMA_LANES=BUS_WIDTH/8;',
              '    localparam int CACHE_BLOCKS=32, COMPACT_S8=1, SLOT_BLOCKS=64;',
-             '    localparam bit EXTERNAL_RAM=1;',
              '    localparam int RAM_WORD_ADDR_WIDTH=12, p_compact_offset_width=9;']
     for direction, kind, name, unpacked in ports:
         names = [name] if direction == 'input' else ['reference_' + name, 'current_' + name]
         lines += [f'    {kind} {signal} {unpacked};' for signal in names]
     parameters = ['DATA_WIDTH', 'SIZE', 'BUS_WIDTH', 'REG_WIDTH', 'CACHE_BLOCKS',
-                  'COMPACT_S8', 'EXTERNAL_RAM', 'RAM_WORD_ADDR_WIDTH', 'p_compact_offset_width']
+                  'COMPACT_S8', 'RAM_WORD_ADDR_WIDTH', 'p_compact_offset_width']
     for label, enabled in [('reference', 0), ('current', 1)]:
         lines += ['    ia_loader_cache_mgr #(',
                   ',\n'.join(f'        .{name}({name})' for name in parameters) +
@@ -79,7 +79,7 @@ def testbench(cycles):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--verilator', default='verilator-modern')
+    parser.add_argument('--verilator', default='verilator')
     parser.add_argument('--cycles', type=int, default=200000)
     args = parser.parse_args()
     out = args.out.resolve()
@@ -87,8 +87,8 @@ def main():
     text, outputs = testbench(args.cycles)
     tb = out / 'tb_source_layout.sv'
     tb.write_text(text)
-    sources = [SOURCE, ROOT / 'rtl/npu/compute/select_add.sv',
-               ROOT / 'rtl/common/regfile.v', ROOT / 'rtl/common/pseudo_dual_port_ram.v', tb]
+    sources = [SOURCE, ROOT / 'rtl/npu/compute/select_add.sv', tb]
+    sources += sorted(path for path in (ROOT / 'rtl/common').iterdir() if path.suffix in ('.v', '.sv'))
     hashes = {str(p): digest(p) for p in sources}
     command = [args.verilator, '--binary', '--timing', '--assert', '-Wno-fatal', '-j', '1',
                '--top-module', 'tb_source_layout', '--Mdir', str(out / 'obj'), *map(str, sources)]
