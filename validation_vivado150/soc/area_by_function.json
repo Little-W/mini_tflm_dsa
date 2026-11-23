@@ -1,0 +1,469 @@
+{
+  "scope": "Yosys XC7 布局前映射的 soc_top；每个已映射逻辑 LUT 单元计数一次。",
+  "input_sha256": {
+    "/workspace/scratch/e1a5fa683a84/dc_soc_release/synthesis/soc_top/mapped.json": "31b3a55bf2f26eb460afcba4d50545370935e65e4515da854d60dcc2ab9ad8fe",
+    "/workspace/scratch/e1a5fa683a84/dc_soc_release/synthesis/soc_top/metrics.json": "02696db74c6596075070b14c754fd6aaf527e8e97a03fbb618b26275eb25e473"
+  },
+  "logic_lut_cells": 56890,
+  "distributed_ram_lut_sites_nominal": 656,
+  "shift_register_lut_sites_nominal": 14,
+  "lut_sites_nominal_before_packing": 57560,
+  "physical_lut_sites_after_placement": null,
+  "target_lut_sites": 45000,
+  "logic_lut_difference": 11890,
+  "nominal_total_lut_difference": 12560,
+  "required_nominal_total_reduction_percent": 21.821,
+  "attribution_method": {
+    "classification": "功能归属推断，保留原始网名或组合扇出所到达的唯一功能组；不代表原 RTL 模块在独立综合中的面积。",
+    "direct_original_module_attributes_on_lut_cells": 0,
+    "original_net_names_with_hdlname": 2730,
+    "rules": [
+      "逻辑 LUT 输出若关联唯一功能组的原始 hdlname 网线，按该功能组计数。",
+      "其余 LUT 只在组合扇出到达的原始网线或有源文件属性的逻辑终点全部属于同一功能组时归类。",
+      "跨功能组和无法定位的单元保留未归类；单元只计数一次。"
+    ],
+    "limitations": "Flatten 与 ABC 已将全部 LUT 的 src 改为 Xilinx 映射文件；功能推断使用保留下来的网线和终点。实际 LUT 位置数及频率由布局布线报告提供。"
+  },
+  "logic_lut_cells_with_unique_inferred_function": 47156,
+  "unclassified_logic_lut_cells": 9734,
+  "unclassified_reasons": {
+    "no_unique_original_anchor": 7814,
+    "multiple_function_groups": 1920
+  },
+  "groups": [
+    {
+      "group": "vector_engine",
+      "description": "向量计算与控制",
+      "logic_lut_cells_inferred": 9232,
+      "output_original_net_attribution": 324,
+      "unique_combinational_fanout_attribution": 8908,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.g_vector_engine.u_engine.add_first_lhs",
+        "u_npu_axil_top.u_npu_top.g_vector_engine.u_engine.add_operand",
+        "u_npu_axil_top.u_npu_top.g_vector_engine.u_engine.avg_check_q"
+      ],
+      "source_files_observed": [
+        "rtl/common/parallel_prefix_add.sv",
+        "rtl/common/unsigned_compare.sv",
+        "rtl/npu/conv/vector_banked_writeback.sv",
+        "rtl/npu/conv/vector_config_check.sv",
+        "rtl/npu/conv/vector_coordinate_bound.sv",
+        "rtl/npu/conv/vector_engine.sv",
+        "rtl/npu/conv/vector_engine_address.sv",
+        "rtl/npu/conv/vector_engine_control.sv"
+      ]
+    },
+    {
+      "group": "im2col_frontend",
+      "description": "im2col 前端与地址生成",
+      "logic_lut_cells_inferred": 8666,
+      "output_original_net_attribution": 513,
+      "unique_combinational_fanout_attribution": 8153,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.buffered_araddr",
+        "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.buffered_arlen",
+        "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.active_after_chunk"
+      ],
+      "source_files_observed": [
+        "rtl/common/add_equal.sv",
+        "rtl/common/parallel_prefix_add.sv",
+        "rtl/common/unsigned_compare.sv",
+        "rtl/npu/conv/conv_im2col_descriptor.sv",
+        "rtl/npu/conv/conv_im2col_frontend.sv",
+        "rtl/npu/conv/conv_im2col_geometry.sv",
+        "rtl/npu/conv/conv_im2col_prefetch.sv",
+        "rtl/npu/conv/conv_im2col_stream.sv"
+      ]
+    },
+    {
+      "group": "kernel_loader",
+      "description": "权重加载与缓存",
+      "logic_lut_cells_inferred": 3599,
+      "output_original_net_attribution": 129,
+      "unique_combinational_fanout_attribution": 3470,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_kernel_loader.address_equal_o_equal",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_kernel_loader.buf_load_commit",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_kernel_loader.buf_load_commit_slot"
+      ],
+      "source_files_observed": [
+        "rtl/common/parallel_prefix_add.sv",
+        "rtl/common/unsigned_compare.sv",
+        "rtl/npu/loaders/kernel_count_increment.sv",
+        "rtl/npu/loaders/kernel_loader.sv",
+        "rtl/npu/loaders/kernel_loader_buffer.sv",
+        "rtl/npu/loaders/kernel_loader_ctrl.sv"
+      ]
+    },
+    {
+      "group": "ia_loader",
+      "description": "IA 加载与缓存管理",
+      "logic_lut_cells_inferred": 3011,
+      "output_original_net_attribution": 233,
+      "unique_combinational_fanout_attribution": 2778,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_ia_loader.cache_hit_event",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_ia_loader.demand_hit_allowed",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_ia_loader.g_cache_valid[0].demand_slot_selected"
+      ],
+      "source_files_observed": [
+        "rtl/common/parallel_prefix_add.sv",
+        "rtl/npu/loaders/ia_loader.sv",
+        "rtl/npu/loaders/ia_loader_cache_mgr.sv",
+        "rtl/npu/loaders/ia_loader_ctrl.sv"
+      ]
+    },
+    {
+      "group": "writeback",
+      "description": "输出排列与 AXI 写回",
+      "logic_lut_cells_inferred": 2778,
+      "output_original_net_attribution": 111,
+      "unique_combinational_fanout_attribution": 2667,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_output_pipeline.fifo_s16_output_req",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_output_pipeline.fifo_vec_valid_num_col",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_output_pipeline.fifo_vec_valid_num_row"
+      ],
+      "source_files_observed": [
+        "rtl/common/unsigned_compare.sv",
+        "rtl/npu/compute/registered_vector_add.sv",
+        "rtl/npu/top/npu_output_pipeline.sv",
+        "rtl/npu/writeback/oa_writer.sv",
+        "rtl/npu/writeback/vec_s16_to_fifo.sv",
+        "rtl/npu/writeback/vec_s8_to_fifo.sv",
+        "rtl/npu/writeback/vec_s8_to_fifo_full.sv"
+      ]
+    },
+    {
+      "group": "requant",
+      "description": "量化、标量乘法与量化行缓存",
+      "logic_lut_cells_inferred": 2670,
+      "output_original_net_attribution": 151,
+      "unique_combinational_fanout_attribution": 2519,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.g_vector_engine.u_engine.u_scalar_multiplier.u_multiplier.diagonal",
+        "u_npu_axil_top.u_npu_top.g_vector_engine.u_engine.u_scalar_multiplier.u_multiplier.high_low_extended",
+        "u_npu_axil_top.u_npu_top.g_vector_engine.u_engine.u_scalar_multiplier.u_multiplier.low_high_extended"
+      ],
+      "source_files_observed": [
+        "rtl/common/parallel_prefix_add.sv",
+        "rtl/npu/conv/registered_multiplier_s32.sv",
+        "rtl/npu/writeback/requant_compute_lane.sv",
+        "rtl/npu/writeback/requant_shift_pipeline.sv",
+        "rtl/npu/writeback/vec_requant.sv"
+      ]
+    },
+    {
+      "group": "im2col_cache",
+      "description": "im2col 窗口缓存控制",
+      "logic_lut_cells_inferred": 2577,
+      "output_original_net_attribution": 172,
+      "unique_combinational_fanout_attribution": 2405,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_cache.g_window.u_window.demand_tag_hits",
+        "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_cache.g_window.u_window.demand_word_matches_q",
+        "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_cache.g_window.u_window.fill_addr"
+      ],
+      "source_files_observed": [
+        "rtl/common/parallel_prefix_add.sv",
+        "rtl/common/regfile.v",
+        "rtl/common/unsigned_compare.sv",
+        "rtl/npu/dma/cache/conv_cache_metadata_way.sv",
+        "rtl/npu/dma/cache/conv_sdp_ram.sv",
+        "rtl/npu/dma/cache/conv_windowed_cache.sv"
+      ]
+    },
+    {
+      "group": "npu_dma",
+      "description": "NPU DMA 与仲裁",
+      "logic_lut_cells_inferred": 2541,
+      "output_original_net_attribution": 129,
+      "unique_combinational_fanout_attribution": 2412,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.bus_error",
+        "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.conv_job_q",
+        "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.dma_raw_col_base"
+      ],
+      "source_files_observed": [
+        "rtl/npu/dma/axi_block_dma_arbiter.sv",
+        "rtl/npu/dma/axi_dual_block_dma.sv",
+        "rtl/npu/dma/axi_linear_block_dma.sv",
+        "rtl/npu/dma/axi_write_page_guard.sv",
+        "rtl/npu/dma/conv_window_queue.sv",
+        "rtl/npu/dma/dma_register_buffer.sv"
+      ]
+    },
+    {
+      "group": "shared_sram",
+      "description": "共享 SRAM 接口与读复用",
+      "logic_lut_cells_inferred": 2142,
+      "output_original_net_attribution": 26,
+      "unique_combinational_fanout_attribution": 2116,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.g_shared_ia_ps.g_channels.u_ram.g_fixed_channel[0].ram_o_rd_data",
+        "u_npu_axil_top.u_npu_top.g_shared_ia_ps.g_channels.u_ram.g_fixed_channel[1].ram_o_rd_data",
+        "u_npu_axil_top.u_npu_top.g_shared_ia_ps.g_channels.u_ram.g_fixed_channel[2].ram_o_rd_data"
+      ],
+      "source_files_observed": [
+        "rtl/npu/buffers/ia_ps_channel_ram.sv",
+        "rtl/npu/buffers/vector_shared_store.sv"
+      ]
+    },
+    {
+      "group": "cpu",
+      "description": "PicoRV32、乘除法及接口",
+      "logic_lut_cells_inferred": 1465,
+      "output_original_net_attribution": 4,
+      "unique_combinational_fanout_attribution": 1461,
+      "examples_of_original_nets": [
+        "u_pico_axi_bridge.addr_q",
+        "u_pico_axi_bridge.ar_pending_q",
+        "u_pico_axi_bridge.arlen_q"
+      ],
+      "source_files_observed": [
+        "rtl/common/unsigned_compare.sv",
+        "rtl/soc/pico_native_to_axi.sv",
+        "rtl/soc/picorv32_npu.v",
+        "rtl/soc/picorv32_pcpi_div.v",
+        "rtl/soc/picorv32_pcpi_mul.v"
+      ]
+    },
+    {
+      "group": "matrix_control",
+      "description": "矩阵任务控制",
+      "logic_lut_cells_inferred": 1457,
+      "output_original_net_attribution": 0,
+      "unique_combinational_fanout_attribution": 1457,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.acc_data_out",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.frame_address_i_p0",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.frame_address_i_q0"
+      ],
+      "source_files_observed": [
+        "rtl/npu/top/frame_address_prepare.sv",
+        "rtl/npu/top/npu_matrix_engine.sv"
+      ]
+    },
+    {
+      "group": "soc_axi",
+      "description": "SoC AXI 互连与时序缓冲",
+      "logic_lut_cells_inferred": 1303,
+      "output_original_net_attribution": 5,
+      "unique_combinational_fanout_attribution": 1298,
+      "examples_of_original_nets": [
+        "g_cpu_axi_read_timing_buffer.u_cpu_axi_read_pingpong.clk",
+        "g_cpu_axi_read_timing_buffer.u_cpu_axi_read_pingpong.rst_n",
+        "g_cpu_axi_read_timing_buffer.u_cpu_axi_read_pingpong.u_ar_buf.data0_q"
+      ],
+      "source_files_observed": [
+        "rtl/soc/soc_axi_interconnect.sv",
+        "rtl/soc/soc_axi_pingpong_buffer.sv",
+        "rtl/soc/soc_axi_pingpong_chan.sv",
+        "rtl/soc/soc_axi_read_pingpong_buffer.sv",
+        "rtl/soc/soc_axil_ctrl.sv",
+        "rtl/soc/soc_axil_simpleuart.sv"
+      ]
+    },
+    {
+      "group": "im2col_read_guard",
+      "description": "im2col AXI 读请求检查",
+      "logic_lut_cells_inferred": 1034,
+      "output_original_net_attribution": 86,
+      "unique_combinational_fanout_attribution": 948,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_read_guard.fast_allocation",
+        "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_read_guard.g_allocation_mask[0].u_base_word.group_equal",
+        "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_read_guard.g_allocation_mask[0].u_base_word.group_less"
+      ],
+      "source_files_observed": [
+        "rtl/common/unsigned_compare.sv",
+        "rtl/npu/conv/conv_axi_read_guard.sv"
+      ]
+    },
+    {
+      "group": "matrix_configuration",
+      "description": "矩阵任务配置",
+      "logic_lut_cells_inferred": 1014,
+      "output_original_net_attribution": 8,
+      "unique_combinational_fanout_attribution": 1006,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_task_configuration.conv_dimension_invalid",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_task_configuration.conv_input_area",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_task_configuration.conv_input_bytes"
+      ],
+      "source_files_observed": [
+        "rtl/common/unsigned_compare.sv",
+        "rtl/npu/top/npu_task_configuration.sv"
+      ]
+    },
+    {
+      "group": "axil_registers",
+      "description": "NPU AXI-Lite 寄存器",
+      "logic_lut_cells_inferred": 940,
+      "output_original_net_attribution": 0,
+      "unique_combinational_fanout_attribution": 940,
+      "examples_of_original_nets": [],
+      "source_files_observed": []
+    },
+    {
+      "group": "ps_schedule",
+      "description": "PS 帧调度",
+      "logic_lut_cells_inferred": 749,
+      "output_original_net_attribution": 57,
+      "unique_combinational_fanout_attribution": 692,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.g_frame_schedule.u_scheduler.available_product",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.g_frame_schedule.u_scheduler.candidate_id",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.g_frame_schedule.u_scheduler.candidate_init"
+      ],
+      "source_files_observed": [
+        "rtl/common/unsigned_compare.sv",
+        "rtl/npu/control/ps_scheduler_priority.sv",
+        "rtl/npu/control/ps_window_scheduler.sv"
+      ]
+    },
+    {
+      "group": "bias_loader",
+      "description": "偏置加载",
+      "logic_lut_cells_inferred": 652,
+      "output_original_net_attribution": 12,
+      "unique_combinational_fanout_attribution": 640,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_bias_loader.u_buffer.read_data",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_bias_loader.u_buffer.scalar_half_q",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_bias_loader.u_ctrl.u_arithmetic.g_grouped.g_balanced_prefix.g_level[0].g_node[1].g_merge.merged_generate"
+      ],
+      "source_files_observed": [
+        "rtl/common/parallel_prefix_add.sv",
+        "rtl/npu/loaders/bias_loader_buffer.sv"
+      ]
+    },
+    {
+      "group": "soc_ram_control",
+      "description": "SoC 主存访问控制",
+      "logic_lut_cells_inferred": 493,
+      "output_original_net_attribution": 36,
+      "unique_combinational_fanout_attribution": 457,
+      "examples_of_original_nets": [
+        "u_axi_sim_ram.g_read_predicted_bound.current_oob",
+        "u_axi_sim_ram.g_read_predicted_bound.g_middle.middle_full",
+        "u_axi_sim_ram.g_read_predicted_bound.lower_carry"
+      ],
+      "source_files_observed": [
+        "rtl/soc/soc_axi_ram.sv"
+      ]
+    },
+    {
+      "group": "ps_storage",
+      "description": "PS 存储与地址控制",
+      "logic_lut_cells_inferred": 478,
+      "output_original_net_attribution": 91,
+      "unique_combinational_fanout_attribution": 387,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.capacity_i_frame_rows",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.capacity_i_initial_row",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.capacity_i_reserve_rows"
+      ],
+      "source_files_observed": [
+        "rtl/common/parallel_prefix_add.sv",
+        "rtl/npu/ps_compact/ps_frame_store.sv"
+      ]
+    },
+    {
+      "group": "matrix_compute",
+      "description": "矩阵计算阵列与累加",
+      "logic_lut_cells_inferred": 185,
+      "output_original_net_attribution": 0,
+      "unique_combinational_fanout_attribution": 185,
+      "examples_of_original_nets": [
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_compute_core.ps_acc_out",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_compute_core.u_systolic_array.data_pipe",
+        "u_npu_axil_top.u_npu_top.u_matrix_engine.u_compute_core.u_systolic_array.gen_row[0].gen_col[0].ws_cell.weight_out"
+      ],
+      "source_files_observed": [
+        "rtl/npu/compute/compute_core.sv",
+        "rtl/npu/compute/ws_systolic_array.sv",
+        "rtl/npu/compute/ws_systolic_cell.sv"
+      ]
+    },
+    {
+      "group": "soc_other",
+      "description": "SoC 其他外围逻辑",
+      "logic_lut_cells_inferred": 170,
+      "output_original_net_attribution": 0,
+      "unique_combinational_fanout_attribution": 170,
+      "examples_of_original_nets": [
+        "u_soc_uart.u_simpleuart.recv_buf_data",
+        "u_soc_uart.u_simpleuart.recv_buf_valid",
+        "u_soc_uart.u_simpleuart.recv_divcnt"
+      ],
+      "source_files_observed": [
+        "picorv32/picosoc/simpleuart.v"
+      ]
+    }
+  ],
+  "reported_distinct_register_path_groups": [
+    {
+      "combinational_cells": 15,
+      "start": "$94006.internal_register_output",
+      "end": "u_npu_axil_top.u_npu_top.u_matrix_engine.u_output_pipeline.u_vec_requant.g_serial_arithmetic.g_compute_lane[0].u_lane.u_product.o_product [60]"
+    },
+    {
+      "combinational_cells": 15,
+      "start": "u_npu_axil_top.u_npu_top.u_matrix_engine.u_kernel_loader.u_ctrl.group_base_col [0]",
+      "end": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.rd_dma_p0_q [28]"
+    },
+    {
+      "combinational_cells": 14,
+      "start": "u_picorv32.reg_op1 [0]",
+      "end": "u_picorv32.decoder_trigger"
+    },
+    {
+      "combinational_cells": 14,
+      "start": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_descriptor.prepared_tile_q [9]",
+      "end": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.row_base_ix [32]"
+    },
+    {
+      "combinational_cells": 14,
+      "start": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_descriptor.prepared_tile_q [8]",
+      "end": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.tap_group_base [28]"
+    },
+    {
+      "combinational_cells": 14,
+      "start": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.c [196]",
+      "end": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_descriptor.prepared_tile_q [551]"
+    },
+    {
+      "combinational_cells": 14,
+      "start": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.c [196]",
+      "end": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_stream.group_range_q [0]"
+    },
+    {
+      "combinational_cells": 13,
+      "start": "u_npu_axil_top.u_npu_top.conv_cfg_q [196]",
+      "end": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.error"
+    },
+    {
+      "combinational_cells": 13,
+      "start": "u_npu_axil_top.u_npu_top.u_matrix_engine.u_bias_loader.u_ctrl.current_block_idx [3]",
+      "end": "u_npu_axil_top.u_npu_top.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.replay_active"
+    },
+    {
+      "combinational_cells": 13,
+      "start": "$87407.internal_register_output",
+      "end": "u_npu_axil_top.u_npu_top.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.replay_index [0]"
+    },
+    {
+      "combinational_cells": 13,
+      "start": "u_npu_axil_top.u_npu_top.u_matrix_engine.u_output_pipeline.is_bias_group_base [0]",
+      "end": "u_npu_axil_top.u_npu_top.u_matrix_engine.u_output_pipeline.is_bias_rows_valid_pending [0]"
+    },
+    {
+      "combinational_cells": 13,
+      "start": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_descriptor.prepared_tile_q [9]",
+      "end": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.tap_wrap_q"
+    }
+  ],
+  "longest_reported_register_path_combinational_cells": 15,
+  "timing_status": "结构路径最长为15个组合单元，目标为10；150 MHz 需要器件延迟与布线分析。"
+}
