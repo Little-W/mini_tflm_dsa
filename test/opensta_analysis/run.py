@@ -32,7 +32,7 @@ def main():
     netlist.write_text(NETLIST)
     driver = repo/'scripts/asic/run_opensta.py'
     common = [sys.executable, str(driver), '--sta', args.sta, '--liberty', str(args.liberty.resolve()),
-              '--top', 'sta_pilot']
+              '--top', 'sta_pilot', '--report-output', 'z']
     results = []
     for load in (5, 10):
         folder = out/f'load{load}'
@@ -46,6 +46,8 @@ def main():
         assert result['wire_model']['name'] == '5K_hvratio_1_1'
         assert 'set_wire_load_model' in (folder/'constraints.sdc').read_text()
         assert not (folder/'coverage.rpt').read_text().strip()
+        assert result['requested_endpoint_paths']['z']['setup']['present']
+        assert result['requested_endpoint_paths']['z']['setup']['endpoint'].startswith('z ')
         for name, group in result['path_groups'].items():
             assert group['setup']['present'] and group['hold']['present'], name
             path = group['setup']
@@ -94,6 +96,7 @@ def main():
               'load_sensitivity_checked': ['reg_to_output', 'input_to_output'],
               'unknown_cell_rejected': True, 'literal_outputs_classified': True,
               'literal_cell_input_classified': True,
+              'selected_output_endpoint_checked': 'z',
               'unconstrained_signal_rejected': True,
               'nominal_result': str(out/'load5/summary.json'),
               'increased_load_result': str(out/'load10/summary.json')}

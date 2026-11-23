@@ -127,6 +127,8 @@ def main() -> None:
     parser.add_argument('--wire-load-model', default='5K_hvratio_1_1')
     parser.add_argument('--library-name', default='NangateOpenCellLibrary')
     parser.add_argument('--operating-condition', default='typical')
+    parser.add_argument('--report-output', action='append', default=[],
+                        help='Also report setup and hold paths to this scalar output port')
     args = parser.parse_args()
     if args.frequency_mhz <= 0 or args.input_transition_ns < 0 or args.output_load_ff < 0:
         parser.error('Frequency must be positive and transition/load must be nonnegative')
@@ -217,6 +219,19 @@ report_check_types -all_violators -max_transition -digits 6 > {tcl_word(out/'tra
     close $f
 }}
 '''
+    endpoint_files = {}
+    for name in dict.fromkeys(args.report_output):
+        filename = re.sub(r'[^A-Za-z0-9_]', '_', name)
+        if filename in endpoint_files.values():
+            raise ValueError('Requested endpoint report filenames must be distinct')
+        endpoint_files[name] = filename
+        script += f'''set report_endpoint [get_ports {tcl_word(name)}]
+if {{[llength $report_endpoint] != 1}} {{error "Expected one requested output endpoint"}}
+'''
+        for kind, delay in (('setup', 'max'), ('hold', 'min')):
+            path = out / f'endpoint_{filename}_{kind}.rpt'
+            script += f'''report_checks -from [concat $reg_outputs $data_inputs] -to $report_endpoint -path_delay {delay} -group_count 1 -endpoint_count 1 -format full_clock_expanded -fields {{capacitance slew input_pin net}} -digits 6 > {tcl_word(path)}
+'''
     script += 'puts "STA_ANALYSIS_COMPLETE"\n'
     script = 'if {[catch {\n' + script + '''} message]} {
     puts stderr "STA_ANALYSIS_ERROR $message"
@@ -253,6 +268,9 @@ exit 0
                            tcl_word(args.wire_load_model) + ' -library ' + tcl_word(args.library_name) + '\n')
     groups_result = {name: {kind: parse_path((out/f'{name}_{kind}.rpt').read_text())
                            for kind in ('setup', 'hold')} for name in PATH_GROUPS}
+    endpoint_results = {name: {kind: parse_path((out/f'endpoint_{filename}_{kind}.rpt').read_text())
+                               for kind in ('setup', 'hold')}
+                        for name, filename in endpoint_files.items()}
     count = re.search(r'STA_ANALYSIS_PORTS inputs=(\d+) outputs=(\d+) register_outputs=(\d+) register_inputs=(\d+)', log)
     if count is None:
         raise RuntimeError('OpenSTA did not report path boundary counts')
@@ -281,6 +299,7 @@ exit 0
               'boundary_counts': dict(zip(('inputs', 'outputs', 'register_outputs', 'register_inputs'),
                                          map(int, count.groups()))),
               'path_groups': groups_result,
+              'requested_endpoint_paths': endpoint_results,
               'setup_met': all(g['setup'].get('met', True) for g in groups_result.values()),
               'hold_met': all(g['hold'].get('met', True) for g in groups_result.values()),
               'max_transition_met': not transition_violations,
