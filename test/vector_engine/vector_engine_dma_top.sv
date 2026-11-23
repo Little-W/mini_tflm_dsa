@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), CACHE_SETS=128, CACHE_POLICY=3, CACHE_LINE_BYTES=16, BUS_WIDTH=32,
   WINDOW_LANES=BUS_WIDTH/8, SHARED_QUANT_ENABLE=0, QUANT_LANES=(SHARED_QUANT_ENABLE ? TILE : 1),
-  parameter bit SHARED_STORAGE_ENABLE=1'b0, parameter int SHARED_STORAGE_ADDR_WIDTH=12,
+  parameter bit SHARED_STORAGE_ENABLE=1'b0, CONV_LOW_LATENCY=1'b0, parameter int SHARED_STORAGE_ADDR_WIDTH=12,
   SHARED_BANK_BYTES=4096, SHARED_BANK_COUNT=8, SHARED_IA_BANKS=1)(
   input logic clk,rst_n,start,done_ready,
   input logic [31:0] config_words[40],
@@ -248,7 +248,7 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
       if (write16 && wr_done) begin assert(write16_beats==16/BUS_BYTES);write16<=0;end
     end
   end
-  axi_block_dma_arbiter #(.SIZE(TILE),.DMA_SIZE(DMA_SIZE),.DATA_WIDTH(16),.BUS_WIDTH(BUS_WIDTH),
+  axi_block_dma_arbiter #(.CONV_LOW_LATENCY(CONV_LOW_LATENCY),.SIZE(TILE),.DMA_SIZE(DMA_SIZE),.DATA_WIDTH(16),.BUS_WIDTH(BUS_WIDTH),
     .WINDOW_LANES(WINDOW_LANES),
     .CONV_CACHE_SETS(CACHE_SETS),.CONV_LINE_BYTES(CACHE_LINE_BYTES),.CONV_CACHE_POLICY(CACHE_POLICY)) dma(
     .clk,.rst_n,.conv_cfg_valid(dma_cfg_valid),.conv_cfg_ready(dma_cfg_ready),

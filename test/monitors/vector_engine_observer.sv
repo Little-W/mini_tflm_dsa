@@ -625,6 +625,12 @@ module vector_engine_invariants #(
                $signed(64'(vector_engine.add_scaled_a))+$signed(vector_engine.add_rounded)<=64'sd2147483647);
     end
     if (vector_engine.window_request_fire) begin
+      // 复用尚未清空的输入槽时，旧数据必须已经被当前通道组捕获。
+      if (vector_engine.input_ready[vector_engine.wf_bank]) begin
+        assert(vector_engine.dw_issue_fire && vector_engine.dw_group_last);
+        assert(vector_engine.wf_bank == vector_engine.read_bank);
+        assert(!(vector_engine.window_response_fire && vector_engine.win_rsp_tag == vector_engine.read_bank));
+      end
       assert((!vector_engine.input_ready[vector_engine.wf_bank] || vector_engine.u_address.input_slot_release) && !vector_engine.input_reserved[vector_engine.wf_bank]);
       assert(vector_engine.win_req_cols>0 && vector_engine.win_req_cols<=TILE);
     end

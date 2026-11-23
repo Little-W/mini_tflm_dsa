@@ -835,9 +835,9 @@ module vector_engine_address #(
       (p_input_index_w'(win_rsp_tag)<<($clog2(p_tile)-1)) : (p_input_index_w'(win_rsp_tag)<<$clog2(p_tile));
   assign window_slot_available = window_fetch_enabled &&
       (fetch_position < 32'(position_count)) && window_fetch_in_bounds;
-  // 共享权重配置在槽位清空后预留下一请求，私有配置在操作数保存边沿允许复用。
-  assign input_slot_release = !p_shared_storage_enable &&
-      dw_issue_fire && dw_group_last && wf_bank==read_bank;
+  // 最后一个通道组被乘加单元接收时，当前输入槽位即可接收后续窗口请求。
+  // 新窗口先经过描述符队列，返回数据在后续边沿写入，不影响本拍捕获的操作数。
+  assign input_slot_release = dw_issue_fire && dw_group_last && (wf_bank == read_bank);
   assign win_req_valid = window_slot_available && !window_response_fault &&
       (!input_ready[wf_bank] || input_slot_release) && !input_reserved[wf_bank];
   assign win_req_p0=fetch_position;

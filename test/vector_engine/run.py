@@ -28,6 +28,7 @@ def main():
     p.add_argument('--window-lanes',type=int,choices=(4,8,16),help='window response element count; default follows bus bytes')
     p.add_argument('--shared-quant',action='store_true',help='connect the production matrix quantization pipeline')
     p.add_argument('--shared-storage',action='store_true',help='store DW weights and completed INT32 rows in the production shared RAM')
+    p.add_argument('--conv-low-latency',action='store_true',help='use the direct convolution descriptor and cache response profile')
     p.add_argument('--shared-bank-bytes',type=int,choices=(2048,4096,8192),default=4096,help='共享存储每个银行的字节数')
     p.add_argument('--shared-bank-count',type=int,choices=range(6,10),default=8,help='共享存储的物理银行数量')
     p.add_argument('--shared-ia-banks',type=int,choices=range(1,5),default=1,help='向量任务分配给输入数据的银行数量')
@@ -87,6 +88,7 @@ def main():
     result={'verification':'RTL engine + production DMA; independent signed-integer nearest-even reference','tile':a.tile,'cache_sets':a.cache_sets,'cache_policy':a.cache_policy,
             'cache_line_bytes':a.cache_line_bytes,'cache_bytes':2*a.cache_sets*a.cache_line_bytes,
             'bus_width':a.bus_width,'window_lanes':a.window_lanes,'shared_quant':a.shared_quant,'shared_storage':a.shared_storage,
+            'conv_low_latency':a.conv_low_latency,
             'shared_bank_bytes':a.shared_bank_bytes,'shared_bank_count':a.shared_bank_count,'shared_ia_banks':a.shared_ia_banks,
             'check_weight_prefetch':a.check_weight_prefetch,
             'check_weight_write_stage':a.check_weight_write_stage,
@@ -115,6 +117,7 @@ def main():
         manifest=folder/'build.json'
         identity={'sha256':source_sha,'pe':pe,'tile':a.tile,'cache_sets':a.cache_sets,'cache_policy':a.cache_policy,'cache_line_bytes':a.cache_line_bytes,
                   'bus_width':a.bus_width,'window_lanes':a.window_lanes,'shared_quant':a.shared_quant,'shared_storage':a.shared_storage,
+            'conv_low_latency':a.conv_low_latency,
                   'shared_bank_bytes':a.shared_bank_bytes,'shared_bank_count':a.shared_bank_count,'shared_ia_banks':a.shared_ia_banks,
                   'check_weight_prefetch':a.check_weight_prefetch,
                   'check_weight_write_stage':a.check_weight_write_stage,
@@ -129,6 +132,7 @@ def main():
                      '-Wno-PINMISSING',f'-GTILE={a.tile}',f'-GPE_COUNT={pe}',f'-GCACHE_SETS={a.cache_sets}',f'-GCACHE_POLICY={a.cache_policy}',
                      f'-GCACHE_LINE_BYTES={a.cache_line_bytes}',f'-GBUS_WIDTH={a.bus_width}',f'-GWINDOW_LANES={a.window_lanes}',
                      f'-GSHARED_QUANT_ENABLE={int(a.shared_quant)}',f'-GSHARED_STORAGE_ENABLE={int(a.shared_storage)}',
+                     f'-GCONV_LOW_LATENCY={int(a.conv_low_latency)}',
                      f'-GSHARED_BANK_BYTES={a.shared_bank_bytes}',f'-GSHARED_BANK_COUNT={a.shared_bank_count}',f'-GSHARED_IA_BANKS={a.shared_ia_banks}',
                      '--Mdir',folder/'obj',
                      '--output-groups','0','--output-split','12000','--output-split-cfuncs','200',
