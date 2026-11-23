@@ -528,13 +528,19 @@ module vec_requant #(
   for (genvar bank = 0; bank < PARAM_BANKS; bank++) begin : gen_is_parameter_bank
     localparam int BANK_DEPTH = (QBUF_DEPTH + PARAM_BANKS - 1) / PARAM_BANKS;
     localparam int BANK_ADDR_W = (BANK_DEPTH <= 1) ? 1 : $clog2(BANK_DEPTH);
+    localparam int p_amount_values_per_word = (BANK_DEPTH > 128) ? 2 : 1;
+    localparam int p_amount_data_width = 7 * p_amount_values_per_word;
+    localparam int p_amount_depth = (BANK_DEPTH + p_amount_values_per_word - 1) / p_amount_values_per_word;
+    localparam int p_amount_addr_width = (p_amount_depth <= 1) ? 1 : $clog2(p_amount_depth);
     logic write_enable;
+    logic write_last;
     logic [BANK_ADDR_W-1:0] write_addr;
     logic signed [31:0] write_value;
     logic signed [31:0] write_product_multiplier;
     logic [6:0] write_product_amount;
     always_comb begin
       write_enable = 1'b0;
+      write_last = 1'b0;
       write_addr = '0;
       write_value = '0;
       write_product_multiplier = '0;
@@ -544,6 +550,8 @@ module vec_requant #(
             (32'(rd_beats_cnt)+word) < 32'(beats_expect) &&
             (int'(parameter_index[word]) % PARAM_BANKS) == bank) begin
           write_enable = 1'b1;
+          write_last = ({1'b0, 32'(parameter_index[word])} + 33'(PARAM_BANKS)) >=
+              {1'b0, quant_need_load_r};
           write_addr = BANK_ADDR_W'(parameter_index[word] / PARAM_BANKS);
           write_value = parameter_value[word];
           write_product_multiplier = parameter_product_multiplier[word];
@@ -551,8 +559,8 @@ module vec_requant #(
         end
       end
     end
-    // 原始参数保持组合读取；运算参数在输入采样边沿同步读取。
-    // 两类存储使用相同的写入条件，保存完整的原始参数与预处理参数。
+    // 原始参数按接收字保存并组合读取；运算参数在输入采样边沿同步读取。
+    // 乘数逐条写入，移位量按静态存储几何确定每个存储字的参数数量。
     logic multiplier_i_wr_en, multiplier_i_wr_mask, multiplier_i_rd_en;
     logic [BANK_ADDR_W-1:0] multiplier_i_wr_addr, multiplier_i_rd_addr;
     logic [31:0] multiplier_i_wr_data, multiplier_o_rd_data;
@@ -563,8 +571,10 @@ module vec_requant #(
     logic [BANK_ADDR_W-1:0] product_multiplier_i_wr_addr, product_multiplier_i_rd_addr;
     logic [31:0] product_multiplier_i_wr_data, product_multiplier_o_rd_data;
     logic product_amount_i_wr_en, product_amount_i_wr_mask, product_amount_i_rd_en;
-    logic [BANK_ADDR_W-1:0] product_amount_i_wr_addr, product_amount_i_rd_addr;
-    logic [6:0] product_amount_i_wr_data, product_amount_o_rd_data;
+    logic [p_amount_addr_width-1:0] product_amount_i_wr_addr, product_amount_i_rd_addr;
+    logic [p_amount_data_width-1:0] product_amount_i_wr_data, product_amount_o_rd_data;
+    logic [6:0] amount_pair_low;
+    logic amount_read_half;
 
     assign multiplier_i_wr_en = write_enable && (load_phase == PH_MUL);
     assign multiplier_i_wr_addr = write_addr;
@@ -588,13 +598,32 @@ module vec_requant #(
     assign product_multiplier_i_rd_en = !init_cfg;
     assign product_multiplier_i_rd_addr = BANK_ADDR_W'(parameter_read_idx / PARAM_BANKS);
     assign ch_product_multiplier_is_read[bank] = $signed(product_multiplier_o_rd_data);
-    assign product_amount_i_wr_en = shift_i_wr_en;
-    assign product_amount_i_wr_addr = write_addr;
-    assign product_amount_i_wr_data = write_product_amount;
+    // 浅表逐条保存七位移位量，较深的表按装载顺序合并相邻两条参数。
+    // 偶数地址暂存可跨突发保持；不足两条的尾部复制有效值填充未使用的高半字。
+    assign product_amount_i_wr_en = shift_i_wr_en &&
+        ((p_amount_values_per_word == 1) || write_addr[0] || write_last);
+    assign product_amount_i_wr_addr = p_amount_addr_width'(write_addr / p_amount_values_per_word);
+    assign product_amount_i_wr_data = (p_amount_values_per_word == 1) ?
+        p_amount_data_width'(write_product_amount) :
+        p_amount_data_width'({write_product_amount, (write_addr[0] ? amount_pair_low : write_product_amount)});
     assign product_amount_i_wr_mask = 1'b1;
     assign product_amount_i_rd_en = !init_cfg;
-    assign product_amount_i_rd_addr = product_multiplier_i_rd_addr;
-    assign ch_product_amount_is_read[bank] = product_amount_o_rd_data;
+    assign product_amount_i_rd_addr =
+        p_amount_addr_width'(product_multiplier_i_rd_addr / p_amount_values_per_word);
+    assign ch_product_amount_is_read[bank] = (p_amount_values_per_word == 1) ?
+        product_amount_o_rd_data[6:0] : product_amount_o_rd_data[amount_read_half*7 +: 7];
+
+    // 初始化取消未完成的参数对；读地址低位与同步存储在同一边沿采样。
+    always_ff @(posedge clk) begin
+      if (!rst_n || init_cfg) begin
+        amount_pair_low <= '0;
+      end else if (shift_i_wr_en && !write_addr[0]) begin
+        amount_pair_low <= write_product_amount;
+      end
+      if (product_amount_i_rd_en) begin
+        amount_read_half <= product_multiplier_i_rd_addr[0];
+      end
+    end
 
     // 观察接口使用原始参数；算术流水使用独立的同步预处理参数。
     if (p_parameter_output) begin : g_parameter_output
@@ -628,8 +657,8 @@ module vec_requant #(
         .o_rd_data(product_multiplier_o_rd_data)
     );
     regfile #(
-        .p_data_width(7), .p_depth(BANK_DEPTH), .p_addr_width(BANK_ADDR_W),
-        .p_write_unit(7), .p_sync_read(1'b1), .p_ram_style("block")
+        .p_data_width(p_amount_data_width), .p_depth(p_amount_depth), .p_addr_width(p_amount_addr_width),
+        .p_write_unit(p_amount_data_width), .p_sync_read(1'b1), .p_ram_style("block")
     ) u_product_amount (
         .clk(clk), .i_wr_en(product_amount_i_wr_en), .i_wr_addr(product_amount_i_wr_addr),
         .i_wr_data(product_amount_i_wr_data), .i_wr_mask(product_amount_i_wr_mask),

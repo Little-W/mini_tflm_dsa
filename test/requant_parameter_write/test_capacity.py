@@ -32,10 +32,14 @@ class ParameterCapacityTests(unittest.TestCase):
 
     def test_production_capacity(self):
         geometry = dict(bank_count=7, bank_bytes=8192)
-        buffers = model.buffer_arrays_bits(4, 16, 49152, 16, True, **geometry)
-        registers = model.register_arrays_bits(4, 16, 49152, 16, True, **geometry)
-        self.assertEqual(buffers['requant_is_cache'], 52736)
-        self.assertEqual(registers['requant_ws_parameters'], 1648)
+        for compact, parameter_bits in ((False, 9984), (True, 19968)):
+            with self.subTest(ia_compact_enable=compact):
+                buffers = model.buffer_arrays_bits(4, 16, 49152, 16, True,
+                                                  ia_compact_enable=compact, **geometry)
+                registers = model.register_arrays_bits(4, 16, 49152, 16, True,
+                                                       ia_compact_enable=compact, **geometry)
+                self.assertEqual(buffers['requant_is_cache'], parameter_bits)
+                self.assertEqual(registers['requant_ws_parameters'], 1648)
 
 
 if __name__ == '__main__':
