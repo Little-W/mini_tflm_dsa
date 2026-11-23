@@ -46,8 +46,24 @@ def parse_path(text: str) -> dict:
     return result
 
 
-def classify_coverage(report: str, module: dict | None) -> dict:
-    """Separate literal output bits from unconstrained signal endpoints."""
+def literal_cell_inputs(netlist: str, lib_cells: set[str]) -> dict[str, str]:
+    """Read scalar literal pin connections from the mapped Verilog instances."""
+    literals = {}
+    identifier = r'(?:\\[^\s]+|[A-Za-z_][\w$]*)'
+    instances = re.finditer(r'^\s*(' + identifier + r')\s+(' + identifier +
+                           r')\s*\(\s*\n(.*?)^\s*\);', netlist, re.MULTILINE | re.DOTALL)
+    for instance in instances:
+        cell, name, pins = instance.groups()
+        if cell not in lib_cells:
+            continue
+        for pin, value in re.findall(r'\.([A-Za-z_][\w$]*)\s*\(\s*1\s*\x27[bdh]([01xz])\s*\)',
+                                     pins, re.IGNORECASE):
+            literals[f'{name.lstrip(chr(92))}/{pin}'] = value.lower()
+    return literals
+
+
+def classify_coverage(report: str, module: dict | None, pin_literals: dict[str, str]) -> dict:
+    """Separate literal endpoints from unconstrained signal endpoints."""
     literals = {}
     if module is not None:
         for name, port in module.get('ports', {}).items():
@@ -73,7 +89,7 @@ def classify_coverage(report: str, module: dict | None) -> dict:
         else:
             in_endpoints = False
             other_lines.append(line)
-    unmatched = [name for name in endpoints if name not in literals]
+    unmatched = [name for name in endpoints if name not in literals and name not in pin_literals]
     if unmatched or other_lines:
         raise RuntimeError(f'OpenSTA timing coverage is incomplete: endpoints={unmatched[:16]}, '
                            f'checks={other_lines[:8]}')
@@ -81,11 +97,17 @@ def classify_coverage(report: str, module: dict | None) -> dict:
         'all_dynamic_endpoints_constrained': True,
         'constant_output_endpoints': [
             {'endpoint': name, 'value': literals[name]} for name in endpoints
-            if literals[name] in ('0', '1')],
+            if literals.get(name) in ('0', '1')],
         'undefined_output_endpoints': [
             {'endpoint': name, 'value': literals[name]} for name in endpoints
-            if literals[name] in ('x', 'z')],
-        'literal_outputs_have_no_timing_paths': True,
+            if literals.get(name) in ('x', 'z')],
+        'constant_cell_input_endpoints': [
+            {'endpoint': name, 'value': pin_literals[name]} for name in endpoints
+            if pin_literals.get(name) in ('0', '1')],
+        'undefined_cell_input_endpoints': [
+            {'endpoint': name, 'value': pin_literals[name]} for name in endpoints
+            if pin_literals.get(name) in ('x', 'z')],
+        'literal_endpoints_have_no_data_timing_paths': True,
     }
 
 
@@ -213,7 +235,8 @@ exit 0
         raise RuntimeError('OpenSTA did not complete cleanly; inspect ' + str(out/'opensta.log'))
     if source_hashes != {str(path): sha256(path) for path in tracked}:
         raise RuntimeError('Analysis inputs changed during OpenSTA execution')
-    coverage = classify_coverage((out/'coverage.rpt').read_text(), top_module)
+    coverage = classify_coverage((out/'coverage.rpt').read_text(), top_module,
+                                 literal_cell_inputs(netlist.read_text(), lib_cells))
     transition_text = (out/'transition_violations.rpt').read_text()
     transition_rows = re.findall(
         r'^\s*(\S+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+([-+\d.eE]+)\s+\(VIOLATED\)',
