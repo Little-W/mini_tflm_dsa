@@ -7,8 +7,24 @@ proc check_requant_storage {report_path} {
     set report [open $report_path w]
     puts $report "buffer\tmacro_instances\tphysical_storage_bits\tregfile_instances"
     set errors {}
+    set buffer_names {}
+    foreach_in_collection buffer $buffers {
+        lappend buffer_names [get_object_name $buffer]
+    }
+    set checked 0
     foreach_in_collection buffer $buffers {
         set buffer_name [get_object_name $buffer]
+        # Mapped helper references can inherit the buffer design name.  Check
+        # only the outermost matching hierarchy, not its internal helpers.
+        set nested 0
+        foreach parent $buffer_names {
+            if {$parent ne $buffer_name && [string first "${parent}/" $buffer_name] == 0} {
+                set nested 1
+                break
+            }
+        }
+        if {$nested} {continue}
+        incr checked
         set prefix "${buffer_name}/"
         set macro_count 0
         set physical_bits 0
@@ -40,5 +56,5 @@ proc check_requant_storage {report_path} {
     if {[llength $errors] != 0} {
         error "Requantization storage requires ASIC SRAM mapping: [join $errors {; }]. Elaborate current RTL with ASIC_SRAM enabled."
     }
-    return [sizeof_collection $buffers]
+    return $checked
 }

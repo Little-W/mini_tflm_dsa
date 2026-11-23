@@ -133,7 +133,7 @@ module ia_loader_cache_mgr #(
     assign ram_rd_data = ram_rd_raw_data;
   end
 
-  generate begin : g_external_ram
+  generate if (1) begin : g_external_ram
     localparam int p_compact_lanes = (DMA_LANES < SIZE) ? DMA_LANES : SIZE;
     logic [1:0] write_en;
     logic [RAM_WORD_ADDR_WIDTH-1:0] write_addr [0:1];

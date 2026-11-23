@@ -1,7 +1,7 @@
 # 导出 SRAM 双时钟引脚、条件和库弧；全部操作保持现有时序约束。
 namespace eval npu_sram_report {
     proc attribute {object name {fallback "NA"}} {
-        if {[catch {get_attribute $object $name} value]} {return $fallback}
+        if {[catch {get_attribute -quiet $object $name} value] || $value eq ""} {return $fallback}
         return $value
     }
 }
@@ -59,11 +59,14 @@ foreach_in_collection cell [get_cells -hierarchical -filter {ref_name =~ RAMTP*}
     foreach pin_name {CLKA CLKB COLLDISN} {
         set pins [get_pins -quiet ${name}/${pin_name}]
         if {[sizeof_collection $pins] == 0} {continue}
-        set nets [get_object_name [get_nets -quiet -of_objects $pins]]
+        set nets "NA"
+        if {![catch {get_nets -quiet -of_objects $pins} pin_nets] && [sizeof_collection $pin_nets] > 0} {
+            set nets [get_object_name $pin_nets]
+        }
         set clocks "NA"
         if {$pin_name ne "COLLDISN"} {
-            dict set clock_nets $pin_name $nets
-            if {![catch {get_clocks -quiet -of_objects $pins} pin_clocks]} {
+            if {$nets ne "NA"} {dict set clock_nets $pin_name $nets}
+            if {![catch {get_attribute -quiet $pins clocks} pin_clocks] && $pin_clocks ne "" && [sizeof_collection $pin_clocks] > 0} {
                 set clocks [get_object_name $pin_clocks]
             }
         }
@@ -71,6 +74,8 @@ foreach_in_collection cell [get_cells -hierarchical -filter {ref_name =~ RAMTP*}
     }
     if {[dict exists $clock_nets CLKA] && [dict exists $clock_nets CLKB]} {
         puts $diagnostics "${name}: CLKA/CLKB same net = [expr {[dict get $clock_nets CLKA] eq [dict get $clock_nets CLKB]}]"
+    } else {
+        puts $diagnostics "${name}: CLKA/CLKB same net = NA"
     }
 }
 close $arc_file

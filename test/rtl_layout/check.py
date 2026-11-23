@@ -58,7 +58,7 @@ def main():
         path = ROOT / name
         entries = []
         for line in path.read_text().splitlines():
-            match = re.search(r'\b((?:rtl|picorv32)/.*\.(?:sv|v))$', line.strip())
+            match = re.search(r'\b((?:rtl|picorv32|test/models)/.*\.(?:sv|v))$', line.strip())
             if match:
                 entries.append(ROOT / match[1])
         expanded = resolver(entries, ROOT)

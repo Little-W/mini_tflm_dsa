@@ -26,11 +26,12 @@ module regfile #(
     // 同步存储按写入分段选择 SRAM，每个分段保存完整的逻辑地址范围。
     // 容量条件计入分段填充和读端复制，避免小数组占用低利用率的宏。
     localparam int p_asic_macro_depth = (p_depth <= 384) ? 128 : 1024;
-    localparam int p_asic_macros_per_segment = ((p_write_unit + 15) / 16) *
-        ((p_depth + p_asic_macro_depth - 1) / p_asic_macro_depth);
-    localparam int p_asic_min_bits_per_macro = (p_asic_macro_depth == 128) ? 768 : 3072;
+    localparam longint p_asic_macros_per_segment = ((64'(p_write_unit) + 15) / 16) *
+        ((64'(p_depth) + 64'(p_asic_macro_depth) - 1) / 64'(p_asic_macro_depth));
+    // 较深的宏每位面积更低，允许其采用较低的容量利用率。
+    localparam int p_asic_min_bits_per_macro = (p_asic_macro_depth == 128) ? 1024 : 4096;
     if (p_sync_read && p_depth >= 32 &&
-        p_depth * p_write_unit >= p_read_ports * p_asic_macros_per_segment * p_asic_min_bits_per_macro &&
+        64'(p_depth) * p_write_unit >= 64'(p_read_ports) * p_asic_macros_per_segment * p_asic_min_bits_per_macro &&
         p_data_width % p_write_unit == 0) begin : g_asic_storage
         localparam int p_segments = p_data_width / p_write_unit;
         logic [p_addr_width-1:0] pending_address_q;

@@ -92,11 +92,13 @@ module tb_regfile_asic #(
             write_address = p_address_width'($urandom);
             write_data = random_data();
             write_mask = (p_width/p_unit)'($urandom);
+`ifndef VERILATOR
             if (cycle % 31 == 0) begin write_enable = 1'bx; unknown_controls++; end
             if (cycle % 37 == 0) begin write_enable = 1'bz; unknown_controls++; end
             if (cycle % 41 == 0) write_address[cycle % p_address_width] = 1'bx;
             if (cycle % 43 == 0) write_mask[cycle % (p_width/p_unit)] = 1'bx;
             if (cycle % 47 == 0) write_data[cycle % p_width] = 1'bx;
+`endif
             for (int port_index = 0; port_index < p_ports; port_index++) begin
                 read_enable[port_index] = 1'($urandom);
                 read_address[port_index] = p_address_width'($urandom);
@@ -104,8 +106,10 @@ module tb_regfile_asic #(
                     read_enable[port_index] = 1;
                     read_address[port_index] = write_address;
                 end
+`ifndef VERILATOR
                 if (cycle % 53 == 0) begin read_enable[port_index] = 1'bx; unknown_controls++; end
                 if (cycle % 59 == 0) begin read_enable[port_index] = 1'bz; unknown_controls++; end
+`endif
                 if (read_enable[port_index] === 1'b0) held++;
                 if (write_enable === 1'b1 && read_enable[port_index] === 1'b1 &&
                     (|write_mask) === 1'b1 && write_address < p_depth &&
@@ -120,8 +124,11 @@ module tb_regfile_asic #(
         for (int port_index = 0; port_index < p_ports; port_index++) read_address[port_index] = write_address;
         @(negedge clk); read_enable = '0;
         repeat (5) @(negedge clk);
-        if (checks == 0 || collisions == 0 || held == 0 || unknown_controls == 0)
+        if (checks == 0 || collisions == 0 || held == 0)
             $fatal(1, "Insufficient coverage");
+`ifndef VERILATOR
+        if (unknown_controls == 0) $fatal(1, "Insufficient unknown-control coverage");
+`endif
         $display("ASIC_REGFILE_PASS width=%0d depth=%0d unit=%0d ports=%0d sync=%0d checks=%0d collisions=%0d held=%0d unknown=%0d invalid=%0d",
             p_width, p_depth, p_unit, p_ports, p_sync, checks, collisions, held, unknown_controls, invalid_reads);
         $finish;

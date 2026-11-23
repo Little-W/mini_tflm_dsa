@@ -220,7 +220,7 @@ module kernel_loader_buffer #(
     assign weight_data_valid = !cache_flush && slot_loaded[rd_slot] && !send_active && !send_pending && !send_prefetch;
     assign discard_ready = weight_data_valid;
 
-    generate begin : g_column_storage
+    generate if (1) begin : g_column_storage
         for (genvar column = 0; column < SIZE; column++) begin : g_column_ram
             regfile #(
                 .p_data_width(DATA_WIDTH),

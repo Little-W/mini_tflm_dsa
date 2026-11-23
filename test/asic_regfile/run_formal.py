@@ -133,8 +133,8 @@ def run_limited(script, log, memory_limit=600 * 1024 * 1024, timeout=180):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--profiles", nargs="+", default=["16:48:16:1", "64:512:8:1", "32:256:32:1",
-        "7:256:7:1", "32:256:32:2", "16:384:16:1", "16:385:16:1", "16:1100:16:1",
+    parser.add_argument("--profiles", nargs="+", default=["16:64:16:1", "64:512:8:1", "32:256:32:1",
+        "32:256:32:2", "16:384:16:1", "16:385:16:1", "16:1100:16:1",
         "19:128:19:1", "32:256:8:1"])
     args = parser.parse_args()
     out = args.out.resolve()
@@ -156,6 +156,11 @@ def main():
     report["formal_macro_model_sha256"] = hashlib.sha256(macro_model.read_bytes()).hexdigest()
     for profile in args.profiles:
         width, depth, unit, ports = map(int, profile.split(":"))
+        macro_depth = 128 if depth <= 384 else 1024
+        macro_count = ((unit + 15) // 16) * ((depth + macro_depth - 1) // macro_depth)
+        min_bits = 1024 if macro_depth == 128 else 4096
+        if depth < 32 or width % unit or depth * unit < ports * macro_count * min_bits:
+            parser.error(f"{profile} 使用行为级存储，不适用于 SRAM 形式检查")
         folder = out / profile.replace(":", "_")
         folder.mkdir(exist_ok=True)
         source = folder / "proof.sv"
