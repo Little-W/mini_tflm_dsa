@@ -117,7 +117,7 @@ int main(void)
             assert(p.write_beats==cases[i].write_beats && p.write_requests==writes);
             assert(p.read_words==p.read_beats*(c.axi_data_bits/32u));
             assert(p.write_words==p.write_beats*(c.axi_data_bits/32u));
-            assert(p.compute_cycles==200u);
+            assert(p.compute_cycles==(frame?200u:152u));
             assert(p.estimated_cycles==(frame?cases[i].frame_cycles:cases[i].long_cycles));
             ++checked;
         }

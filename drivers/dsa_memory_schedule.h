@@ -214,6 +214,18 @@ static inline void dsa_schedule_memory_score_work(const dsa_schedule_config_t *c
         path?1u:r,path?1u:w,&out->write_beats);
     out->write_words=dsa_schedule_mul(out->write_beats,words_per_beat);
     out->compute_cycles=p->array_stream_cycles+p->weight_shift_rows+3u*p->frame_count;
+    if (!path && !c->spatial) {
+        /* 长流计算期间，下一组权重装入备用存储区。输入发送与权重安装
+         * 使用独立端口，稳态服务取较长者；首组安装单独计入。 */
+        uint32_t group_rows=r*c->size;
+        uint32_t full=sr/group_rows,tail=sr%group_rows;
+        uint64_t streamed_rows=(uint64_t)full*group_rows;
+        if (tail) streamed_rows+=dsa_schedule_max(tail,c->size);
+        uint64_t stages=(uint64_t)gempact_ceil_div(sc,c->size)*
+            gempact_ceil_div(c->depth,c->size);
+        out->compute_cycles=dsa_schedule_add(dsa_schedule_mul(streamed_rows,stages),
+            dsa_schedule_add(dsa_schedule_mul(p->frame_count,c->size+2u),c->size));
+    }
     read_cycles=dsa_schedule_add(dsa_schedule_mul(out->read_beats,c->read_beat_cycles),
         dsa_schedule_mul(out->read_requests,c->read_request_cycles));
     write_cycles=dsa_schedule_add(dsa_schedule_mul(out->write_beats,c->write_beat_cycles),

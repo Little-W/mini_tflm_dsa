@@ -106,7 +106,10 @@ static void auto_checks(void)
  }
  /* AXI64 candidates with immutable S24 weight bounds exercise parameter
   * retention across output tiles in both storage policies. */
- const uint32_t grouped[][3]={{64u,784u,64u},{125u,64u,64u}};
+ const uint32_t grouped[][9]={
+  {64u,784u,64u,DSA_SCHEDULE_WS,4u,4u,DSA_SCHEDULE_WS,2u,4u},
+  {125u,64u,64u,DSA_SCHEDULE_WS,4u,4u,DSA_SCHEDULE_IS,4u,2u}
+ };
  for(uint32_t i=0u;i<sizeof(grouped)/sizeof(grouped[0]);++i) {
   dsa_schedule_config_t c;dsa_schedule_t p;
   dsa_schedule_init(&c,grouped[i][0],grouped[i][1],grouped[i][2],16u,4u,16u);
@@ -117,10 +120,32 @@ static void auto_checks(void)
   c.rhs_tile_packed=1u;c.output_banks_s8=32u;c.ps_literal_bytes=48u;
   for(uint32_t raw=0u;raw<2u;++raw) {
    c.force_raw=raw;assert(dsa_schedule_plan(&c,&p));
-   assert(p.dataflow_mode==DSA_SCHEDULE_IS&&p.ia_bank_count==1u);
-   assert(p.tiling.ia_reuse==4u&&p.tiling.w_reuse==(raw?2u:4u));
+   uint32_t expected=3u+3u*raw;
+   assert(p.dataflow_mode==grouped[i][expected]&&p.ia_bank_count==1u);
+   assert(p.tiling.ia_reuse==grouped[i][expected+1u]&&p.tiling.w_reuse==grouped[i][expected+2u]);
    assert(p.ps_control==(raw?DSA_PS_CTRL_RAW:DSA_PS_CTRL_BOUND_S24));
   }
+ }
+
+ /* 备用权重存储允许安装与当前输入发送重叠。两个方向的细长矩阵
+  * 应保留较小的流动操作数，并通过独立枚举确认完整成本最小。 */
+ const uint32_t prefetch[][6]={
+  {9u,256u,256u,DSA_SCHEDULE_WS,1u,16u},
+  {1024u,144u,16u,DSA_SCHEDULE_IS,1u,16u}
+ };
+ for(uint32_t i=0u;i<sizeof(prefetch)/sizeof(prefetch[0]);++i) {
+  dsa_schedule_config_t c;dsa_schedule_t selected,complete;
+  dsa_schedule_init(&c,prefetch[i][0],prefetch[i][1],prefetch[i][2],16u,4u,16u);
+  c.axi_data_bits=64u;c.dma_max_bytes=2048u;c.read_beat_cycles=1u;
+  c.ps_caps=(1u<<24)|(16u<<16)|27u;c.ps_pool_bytes=32768u;c.ia_cache_bytes=4096u;
+  c.shared_total_bytes=36864u;c.shared_bank_bytes=4096u;c.shared_ia_bank_mask=0x16u;
+  c.ps_directory_rows=1024u;c.source_s8=1u;c.force_raw=1u;c.has_bias=1u;
+  c.lhs_tile_packed=c.rhs_tile_packed=1u;c.output_banks_s8=32u;
+  assert(dsa_schedule_plan(&c,&selected)&&enumerate(&c,&complete));
+  assert(!dsa_schedule_better(&complete,&selected)&&!dsa_schedule_better(&selected,&complete));
+  assert(selected.dataflow_mode==prefetch[i][3]);
+  assert(selected.tiling.ia_reuse==prefetch[i][4]&&selected.tiling.w_reuse==prefetch[i][5]);
+  assert(selected.ps_control==DSA_PS_CTRL_RAW&&selected.ia_bank_count==2u);
  }
 }
 
