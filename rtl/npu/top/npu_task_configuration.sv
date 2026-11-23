@@ -138,7 +138,8 @@ module npu_task_configuration #(
     localparam int unsigned IA_SHAPE_WIDTH =
     IA_SHAPE_REQUIRED_WIDTH < p_reg_width ? IA_SHAPE_REQUIRED_WIDTH : p_reg_width;
     localparam bit PS_REQUIRE_RAW_CAPACITY = 1'b1;
-    localparam int unsigned p_compute_output_stages = 1;
+    // 矩阵输出先经过阵列结果寄存，再经过偏置求和寄存，输出银行预留覆盖这两个周期。
+    localparam int unsigned p_compute_output_stages = 2;
     localparam int unsigned DIRECT_OUTPUT_EXTRA_BANKS =
     (p_size - 1 + p_compute_output_stages + requant_pkg::REQUANT_LATENCY + p_size - 1) / p_size;
     localparam int OA_REUSE_ROWS_WIDTH=$clog2(p_oa_fifo_banks+2);
@@ -149,11 +150,23 @@ module npu_task_configuration #(
     logic [31:0] active_ps_pool_bytes;
     logic [p_is_bias_valid_w-1:0] cfg_bias_rows_target_s2;
     logic [2:0] cfg_capacity_phase;
-    logic signed [p_reg_width-1:0] cfg_compact_offset_q [0:2];
-    logic cfg_compact_q [0:2];
-    logic [p_reg_width-1:0] cfg_k_q [0:2];
-    logic [p_reg_width-1:0] cfg_m_q [0:2];
-    logic cfg_mode_q [0:2];
+    // 配置接收仅允许在三个准备阶段均空闲时发生，全部阶段共用一份任务字段。
+    // 阶段有效位标记运算进度，跨周期的计算结果由各阶段独立寄存。
+    typedef struct packed {
+        logic is_mode;
+        logic use16;
+        logic mode_16x8;
+        logic compact;
+        logic signed [p_reg_width-1:0] compact_offset;
+        logic [p_reg_width-1:0] k;
+        logic [p_reg_width-1:0] m;
+        logic [p_reg_width-1:0] n;
+        logic [p_reg_width-1:0] stream_k;
+        logic [p_reg_width-1:0] stream_m;
+        logic [p_reg_width-1:0] ia_reuse;
+        logic [p_reg_width-1:0] w_reuse;
+    } configuration_t;
+    configuration_t configuration;
     logic [p_reg_width-1:0] cfg_ps_col_tiles_s0;
     logic [p_ps_frame_count_width-1:0] cfg_ps_frames_s1;
     logic [p_reg_width-1:0] cfg_ps_r_s0;
@@ -212,7 +225,6 @@ module npu_task_configuration #(
     logic [p_w_reuse_w-1:0] ext_w_small;
     logic [1:0] frame_config_error_calc;
     logic [31:0] frame_slice_tiles_calc;
-    logic [p_reg_width-1:0] ia_reuse_num_eff_s1;
     logic [p_reg_width-1:0] ia_reuse_shape_i_value;
     logic ia_reuse_shape_o_valid;
     logic legacy_window_shape_s2;
@@ -224,7 +236,8 @@ module npu_task_configuration #(
     logic [OA_REUSE_ROWS_WIDTH-1:0] oa_cfg_reuse_rows;
     logic [OA_REUSE_ROWS_WIDTH-1:0] oa_cfg_row_tiles;
     logic oa_cfg_rows_exceed;
-    logic [p_reg_width-1:0] oa_is_alignment_mask;
+    logic [7:0] oa_is_alignment_mask;
+    logic [7:0] oa_ws_alignment_mask;
     logic oa_is_coalesce_q;
     logic oa_ws_coalesce_q;
     logic oa_ws_reserve_fits;
@@ -303,7 +316,6 @@ module npu_task_configuration #(
     logic tiling_invalid_calc;
     logic unused_column_sum_carry;
     logic use_frame_commands_calc;
-    logic [p_reg_width-1:0] w_reuse_num_eff_s1;
     logic [p_reg_width-1:0] w_reuse_shape_i_value;
     logic w_reuse_shape_o_valid;
 
@@ -524,11 +536,9 @@ assign frame_slice_tiles_calc = i_ps_control_q[3:2] == 2'd3 ? o_cfg_ia_reuse_q[2
         end
         // 空闲状态、后台请求和故障状态共同限定新配置的接收。
         // ABI 2 由软件提供有效的输入复用数与权重窗口大小。
-assign ia_reuse_num_eff_s1 = o_cfg_ia_reuse_q[1];
-assign w_reuse_num_eff_s1 = o_cfg_w_reuse_q[1];
 assign ext_r_small = o_cfg_ia_reuse_q[2][p_ia_reuse_w-1:0];
 assign ext_w_small = o_cfg_w_reuse_q[2][p_w_reuse_w-1:0];
-        assign ext_ia_capacity = cfg_compact_q[2] ? o_active_ia_cache_blocks : o_active_ia_cache_blocks >> 1;
+        assign ext_ia_capacity = configuration.compact ? o_active_ia_cache_blocks : o_active_ia_cache_blocks >> 1;
         unsigned_compare #(.p_width(p_reg_width)) u_external_ia_capacity (
             .i_a(ext_ia_capacity), .i_b(o_cfg_ia_reuse_q[2]),
             .o_less(ext_ia_capacity_less), .o_equal(ext_ia_capacity_equal)
@@ -715,7 +725,7 @@ assign ps_admission_words = ps_config_word_cap == 3'd2 ?
 assign ps_capacity_config_invalid_calc = (p_size == 16) &&
             (o_shared_allocation_invalid || active_ps_pool_bytes < 64 ||
              ((active_ps_pool_bytes % 64) != 0) ||
-             (p_shared_ram_enabled && !cfg_compact_q[2] && o_shared_ia_banks_q < 2) ||
+             (p_shared_ram_enabled && !configuration.compact && o_shared_ia_banks_q < 2) ||
              (ps_cross_k_required && (!ps_admission_bank_capacity_fits ||
                                       32'(ps_config_word_cap) > o_active_ps_bank_count)) ||
              (!o_use_frame_commands_s2 && !ps_long_capacity_fits));
@@ -732,109 +742,65 @@ assign ps_capacity_config_invalid_calc = (p_size == 16) &&
             if (o_cfg_valid_q[2] && cfg_capacity_phase==4)
                 ps_capacity_config_invalid <= ps_capacity_config_invalid_calc;
         end
+        // 字段视图共用配置寄存器，使用方在对应有效阶段读取这些字段。
+        for (genvar stage = 0; stage < 3; stage++) begin : g_configuration_view
+            assign o_cfg_use16_q[stage] = configuration.use16;
+            assign o_cfg_16x8_q[stage] = configuration.mode_16x8;
+            assign o_cfg_n_q[stage] = configuration.n;
+            assign o_cfg_stream_k_q[stage] = configuration.stream_k;
+            assign o_cfg_stream_m_q[stage] = configuration.stream_m;
+            assign o_cfg_ia_reuse_q[stage] = configuration.ia_reuse;
+            assign o_cfg_w_reuse_q[stage] = configuration.w_reuse;
+        end
         always_ff @(posedge clk or negedge rst_n) begin
             if (!rst_n) begin
-                    o_cfg_valid_q[0] <= 1'b0;
-                    o_cfg_valid_q[1] <= 1'b0;
+                configuration <= '0;
+                configuration.ia_reuse <= p_reg_width'(1);
+                configuration.w_reuse <= p_reg_width'(1);
+            end else if (i_cfg_start_event) begin
+                configuration.is_mode <= cfg_stream_is_mode;
+                configuration.use16 <= o_cfg_16bits_ia_eff | i_cfg_16x8;
+                configuration.mode_16x8 <= i_cfg_16x8;
+                configuration.compact <= cfg_stream_compact;
+                configuration.compact_offset <= cfg_stream_offset;
+                configuration.k <= i_k;
+                configuration.m <= i_m;
+                configuration.n <= i_n;
+                configuration.stream_k <= cfg_stream_is_mode ? i_m : i_k;
+                configuration.stream_m <= cfg_stream_is_mode ? i_k : i_m;
+                configuration.ia_reuse <= i_cfg_ia_reuse_num;
+                configuration.w_reuse <= i_cfg_w_reuse_num;
+            end
+        end
+        always_ff @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+                o_cfg_valid_q <= '0;
+                cfg_bias_rows_target_s2 <= p_is_bias_valid_w'(p_size);
+                cfg_ps_rows_s1 <= '0;
+                cfg_ps_frames_s1 <= '0;
+                cfg_ps_required_s2 <= '0;
+            end else begin
+                if (o_cfg_stage2_fire) begin
                     o_cfg_valid_q[2] <= 1'b0;
-                    cfg_mode_q[0] <= 1'b0;
-                    o_cfg_use16_q[0] <= 1'b0;
-                    o_cfg_16x8_q[0] <= 1'b0;
-                    cfg_compact_q[0] <= 1'b0;
-                    cfg_compact_offset_q[0] <= '0;
-                    cfg_k_q[0] <= '0;
-                    cfg_m_q[0] <= '0;
-                    o_cfg_n_q[0] <= '0;
-                    o_cfg_stream_k_q[0] <= '0;
-                    o_cfg_stream_m_q[0] <= '0;
-                    o_cfg_ia_reuse_q[0] <= '0;
-                    o_cfg_w_reuse_q[0] <= '0;
-                    cfg_mode_q[1] <= 1'b0;
-                    o_cfg_use16_q[1] <= 1'b0;
-                    o_cfg_16x8_q[1] <= 1'b0;
-                    cfg_compact_q[1] <= 1'b0;
-                    cfg_compact_offset_q[1] <= '0;
-                    cfg_k_q[1] <= '0;
-                    cfg_m_q[1] <= '0;
-                    o_cfg_n_q[1] <= '0;
-                    o_cfg_stream_k_q[1] <= '0;
-                    o_cfg_stream_m_q[1] <= '0;
-                    o_cfg_ia_reuse_q[1] <= '0;
-                    o_cfg_w_reuse_q[1] <= '0;
-                    cfg_mode_q[2] <= 1'b0;
-                    cfg_compact_q[2] <= 1'b0;
-                    cfg_compact_offset_q[2] <= '0;
-                    o_cfg_use16_q[2] <= 1'b0;
-                    o_cfg_16x8_q[2] <= 1'b0;
-                    cfg_k_q[2] <= '0;
-                    cfg_m_q[2] <= '0;
-                    o_cfg_n_q[2] <= '0;
-                    o_cfg_stream_k_q[2] <= '0;
-                    o_cfg_stream_m_q[2] <= '0;
-                    o_cfg_ia_reuse_q[2] <= p_reg_width'(1);
-                    o_cfg_w_reuse_q[2] <= p_reg_width'(1);
-                    cfg_bias_rows_target_s2 <= p_is_bias_valid_w'(p_size);
-                    cfg_ps_rows_s1 <= '0;
-                    cfg_ps_frames_s1 <= '0;
-                    cfg_ps_required_s2 <= '0;
-                end else begin
-                    if (o_cfg_stage2_fire) begin
-                        o_cfg_valid_q[2] <= 1'b0;
-                    end
-                    if (o_cfg_valid_q[1] && !o_cfg_valid_q[2]) begin
-                        o_cfg_valid_q[2] <= 1'b1;
-                        o_cfg_valid_q[1] <= 1'b0;
-                        cfg_mode_q[2] <= cfg_mode_q[1];
-                        o_cfg_use16_q[2] <= o_cfg_use16_q[1];
-                        o_cfg_16x8_q[2] <= o_cfg_16x8_q[1];
-                        cfg_compact_q[2] <= cfg_compact_q[1];
-                        cfg_compact_offset_q[2] <= cfg_compact_offset_q[1];
-                        cfg_k_q[2] <= cfg_k_q[1];
-                        cfg_m_q[2] <= cfg_m_q[1];
-                        o_cfg_n_q[2] <= o_cfg_n_q[1];
-                        o_cfg_stream_k_q[2] <= o_cfg_stream_k_q[1];
-                        o_cfg_stream_m_q[2] <= o_cfg_stream_m_q[1];
-                        o_cfg_ia_reuse_q[2] <= ia_reuse_num_eff_s1;
-                        o_cfg_w_reuse_q[2] <= w_reuse_num_eff_s1;
-                        cfg_bias_rows_target_s2 <= p_is_bias_valid_w'(ia_reuse_num_eff_s1 << p_size_shift);
-                        cfg_ps_required_s2 <= p_ps_required_width'(cfg_ps_rows_s1) *
-                                              p_ps_required_width'(cfg_ps_frames_s1);
-                    end
-                    if (o_cfg_valid_q[0] && !o_cfg_valid_q[1]) begin
-                        o_cfg_valid_q[1] <= 1'b1;
-                        o_cfg_valid_q[0] <= 1'b0;
-                    cfg_mode_q[1] <= cfg_mode_q[0];
-                    o_cfg_use16_q[1] <= o_cfg_use16_q[0];
-                    o_cfg_16x8_q[1] <= o_cfg_16x8_q[0];
-                    cfg_compact_q[1] <= cfg_compact_q[0];
-                    cfg_compact_offset_q[1] <= cfg_compact_offset_q[0];
-                    cfg_k_q[1] <= cfg_k_q[0];
-                    cfg_m_q[1] <= cfg_m_q[0];
-                        o_cfg_n_q[1] <= o_cfg_n_q[0];
-                        o_cfg_stream_k_q[1] <= o_cfg_stream_k_q[0];
-                        o_cfg_stream_m_q[1] <= o_cfg_stream_m_q[0];
-                        o_cfg_ia_reuse_q[1] <= o_cfg_ia_reuse_q[0];
-                        o_cfg_w_reuse_q[1] <= o_cfg_w_reuse_q[0];
-                        cfg_ps_rows_s1 <= p_ps_row_count_width'(((cfg_ps_r_s0 + 1) << p_size_shift) - 1);
-                        cfg_ps_frames_s1 <= p_ps_frame_count_width'(cfg_ps_w_s0 + 1);
-                    end
-                    if (i_cfg_start_event) begin
-                        o_cfg_valid_q[0] <= 1'b1;
-                        cfg_mode_q[0] <= cfg_stream_is_mode;
-                        o_cfg_use16_q[0] <= o_cfg_16bits_ia_eff | i_cfg_16x8;
-                        o_cfg_16x8_q[0] <= i_cfg_16x8;
-                        cfg_compact_q[0] <= cfg_stream_compact;
-                        cfg_compact_offset_q[0] <= cfg_stream_offset;
-                    cfg_k_q[0] <= i_k;
-                    cfg_m_q[0] <= i_m;
-                        o_cfg_n_q[0] <= i_n;
-                        o_cfg_stream_k_q[0] <= cfg_stream_is_mode ? i_m : i_k;
-                        o_cfg_stream_m_q[0] <= cfg_stream_is_mode ? i_k : i_m;
-                        o_cfg_ia_reuse_q[0] <= i_cfg_ia_reuse_num;
-                        o_cfg_w_reuse_q[0] <= i_cfg_w_reuse_num;
-                    end
+                end
+                if (o_cfg_valid_q[1] && !o_cfg_valid_q[2]) begin
+                    o_cfg_valid_q[2] <= 1'b1;
+                    o_cfg_valid_q[1] <= 1'b0;
+                    cfg_bias_rows_target_s2 <= p_is_bias_valid_w'(configuration.ia_reuse << p_size_shift);
+                    cfg_ps_required_s2 <= p_ps_required_width'(cfg_ps_rows_s1) *
+                        p_ps_required_width'(cfg_ps_frames_s1);
+                end
+                if (o_cfg_valid_q[0] && !o_cfg_valid_q[1]) begin
+                    o_cfg_valid_q[1] <= 1'b1;
+                    o_cfg_valid_q[0] <= 1'b0;
+                    cfg_ps_rows_s1 <= p_ps_row_count_width'(((cfg_ps_r_s0 + 1) << p_size_shift) - 1);
+                    cfg_ps_frames_s1 <= p_ps_frame_count_width'(cfg_ps_w_s0 + 1);
+                end
+                if (i_cfg_start_event) begin
+                    o_cfg_valid_q[0] <= 1'b1;
                 end
             end
+        end
         // 使用已保存的任务配置计算物理槽号，帧命令接收时保存计算结果。
         // 输出预留覆盖阵列尾部、计算输出寄存和量化流水。
 
@@ -863,15 +829,15 @@ assign output_s16_reserve_uncapped = 32'(o_cfg_ia_reuse_q[2]);
                 o_w_reuse_num_eff <= p_reg_width'(1);
                 o_is_bias_group_rows_target <= p_is_bias_valid_w'(p_size);
             end else if (o_cfg_stage2_fire) begin
-                o_run_is_mode <= cfg_mode_q[2];
+                o_run_is_mode <= configuration.is_mode;
                 o_run_use_16bits <= o_cfg_use16_q[2];
                 o_run_16x8 <= o_cfg_16x8_q[2];
-                o_run_compact <= cfg_compact_q[2];
-                o_run_compact_offset <= cfg_compact_offset_q[2];
+                o_run_compact <= configuration.compact;
+                o_run_compact_offset <= configuration.compact_offset;
                 o_ps_force_raw_q <= ps_config_force_raw;
                 o_ps_word_cap_q <= ps_config_word_cap;
-                o_run_k <= cfg_k_q[2];
-                o_run_m <= cfg_m_q[2];
+                o_run_k <= configuration.k;
+                o_run_m <= configuration.m;
                 o_run_n <= o_cfg_n_q[2];
                 o_stream_k <= o_cfg_stream_k_q[2];
                 o_stream_m <= o_cfg_stream_m_q[2];
@@ -925,24 +891,26 @@ assign frame_config_error_calc = (i_lhs_base == 0 || i_rhs_base == 0 || i_dst_ba
     // 两个操作数先限制到容量加一，再求最小值；该值完整保留容量判断所需的信息。
     // 先比较未取整的行数，使向上取整仅在容量计数位宽内传播进位。
     assign oa_cfg_k_limit = (p_reg_width+4)'(p_reg_width'(p_oa_fifo_banks)) << 4;
-    assign oa_cfg_rows_exceed = (p_reg_width+4)'(cfg_k_q[2]) > oa_cfg_k_limit;
+    assign oa_cfg_rows_exceed = (p_reg_width+4)'(configuration.k) > oa_cfg_k_limit;
     assign oa_cfg_row_tiles = oa_cfg_rows_exceed ? OA_REUSE_ROWS_WIDTH'(p_oa_fifo_banks+1) :
-        OA_REUSE_ROWS_WIDTH'(cfg_k_q[2] >> 4) + OA_REUSE_ROWS_WIDTH'(|cfg_k_q[2][3:0]);
+        OA_REUSE_ROWS_WIDTH'(configuration.k >> 4) + OA_REUSE_ROWS_WIDTH'(|configuration.k[3:0]);
     assign oa_cfg_reuse_limit = o_cfg_ia_reuse_q[2] > p_reg_width'(p_oa_fifo_banks) ?
         OA_REUSE_ROWS_WIDTH'(p_oa_fifo_banks+1) : OA_REUSE_ROWS_WIDTH'(o_cfg_ia_reuse_q[2]);
     assign oa_cfg_reuse_rows = oa_cfg_row_tiles < oa_cfg_reuse_limit ?
         oa_cfg_row_tiles : oa_cfg_reuse_limit;
-    assign oa_is_alignment_mask = (o_cfg_ia_reuse_q[2] << 4) - p_reg_width'(1);
+    // 输出合并最多覆盖十六个 16 元素块，地址整除条件只涉及低八位。
+    assign oa_is_alignment_mask = (8'(o_cfg_ia_reuse_q[2]) << 4) - 8'd1;
+    assign oa_ws_alignment_mask = (8'(o_oa_chunk_cols_pre) << 4) - 8'd1;
     // 各分组容量条件并行形成，较大分组满足时，其较小分组也必然满足。
-    assign oa_cfg_chunk_fit[0] = o_cfg_w_reuse_q[2] >= 2 && cfg_m_q[2] >= 32 &&
+    assign oa_cfg_chunk_fit[0] = o_cfg_w_reuse_q[2] >= 2 && configuration.m >= 32 &&
         oa_ws_reuse_rows_pre <= OA_REUSE_ROWS_WIDTH'(p_oa_fifo_banks >> 1);
-    assign oa_cfg_chunk_fit[1] = o_cfg_w_reuse_q[2] >= 4 && cfg_m_q[2] >= 64 &&
+    assign oa_cfg_chunk_fit[1] = o_cfg_w_reuse_q[2] >= 4 && configuration.m >= 64 &&
         oa_ws_reuse_rows_pre <= OA_REUSE_ROWS_WIDTH'(p_oa_fifo_banks >> 2);
-    assign oa_cfg_chunk_fit[2] = o_cfg_w_reuse_q[2] >= 8 && cfg_m_q[2] >= 128 &&
+    assign oa_cfg_chunk_fit[2] = o_cfg_w_reuse_q[2] >= 8 && configuration.m >= 128 &&
         oa_ws_reuse_rows_pre <= OA_REUSE_ROWS_WIDTH'(p_oa_fifo_banks >> 3);
-    assign oa_cfg_chunk_fit[3] = o_cfg_w_reuse_q[2] >= 16 && cfg_m_q[2] >= 256 &&
+    assign oa_cfg_chunk_fit[3] = o_cfg_w_reuse_q[2] >= 16 && configuration.m >= 256 &&
         oa_ws_reuse_rows_pre <= OA_REUSE_ROWS_WIDTH'(p_oa_fifo_banks >> 4);
-    assign oa_cfg_narrow_chunk = cfg_k_q[2] > 1 && cfg_k_q[2] < 16 && oa_cfg_chunk_fit[0];
+    assign oa_cfg_narrow_chunk = configuration.k > 1 && configuration.k < 16 && oa_cfg_chunk_fit[0];
     assign oa_cfg_chunk_choice = {
         oa_cfg_chunk_fit[3] && !oa_cfg_narrow_chunk,
         oa_cfg_chunk_fit[2] && !oa_cfg_chunk_fit[3] && !oa_cfg_narrow_chunk,
@@ -970,16 +938,16 @@ assign o_oa_is_coalesce_pre = !i_frame_mode_q && oa_is_coalesce_q;
                     o_oa_chunk_cols_pre <= oa_cfg_chunk_choice;
                 end
                 3'd2: begin
-                    oa_ws_coalesce_q<=(p_size==16) && (p_enable_is_mode!=0) && !cfg_mode_q[2] && !o_cfg_16x8_q[2] &&
-                        cfg_k_q[2]!=0 && o_cfg_ia_reuse_q[2]<=16 && o_oa_chunk_cols_pre>=2 &&
-                        (cfg_m_q[2] & ((p_reg_width'(o_oa_chunk_cols_pre)<<4)-1'b1))==0 && i_dst_row_stride_b==cfg_m_q[2];
-                    oa_is_coalesce_q<=(p_size==16) && (p_enable_is_mode!=0) && cfg_mode_q[2] && !o_cfg_16x8_q[2] &&
-                        cfg_k_q[2]!=0 && cfg_m_q[2]!=0 && o_cfg_ia_reuse_q[2]>=2 && o_cfg_ia_reuse_q[2]<=16 &&
+                    oa_ws_coalesce_q<=(p_size==16) && (p_enable_is_mode!=0) && !configuration.is_mode && !o_cfg_16x8_q[2] &&
+                        configuration.k!=0 && o_cfg_ia_reuse_q[2]<=16 && o_oa_chunk_cols_pre>=2 &&
+                        (8'(configuration.m) & oa_ws_alignment_mask)==0 && i_dst_row_stride_b==configuration.m;
+                    oa_is_coalesce_q<=(p_size==16) && (p_enable_is_mode!=0) && configuration.is_mode && !o_cfg_16x8_q[2] &&
+                        configuration.k!=0 && configuration.m!=0 && o_cfg_ia_reuse_q[2]>=2 && o_cfg_ia_reuse_q[2]<=16 &&
                         o_cfg_ia_reuse_q[2]<=p_oa_fifo_banks &&
                         ia_reuse_shape_o_valid &&
-                        (cfg_m_q[2] & oa_is_alignment_mask)==0 &&
-                        (i_dst_base & oa_is_alignment_mask)==0 &&
-                        (i_dst_row_stride_b & oa_is_alignment_mask)==0;
+                        (8'(configuration.m) & oa_is_alignment_mask)==0 &&
+                        (8'(i_dst_base) & oa_is_alignment_mask)==0 &&
+                        (8'(i_dst_row_stride_b) & oa_is_alignment_mask)==0;
                     case (o_oa_chunk_cols_pre)
                         5'd16: oa_ws_reserve_fits<=oa_ws_reuse_rows_pre<=OA_REUSE_ROWS_WIDTH'(OA_DIRECT_AVAILABLE_BANKS>>4);
                         5'd8: oa_ws_reserve_fits<=oa_ws_reuse_rows_pre<=OA_REUSE_ROWS_WIDTH'(OA_DIRECT_AVAILABLE_BANKS>>3);
@@ -989,7 +957,7 @@ assign o_oa_is_coalesce_pre = !i_frame_mode_q && oa_is_coalesce_q;
                     endcase
                 end
                 3'd3: begin
-                    o_direct_output_cfg<=!cfg_mode_q[2] && !o_cfg_16x8_q[2] && !i_use_per_channel_eff && i_bias_base=='0 &&
+                    o_direct_output_cfg<=!configuration.is_mode && !o_cfg_16x8_q[2] && !i_use_per_channel_eff && i_bias_base=='0 &&
                         o_cfg_n_q[2]<=p_reg_width'(p_size) && o_cfg_n_q[2]!=0 &&
                         o_cfg_ia_reuse_q[2]<=p_reg_width'(OA_DIRECT_AVAILABLE_BANKS) &&
                         (!oa_ws_coalesce_q || oa_ws_reserve_fits);

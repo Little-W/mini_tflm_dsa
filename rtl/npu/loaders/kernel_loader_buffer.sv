@@ -36,16 +36,9 @@ module kernel_loader_buffer #(
     localparam int p_row_width = DATA_WIDTH * SIZE;
     localparam int p_depth = p_storage_slots * SIZE;
     localparam int p_addr_width = $clog2(p_depth);
-`ifdef ASIC_SYNTHESIS
-    // 列存储每周期写入一个元素，独立同步读端口保持阵列所需的输出顺序。
-    localparam bit p_row_storage = 1'b0;
-`else
-    localparam bit p_row_storage = SIZE > 1 && (SIZE & (SIZE-1)) == 0;
-`endif
 
     logic wr_slot, rd_slot;
     logic [p_slot_count-1:0] slot_reserved, slot_loaded;
-    logic [1:0] valid_count;
     logic [p_valid_width-1:0] load_valid_cols [p_slot_count];
     logic [p_valid_width-1:0] slot_valid_cols [p_slot_count];
     logic [p_valid_width-1:0] send_valid_cols;
@@ -85,7 +78,7 @@ module kernel_loader_buffer #(
         (p_valid_width'(row_idx_q) + p_valid_width'(1)) : load_valid_cols[row_slot_q];
     assign read_column = send_prefetch ? p_index_width'(SIZE - 1) : emit_col_idx;
 
-    // 输入行和发送位置共用槽位控制，各存储布局保存相同的矩阵元素。
+    // 每列存储器使用一个同步读端口和一个写端口，完整行并行写入各列。
     // 输出列号与同步读取同时更新，生成阵列要求的对角排列。
     assign column_i_wr_en = row_valid_q && slot_reserved[row_slot_q] && !cache_flush;
     assign column_i_wr_addr = p_addr_width'(slot_storage[row_slot_q] * SIZE) + p_addr_width'(row_idx_q);
@@ -103,10 +96,8 @@ module kernel_loader_buffer #(
         assign output_bank[column] = (output_bank_ext[column] >= (p_index_width+1)'(SIZE)) ?
             p_index_width'(output_bank_ext[column] - (p_index_width+1)'(SIZE)) :
             p_index_width'(output_bank_ext[column]);
-        if (!p_row_storage) begin : g_column_output
-            assign weight_out[column] = output_lane_valid_q[column] ?
-                $signed(column_o_rd_data[output_bank[column]]) : '0;
-        end
+        assign weight_out[column] = output_lane_valid_q[column] ?
+            $signed(column_o_rd_data[output_bank[column]]) : '0;
     end
 
     //! 2. 输入寄存与槽位管理
@@ -138,7 +129,6 @@ module kernel_loader_buffer #(
             rd_slot <= 1'b0;
             slot_reserved <= '0;
             slot_loaded <= '0;
-            valid_count <= '0;
             slot_storage[0] <= 2'd0;
             slot_storage[1] <= 2'd1;
             active_storage <= 2'd2;
@@ -181,11 +171,6 @@ module kernel_loader_buffer #(
             if (send_complete_event) begin
                 rd_slot <= ~rd_slot;
             end
-            case ({load_done_q, (send_pending || discard_fire)})
-                2'b10: valid_count <= valid_count + 1'b1;
-                2'b01: valid_count <= valid_count - 1'b1;
-                default: begin end
-            endcase
         end
     end
 
@@ -235,54 +220,7 @@ module kernel_loader_buffer #(
     assign weight_data_valid = !cache_flush && slot_loaded[rd_slot] && !send_active && !send_pending && !send_prefetch;
     assign discard_ready = weight_data_valid;
 
-    if (p_row_storage) begin : g_row_storage
-        logic [DATA_WIDTH-1:0] row_storage_data [SIZE];
-        logic [p_index_width-1:0] saved_read_column;
-        // 保存实际存储器读取位置，保持读取使能含未知值时的输出选择语义。
-        always_ff @(posedge clk) begin
-            if (!rst_n || cache_flush) begin
-                saved_read_column <= '0;
-            end else if (send_pending) begin
-            end else if (emit_fire) begin
-                case (^{rst_n, cache_flush})
-                    1'b0, 1'b1: saved_read_column <= read_column;
-                    default: begin
-                        if (column_i_rd_en) saved_read_column <= read_column;
-                    end
-                endcase
-            end
-        end
-        // 每个输出通道保存一行，写入完整行后按列同步读取。
-        // 窄读宽写由数组端口行为描述，读写地址分别使用当前物理槽位。
-        for (genvar row_index = 0; row_index < SIZE; row_index++) begin : g_row
-            (* ram_style = "block" *) logic [DATA_WIDTH-1:0] mem [0:p_depth-1];
-            logic row_write_en;
-            logic [DATA_WIDTH-1:0] read_data;
-            logic [p_index_width-1:0] read_element;
-            logic [p_addr_width-1:0] read_address;
-            logic [p_index_width-1:0] row_output_index;
-            assign row_output_index = p_index_width'(row_index) + (output_column_q - saved_read_column);
-            assign weight_out[row_index] = output_lane_valid_q[row_index] ?
-                $signed(row_storage_data[row_output_index]) : '0;
-            assign row_storage_data[row_index] = read_data;
-            assign row_write_en = column_i_wr_en && row_idx_q == p_index_width'(row_index);
-            assign read_element = read_column + p_index_width'(row_index);
-            assign read_address = {active_storage, read_element};
-            always_ff @(posedge clk) begin
-                if (row_write_en) begin
-                    for (int element = 0; element < SIZE; element++) begin
-                        mem[{slot_storage[row_slot_q], p_index_width'(element)}] <=
-                            row_data_vec_q[element*DATA_WIDTH+:DATA_WIDTH];
-                    end
-                end
-            end
-            always_ff @(posedge clk) begin
-                if (column_i_rd_en) begin
-                    read_data <= mem[read_address];
-                end
-            end
-        end
-    end else begin : g_column_storage
+    begin : g_column_storage
         for (genvar column = 0; column < SIZE; column++) begin : g_column_ram
             regfile #(
                 .p_data_width(DATA_WIDTH),

@@ -47,6 +47,18 @@ module bias_loader_buffer #(
   localparam int BYTE_SHIFT = $clog2(BYTES_PER_WORD);
   localparam int GROUP_ELEMS = GROUP_BLOCKS_MAX * SIZE;
   localparam int CNT_W = (COUNT_WIDTH < 1) ? 1 : COUNT_WIDTH;
+  localparam int RAM_WIDTH = 64;
+  localparam int RAM_BYTES = RAM_WIDTH / 8;
+  localparam int WORDS_PER_READ = RAM_WIDTH / DATA_WIDTH;
+  localparam int READS_PER_BLOCK = (SIZE + WORDS_PER_READ - 1) / WORDS_PER_READ;
+  localparam int BANK_WORDS = GROUP_BLOCKS_MAX * READS_PER_BLOCK;
+  localparam int BANK_ADDR_W = (BANK_WORDS > 1) ? $clog2(BANK_WORDS) : 1;
+  localparam int RAM_ADDR_W = BANK_ADDR_W + 1;
+  localparam int READ_INDEX_W = (READS_PER_BLOCK > 1) ? $clog2(READS_PER_BLOCK) : 1;
+  localparam int READ_COUNT_W = $clog2(READS_PER_BLOCK + 1);
+  localparam int WORD_INDEX_W = (WORDS_PER_READ > 1) ? $clog2(WORDS_PER_READ) : 1;
+  localparam int GROUP_ADDR_W = $clog2(GROUP_ELEMS);
+  localparam int BLOCK_ADDR_W = (GROUP_BLOCKS_MAX > 1) ? $clog2(GROUP_BLOCKS_MAX) : 1;
 
   logic                         bank_loaded [2];
   logic [CNT_W-1:0]             bank_block_idx [2];
@@ -65,7 +77,8 @@ module bias_loader_buffer #(
 
   logic                         load_bank_q;
   logic                         load_word_valid_q [BUS_WIDTH/8];
-  logic [REG_WIDTH-1:0]         load_word_row_q;
+  logic [BANK_ADDR_W-1:0]      load_row_index_q;
+  logic                        load_row_high_zero_q;
   logic [$clog2(SIZE * (DATA_WIDTH / 8))-1:0] load_word_col_base_q;
   logic signed [DMA_DATA_WIDTH-1:0] load_word_data_q [BUS_WIDTH/8];
   logic                         load_done_q;
@@ -73,7 +86,8 @@ module bias_loader_buffer #(
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       load_bank_q          <= 1'b0;
-      load_word_row_q      <= '0;
+      load_row_index_q     <= '0;
+      load_row_high_zero_q <= 1'b1;
       load_word_col_base_q <= '0;
       load_done_q          <= 1'b0;
       for (int i = 0; i < BUS_WIDTH/8; i++) begin
@@ -83,9 +97,11 @@ module bias_loader_buffer #(
     end else begin
       load_bank_q          <= load_bank;
       if (GROUP_BLOCKS_MAX == 1) begin
-        load_word_row_q    <= '0;
+        load_row_index_q     <= '0;
+        load_row_high_zero_q <= 1'b1;
       end else begin
-        load_word_row_q    <= load_word_row;
+        load_row_index_q     <= BANK_ADDR_W'(load_word_row);
+        load_row_high_zero_q <= (load_word_row >> BANK_ADDR_W) == '0;
       end
       load_word_col_base_q <= load_word_col_base;
       load_done_q          <= load_done;
@@ -122,19 +138,6 @@ module bias_loader_buffer #(
 
   //! 1. Residency and Read Context
   //! -----------------------------
-
-  localparam int RAM_WIDTH = 64;
-  localparam int RAM_BYTES = RAM_WIDTH / 8;
-  localparam int WORDS_PER_READ = RAM_WIDTH / DATA_WIDTH;
-  localparam int READS_PER_BLOCK = (SIZE + WORDS_PER_READ - 1) / WORDS_PER_READ;
-  localparam int BANK_WORDS = GROUP_BLOCKS_MAX * READS_PER_BLOCK;
-  localparam int BANK_ADDR_W = (BANK_WORDS > 1) ? $clog2(BANK_WORDS) : 1;
-  localparam int RAM_ADDR_W = BANK_ADDR_W + 1;
-  localparam int READ_INDEX_W = (READS_PER_BLOCK > 1) ? $clog2(READS_PER_BLOCK) : 1;
-  localparam int READ_COUNT_W = $clog2(READS_PER_BLOCK + 1);
-  localparam int WORD_INDEX_W = (WORDS_PER_READ > 1) ? $clog2(WORDS_PER_READ) : 1;
-  localparam int GROUP_ADDR_W = $clog2(GROUP_ELEMS);
-  localparam int BLOCK_ADDR_W = (GROUP_BLOCKS_MAX > 1) ? $clog2(GROUP_BLOCKS_MAX) : 1;
 
   localparam int RANGE_WIDTH = CNT_W + 1;
   logic [1:0][1:0] window_end_valid;
@@ -219,7 +222,7 @@ module bias_loader_buffer #(
       ws_cache_block == current_block_offset;
   assign bias_valid = resident_current && (is_mode || ws_cache_hit);
 
-  // Capture the executing group independently from command-side prefetch.
+  // 执行分组的读取上下文独立保存，后台预取不会改写当前标量读取位置。
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       scalar_word_base <= '0;
@@ -239,10 +242,11 @@ module bias_loader_buffer #(
   //! 2. Synchronous Storage
   //! ----------------------
 
+  // 低位保存物理地址计算所需的模值，高位零标志保留完整行号的范围资格。
   assign write_row_valid = (GROUP_BLOCKS_MAX == 1) ||
-      (load_word_row_q < REG_WIDTH'(GROUP_BLOCKS_MAX));
+      (load_row_high_zero_q && REG_WIDTH'(load_row_index_q) < REG_WIDTH'(GROUP_BLOCKS_MAX));
   assign write_address = {load_bank_q,
-      BANK_ADDR_W'((GROUP_BLOCKS_MAX == 1 ? REG_WIDTH'(0) : load_word_row_q) *
+      BANK_ADDR_W'(REG_WIDTH'(load_row_index_q) *
                    REG_WIDTH'(READS_PER_BLOCK) +
                    REG_WIDTH'(load_word_col_base_q) / REG_WIDTH'(RAM_BYTES))};
   for (genvar byte_i = 0; byte_i < RAM_BYTES; byte_i++) begin : gen_write_byte
@@ -357,7 +361,7 @@ module bias_loader_buffer #(
     for (genvar byte_i = 0; byte_i < RAM_BYTES; byte_i++) begin : gen_ws_byte
       always_ff @(posedge clk) begin
         if (!init_cfg && !load_start && !is_mode) begin
-          if (ws_loading && load_word_row_q == '0 &&
+          if (ws_loading && load_row_high_zero_q && load_row_index_q == '0 &&
               write_address[BANK_ADDR_W-1:0] == BANK_ADDR_W'(pair_i) &&
               write_enable[byte_i])
             ws_cache_pair[pair_i][byte_i*8 +: 8] <= ws_cache_update_data[byte_i*8 +: 8];
