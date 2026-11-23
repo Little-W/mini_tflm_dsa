@@ -171,4 +171,4 @@ puts "Bitstream written to [file join $out_dir fpga_top.bit]"
 puts "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CPU_MEM_DP=$cpu_mem_dp_value CPU_AXI_WRITE_TIMING_BUFFER=$cpu_axi_write_timing_buffer_value BYPASS_RAM_PINGPONG=$bypass_ram_pingpong_value RAM_WRITE_TIMING_BUFFER=$ram_write_timing_buffer_value"
 puts "SYNTH_STRATEGY=$synth_strategy_value SYNTH_DIRECTIVE=$synth_directive_value IMPL_STRATEGY=$impl_strategy_value"
 
-puts "NPU_AXI_DATA_WIDTH=[dict get $npu_hardware_config NPU_AXI_DATA_WIDTH] SHARED_BANK_BYTES=[dict get $npu_hardware_config SHARED_BANK_BYTES] SHARED_BANK_COUNT=[dict get $npu_hardware_config SHARED_BANK_COUNT] IM2COL_CACHE_BYTES=[dict get $npu_hardware_config IM2COL_CACHE_BYTES]"
+puts "NPU_AXI_DATA_WIDTH=[dict get $npu_hardware_config NPU_AXI_DATA_WIDTH] SHARED_BANK_BYTES=[dict get $npu_hardware_config SHARED_BANK_BYTES] SHARED_BANK_COUNT=[dict get $npu_hardware_config SHARED_BANK_COUNT] IM2COL_CACHE_BYTES=[dict get $npu_hardware_config IM2COL_CACHE_BYTES] IA_COMPACT_ENABLE=[dict get $npu_hardware_config IA_COMPACT_ENABLE]"

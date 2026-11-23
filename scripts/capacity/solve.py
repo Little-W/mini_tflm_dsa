@@ -137,7 +137,8 @@ def main(argv=None):
                              im2col_cache_bytes=values["IM2COL_CACHE_BYTES"],
                              bank_bytes=values["SHARED_BANK_BYTES"],
                              cache_blocks=values["IA_CACHE_BLOCKS"], frame_count=values["PS_FRAME_COUNT"],
-                             ps_build_bytes=values["PS_POOL_BYTES"])
+                             ps_build_bytes=values["PS_POOL_BYTES"],
+                             ia_compact_enable=bool(values["IA_COMPACT_ENABLE"]))
         alloc = result["allocation"]
         updates = {"PCR_ENGINE": 1, "SIZE": model.TILE,
                    "SHARED_BANK_BYTES": alloc["shared_bank_bytes"],

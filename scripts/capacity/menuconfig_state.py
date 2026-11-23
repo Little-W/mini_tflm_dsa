@@ -204,7 +204,8 @@ class MenuConfigState:
                              im2col_cache_bytes=self.values["IM2COL_CACHE_BYTES"],
                              bank_bytes=self.values["SHARED_BANK_BYTES"],
                              cache_blocks=self.values["IA_CACHE_BLOCKS"], frame_count=self.values["PS_FRAME_COUNT"],
-                             ps_build_bytes=self.values["PS_POOL_BYTES"])
+                             ps_build_bytes=self.values["PS_POOL_BYTES"],
+                             ia_compact_enable=bool(self.values["IA_COMPACT_ENABLE"]))
         allocation = result["allocation"]
         updated = {**self.values, "PCR_ENGINE": 1, "SIZE": model.TILE,
                    "SHARED_BANK_BYTES": allocation["shared_bank_bytes"],

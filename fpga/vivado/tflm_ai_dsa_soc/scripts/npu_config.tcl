@@ -2,7 +2,7 @@
 namespace eval npu_config {
     variable defaults [dict create \
         NPU_AXI_DATA_WIDTH 64 SHARED_BANK_BYTES 8192 SHARED_BANK_COUNT 7 \
-        IM2COL_CACHE_BYTES 4096 \
+        IM2COL_CACHE_BYTES 4096 IA_COMPACT_ENABLE 0 \
         PCR_ENGINE 1 PS_POOL_BYTES 49152 PS_FORCE_RAW 0]
 }
 
@@ -33,6 +33,7 @@ proc npu_config::validate {values} {
         SHARED_BANK_BYTES {2048 4096 8192}
         SHARED_BANK_COUNT {6 7 8 9}
         PCR_ENGINE {0 1}
+        IA_COMPACT_ENABLE {0 1}
         PS_FORCE_RAW {0 1}
     } {
         if {[dict get $values $name] ni $allowed} {
@@ -88,7 +89,7 @@ proc npu_config::read {root {config_path ""}} {
             error "$config_path:$line_number: unsupported assignment syntax for $name"
         }
     }
-    foreach name {NPU_AXI_DATA_WIDTH SHARED_BANK_BYTES SHARED_BANK_COUNT IM2COL_CACHE_BYTES} {
+    foreach name {NPU_AXI_DATA_WIDTH SHARED_BANK_BYTES SHARED_BANK_COUNT IM2COL_CACHE_BYTES IA_COMPACT_ENABLE} {
         if {[info exists ::env($name)]} {
             dict set values $name [integer_literal $name $::env($name)]
         }
@@ -103,7 +104,8 @@ proc npu_config::generics {values} {
         BUS_WIDTH=[dict get $values NPU_AXI_DATA_WIDTH] \
         SHARED_BANK_BYTES=[dict get $values SHARED_BANK_BYTES] \
         SHARED_BANK_COUNT=[dict get $values SHARED_BANK_COUNT] \
-        IM2COL_CACHE_BYTES=[dict get $values IM2COL_CACHE_BYTES]]
+        IM2COL_CACHE_BYTES=[dict get $values IM2COL_CACHE_BYTES] \
+        IA_COMPACT_ENABLE=[dict get $values IA_COMPACT_ENABLE]]
 }
 
 proc npu_config::project_values {generic_items} {
@@ -111,7 +113,7 @@ proc npu_config::project_values {generic_items} {
     set values $defaults
     set names [dict create BUS_WIDTH NPU_AXI_DATA_WIDTH \
         SHARED_BANK_BYTES SHARED_BANK_BYTES SHARED_BANK_COUNT SHARED_BANK_COUNT \
-        IM2COL_CACHE_BYTES IM2COL_CACHE_BYTES]
+        IM2COL_CACHE_BYTES IM2COL_CACHE_BYTES IA_COMPACT_ENABLE IA_COMPACT_ENABLE]
     set found [dict create]
     foreach item $generic_items {
         set equal [string first = $item]

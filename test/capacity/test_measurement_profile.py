@@ -28,18 +28,38 @@ class MeasurementProfileTests(unittest.TestCase):
                     self.assertEqual(p["shared_total_bytes"], bank_bytes*banks)
                     self.assertEqual(p["dma_max_bytes"], 256*(width//8))
                     self.assertEqual(p["ps_pool_bytes"], bank_bytes*(banks-1))
-                    self.assertEqual(p["ps_caps"], 0x01100037)
+                    self.assertEqual(p["ps_caps"], 0x01100033)
                     self.assertEqual(p["ps_directory_bits_per_row"],
                                      {2048:34,4096:38,8192:42}[bank_bytes])
                     self.assertEqual(p["matrix_output_banks"],
-                                     max(32, (4 if banks >= 8 else 2) * bank_bytes // 512) | (4 << 16))
+                                     max(32, (4 if banks >= 8 else 2) * bank_bytes // 1024) | (4 << 16))
+
+    def test_explicit_ia_storage_modes(self):
+        profiles = []
+        for compact in (0, 1):
+            data = manifest(bank_bytes=8192, banks=8)
+            data["profile"]["ia_compact_enable"] = compact
+            profile = normalize_profile(data, root=ROOT, literal_bound=True)
+            profiles.append(profile)
+            self.assertEqual(profile["ps_caps"], 0x01100033 | (compact << 2))
+            self.assertEqual(profile["matrix_output_banks"], (32 << compact) | (4 << 16))
+        self.assertNotEqual(profile_signature(profiles[0]), profile_signature(profiles[1]))
+
+    def test_ia_default_uses_matching_build_source(self):
+        source = ROOT / "rtl/npu/top/npu_top.sv"
+        data = manifest()
+        data["source_sha256"] = {str(source.relative_to(ROOT)): hashlib.sha256(source.read_bytes()).hexdigest()}
+        self.assertEqual(normalize_profile(data, root=ROOT)["ia_compact_enable"], 0)
+        data["source_sha256"][str(source.relative_to(ROOT))] = "0" * 64
+        with self.assertRaises(ValueError):
+            normalize_profile(data, root=ROOT)
 
     def test_raw_profile_reports_fixed_int32_storage(self):
         data = manifest(banks=7)
         data["profile"]["force_raw"] = True
         profile = normalize_profile(data, root=ROOT, literal_bound=True)
         self.assertEqual(profile["shared_ia_bank_mask"], 0x6)
-        self.assertEqual(profile["ps_caps"], 0x0110001f)
+        self.assertEqual(profile["ps_caps"], 0x0110001b)
         self.assertEqual(profile["ps_directory_bits_per_row"], 0)
 
     def test_conv_memory_defaults_are_recorded(self):
@@ -116,12 +136,12 @@ class MeasurementProfileTests(unittest.TestCase):
         caps = {address:(value,mask) for address,value,mask in capability_expectations(p)}
         self.assertEqual(caps[0x0f4], (64,0xffffffff))
         self.assertEqual(caps[0x0f0], (2048,0xffffffff))
-        self.assertEqual(caps[0x124], (0x01100037,0xffffffff))
+        self.assertEqual(caps[0x124], (0x01100033,0xffffffff))
         self.assertEqual(caps[0x104], (4096,0xffffffff))
         self.assertEqual(caps[0x134], (32768,0xffffffff))
         p = normalize_profile(manifest(),root=ROOT)
         self.assertEqual(dict((a,(v,m)) for a,v,m in capability_expectations(p))[0x124],
-                         (0x01100017,0xffffffdf))
+                         (0x01100013,0xffffffdf))
 
 
 if __name__ == "__main__":

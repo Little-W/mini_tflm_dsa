@@ -77,6 +77,18 @@ module tb_conv_npu;
     integer accumulator_checks=0;
     integer accumulator_row_base=0,accumulator_col_base=0;
     integer accumulator_row_offset=0,accumulator_col_tile=0;
+    typedef struct packed {
+        logic [SIZE-1:0] lane_valid;
+        logic [SIZE-1:0][31:0] data;
+        logic [SIZE-1:0][31:0] index;
+        logic [31:0] row;
+        logic tile_done;
+        logic [63:0] captured_cycle;
+    } accumulator_row_t;
+    accumulator_row_t expected_accumulator_rows[$];
+    wire accumulator_clear = !u_dut.core_rst_n ||
+        u_dut.u_matrix_engine.u_output_pipeline.i_exec_init_requant ||
+        u_dut.u_matrix_engine.u_output_pipeline.i_ps_capacity_fault;
     integer ps_blocked_cycles=0;
     integer ps_committed_rows=0,ps_raw_records=0,ps_payload_words=0;
     wire ps_encode_valid;
@@ -95,8 +107,13 @@ module tb_conv_npu;
         SHARED_TEST_BYTES % `TB_SHARED_BANK_BYTES == 0;
     localparam int PS_MONITOR_BANKS = PS_MONITOR_SHARED ? SHARED_TEST_BYTES / `TB_SHARED_BANK_BYTES - 1 : 4;
     localparam int PS_MONITOR_IA_BANKS = SHARED_TEST_BYTES / `TB_SHARED_BANK_BYTES >= 8 ? 4 : 2;
+`ifdef TB_IA_COMPACT_ENABLE
+    localparam int PS_MONITOR_IA_DIVISOR = `TB_IA_COMPACT_ENABLE != 0 ? 1 : 2;
+`else
+    localparam int PS_MONITOR_IA_DIVISOR = 1;
+`endif
     localparam int PS_MONITOR_ROWS = (PS_MONITOR_SHARED ?
-        PS_MONITOR_IA_BANKS * `TB_SHARED_BANK_BYTES / (SIZE * SIZE * 2) : `TB_IA_CACHE_BLOCKS) * SIZE;
+        PS_MONITOR_IA_BANKS * `TB_SHARED_BANK_BYTES / (SIZE * SIZE * 2) : `TB_IA_CACHE_BLOCKS) * SIZE / PS_MONITOR_IA_DIVISOR;
     generate if(SIZE==16)begin : g_ps_monitor
         initial begin
             assert (PS_MONITOR_SHARED == u_dut.SHARED_RAM_ENABLED &&
@@ -155,13 +172,16 @@ module tb_conv_npu;
     always @(posedge clk) begin : check_accumulators
         integer stream_rows,stream_cols,group_rows,group_cols;
         integer logical_row,logical_col,index;
+        accumulator_row_t captured_row, expected_row;
         if(!rst_n || new_job)begin
             accumulator_checks=0;
+            expected_accumulator_rows.delete();
             accumulator_row_base=0;accumulator_col_base=0;
             accumulator_row_offset=0;accumulator_col_tile=0;
             ps_blocked_cycles=0;
             ps_committed_rows=0;ps_raw_records=0;ps_payload_words=0;
         end else begin
+            if (accumulator_clear) expected_accumulator_rows.delete();
             if(u_dut.u_matrix_engine.frame_command_start)accumulator_row_offset=0;
             if(ps_encode_valid)begin
                 ps_committed_rows++;
@@ -172,7 +192,10 @@ module tb_conv_npu;
                u_dut.u_matrix_engine.u_npu_controller.bias_ready_for_compute && u_dut.u_matrix_engine.quant_params_valid &&
                !(u_dut.u_matrix_engine.fifo_full_flag && u_dut.u_matrix_engine.ia_output_pending) && !u_dut.u_matrix_engine.ia_sending_done &&
                !u_dut.u_matrix_engine.oa_calc_over && !u_dut.u_matrix_engine.ps_frame_ready)ps_blocked_cycles++;
-            if(saved_cfg[52]==0 && u_dut.u_matrix_engine.acc_data_valid)begin
+            if(saved_cfg[52]==0 && u_dut.u_matrix_engine.acc_data_valid && !accumulator_clear)begin
+                captured_row = '0;
+                captured_row.tile_done = u_dut.u_matrix_engine.u_output_pipeline.i_tile_calc_over;
+                captured_row.captured_cycle = cycle;
                 stream_rows=int'(u_dut.is_mode?saved_cfg[5]:saved_cfg[3]);
                 stream_cols=int'(u_dut.is_mode?saved_cfg[3]:saved_cfg[5]);
                 group_rows=int'(saved_cfg[6])*SIZE;
@@ -193,13 +216,13 @@ module tb_conv_npu;
                     if(logical_col<stream_cols)begin
                         index=u_dut.is_mode ? logical_col*int'(saved_cfg[5])+logical_row :
                                                      logical_row*int'(saved_cfg[5])+logical_col;
-                        assert(u_dut.u_matrix_engine.u_output_pipeline.requant_in_vec[lane]===accumulator_reference[index])
-                            else $fatal(1,"INT32 accumulator differs row=%0d column=%0d index=%0d actual=%0d expected=%0d",
-                                logical_row,logical_col,index,$signed(u_dut.u_matrix_engine.u_output_pipeline.requant_in_vec[lane]),
-                                $signed(accumulator_reference[index]));
-                        accumulator_checks++;
+                        captured_row.lane_valid[lane] = 1'b1;
+                        captured_row.data[lane] = accumulator_reference[index];
+                        captured_row.index[lane] = 32'(index);
                     end
                 end
+                captured_row.row = 32'(logical_row);
+                expected_accumulator_rows.push_back(captured_row);
                 accumulator_row_offset++;
                 if(!u_dut.frame_mode_q && accumulator_row_offset==group_rows)begin
                     accumulator_row_offset=0;
@@ -214,6 +237,27 @@ module tb_conv_npu;
                     end
                 end
             end
+            if (saved_cfg[52]==0 && u_dut.u_matrix_engine.u_output_pipeline.u_vec_requant.in_valid) begin
+                assert (!accumulator_clear && expected_accumulator_rows.size()>0)
+                    else $fatal(1,"requant input without a captured accumulator row");
+                expected_row = expected_accumulator_rows.pop_front();
+                assert (cycle <= expected_row.captured_cycle + 1)
+                    else $fatal(1,"accumulator output latency exceeded one cycle");
+                assert (u_dut.u_matrix_engine.u_output_pipeline.u_vec_requant.in_tile_done === expected_row.tile_done)
+                    else $fatal(1,"accumulator tile marker differs");
+                for (int lane=0; lane<SIZE; lane++) begin
+                    if (expected_row.lane_valid[lane]) begin
+                        assert (u_dut.u_matrix_engine.u_output_pipeline.requant_in_vec[lane] === expected_row.data[lane])
+                            else $fatal(1,"INT32 accumulator differs row=%0d lane=%0d index=%0d actual=%0d expected=%0d",
+                                expected_row.row,lane,expected_row.index[lane],
+                                $signed(u_dut.u_matrix_engine.u_output_pipeline.requant_in_vec[lane]),
+                                $signed(expected_row.data[lane]));
+                        accumulator_checks++;
+                    end
+                end
+            end
+            assert (expected_accumulator_rows.size() <= 1)
+                else $fatal(1,"accumulator pipeline retained more than one row");
         end
     end
     always @(posedge clk)if(rst_n && $test$plusargs("FRAME_TRACE"))begin
@@ -295,6 +339,9 @@ module tb_conv_npu;
     longint unsigned read_bytes,input_read_bytes,read_requests,write_bytes;
 
     npu_top #(.BUS_WIDTH(`TB_BUS_WIDTH),.SIZE(SIZE),.DATA_WIDTH(16),.WEIGHT_WIDTH(16),.IA_CACHE_BLOCKS(`TB_IA_CACHE_BLOCKS),.PS_FRAME_COUNT(`TB_PS_FRAME_COUNT),.AXI_READ_OUTSTANDING(4),
+`ifdef TB_IA_COMPACT_ENABLE
+        .IA_COMPACT_ENABLE(`TB_IA_COMPACT_ENABLE),
+`endif
         .ADDR_WIDTH(`TB_NPU_ADDR_WIDTH),.VECTOR_PE_COUNT(`TB_VECTOR_PE_COUNT),
         .SHARED_BANK_BYTES(`TB_SHARED_BANK_BYTES),.SHARED_BANK_COUNT(`TB_SHARED_BANK_COUNT),
         .DMA_MAX_BYTES(`TB_DMA_MAX_BYTES),
@@ -423,6 +470,8 @@ module tb_conv_npu;
                 if(saved_cfg[59]!=0)assert(capacity_injected)else $fatal(1,"requested PS fault was never injected");
                 if(saved_cfg[59]==3)assert(late_error_seen)else $fatal(1,"requested later AXI error was never accepted");
                 if(observed_error==0)begin
+                    assert(expected_accumulator_rows.size()==0)
+                        else $fatal(1,"unconsumed accumulator rows at completion");
                     assert(accumulator_checks==int'(saved_cfg[3]*saved_cfg[5]))
                         else $fatal(1,"incomplete INT32 accumulator comparison count=%0d",accumulator_checks);
                     if(saved_cfg[4]<=SIZE)assert(ps_committed_rows==0)
@@ -498,7 +547,7 @@ module tb_conv_npu;
                 assert(padding_reads==0)else $fatal(1,"padding caused an external input read");
                 if(saved_cfg[32][0] && observed_error==0)
                     assert(covered_input==required_input)else $fatal(1,"required input bytes were not fetched");
-                $display("CONV_TASK_PASS task=%0d conv=%0d dataflow=%0d bypass=%0d error=%0d cycles=%0d hits=%0d misses=%0d input_bytes=%0d input_unique=%0d input_duplicate=%0d input_max_reads=%0d input_required=%0d input_prefetched_unused=%0d padding_reads=%0d ar_bytes=%0d ar_requests=%0d write_bytes=%0d device_cycles=%0d ia_im2col_commands=%0d kernel_im2col_commands=%0d ar_stall_cycles=%0d r_wait_cycles=%0d int32_checks=%0d ps_blocked_cycles=%0d capacity_injected=%0d ps_committed_rows=%0d ps_raw_records=%0d ps_payload_words=%0d frame_commands=%0d pressure_events=%0d early_finish_frames=%0d ia_banks=%0d ia_bytes=%0d ps_bytes=%0d r=%0d w=%0d ps_control=%0d",task_number,saved_cfg[32],saved_cfg[8],saved_cfg[50],observed_error,end_cycle-start_cycle,hits,misses,input_read_bytes,unique_input,input_read_bytes-64'(unique_input),max_input_reads,required_input,unused_unique_input,padding_reads,read_bytes,read_requests,write_bytes,conv_cycles,ia_im2col_commands,kernel_im2col_commands,ar_stall_cycles,r_wait_cycles,accumulator_checks,ps_blocked_cycles,capacity_injected,ps_committed_rows,ps_raw_records,ps_payload_words,u_dut.tb_observer.ps_stat_commands,u_dut.tb_observer.ps_stat_pressure_events,u_dut.tb_observer.ps_stat_early_finish_frames,u_dut.SHARED_RAM_ENABLED ? u_dut.shared_ia_banks_q : 0,u_dut.u_matrix_engine.active_ia_cache_blocks*512,u_dut.u_matrix_engine.u_task_configuration.active_ps_pool_bytes,saved_cfg[6],saved_cfg[7],saved_cfg[61]);
+                $display("CONV_TASK_PASS task=%0d conv=%0d dataflow=%0d bypass=%0d error=%0d cycles=%0d hits=%0d misses=%0d input_bytes=%0d input_unique=%0d input_duplicate=%0d input_max_reads=%0d input_required=%0d input_prefetched_unused=%0d padding_reads=%0d ar_bytes=%0d ar_requests=%0d write_bytes=%0d device_cycles=%0d ia_im2col_commands=%0d kernel_im2col_commands=%0d ar_stall_cycles=%0d r_wait_cycles=%0d int32_checks=%0d ps_blocked_cycles=%0d capacity_injected=%0d ps_committed_rows=%0d ps_raw_records=%0d ps_payload_words=%0d frame_commands=%0d pressure_events=%0d early_finish_frames=%0d ia_banks=%0d ia_bytes=%0d ps_bytes=%0d r=%0d w=%0d ps_control=%0d ia_compact_capable=%0d ia_compact_active=%0d",task_number,saved_cfg[32],saved_cfg[8],saved_cfg[50],observed_error,end_cycle-start_cycle,hits,misses,input_read_bytes,unique_input,input_read_bytes-64'(unique_input),max_input_reads,required_input,unused_unique_input,padding_reads,read_bytes,read_requests,write_bytes,conv_cycles,ia_im2col_commands,kernel_im2col_commands,ar_stall_cycles,r_wait_cycles,accumulator_checks,ps_blocked_cycles,capacity_injected,ps_committed_rows,ps_raw_records,ps_payload_words,u_dut.tb_observer.ps_stat_commands,u_dut.tb_observer.ps_stat_pressure_events,u_dut.tb_observer.ps_stat_early_finish_frames,u_dut.SHARED_RAM_ENABLED ? u_dut.shared_ia_banks_q : 0,u_dut.u_matrix_engine.active_ia_cache_blocks*512,u_dut.u_matrix_engine.u_task_configuration.active_ps_pool_bytes,saved_cfg[6],saved_cfg[7],saved_cfg[61],u_dut.IA_COMPACT_ENABLE,u_dut.run_compact);
                 done_ready=1;@(negedge clk);done_ready=0;
                 repeat(8)@(negedge clk);
                 task_number++;

@@ -19,7 +19,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
 TIMING_MOCK = ROOT/'scripts/fpga/tests/vivado_timing_mock.tcl'
 ENVIRONMENT_KEYS = (
-    'NPU_CONFIG', 'NPU_AXI_DATA_WIDTH', 'SHARED_BANK_BYTES', 'SHARED_BANK_COUNT', 'IM2COL_CACHE_BYTES',
+    'NPU_CONFIG', 'NPU_AXI_DATA_WIDTH', 'SHARED_BANK_BYTES', 'SHARED_BANK_COUNT', 'IM2COL_CACHE_BYTES', 'IA_COMPACT_ENABLE',
     'GEMPACT_PCR_ENGINE', 'GEMPACT_PS_COMPRESS', 'GEMPACT_PS_POOL_BYTES', 'GEMPACT_PS_FORCE_RAW',
     'VIVADO_SYNTH_STRATEGY', 'VIVADO_SYNTH_DIRECTIVE', 'VIVADO_IMPL_STRATEGY', 'VIVADO_RUN_IMPL',
     'VIVADO_CPU_ENABLE_ICACHE', 'VIVADO_CPU_MEM_PATH', 'VIVADO_SIM_MAX_SYS_CYCLES',
@@ -29,7 +29,7 @@ ENVIRONMENT_KEYS = (
 HELPER_RUNNER = r'''
 source [lindex $argv 0]
 set values [npu_config::read [lindex $argv 1]]
-foreach name {NPU_AXI_DATA_WIDTH SHARED_BANK_BYTES SHARED_BANK_COUNT IM2COL_CACHE_BYTES PCR_ENGINE PS_POOL_BYTES PS_FORCE_RAW} {
+foreach name {NPU_AXI_DATA_WIDTH SHARED_BANK_BYTES SHARED_BANK_COUNT IM2COL_CACHE_BYTES IA_COMPACT_ENABLE PCR_ENGINE PS_POOL_BYTES PS_FORCE_RAW} {
     puts "VALUE\t$name\t[dict get $values $name]"
 }
 puts "PATH\t[dict get $values config_path]"
@@ -81,6 +81,15 @@ foreach command {
 }
 # 时序与实现接口使用确定性命令模型，参数读取仍使用上面的属性记录。
 source $::env(TEST_TIMING_MOCK)
+proc report_timing {args} {
+    vivado_timing_mock::record report_timing {*}$args
+    set path [vivado_timing_mock::option $args -of_objects]
+    if {$path ne ""} {
+        return "Synthetic configuration-test report\nSlack (MET) : [get_property SLACK $path]\nSource: [get_property STARTPOINT_PIN $path]\nDestination: [get_property ENDPOINT_PIN $path]"
+    }
+    vivado_timing_mock::report_file $args
+    return ""
+}
 if {[info exists ::env(TEST_TIMING_ROUTE_FAILURE)]} {
     vivado_timing_mock::set_option fully_routed 0
 }
@@ -187,7 +196,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_default_values(self):
         values, result = self.read_values()
         self.assertEqual(values, dict(NPU_AXI_DATA_WIDTH=64, SHARED_BANK_BYTES=8192,
-                                     SHARED_BANK_COUNT=7, IM2COL_CACHE_BYTES=4096, PCR_ENGINE=1, PS_POOL_BYTES=49152, PS_FORCE_RAW=0))
+                                     SHARED_BANK_COUNT=7, IM2COL_CACHE_BYTES=4096, IA_COMPACT_ENABLE=0, PCR_ENGINE=1, PS_POOL_BYTES=49152, PS_FORCE_RAW=0))
         self.assertIn(str(self.config), result.stdout)
 
     def test_default_fpga_configuration_file(self):
@@ -214,6 +223,20 @@ class ConfigurationTests(unittest.TestCase):
         self.environment['IM2COL_CACHE_BYTES'] = '32768'
         values, _ = self.read_values()
         self.assertEqual(values['IM2COL_CACHE_BYTES'], 32768)
+
+    def test_ia_compact_configuration(self):
+        for compact in (0, 1):
+            self.config.write_text(f'IA_COMPACT_ENABLE={compact}\n')
+            values, _ = self.read_values()
+            self.assertEqual(values['IA_COMPACT_ENABLE'], compact)
+        self.environment['IA_COMPACT_ENABLE'] = '0'
+        values, _ = self.read_values()
+        self.assertEqual(values['IA_COMPACT_ENABLE'], 0)
+        del self.environment['IA_COMPACT_ENABLE']
+        for invalid in (-1, 2, 32):
+            self.config.write_text(f'IA_COMPACT_ENABLE={invalid}\n')
+            _, result = self.read_values(success=False)
+            self.assertIn('IA_COMPACT_ENABLE must be one of 0, 1', result.stderr)
 
     def test_literal_syntax_and_unrelated_assignments(self):
         self.config.write_text('''# Hardware settings
@@ -281,13 +304,14 @@ UNRELATED = $(shell echo unused)
         self.read_values(success=False)
 
     def test_four_build_entries(self):
-        for bus, size, count, capacity in ((64, 8192, 7, 512), (32, 8192, 9, 65536)):
-            self.config.write_text(f'NPU_AXI_DATA_WIDTH={bus}\nSHARED_BANK_BYTES={size}\nSHARED_BANK_COUNT={count}\nIM2COL_CACHE_BYTES={capacity}\n')
+        for bus, size, count, capacity, compact in ((64, 8192, 7, 512, 0), (32, 8192, 9, 65536, 1)):
+            self.config.write_text(f'NPU_AXI_DATA_WIDTH={bus}\nSHARED_BANK_BYTES={size}\nSHARED_BANK_COUNT={count}\nIM2COL_CACHE_BYTES={capacity}\nIA_COMPACT_ENABLE={compact}\n')
             for name in ('create_project.tcl', 'run_batch_synth.tcl', 'run_batch_impl.tcl', 'export_project.tcl'):
                 with self.subTest(bus=bus, name=name):
                     generics, defines = self.flow(name, self.work/(name+str(bus)))
                     expected = dict(BUS_WIDTH=str(bus), SHARED_BANK_BYTES=str(size), SHARED_BANK_COUNT=str(count),
-                                    SIZE='16', IA_CACHE_BLOCKS='4', CPU_MEM_DP='16', IM2COL_CACHE_BYTES=str(capacity))
+                                    SIZE='16', IA_CACHE_BLOCKS='4', CPU_MEM_DP='16', IM2COL_CACHE_BYTES=str(capacity),
+                                    IA_COMPACT_ENABLE=str(compact))
                     self.assertEqual({key: generics['sources_1'][key] for key in expected}, expected)
                     self.assertIn('GEMPACT_PS_COMPRESS', defines['sources_1'])
                     image = Path(generics['sources_1']['CPU_MEM_PATH'].strip('"'))
@@ -359,7 +383,7 @@ UNRELATED = $(shell echo unused)
     def test_exported_scripts_and_configuration(self):
         self.config.write_text('NPU_AXI_DATA_WIDTH=32\nSHARED_BANK_BYTES=2048\nSHARED_BANK_COUNT=6\n')
         self.environment.update(NPU_AXI_DATA_WIDTH='64', SHARED_BANK_BYTES='8192', SHARED_BANK_COUNT='9',
-                                GEMPACT_PS_FORCE_RAW='1', IM2COL_CACHE_BYTES='16384')
+                                GEMPACT_PS_FORCE_RAW='1', IM2COL_CACHE_BYTES='16384', IA_COMPACT_ENABLE='0')
         original = self.work/'export'
         self.flow('export_project.tcl', original)
         self.assertTrue((original/'scripts/npu_config.tcl').is_file())
@@ -370,6 +394,7 @@ UNRELATED = $(shell echo unused)
         self.assertIn('SHARED_BANK_BYTES := 8192', snapshot)
         self.assertIn('SHARED_BANK_COUNT := 9', snapshot)
         self.assertIn('IM2COL_CACHE_BYTES := 16384', snapshot)
+        self.assertIn('IA_COMPACT_ENABLE := 0', snapshot)
         self.assertIn('PS_POOL_BYTES := 49152', snapshot)
         readme = (original/'README.md').read_text()
         self.assertIn('73728 bytes in 18 RAMB36E1', readme)
@@ -389,16 +414,18 @@ UNRELATED = $(shell echo unused)
         self.assertEqual(generics['sources_1']['SHARED_BANK_BYTES'], '8192')
         self.assertEqual(generics['sources_1']['SHARED_BANK_COUNT'], '9')
         self.assertEqual(generics['sources_1']['IM2COL_CACHE_BYTES'], '16384')
+        self.assertEqual(generics['sources_1']['IA_COMPACT_ENABLE'], '0')
         self.assertIn('GEMMORA_PS_FORCE_RAW', defines['sources_1'])
         for name in ('run_behav_smoke.tcl', 'run_post_impl_smoke.tcl'):
             environment.update(TEST_STOP_AT_SIM_GENERIC='1',
-                TEST_SOURCE_GENERICS='BUS_WIDTH=64 SHARED_BANK_BYTES=8192 SHARED_BANK_COUNT=9 IM2COL_CACHE_BYTES=16384 CPU_MEM_DP=16')
+                TEST_SOURCE_GENERICS='BUS_WIDTH=64 SHARED_BANK_BYTES=8192 SHARED_BANK_COUNT=9 IM2COL_CACHE_BYTES=16384 IA_COMPACT_ENABLE=0 CPU_MEM_DP=16')
             result = self.execute([self.vivado, relocated/'scripts'/name,
                                    relocated/'project/tflm_ai_dsa_soc.xpr'], environment=environment)
             self.assertIn('GENERIC\tsim_1\tBUS_WIDTH\t64', result.stdout)
             self.assertIn('GENERIC\tsim_1\tSHARED_BANK_BYTES\t8192', result.stdout)
             self.assertIn('GENERIC\tsim_1\tSHARED_BANK_COUNT\t9', result.stdout)
             self.assertIn('GENERIC\tsim_1\tIM2COL_CACHE_BYTES\t16384', result.stdout)
+            self.assertIn('GENERIC\tsim_1\tIA_COMPACT_ENABLE\t0', result.stdout)
 
     def test_existing_project_geometry_is_validated(self):
         exported = self.work/'export'
@@ -408,7 +435,8 @@ UNRELATED = $(shell echo unused)
                 ('BUS_WIDTH=32 SHARED_BANK_BYTES=4096 SHARED_BANK_COUNT=9', 'SHARED_BANK_BYTES=8192'),
                 ('BUS_WIDTH=64 SHARED_BANK_BYTES=8192 SHARED_BANK_COUNT=10', 'SHARED_BANK_COUNT'),
                 ('BUS_WIDTH=64 SHARED_BANK_COUNT=7', 'explicitly specify SHARED_BANK_BYTES'),
-                ('BUS_WIDTH=64 SHARED_BANK_BYTES=8192 SHARED_BANK_COUNT=7 IM2COL_CACHE_BYTES=768', 'IM2COL_CACHE_BYTES')):
+                ('BUS_WIDTH=64 SHARED_BANK_BYTES=8192 SHARED_BANK_COUNT=7 IM2COL_CACHE_BYTES=768', 'IM2COL_CACHE_BYTES'),
+                ('BUS_WIDTH=64 SHARED_BANK_BYTES=8192 SHARED_BANK_COUNT=7 IA_COMPACT_ENABLE=2', 'IA_COMPACT_ENABLE')):
             environment = dict(self.environment, TEST_SOURCE_GENERICS=source_generics,
                                TEST_STOP_AT_SIM_GENERIC='1')
             for name in ('run_behav_smoke.tcl', 'run_post_impl_smoke.tcl'):

@@ -38,6 +38,9 @@ module tb_npu_top;
 `ifndef TB_IA_CACHE_BLOCKS
 `define TB_IA_CACHE_BLOCKS 4
 `endif
+`ifndef TB_IA_COMPACT_ENABLE
+`define TB_IA_COMPACT_ENABLE 0
+`endif
 `ifndef TB_PS_FRAME_COUNT
 `define TB_PS_FRAME_COUNT 8
 `endif
@@ -157,6 +160,7 @@ module tb_npu_top;
         .SHARED_BANK_BYTES(`TB_SHARED_BANK_BYTES),
         .SHARED_BANK_COUNT(`TB_SHARED_BANK_COUNT),
         .IM2COL_CACHE_BYTES(`TB_IM2COL_CACHE_BYTES),
+        .IA_COMPACT_ENABLE(`TB_IA_COMPACT_ENABLE),
         .SIZE(SIZE),
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
         .PS_FRAME_COUNT(PS_FRAME_COUNT),

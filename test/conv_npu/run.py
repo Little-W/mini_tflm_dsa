@@ -333,18 +333,20 @@ def source_files(source_root=None):
     source_root = ROOT if source_root is None else Path(source_root).resolve()
     sources = [source_root / path.relative_to(ROOT) if path.is_relative_to(ROOT / 'rtl') else path
                for path in sources]
-    includes = [source_root / path.relative_to(ROOT) if path.is_relative_to(ROOT / 'rtl') else path
+    includes = [source_root / path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
                 for path in includes]
     tracked=list(dict.fromkeys(sources+[filelist,Path(__file__).resolve(),HERE/'simulator.vlt',
         ROOT/'veri/top_regression/host_tiling.py',ROOT/'veri/top_regression/gen_mem.py']))
-    tracked += [p for directory in includes for p in sorted(directory.glob('*.svh'))]
+    dependency_reader = runpy.run_path(str(ROOT / 'scripts/rtl/source_files.py'))
+    tracked = dependency_reader['input_files'](tracked, source_root, includes)
     return sources,includes,list(dict.fromkeys(tracked))
 
 def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
           ps_compress=True,pool_bytes=16384,force_raw=False,lint_only=False,
           bus_width=None,shared_bank_bytes=8192,shared_bank_count=7,ps_frame_count=16,
           build_timeout=7200,source_root=None,cache_line_bytes=16,
-          address_width=19,vector_pe_count=None,ps_storage_rows=0,oa_s16_fifo_banks_max=0):
+          address_width=19,vector_pe_count=None,ps_storage_rows=0,oa_s16_fifo_banks_max=0,
+          ia_compact_enable=None):
     bus_width=axi_data_width(bus_width)
     vector_pe_count = min(size, 16) if vector_pe_count is None else vector_pe_count
     if cache_sets is None:
@@ -358,6 +360,12 @@ def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
         raise ValueError('Matrix execution requires SIZE=16 and six to nine shared SRAM banks')
     out=Path(out).resolve()
     source_root = ROOT if source_root is None else Path(source_root).resolve()
+    if ia_compact_enable is None:
+        declaration=(source_root/'rtl/npu/top/npu_top.sv').read_text()
+        match=re.search(r'parameter\s+int\s+unsigned\s+IA_COMPACT_ENABLE\s*=\s*([01])\s*,',declaration)
+        if match is None:raise ValueError('Cannot resolve the IA_COMPACT_ENABLE default')
+        ia_compact_enable=int(match[1])
+    if ia_compact_enable not in (0,1):raise ValueError('ia_compact_enable must be 0 or 1')
     sources,includes,tracked=source_files(source_root)
     out.mkdir(parents=True,exist_ok=True)
     rules=out/'compile_rules.mk'
@@ -366,7 +374,7 @@ def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
         '$(VK_OBJS_FAST): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_FAST) -c -o $@ $<\n'
         '$(VK_OBJS_SLOW): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_SLOW) -c -o $@ $<\n'
         '$(VK_GLOBAL_OBJS): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_GLOBAL) -c -o $@ $<\n')
-    defines=['-DNPU_SIM_ASSERT','-DCONV_ASSERT',f'-DTB_SIZE={size}',f'-DTB_CONV_CACHE_SETS={cache_sets}',f'-DTB_CONV_CACHE_POLICY={cache_policy}',
+    defines=['-DNPU_SIM_ASSERT','-DCONV_ASSERT',f'-DTB_SIZE={size}',f'-DTB_IA_COMPACT_ENABLE={ia_compact_enable}',f'-DTB_CONV_CACHE_SETS={cache_sets}',f'-DTB_CONV_CACHE_POLICY={cache_policy}',
              f'-DTB_CONV_LINE_BYTES={cache_line_bytes}',
              f'-DTB_NPU_ADDR_WIDTH={address_width}',f'-DTB_VECTOR_PE_COUNT={vector_pe_count}',
              f'-DTB_PS_STORAGE_ROWS={ps_storage_rows}',f'-DTB_OA_S16_FIFO_BANKS_MAX={oa_s16_fifo_banks_max}',
@@ -393,7 +401,7 @@ def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
             'ps_storage_rows':ps_storage_rows,'oa_s16_fifo_banks_max':oa_s16_fifo_banks_max,
             'shared_bank_count':shared_bank_count,'cache_sets':cache_sets,'cache_ways':2,'cache_line_bytes':cache_line_bytes,'cache_data_bytes':cache_sets*2*cache_line_bytes,'cache_policy':cache_policy,
             'ps_compress':ps_compress,'pool_bytes':pool_bytes,'force_raw':force_raw,'lint_only':lint_only,
-            'ps_frame_count':ps_frame_count,
+            'ps_frame_count':ps_frame_count,'ia_compact_enable':ia_compact_enable,
             'source_sha256':before,'source_root':str(source_root),'sources_unchanged_during_build':before==after,
             'build_timeout_seconds':build_timeout}
     if rc==0 and not lint_only:
@@ -427,6 +435,8 @@ def main():
     a.add_argument('--cache-line-bytes',type=int,choices=(16,32,64,128),default=16)
     a.add_argument('--address-width',type=int,choices=range(16,33),default=19)
     a.add_argument('--vector-pe-count',type=int)
+    a.add_argument('--ia-compact-enable',type=int,choices=(0,1),
+                   help='编译时选择 IA 紧凑存储；缺省值从所选 RTL 读取')
     a.add_argument('--ps-storage-rows',type=int,default=0)
     a.add_argument('--oa-s16-fifo-banks-max',type=int,default=0)
     a.add_argument('--ps-compress',action='store_true',default=True,help='Enable the shared IA/PS storage configuration')
@@ -443,6 +453,11 @@ def main():
     a.add_argument('--shared-bank-bytes',type=int,choices=(2048,4096,8192))
     a.add_argument('--shared-bank-count',type=int,choices=(6,7,8,9))
     x=a.parse_args()
+    if x.ia_compact_enable is None:
+        declaration=(x.source_root/'rtl/npu/top/npu_top.sv').read_text()
+        match=re.search(r'parameter\s+int\s+unsigned\s+IA_COMPACT_ENABLE\s*=\s*([01])\s*,',declaration)
+        if match is None:a.error('Cannot resolve the IA_COMPACT_ENABLE default')
+        x.ia_compact_enable=int(match[1])
     if x.build_timeout<=0:a.error('--build-timeout must be positive')
     selected=selected_config()
     if x.cache_sets is not None and x.cache_bytes is not None:
@@ -467,7 +482,8 @@ def main():
                   shared_bank_bytes=x.shared_bank_bytes,shared_bank_count=x.shared_bank_count,
                   build_timeout=x.build_timeout,source_root=x.source_root,cache_line_bytes=x.cache_line_bytes,
                   address_width=x.address_width,vector_pe_count=x.vector_pe_count,
-                  ps_storage_rows=x.ps_storage_rows,oa_s16_fifo_banks_max=x.oa_s16_fifo_banks_max)
+                  ps_storage_rows=x.ps_storage_rows,oa_s16_fifo_banks_max=x.oa_s16_fifo_banks_max,
+                  ia_compact_enable=x.ia_compact_enable)
         print('CONV_LINT_PASS',flush=True)
         return 0
     ref=make_reference(out)
@@ -485,6 +501,7 @@ def main():
             manifest=json.loads((sd/'build.json').read_text())
             requested={'size':size,'bus_width':x.bus_width,'shared_bank_bytes':x.shared_bank_bytes,
                        'address_width':x.address_width,
+                       'ia_compact_enable':x.ia_compact_enable,
                        'vector_pe_count':min(size,16) if x.vector_pe_count is None else x.vector_pe_count,
                        'ps_storage_rows':x.ps_storage_rows,'oa_s16_fifo_banks_max':x.oa_s16_fifo_banks_max,
                        'shared_bank_count':x.shared_bank_count,'cache_sets':x.cache_sets,'cache_ways':2,'cache_line_bytes':x.cache_line_bytes,
@@ -493,7 +510,7 @@ def main():
             if any(manifest.get(key)!=value for key,value in requested.items()):
                 raise RuntimeError('stale executable parameters: size/cache sets/ways/line/policy differ; omit --skip-build')
             for name,digest in manifest['source_sha256'].items():
-                source_path = x.source_root / name if name.startswith('rtl/') else ROOT / name
+                source_path = x.source_root / name if name.startswith(('rtl/','include/')) else ROOT / name
                 if hashlib.sha256(source_path.read_bytes()).hexdigest()!=digest:
                     raise RuntimeError(f'stale executable: {name} changed; omit --skip-build')
             binary=sd/'obj/Vtb_conv_npu'
@@ -506,7 +523,8 @@ def main():
                          shared_bank_count=x.shared_bank_count,build_timeout=x.build_timeout,
                          source_root=x.source_root,cache_line_bytes=x.cache_line_bytes,
                          address_width=x.address_width,vector_pe_count=x.vector_pe_count,
-                         ps_storage_rows=x.ps_storage_rows,oa_s16_fifo_banks_max=x.oa_s16_fifo_banks_max)
+                         ps_storage_rows=x.ps_storage_rows,oa_s16_fifo_banks_max=x.oa_s16_fifo_banks_max,
+                         ia_compact_enable=x.ia_compact_enable)
         if x.window_only:
             summary['cases'].append(run_suite(binary,sd,'conv2_windows',
                 conv_window_cases(sd,size,ref,x.pool_bytes,x.force_raw),True,x.force_codec))

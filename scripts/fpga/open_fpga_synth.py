@@ -128,6 +128,8 @@ def production_configuration():
                 for key, value in PRODUCTION_CONFIG.items() if values.get(key) != value}
     if mismatch:
         raise RuntimeError('The production synthesis configuration differs from config/npu_fpga.mk: ' + json.dumps(mismatch))
+    if values.get('IA_COMPACT_ENABLE') not in ('0', '1'):
+        raise RuntimeError('IA_COMPACT_ENABLE must be explicitly configured as 0 or 1')
     return {'path': 'config/npu_fpga.mk', 'sha256': digest(path), 'values': values,
             'defines': PRODUCTION_DEFINES}
 
@@ -412,18 +414,26 @@ def main():
     env = os.environ.copy()
     env['PATH'] = str(Path(pyosys.__file__).parent) + os.pathsep + env.get('PATH', '')
     for name in args.cases:
-        case = CASES[name]
+        case = dict(CASES[name])
         folder = out / name
         folder.mkdir(exist_ok=True)
-        source_hash = {f: digest(ROOT / f) for f in case['sources']}
+        input_paths = dependency_reader['input_files']([ROOT / f for f in case['sources']], ROOT,
+            [ROOT / 'include', ROOT / 'rtl/npu/ps_compact'])
+        source_hash = {str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path):
+                       digest(path) for path in input_paths}
         mapped = folder / 'mapped.json'
         mapped_verilog = folder / 'mapped.v'
+        build_configuration = production_configuration() if case.get('production_configuration') else None
+        if build_configuration:
+            compact = int(build_configuration['values']['IA_COMPACT_ENABLE'])
+            case['options'] = [item for item in case['options'] if not item.startswith('-GIA_COMPACT_ENABLE=')]
+            case['options'].append(f'-GIA_COMPACT_ENABLE={compact}')
+            case['parameters'] = dict(case.get('parameters', {}), IA_COMPACT_ENABLE=compact)
         opts = ' '.join(shlex.quote(x) for x in case['options'])
         sources = ' '.join(shlex.quote(str(ROOT / x)) for x in case['sources'])
         primitive_options, primitive_manifest = primitive_models(
             folder, case['sources'], Path(pyosys.__file__).parent / 'share/xilinx')
         top = case['top']
-        build_configuration = production_configuration() if case.get('production_configuration') else None
         structure_commands = production_structure_commands(case, folder) if build_configuration else ''
         start = time.monotonic()
         elaborated = folder / 'elaborated.il'
@@ -557,7 +567,7 @@ def main():
                     stages[stage]['mapped_verilog_sha256'] = digest(mapped_verilog)
             (folder / 'stages.json').write_text(json.dumps(stages, indent=2) + '\n')
             print(name, stage, json.dumps(stages[stage]), flush=True)
-        if source_hash != {f: digest(ROOT / f) for f in case['sources']}:
+        if source_hash != {f: digest(ROOT / f) for f in source_hash}:
             raise RuntimeError('Sources changed during synthesis: ' + name)
         if build_configuration and build_configuration != production_configuration():
             raise RuntimeError('Production configuration changed during synthesis: ' + name)

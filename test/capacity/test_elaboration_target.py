@@ -50,8 +50,18 @@ class ElaborationTargetTests(unittest.TestCase):
         for bus_width, pe_count, response_bits in ((32, 8, 33), (64, 8, 65), (32, 16, 129), (64, 16, 129)):
             arrays = model.buffer_arrays_bits(4, 16, 12288, bus_width=bus_width,
                                               vector_pe_count=pe_count)
-            self.assertEqual(arrays["conv_response_queue"], response_bits)
+            self.assertEqual(arrays["conv_response_queue"], 2 * response_bits)
             self.assertEqual(arrays["conv_data_cache"], 4096 * 8)
+
+    def test_prefetch_selected_port_has_target_specific_storage(self):
+        asic = model.buffer_arrays_bits(4, 16, 12288, target="asic")
+        generic = model.buffer_arrays_bits(4, 16, 12288, target="generic")
+        self.assertEqual(generic["conv_prefetch_queue"] - asic["conv_prefetch_queue"], 8 * 64)
+
+    def test_operand_storage_follows_parallel_input_rows(self):
+        narrow = model.buffer_arrays_bits(4, 16, 12288, vector_pe_count=8)
+        wide = model.buffer_arrays_bits(4, 16, 12288, vector_pe_count=16)
+        self.assertEqual(wide["vector_buffers"] - narrow["vector_buffers"], 2 * 16 * 16)
 
 
 if __name__ == "__main__":

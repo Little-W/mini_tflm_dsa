@@ -20,7 +20,7 @@ POOL_ALIGNMENT = 64
 MAX_POOL_BYTES = 1 << 24
 SCOPES = ("logical-state", "buffer-ram")
 REPRESENTATIONS = ("adaptive", "raw32")
-MODEL_VERSION = "dip-shared-window-vector-v15"
+MODEL_VERSION = "dip-shared-window-vector-v16"
 DECODE_FIFO_ROWS = 8
 DECODE_PREFETCH_CREDITS = 7
 SHARED_BANK_BYTES = 2048
@@ -64,7 +64,9 @@ def _integer(value, name, minimum=1, maximum=None):
 
 
 def geometry(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None,
-             bank_bytes=SHARED_BANK_BYTES, bank_count=None):
+             bank_bytes=SHARED_BANK_BYTES, bank_count=None, ia_compact_enable=False):
+    if type(ia_compact_enable) not in (bool, int) or ia_compact_enable not in (0, 1):
+        raise ValueError("IA_COMPACT_ENABLE must be 0 or 1")
     _integer(cache, "IA cache blocks", 2, 64)
     _integer(frames, "PS frame count", 1, 64)
     _integer(size, "array size", 2, 32)
@@ -79,12 +81,12 @@ def geometry(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None
     if bank_count is not None:
         _integer(bank_count, "shared bank count", SHARED_MIN_BANKS, SHARED_MAX_BANKS)
     storage = _storage_geometry(cache, frames, pool_bytes, size, compressed, shared,
-                                bank_bytes, bank_count)
+                                bank_bytes, bank_count, ia_compact_enable)
     return storage["max_r_s8"], storage["max_frame_rows"]
 
 
 def _storage_geometry(cache, frames, pool_bytes, size, compressed, shared,
-                      bank_bytes, bank_count):
+                      bank_bytes, bank_count, ia_compact_enable):
     initial_ia_bytes = cache * size * size * 2
     total = bank_bytes * bank_count if bank_count is not None else initial_ia_bytes + pool_bytes
     enabled = bool(shared is not False and compressed and size == TILE and
@@ -92,27 +94,33 @@ def _storage_geometry(cache, frames, pool_bytes, size, compressed, shared,
                    total % bank_bytes == 0)
     max_ia_banks = (4 if total // bank_bytes >= 8 else 2) if enabled else 0
     max_cache = max_ia_banks * bank_bytes // (size * size * 2) if enabled else cache
-    max_r = max_cache
+    max_r = max(1, max_cache // (1 if ia_compact_enable else 2))
     max_frame = max_r * size
+    # cfg_shared_ia_banks 为零时按矩阵输入格式自动分配；控制寄存器复位值独立报告。
+    default_ia_banks = (1 if ia_compact_enable else 2) if enabled else 0
+    default_ia_bytes = default_ia_banks * bank_bytes if enabled else initial_ia_bytes
     banks = total // bank_bytes - 1 if enabled else 4
     depth = bank_bytes // 16 if enabled else pool_bytes // POOL_ALIGNMENT
     output_s8_banks = max(min(frames * max(1, cache // 2), 32), max_r if enabled else 1)
-    return dict(shared_ia_ps_enabled=enabled,
+    return dict(shared_ia_ps_enabled=enabled, ia_compact_enable=bool(ia_compact_enable),
                 configured_ia_cache_bytes=initial_ia_bytes,
                 configured_ps_pool_bytes=pool_bytes if compressed else 0,
                 shared_total_bytes=total if enabled else 0,
                 shared_bank_bytes=bank_bytes if enabled else 0,
                 shared_physical_bank_count=total // bank_bytes if enabled else 0,
                 shared_ia_bank_mask=((1 << 1) | (1 << 2) | ((1 << 4) if max_ia_banks == 4 else 0)) if enabled else 0,
-                default_ia_banks=1 if enabled else 0,
+                register_reset_ia_banks=1 if enabled else 0,
+                default_ia_banks=default_ia_banks,
+                default_ia_banks_s16=2 if enabled else 0,
                 runtime_bank_allocations=[dict(ia_banks=i, ps_banks=total // bank_bytes-i,
                     ia_bytes=i*bank_bytes, ps_bytes=total-i*bank_bytes,
+                    supports_s8_stream=bool(ia_compact_enable or i>=2),
                     supports_s16_stream=i>=2) for i in (1, 2, 4)
                     if enabled and i <= max_ia_banks],
-                default_ia_bytes=bank_bytes if enabled else initial_ia_bytes,
-                default_ps_pool_bytes=total - bank_bytes if enabled else pool_bytes,
-                default_max_r_s8=bank_bytes // (size * size) // 2 if enabled else cache,
-                default_max_r_s16=0 if enabled else max(1, cache // 2),
+                default_ia_bytes=default_ia_bytes,
+                default_ps_pool_bytes=total - default_ia_bytes if enabled else pool_bytes,
+                default_max_r_s8=default_ia_bytes // (size * size * (2 if ia_compact_enable else 4)) if enabled else max_r,
+                default_max_r_s16=2 * bank_bytes // (size * size * 4) if enabled else max(1, cache // 2),
                 max_ia_cache_blocks=max_cache,
                 max_ia_bytes=max_ia_banks * bank_bytes if enabled else initial_ia_bytes,
                 max_r_s8=max_r, max_r_s16=max(1, max_cache // 2),
@@ -127,18 +135,18 @@ def _storage_geometry(cache, frames, pool_bytes, size, compressed, shared,
 
 
 def memory_geometry(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None,
-                    bank_bytes=SHARED_BANK_BYTES, bank_count=None):
+                    bank_bytes=SHARED_BANK_BYTES, bank_count=None, ia_compact_enable=False):
     """Physical storage and maximum logical dimensions of the compiled design."""
     geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
-             bank_bytes=bank_bytes, bank_count=bank_count)
+             bank_bytes=bank_bytes, bank_count=bank_count, ia_compact_enable=ia_compact_enable)
     return _storage_geometry(cache, frames, pool_bytes, size, compressed, shared,
-                             bank_bytes, bank_count)
+                             bank_bytes, bank_count, ia_compact_enable)
 
 
 def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None,
-                       bank_bytes=SHARED_BANK_BYTES, bank_count=None,
+                       bank_bytes=SHARED_BANK_BYTES, bank_count=None, ia_compact_enable=False,
                        im2col_cache_bytes=im2col_cache.DEFAULT_BYTES, bus_width=64,
-                       vector_pe_count=None):
+                       vector_pe_count=None, target="asic"):
     """Addressable data arrays and their persistent metadata, in logical bits.
 
     The full interface has 16-bit activation and stationary operands, both S8
@@ -151,34 +159,40 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
     complete-state elaboration.
     """
     layout = memory_geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
-                             bank_bytes=bank_bytes, bank_count=bank_count)
+                             bank_bytes=bank_bytes, bank_count=bank_count, ia_compact_enable=ia_compact_enable)
     if bus_width not in (32, 64):
         raise ValueError("bus_width must be 32 or 64")
+    if target not in ("asic", "generic"):
+        raise ValueError("target must be asic or generic")
     vector_pe_count = min(size, 16) if vector_pe_count is None else vector_pe_count
     if vector_pe_count not in (1, 2, 4, 8, 16) or vector_pe_count > size:
         raise ValueError("vector_pe_count must be a power of two no greater than SIZE and 16")
     window_lanes = 16 if vector_pe_count >= 16 else bus_width // 8
     rmax, max_frame = layout["max_r_s8"], layout["max_frame_rows"]
-    slots = 2 * layout["max_ia_cache_blocks"]
+    slots = (2 if ia_compact_enable else 1) * layout["max_ia_cache_blocks"]
     oa_banks = layout["output_banks_s8"]
     oa_s16_banks = layout["output_banks_s16"]
     logical_rows = layout["logical_ps_rows"]
     frame_length_bits = max(1, max_frame.bit_length())
     image_cache = im2col_cache.geometry(im2col_cache_bytes)
+    # 输入存储按 PE 并行度保留二倍或四倍 tile；累加、指数、偏置和量化参数各保存一份。
+    vector_input_rows = 4 * size if vector_pe_count >= 16 else 2 * size
+    prefetch_key_copies = 1 if target == "asic" else 2
+    demand_depth = 2
     bits = {
         "ia_cache_tags": slots * (2 * (32 - (size.bit_length() - 1)) + size.bit_length() + 1),
         "ia_slot_metadata": slots * (2 * size.bit_length() + 2),
         "kernel_cache": 3 * size * size * 16,
         "bias_cache": 2 * rmax * size * 32,
-        "requant_is_cache": rmax * size * (32 + 32 + 32 + 7),
+        "requant_is_cache": rmax * size * (32 + 7),
         "oa_s8_fifo": oa_banks * size * size * 8,
         "oa_s16_fifo": oa_s16_banks * size * size * 16,
         "conv_data_cache": image_cache["data_bytes"] * 8,
         "conv_cache_metadata": image_cache["metadata_bits"],
-        "conv_prefetch_queue": 8 * (4 * 32 + 1),
-        "conv_request_queue": 4 * 32 + (image_cache["sets"] - 1).bit_length() + 3,
-        "conv_response_queue": 8 * window_lanes + 1,
-        "vector_buffers": size * (5 * 16 + 4 * 32 + 6),
+        "conv_prefetch_queue": 8 * (prefetch_key_copies * 64 + 2 * 32 + 1),
+        "conv_request_queue": demand_depth * (4 * 32 + (image_cache["sets"] - 1).bit_length() + 3),
+        "conv_response_queue": demand_depth * (8 * window_lanes + 1),
+        "vector_buffers": vector_input_rows * 16 + size * (16 + 4 * 32 + 6),
         "vector_dw_result_queue": 2 * size * 8,
         "vector_write_queue": 2 * (4 * size) * 8,
         "vector_pool_reciprocal_rom": (VECTOR_POOL_MAX_TAPS + 1) * (9 + VECTOR_POOL_MAX_TAPS.bit_length()),
@@ -197,45 +211,44 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
         bits["ps_payload"] = pool_bytes * 8 if compressed else logical_rows * size * 32
     if compressed:
         bits.update(ps_decoded_fifo=DECODE_FIFO_ROWS * size * 32,
-                    ps_decoded_first=DECODE_FIFO_ROWS,
                     ps_frame_valid=frames)
     return bits
 
 
 def register_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None,
-                         bank_bytes=SHARED_BANK_BYTES, bank_count=None):
+                         bank_bytes=SHARED_BANK_BYTES, bank_count=None, ia_compact_enable=False):
     """Register groups checked separately within complete sequential state."""
     memory_geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
-                    bank_bytes=bank_bytes, bank_count=bank_count)
+                    bank_bytes=bank_bytes, bank_count=bank_count, ia_compact_enable=ia_compact_enable)
     bits = {"core_row_metadata": 4 * size + 1,
             "requant_ws_parameters": size * (32 + 32 + 32 + 7)}
     return bits
 
 
 def buffer_ram_bytes(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None,
-                     bank_bytes=SHARED_BANK_BYTES, bank_count=None,
+                     bank_bytes=SHARED_BANK_BYTES, bank_count=None, ia_compact_enable=False,
                      im2col_cache_bytes=im2col_cache.DEFAULT_BYTES, bus_width=64,
-                     vector_pe_count=None):
+                     vector_pe_count=None, target="asic"):
     return ceil_div(sum(buffer_arrays_bits(cache, frames, pool_bytes, size, compressed,
                                           shared=shared, bank_bytes=bank_bytes,
-                                          bank_count=bank_count,
+                                          bank_count=bank_count, ia_compact_enable=ia_compact_enable,
                                           im2col_cache_bytes=im2col_cache_bytes,
                                           bus_width=bus_width,
-                                          vector_pe_count=vector_pe_count).values()), 8)
+                                          vector_pe_count=vector_pe_count, target=target).values()), 8)
 
 
 def allocation(cache, frames, pool_bytes, budget_bytes, scope="buffer-ram", *,
                size=16, compressed=True, measured_state_bits=None, shared=None,
-               bank_bytes=SHARED_BANK_BYTES, bank_count=None,
+               bank_bytes=SHARED_BANK_BYTES, bank_count=None, ia_compact_enable=False,
                im2col_cache_bytes=im2col_cache.DEFAULT_BYTES, bus_width=64,
-               vector_pe_count=None):
+               vector_pe_count=None, target="asic"):
     _integer(budget_bytes, "budget bytes")
     if scope not in SCOPES:
         raise ValueError(f"budget scope must be one of {SCOPES}")
     arrays = buffer_arrays_bits(cache, frames, pool_bytes, size, compressed, shared=shared,
-                                bank_bytes=bank_bytes, bank_count=bank_count,
+                                bank_bytes=bank_bytes, bank_count=bank_count, ia_compact_enable=ia_compact_enable,
                                 im2col_cache_bytes=im2col_cache_bytes, bus_width=bus_width,
-                                vector_pe_count=vector_pe_count)
+                                vector_pe_count=vector_pe_count, target=target)
     ram_bits = sum(arrays.values())
     ram_bytes = ceil_div(ram_bits, 8)
     if measured_state_bits is not None:
@@ -243,10 +256,10 @@ def allocation(cache, frames, pool_bytes, budget_bytes, scope="buffer-ram", *,
     if scope == "logical-state" and measured_state_bits is None:
         raise ValueError("logical-state budgeting requires a current source-matched RTL elaboration; use --measure-state")
     layout = memory_geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
-                             bank_bytes=bank_bytes, bank_count=bank_count)
+                             bank_bytes=bank_bytes, bank_count=bank_count, ia_compact_enable=ia_compact_enable)
     rmax = layout["max_r_s8"]
     registers = register_arrays_bits(cache, frames, pool_bytes, size, compressed, shared=shared,
-                                     bank_bytes=bank_bytes, bank_count=bank_count)
+                                     bank_bytes=bank_bytes, bank_count=bank_count, ia_compact_enable=ia_compact_enable)
     used = measured_state_bits / 8 if scope == "logical-state" else ram_bytes
     return dict(ia_cache_blocks=cache, ps_frame_count=frames, size=size, bus_width=bus_width,
                 compressed_ps=False,
@@ -289,10 +302,10 @@ def plan_for_hardware(M, K, N, cache, frames, pool_bytes, representation="raw32"
                       mode=None, requested_r=0, requested_w=0, lhs_bytes=1,
                       per_channel=False, adaptive=None, size=16, compressed=True,
                       lhs_offset=0, rhs_offset=0, shared=None,
-                      bank_bytes=SHARED_BANK_BYTES, bank_count=None):
+                      bank_bytes=SHARED_BANK_BYTES, bank_count=None, ia_compact_enable=False):
     validate_workloads([dict(M=M, K=K, N=N)])
     layout = memory_geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
-                             bank_bytes=bank_bytes, bank_count=bank_count)
+                             bank_bytes=bank_bytes, bank_count=bank_count, ia_compact_enable=ia_compact_enable)
     if representation not in REPRESENTATIONS:
         raise ValueError(f"representation must be one of {REPRESENTATIONS}")
     if lhs_bytes not in (1, 2):
@@ -305,8 +318,8 @@ def plan_for_hardware(M, K, N, cache, frames, pool_bytes, representation="raw32"
         product_exp = exponent(lhs_offset, lhs_bytes == 2) + exponent(rhs_offset)
         retained_k = (K - 1) & ~(size - 1)
         literal_bytes = 48 if product_exp < 23 and retained_k < (1 << (23 - product_exp)) else 64
-        compact_mask = int(lhs_bytes == 1 and -127 <= lhs_offset <= 128) | \
-                       (int(-127 <= rhs_offset <= 128) << 1)
+        compact_mask = (int(lhs_bytes == 1 and -127 <= lhs_offset <= 128) |
+                        (int(-127 <= rhs_offset <= 128) << 1)) if ia_compact_enable else 0
         shared_memory = dict(total_bytes=layout["shared_total_bytes"], bank_bytes=layout["shared_bank_bytes"],
                              ia_bank_mask=layout["shared_ia_bank_mask"], directory_rows=SHARED_DIRECTORY_ROWS) \
                         if layout["shared_ia_ps_enabled"] else None
@@ -349,7 +362,7 @@ def plan_for_hardware(M, K, N, cache, frames, pool_bytes, representation="raw32"
 
 
 def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", representation="raw32",
-                   measure=None, fixed_only=False, bank_bytes=SHARED_BANK_BYTES, bank_count=None,
+                   measure=None, fixed_only=False, bank_bytes=SHARED_BANK_BYTES, bank_count=None, ia_compact_enable=False,
                    im2col_cache_bytes=im2col_cache.DEFAULT_BYTES):
     _integer(budget_bytes, "budget bytes")
     im2col_cache.validate_bytes(im2col_cache_bytes)
@@ -362,7 +375,7 @@ def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", represent
     counts = [bank_count] if bank_count is not None else range(SHARED_MAX_BANKS, SHARED_MIN_BANKS - 1, -1)
     for banks in counts:
         pool = (banks - 1) * bank_bytes
-        parameters = dict(shared=True, bank_bytes=bank_bytes, bank_count=banks)
+        parameters = dict(shared=True, bank_bytes=bank_bytes, bank_count=banks, ia_compact_enable=ia_compact_enable)
         if buffer_ram_bytes(cache, frames, pool, im2col_cache_bytes=im2col_cache_bytes,
                             **parameters) > budget_bytes:
             continue
@@ -375,7 +388,7 @@ def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", represent
 
 def solve(workloads, budget_bytes, budget_scope="buffer-ram", representation="raw32", *,
           measure=None, bank_bytes=SHARED_BANK_BYTES, im2col_cache_bytes=im2col_cache.DEFAULT_BYTES,
-          cache_blocks=4, frame_count=16, ps_build_bytes=12288):
+          cache_blocks=4, frame_count=16, ps_build_bytes=12288, ia_compact_enable=False):
     tasks = validate_workloads(workloads)
     im2col_cache.validate_bytes(im2col_cache_bytes)
     _integer(budget_bytes, "budget bytes")
@@ -388,10 +401,10 @@ def solve(workloads, budget_bytes, budget_scope="buffer-ram", representation="ra
     if bank_bytes is None:
         bank_bytes = SHARED_BANK_BYTES
     geometry(cache_blocks, frame_count, ps_build_bytes, shared=True,
-             bank_bytes=bank_bytes, bank_count=SHARED_MIN_BANKS)
+             bank_bytes=bank_bytes, bank_count=SHARED_MIN_BANKS, ia_compact_enable=ia_compact_enable)
     options = []
     for banks in range(SHARED_MIN_BANKS, SHARED_MAX_BANKS + 1):
-        parameters = dict(shared=True, bank_bytes=bank_bytes, bank_count=banks)
+        parameters = dict(shared=True, bank_bytes=bank_bytes, bank_count=banks, ia_compact_enable=ia_compact_enable)
         if buffer_ram_bytes(cache_blocks, frame_count, ps_build_bytes,
                             im2col_cache_bytes=im2col_cache_bytes, **parameters) > budget_bytes:
             continue

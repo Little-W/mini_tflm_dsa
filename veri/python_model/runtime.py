@@ -144,6 +144,8 @@ def select_backend(cfg):
             continue
         if bool(manifest.get("force_raw",False)) != bool(hardware["PS_FORCE_RAW"]):
             continue
+        if manifest.get("ia_compact_enable") != hardware["IA_COMPACT_ENABLE"]:
+            continue
         if hardware["PCR_ENGINE"]:
             bank_bytes = manifest.get("shared_bank_bytes",2048)
             bank_count = manifest.get("shared_physical_banks",

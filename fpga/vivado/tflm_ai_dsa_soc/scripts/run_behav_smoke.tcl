@@ -152,6 +152,7 @@ set npu_axi_data_width_value [dict get $project_hardware_config NPU_AXI_DATA_WID
 set shared_bank_bytes_value [dict get $project_hardware_config SHARED_BANK_BYTES]
 set shared_bank_count_value [dict get $project_hardware_config SHARED_BANK_COUNT]
 set im2col_cache_bytes_value [dict get $project_hardware_config IM2COL_CACHE_BYTES]
+set ia_compact_enable_value [dict get $project_hardware_config IA_COMPACT_ENABLE]
 set simulation_mem_dir [file join [file dirname $project_xpr] behavior_mem]
 set memory_images [cpu_memory::write_images $mem_path \
     [file join $simulation_mem_dir cpu32.mem] [file join $simulation_mem_dir cpu.mem] \
@@ -168,6 +169,7 @@ set tb_generics [list \
     SHARED_BANK_BYTES=$shared_bank_bytes_value \
     SHARED_BANK_COUNT=$shared_bank_count_value \
     IM2COL_CACHE_BYTES=$im2col_cache_bytes_value \
+    IA_COMPACT_ENABLE=$ia_compact_enable_value \
     WEIGHT_WIDTH=$weight_width_value \
     DATA_WIDTH=$data_width_value \
     SIZE=$size_value \

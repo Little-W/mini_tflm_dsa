@@ -94,10 +94,24 @@ def normalize_profile(manifest, *, root, literal_bound=False, ram_fixed_lat=0):
         raise ValueError("Invalid shared IA bank choices")
     directory = integer(source.get("ps_directory_rows", 1024), "ps_directory_rows", 1)
     raw_only = bool(source.get("force_raw", source.get("ps_force_raw", False)))
-    output_s8 = max(min(frames * max(1, cache // 2), 32), max(supported_choices) * bank_bytes // 512)
+    compact_value = source.get("ia_compact_enable")
+    if compact_value is None:
+        name = "rtl/npu/top/npu_top.sv"
+        path = Path(manifest.get("source_root", root)) / name
+        recorded = manifest.get("source_sha256", {}).get(name)
+        if recorded is not None and hashlib.sha256(path.read_bytes()).hexdigest() != recorded:
+            raise ValueError("NPU source differs from its recorded build")
+        match = re.search(r"parameter\s+int\s+unsigned\s+IA_COMPACT_ENABLE\s*=\s*([01])\s*,",
+                          path.read_text())
+        if match is None:
+            raise ValueError("Unable to resolve the compiled IA compact capability")
+        compact_value = int(match[1])
+    compact = integer(compact_value, "ia_compact_enable", 0, 1)
+    max_shared_r = max(supported_choices) * bank_bytes // (512 if compact else 1024)
+    output_s8 = min(max(frames * max(1, cache // 2), max_shared_r), max(32, max_shared_r))
     output_limit = integer(source.get("output_banks_s16_max", 4), "output_banks_s16_max")
     output_s16 = min(output_s8, output_limit) if output_limit else output_s8
-    caps = (1 << 24) | (frames << 16) | 0x17 | (int(raw_only) << 3) | (int(literal_bound and not raw_only) << 5)
+    caps = (1 << 24) | (frames << 16) | 0x13 | (compact << 2) | (int(raw_only) << 3) | (int(literal_bound and not raw_only) << 5)
     costs = dict(read_beat_cycles=integer(read_beat, "continuous read beat spacing", 1),
                  write_beat_cycles=integer(source.get("schedule_write_beat_cycles", 1), "write beat cost", 1),
                  read_request_cycles=integer(source.get("schedule_read_request_cycles", 1), "read request cost"),
@@ -109,6 +123,7 @@ def normalize_profile(manifest, *, root, literal_bound=False, ram_fixed_lat=0):
         im2col_cache_bytes=im2col_cache,
         shared_bank_bytes=bank_bytes, shared_bank_count=bank_count,
         shared_total_bytes=total, shared_ia_bank_mask=sum(1 << value for value in set(choices)),
+        ia_compact_enable=compact,
         ia_cache_bytes=bank_bytes, ps_pool_bytes=total-bank_bytes, ps_directory_rows=directory,
         ps_caps=caps, literal_bound_capability=bool(literal_bound), raw_only=raw_only,
         matrix_ps_rows=integer(source.get("ps_storage_rows", 799), "matrix_ps_rows"),

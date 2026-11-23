@@ -13,7 +13,7 @@ module npu_axil_top #(
     parameter NPU_ADDR_WIDTH  = AXI_ADDR_WIDTH,
     parameter IA_CACHE_BLOCKS = 4,
     parameter OPERAND_CACHE_ENABLE = 0,
-    parameter IA_COMPACT_ENABLE = 1,
+    parameter IA_COMPACT_ENABLE = 0,
     parameter SHARED_IA_PS_ENABLE = 1,
     parameter SHARED_BANK_BYTES = 2048,
     parameter SHARED_BANK_COUNT = 0,

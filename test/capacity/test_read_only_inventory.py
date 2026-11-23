@@ -146,14 +146,14 @@ class ReadOnlyInventoryTests(unittest.TestCase):
             elaboration.inventory(tree)
 
     def test_production_budget_includes_the_read_only_array(self):
-        arrays = model.buffer_arrays_bits(4, 16, 49152, bank_bytes=8192, bank_count=7)
+        arrays = model.buffer_arrays_bits(4, 16, 49152, bank_bytes=8192, bank_count=7, ia_compact_enable=True)
         self.assertEqual(arrays["vector_pool_reciprocal_rom"], 4626)
         writable = copy.deepcopy(arrays)
         del writable["vector_pool_reciprocal_rom"]
-        self.assertEqual(sum(writable.values()), 953640)
-        self.assertEqual(sum(arrays.values()), 958266)
-        allocation = model.allocation(4, 16, 49152, 131072, bank_bytes=8192, bank_count=7)
-        self.assertEqual(allocation["budget_used_bytes"], 119784)
+        self.assertEqual(sum(writable.values()), 921128)
+        self.assertEqual(sum(arrays.values()), 925754)
+        allocation = model.allocation(4, 16, 49152, 131072, bank_bytes=8192, bank_count=7, ia_compact_enable=True)
+        self.assertEqual(allocation["budget_used_bytes"], 115720)
         self.assertGreaterEqual(allocation["unused_budget_bytes"], 0)
 
 

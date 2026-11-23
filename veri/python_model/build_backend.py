@@ -13,6 +13,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0,str(ROOT))
 from scripts.capacity.config import axi_data_width, selected_config
+from scripts.rtl.source_files import input_files, with_dependencies
 WARNINGS = [
     "GENUNNAMED", "VARHIDDEN", "WIDTHEXPAND", "UNUSEDSIGNAL", "UNUSED",
     "UNUSEDGENVAR", "UNDRIVEN", "PINMISSING", "STMTDLY", "DECLFILENAME",
@@ -34,6 +35,7 @@ def main():
     ap.add_argument("--shared-bank-bytes", type=int, choices=(2048,4096,8192))
     ap.add_argument("--shared-bank-count", type=int, choices=(0,6,7,8,9))
     ap.add_argument("--im2col-cache-bytes", type=int)
+    ap.add_argument("--ia-compact-enable", type=int, choices=(0, 1))
     ap.add_argument("--verilator", default=os.environ.get("VERILATOR","verilator"))
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--cxx", default="g++-13" if shutil.which("g++-13") else "g++")
@@ -50,7 +52,7 @@ def main():
     for field,key in (("size","SIZE"),("cache","IA_CACHE_BLOCKS"),("ps","PS_FRAME_COUNT"),
                       ("shared_bank_bytes","SHARED_BANK_BYTES"),("shared_bank_count","SHARED_BANK_COUNT"),
                       ("ps_pool_bytes","PS_POOL_BYTES"),("ps_compress","PCR_ENGINE"),("force_raw","PS_FORCE_RAW"),
-                      ("im2col_cache_bytes","IM2COL_CACHE_BYTES")):
+                      ("im2col_cache_bytes","IM2COL_CACHE_BYTES"),("ia_compact_enable","IA_COMPACT_ENABLE")):
         if getattr(args,field) is None:
             setattr(args,field,selected[key])
     for value in [args.size, args.cache]:
@@ -76,7 +78,7 @@ def main():
         ap.error("matrix backend requires 6 to 9 complete shared memory banks")
     effective_pool=shared_total-args.shared_bank_bytes if shared_enabled else args.ps_pool_bytes
     tag = (f"s{args.size}_c{args.cache}_p{args.ps}_axi{args.bus_width}"
-           f"_b{args.shared_bank_bytes}n{args.shared_bank_count}_im2col{args.im2col_cache_bytes}")
+           f"_b{args.shared_bank_bytes}n{args.shared_bank_count}_im2col{args.im2col_cache_bytes}_iac{args.ia_compact_enable}")
     if args.ps_compress:
         tag += f"_ps{effective_pool}_raw{int(args.force_raw)}"
     if args.mem_words != 131072:
@@ -84,7 +86,7 @@ def main():
     parameters=dict(tag=tag,size=args.size,ia_cache_blocks=args.cache,ps_frame_count=args.ps,
         bus_width=args.bus_width,shared_bank_bytes=args.shared_bank_bytes,
         shared_bank_count=args.shared_bank_count,shared_enabled=shared_enabled,
-        im2col_cache_bytes=args.im2col_cache_bytes,
+        im2col_cache_bytes=args.im2col_cache_bytes,ia_compact_enable=args.ia_compact_enable,
         shared_physical_banks=shared_total//args.shared_bank_bytes if shared_enabled else 0,
         shared_total_bytes=shared_total if shared_enabled else 0,
         ps_compress=bool(args.ps_compress),ps_pool_bytes=effective_pool if args.ps_compress else 0,
@@ -102,16 +104,18 @@ def main():
     sources += [ROOT / "rtl/common/pseudo_dual_port_ram.v"]
     sources += [ROOT / "test/dep_modules/ddr_axi_mem_model.sv",
                 ROOT / "test/npu_top/tb_npu_top.sv", HERE / "cycle_probe.sv"]
-    tracked = sources + sorted(npu.rglob("*.svh"))
+    sources = with_dependencies(sources, ROOT)
+    tracked = input_files(sources, ROOT, [ROOT / "include", npu / "ps_compact"])
     before = {str(p.relative_to(ROOT)): digest(p) for p in tracked}
     flags = [
         "--timing", "--assert", "-sv", "--top-module", "tb_npu_top", "-Wno-fatal",
-        f"-I{npu / 'ps_compact'}",
+        f"-I{npu / 'ps_compact'}", f"-I{ROOT / 'include'}",
         *[f"-Wno-{warning}" for warning in WARNINGS],
         f"-DTB_SIZE={args.size}", f"-DTB_IA_CACHE_BLOCKS={args.cache}",
         f"-DTB_BUS_WIDTH={args.bus_width}",f"-DTB_SHARED_BANK_BYTES={args.shared_bank_bytes}",
         f"-DTB_SHARED_BANK_COUNT={args.shared_bank_count}",
         f"-DTB_IM2COL_CACHE_BYTES={args.im2col_cache_bytes}",
+        f"-DTB_IA_COMPACT_ENABLE={args.ia_compact_enable}",
         f"-DTB_PS_FRAME_COUNT={args.ps}", "-DTB_AXI_READ_OUTSTANDING=4",
         "-DTB_DATA_WIDTH=16", "-DTB_WEIGHT_WIDTH=16",
         f"-DTB_MEM_WORDS={args.mem_words}",

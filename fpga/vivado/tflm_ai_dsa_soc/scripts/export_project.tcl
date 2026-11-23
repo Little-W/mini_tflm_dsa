@@ -475,7 +475,7 @@ write_export_readme $export_readme_path $project_xpr $bit_path \
     $synth_directive_value $impl_strategy_value
 set f [open $export_readme_path a]
 puts $f "NPU_ADDR_WIDTH=$npu_addr_width_value NPU_ENABLE_IS_MODE=$npu_enable_is_mode_value NPU_ENABLE_PER_CHANNEL=$npu_enable_per_channel_value NPU_ENABLE_CLOCK_GATING=$npu_enable_clock_gating_value"
-puts $f "NPU_AXI_DATA_WIDTH=[dict get $npu_hardware_config NPU_AXI_DATA_WIDTH] SHARED_BANK_BYTES=[dict get $npu_hardware_config SHARED_BANK_BYTES] SHARED_BANK_COUNT=[dict get $npu_hardware_config SHARED_BANK_COUNT] IM2COL_CACHE_BYTES=[dict get $npu_hardware_config IM2COL_CACHE_BYTES]"
+puts $f "NPU_AXI_DATA_WIDTH=[dict get $npu_hardware_config NPU_AXI_DATA_WIDTH] SHARED_BANK_BYTES=[dict get $npu_hardware_config SHARED_BANK_BYTES] SHARED_BANK_COUNT=[dict get $npu_hardware_config SHARED_BANK_COUNT] IM2COL_CACHE_BYTES=[dict get $npu_hardware_config IM2COL_CACHE_BYTES] IA_COMPACT_ENABLE=[dict get $npu_hardware_config IA_COMPACT_ENABLE]"
 puts $f "The scripts directory includes project creation, synthesis, implementation, simulation, and configuration parsing commands."
 puts $f "The config/npu_fpga.mk file records the hardware settings used for this export."
 set shared_bank_count [dict get $npu_hardware_config SHARED_BANK_COUNT]
@@ -499,4 +499,4 @@ if {$bit_path ne ""} {
     puts "Bitstream: $bit_path"
 }
 
-puts "NPU_AXI_DATA_WIDTH=[dict get $npu_hardware_config NPU_AXI_DATA_WIDTH] SHARED_BANK_BYTES=[dict get $npu_hardware_config SHARED_BANK_BYTES] SHARED_BANK_COUNT=[dict get $npu_hardware_config SHARED_BANK_COUNT] IM2COL_CACHE_BYTES=[dict get $npu_hardware_config IM2COL_CACHE_BYTES]"
+puts "NPU_AXI_DATA_WIDTH=[dict get $npu_hardware_config NPU_AXI_DATA_WIDTH] SHARED_BANK_BYTES=[dict get $npu_hardware_config SHARED_BANK_BYTES] SHARED_BANK_COUNT=[dict get $npu_hardware_config SHARED_BANK_COUNT] IM2COL_CACHE_BYTES=[dict get $npu_hardware_config IM2COL_CACHE_BYTES] IA_COMPACT_ENABLE=[dict get $npu_hardware_config IA_COMPACT_ENABLE]"

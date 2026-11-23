@@ -47,6 +47,7 @@
 ../../rtl/axi_top/npu_axil_reg_if.sv
 ../../rtl/axi_top/npu_axil_top.sv
 ../../rtl/axi_top/axil_top_with_ram.sv
+../../test/models/soc_axi_ram.sv
 ../../rtl/npu/loaders/bias_loader.sv
 ../../rtl/npu/loaders/bias_loader_buffer.sv
 ../../rtl/npu/loaders/bias_loader_ctrl.sv

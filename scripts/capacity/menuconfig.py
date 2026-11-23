@@ -48,6 +48,9 @@ FIELDS = (
     Field("IA_CACHE_BLOCKS", "Buffers and bus", "Output buffer parameter",
           "Build parameter for output queues and ordinary FIFO operation. "
           "Shared IA capacity is selected per layer according to the number of physical banks."),
+    Field("IA_COMPACT_ENABLE", "Shared IA/PS RAM", "Compact INT8 activations",
+          "Enable compact storage for supported INT8 offsets. Zero selects 16-bit activation storage.",
+          (0, 1)),
     Field("PS_FRAME_COUNT", "Buffers and bus", "PS frame slots",
           "Frame metadata entries. Shared tasks are also limited by 1024 rows and PS capacity."),
     Field("SHARED_BANK_BYTES", "Shared IA/PS RAM", "Bytes per bank",

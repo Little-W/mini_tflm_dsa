@@ -8,6 +8,7 @@ module axil_top_with_ram #(
     parameter REG_WIDTH       = 32,
     parameter AXI_ADDR_WIDTH  = 32,
     parameter IA_CACHE_BLOCKS = 8,
+    parameter int unsigned IA_COMPACT_ENABLE = 0,
     parameter IM2COL_CACHE_BYTES = 4096,
     parameter SHARED_BANK_BYTES = 2048,
     parameter SHARED_BANK_COUNT = 0,
@@ -106,6 +107,7 @@ module axil_top_with_ram #(
         .REG_WIDTH(REG_WIDTH),
         .AXI_ADDR_WIDTH(AXI_ADDR_WIDTH),
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
+        .IA_COMPACT_ENABLE(IA_COMPACT_ENABLE),
         .IM2COL_CACHE_BYTES(IM2COL_CACHE_BYTES),
         .SHARED_BANK_BYTES(SHARED_BANK_BYTES),
         .SHARED_BANK_COUNT(SHARED_BANK_COUNT),
@@ -179,7 +181,7 @@ module axil_top_with_ram #(
         .npu_busy(npu_busy)
     );
 
-    axi_sim_ram #(
+    soc_axi_ram #(
         .DP(MEM_DP * 32 / BUS_WIDTH),
         .DW(BUS_WIDTH),
         .AW(AXI_ADDR_WIDTH),

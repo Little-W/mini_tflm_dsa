@@ -11,6 +11,7 @@ import subprocess
 import time
 
 from . import model
+from scripts.rtl.source_files import input_files
 
 ROOT = Path(__file__).resolve().parents[2]
 CACHE = ROOT / "build/capacity/state_cache"
@@ -39,10 +40,11 @@ def source_files():
 
 
 def sources_sha256():
-    files = source_files() + sorted((ROOT / "rtl/npu").rglob("*.svh"))
+    files = input_files(source_files(), ROOT, [ROOT / "rtl/npu/ps_compact"])
     files += [ROOT / "veri/flist/dut_axil.f", ROOT / "scripts/capacity/model.py",
               ROOT / "scripts/capacity/im2col_cache.py",
-              ROOT / "scripts/capacity/elaboration.py", ROOT / "asic/rtl/smic40_sram_1r1w.sv"]
+               ROOT / "scripts/capacity/elaboration.py", ROOT / "scripts/rtl/source_files.py",
+               ROOT / "asic/rtl/smic40_sram_1r1w.sv"]
     return {str(p.relative_to(ROOT)): digest(p) for p in files}
 
 
@@ -50,6 +52,9 @@ def hardware_config(values):
     result = {key: values[key] for key in ("PCR_ENGINE", "SIZE", "IA_CACHE_BLOCKS",
             "PS_FRAME_COUNT", "AXI_READ_OUTSTANDING", "PS_POOL_BYTES", "PS_FORCE_RAW")}
     result["NPU_AXI_DATA_WIDTH"] = values.get("NPU_AXI_DATA_WIDTH", 64)
+    result["IA_COMPACT_ENABLE"] = values.get("IA_COMPACT_ENABLE", 0)
+    if type(result["IA_COMPACT_ENABLE"]) is not int or result["IA_COMPACT_ENABLE"] not in (0, 1):
+        raise ValueError("IA_COMPACT_ENABLE must be 0 or 1")
     result["SHARED_BANK_BYTES"] = values.get("SHARED_BANK_BYTES", 2048)
     result["SHARED_BANK_COUNT"] = values.get("SHARED_BANK_COUNT", 7)
     result["IM2COL_CACHE_BYTES"] = values.get("IM2COL_CACHE_BYTES", 4096)
@@ -150,6 +155,7 @@ def elaboration_types(tree):
 
 
 def array_category(origin, name, ancestors, instance_path=""):
+    declaration_name = name
     name = name.rsplit(".", 1)[-1]
     if origin == "regfile" and name == "mem":
         if "requant_group_buffer" in ancestors:
@@ -161,7 +167,7 @@ def array_category(origin, name, ancestors, instance_path=""):
         if "vector_weight_store" in ancestors:
             return "vector_buffers"
         if instance_path.rsplit(".", 1)[-1] in (
-                "u_prefetch_keys", "u_prefetch_payload", "u_prefetch_retire", "u_prefetch_index"):
+                "u_prefetch_keys", "u_prefetch_selected", "u_prefetch_payload", "u_prefetch_retire", "u_prefetch_index"):
             return "conv_prefetch_queue"
         if "vec_s8_fifo_row_ram" in ancestors:
             return "oa_s16_fifo" if "vec_s16_to_fifo" in ancestors else "oa_s8_fifo"
@@ -206,6 +212,8 @@ def array_category(origin, name, ancestors, instance_path=""):
     if origin == "conv_sdp_ram" and name == "mem":
         return "conv_data_cache"
     if origin == "conv_windowed_cache":
+        if name == "prefetch_key_entries":
+            return "conv_prefetch_queue"
         if name in ("valid", "lookup_tag_ram", "pf_tag_ram", "incoming_tag_ram",
                     "next_tag_ram", "hint_tag_ram", "incoming_hold_ram", "next_hold_ram",
                     "fill_epoch_ram", "hit_epoch_ram", "fill_rank_ram", "hit_rank_ram",
@@ -219,12 +227,19 @@ def array_category(origin, name, ancestors, instance_path=""):
             return "conv_response_queue"
     if origin == "vector_engine":
         if name in ("input_buf", "rhs_buf", "weight_buf", "bias_buf",
-                    "mult_buf", "shift_buf", "right_shift_buf", "acc_buf", "result_buf"):
+                    "mult_buf", "shift_buf", "right_shift_buf", "acc_buf", "result_buf", "soft_exp_memory"):
             return "vector_buffers"
         if name == "dw_snapshot":
             return "vector_dw_snapshot"
         if name == "dw_result_bytes":
             return "vector_dw_result_queue"
+    if origin == "vector_engine_operand_store":
+        if name in ("input_buf", "rhs_buf", "acc_buf") or \
+                name == "mem" and (declaration_name.startswith("g_input_memory.") or
+                                   ".g_input_memory." in instance_path):
+            return "vector_buffers"
+    if origin == "vector_banked_writeback" and name == "memory":
+        return "vector_write_queue"
     if origin == "vector_writeback" and name in ("pending_data", "payload_data"):
         return "vector_write_queue"
     if origin == "vector_weight_bank" and name == "data":
@@ -277,7 +292,7 @@ def vector_storage_inventory(state, shared_enabled, size=16, max_taps=49):
     snapshots = [item for item in declarations
                  if item["buffer_category"] == "vector_dw_snapshot"]
     accumulators = [item for item in declarations
-                    if item["module"] == "vector_engine" and
+                    if item["module"] in ("vector_engine", "vector_engine_operand_store") and
                     item["name"].rsplit(".", 1)[-1] == "acc_buf"]
     adapter_count = counts.get("vector_shared_store", 0)
     adapter_state = [item for item in declarations if item["module"] == "vector_shared_store"]
@@ -494,6 +509,7 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
                "--top-module", "npu_axil_top", "--json-only-output", str(tree_path),
                "--Mdir", str(out / "obj"), "-GDATA_WIDTH=16", "-GWEIGHT_WIDTH=16",
                f'-GBUS_WIDTH={hardware_config(values)["NPU_AXI_DATA_WIDTH"]}',
+               f'-GIA_COMPACT_ENABLE={hardware_config(values)["IA_COMPACT_ENABLE"]}',
                f'-GSHARED_BANK_BYTES={hardware_config(values)["SHARED_BANK_BYTES"]}',
                f'-GSHARED_BANK_COUNT={hardware_config(values)["SHARED_BANK_COUNT"]}',
                f'-GIM2COL_CACHE_BYTES={hardware_config(values)["IM2COL_CACHE_BYTES"]}',
@@ -501,7 +517,7 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
                f'-GSIZE={values["SIZE"]}', f'-GIA_CACHE_BLOCKS={values["IA_CACHE_BLOCKS"]}',
                f'-GPS_FRAME_COUNT={values["PS_FRAME_COUNT"]}',
                f'-GAXI_READ_OUTSTANDING={values["AXI_READ_OUTSTANDING"]}',
-               "-I" + str(ROOT / "rtl/npu/ps_compact")]
+               "-I" + str(ROOT / "rtl/npu/ps_compact"), "-I" + str(ROOT / "include")]
     if values["PCR_ENGINE"]:
         command += ["-DGEMPACT_PS_COMPRESS=1", f'-DGEMMORA_PS_POOL_BYTES={values["PS_POOL_BYTES"]}']
         if values["PS_FORCE_RAW"]:
@@ -517,18 +533,19 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
         state = inventory(tree)
         capabilities = {
             "npu_axil_top": constant_parameters(tree, "npu_axil_top", (
-                "PS_CAPS", "SHARED_CAPABLE", "MATRIX_S8_BANKS", "MATRIX_S16_BANKS",
+                "IA_COMPACT_ENABLE", "PS_CAPS", "SHARED_CAPABLE", "MATRIX_S8_BANKS", "MATRIX_S16_BANKS",
                 "IM2COL_CACHE_BYTES", "CONV_CACHE_SETS", "CONV_CACHE_WAYS", "CONV_LINE_BYTES")),
             "npu_axil_reg_if": constant_parameters(tree, "npu_axil_reg_if", (
                 "PS_CAPS", "PS_POOL_BYTES", "IA_CACHE_BYTES", "SHARED_TOTAL_BYTES",
                 "SHARED_BANK_BYTES", "SHARED_IA_BANK_MASK", "PS_DIRECTORY_ROWS", "SHARED_CAPABLE",
                 "MATRIX_S8_BANKS", "MATRIX_S16_BANKS", "CONV_CACHE_BYTES")),
             "npu_top": constant_parameters(tree, "npu_top", (
-                "SHARED_RAM_ENABLED", "IA_MAX_CACHE_BLOCKS", "IA_REUSE_NUM_MAX",
-                "OA_FIFO_BANKS", "OA_S16_FIFO_BANKS", "PS_REQUIRE_RAW_CAPACITY",
+                "IA_COMPACT_ENABLE", "SHARED_RAM_ENABLED", "IA_MAX_CACHE_BLOCKS",
                 "IM2COL_CACHE_BYTES", "CONV_CACHE_SETS", "CONV_CACHE_WAYS", "CONV_LINE_BYTES",
                 "VECTOR_PE_COUNT", "WINDOW_LANES", "MATRIX_INPUT_LANES",
                 "REQUANT_COMPUTE_LANES", "DW_SHARED_QUANT_ENABLE")),
+            "npu_matrix_engine": constant_parameters(tree, "npu_matrix_engine", (
+                "IA_REUSE_NUM_MAX", "OA_FIFO_BANKS", "OA_S16_FIFO_BANKS")),
             "vector_engine": constant_parameters(tree, "vector_engine", (
                 "TILE", "MAX_TAPS", "PE_COUNT", "WINDOW_LANES", "QUANT_LANES",
                 "SHARED_QUANT_ENABLE", "SHARED_STORAGE_ENABLE")),
@@ -539,12 +556,14 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
         if not keep_tree:
             tree_path.unlink(missing_ok=True)
     geometry_options=dict(bank_bytes=values.get("SHARED_BANK_BYTES",2048),
-                          bank_count=values.get("SHARED_BANK_COUNT",7) if values["PCR_ENGINE"] else None)
+                          bank_count=values.get("SHARED_BANK_COUNT",7) if values["PCR_ENGINE"] else None,
+                          ia_compact_enable=bool(hardware_config(values)["IA_COMPACT_ENABLE"]))
     expected = model.buffer_arrays_bits(values["IA_CACHE_BLOCKS"], values["PS_FRAME_COUNT"],
                                          values["PS_POOL_BYTES"], values["SIZE"], bool(values["PCR_ENGINE"]),
                                          im2col_cache_bytes=hardware_config(values)["IM2COL_CACHE_BYTES"],
                                          bus_width=hardware_config(values)["NPU_AXI_DATA_WIDTH"],
                                          vector_pe_count=hardware_config(values)["VECTOR_PE_COUNT"],
+                                         target=target,
                                          **geometry_options)
     expected_registers = model.register_arrays_bits(values["IA_CACHE_BLOCKS"], values["PS_FRAME_COUNT"],
                                                      values["PS_POOL_BYTES"], values["SIZE"], bool(values["PCR_ENGINE"]),
@@ -611,13 +630,17 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
         architecture = architecture and counts.get("ia_ps_shared_ram", 0) == 0 and \
             counts.get("ia_ps_channel_ram", 0) == 0
     registers = capabilities["npu_axil_reg_if"]
-    expected_caps = (0x01000007 | (values["PS_FRAME_COUNT"] << 16) |
+    expected_caps = (0x01000003 | (hardware_config(values)["IA_COMPACT_ENABLE"] << 2) |
+                     (values["PS_FRAME_COUNT"] << 16) |
                      (int(layout["shared_ia_ps_enabled"]) << 4) | (values["PS_FORCE_RAW"] << 3)) \
                     if values["PCR_ENGINE"] else 0
     capabilities_match = capabilities["npu_axil_top"]["PS_CAPS"] == expected_caps and \
         registers["PS_CAPS"] == expected_caps and \
-        capabilities["npu_top"]["OA_FIFO_BANKS"] == layout["output_banks_s8"] and \
-        capabilities["npu_top"]["OA_S16_FIFO_BANKS"] == layout["output_banks_s16"] and \
+        capabilities["npu_axil_top"]["IA_COMPACT_ENABLE"] == hardware_config(values)["IA_COMPACT_ENABLE"] and \
+        capabilities["npu_top"]["IA_COMPACT_ENABLE"] == hardware_config(values)["IA_COMPACT_ENABLE"] and \
+        capabilities["npu_matrix_engine"]["IA_REUSE_NUM_MAX"] == layout["max_r_s8"] and \
+        capabilities["npu_matrix_engine"]["OA_FIFO_BANKS"] == layout["output_banks_s8"] and \
+        capabilities["npu_matrix_engine"]["OA_S16_FIFO_BANKS"] == layout["output_banks_s16"] and \
         capabilities["npu_axil_top"]["MATRIX_S8_BANKS"] == layout["output_banks_s8"] and \
         capabilities["npu_axil_top"]["MATRIX_S16_BANKS"] == layout["output_banks_s16"] and \
         registers["MATRIX_S8_BANKS"] == layout["output_banks_s8"] and \

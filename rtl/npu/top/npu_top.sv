@@ -12,7 +12,7 @@ module npu_top #(
     parameter int unsigned REG_WIDTH = 32,  // 寄存器宽度
     parameter int unsigned ADDR_WIDTH = 19,  // AXI 地址宽度
     parameter int unsigned IA_CACHE_BLOCKS = 4,  // 16 位输入分块的物理缓存容量。
-    parameter int unsigned IA_COMPACT_ENABLE = 1,
+    parameter int unsigned IA_COMPACT_ENABLE = 0,
     parameter int unsigned SHARED_IA_PS_ENABLE = 1,
     parameter bit p_fixed_ps_channels =
 `ifdef ASIC_SYNTHESIS

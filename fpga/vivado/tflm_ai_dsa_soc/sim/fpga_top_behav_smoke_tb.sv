@@ -8,6 +8,7 @@ module fpga_top_behav_smoke_tb #(
     parameter int unsigned SHARED_BANK_BYTES = 8192,
     parameter int unsigned SHARED_BANK_COUNT = 7,
     parameter int unsigned IA_CACHE_BLOCKS = 4,
+    parameter int unsigned IA_COMPACT_ENABLE = 0,
     parameter int unsigned IM2COL_CACHE_BYTES = 4096,
     parameter int unsigned CPU_MEM_DP = 65536,
     parameter string       CPU_MEM_PATH = "",
@@ -42,6 +43,7 @@ module fpga_top_behav_smoke_tb #(
         .SHARED_BANK_BYTES(SHARED_BANK_BYTES),
         .SHARED_BANK_COUNT(SHARED_BANK_COUNT),
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
+        .IA_COMPACT_ENABLE(IA_COMPACT_ENABLE),
         .IM2COL_CACHE_BYTES(IM2COL_CACHE_BYTES),
         .CPU_MEM_DP(CPU_MEM_DP),
         .CPU_MEM_PATH(CPU_MEM_PATH),
@@ -137,8 +139,8 @@ module fpga_top_behav_smoke_tb #(
             $display("[BEHAV_SMOKE] FAIL: CPU_MEM_PATH is empty");
             $finish;
         end
-        $display("[BEHAV_SMOKE] cfg SIZE=%0d IA_CACHE_BLOCKS=%0d WEIGHT_WIDTH=%0d DATA_WIDTH=%0d CPU_MEM_DP=%0d",
-                 SIZE, IA_CACHE_BLOCKS, WEIGHT_WIDTH, DATA_WIDTH, CPU_MEM_DP);
+        $display("[BEHAV_SMOKE] cfg SIZE=%0d IA_CACHE_BLOCKS=%0d IA_COMPACT_ENABLE=%0d WEIGHT_WIDTH=%0d DATA_WIDTH=%0d CPU_MEM_DP=%0d",
+                 SIZE, IA_CACHE_BLOCKS, IA_COMPACT_ENABLE, WEIGHT_WIDTH, DATA_WIDTH, CPU_MEM_DP);
         $display("[BEHAV_SMOKE] cfg CPU_MEM_PATH=%s", CPU_MEM_PATH);
         $display("[BEHAV_SMOKE] cfg NPU_ADDR_WIDTH=%0d IS=%0d PER_CHANNEL=%0d CLK_GATE=%0d MAX_SYS_CYCLES=%0d",
                  NPU_ADDR_WIDTH, NPU_ENABLE_IS_MODE, NPU_ENABLE_PER_CHANNEL,
