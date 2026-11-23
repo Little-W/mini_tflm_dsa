@@ -16,6 +16,13 @@ import sys
 import time
 
 
+FAST_ABC_REFERENCE = 'https://yosyshq.readthedocs.io/projects/yosys/en/0.47/cmd/abc.html'
+FAST_ABC_SCRIPT = ('strash; write_blif {before}; dretime; retime -o -D {delay}; '
+                   'map -D {delay}; cleanup -i -o; buffer; upsize -D {delay}; '
+                   'dnsize -D {delay}; stime -p; write_blif {after}; '
+                   'cec -T 300 {before} {after}')
+
+
 PROFILES = {
     'ps_frame_store': {
         'top': 'ps_frame_store',
@@ -141,6 +148,15 @@ def map_profile(args, name, sources, hashes, library, tools):
     parameters = ' '.join('-G ' + key + '=' + str(value)
                           for key, value in profile['parameters'].items())
     input_sources = ' '.join(quote(path.relative_to(args.repo)) for path in sources)
+    abc_options = ''
+    abc_script = None
+    if args.abc_fast:
+        abc_script = FAST_ABC_SCRIPT.format(delay=f'{args.target_ps:g}',
+                                           before=quote(directory / 'abc_before.blif'),
+                                           after=quote(directory / 'abc_after.blif'))
+        abc_file = directory / 'abc_fast.script'
+        abc_file.write_text(abc_script + '\n')
+        abc_options = ' -script ' + quote(abc_file)
     script = directory / 'synth.ys'
     script.write_text(
         f'read_slang --top {profile["top"]} --threads 1 --single-unit '
@@ -150,7 +166,8 @@ def map_profile(args, name, sources, hashes, library, tools):
         'delete t:$scopeinfo\n'
         'check -assert\n'
         f'dfflibmap -liberty {quote(args.liberty)}\n'
-        f'abc -exe {quote(args.abc)} -liberty {quote(args.liberty)} '
+        f'write_json {quote(directory / "premap.json")}\n'
+        f'abc{abc_options} -exe {quote(args.abc)} -liberty {quote(args.liberty)} '
         f'-constr {quote(constraints)} -D {args.target_ps:g}\n'
         'clean\n'
         f'read_liberty -lib {quote(args.liberty)}\n'
@@ -168,9 +185,12 @@ def map_profile(args, name, sources, hashes, library, tools):
         'runner_sha256': digest(Path(__file__).resolve()),
         'library': {'name': args.liberty.name, 'sha256': digest(args.liberty)},
         'tools': tools,
+        'abc_mode': 'explicit_map' if args.abc_fast else 'default',
+        'abc_script': abc_script,
+        'abc_script_reference': FAST_ABC_REFERENCE if args.abc_fast else None,
         'mapping_constraints': {
             'input_driving_cell': args.drive_cell, 'output_load_ff': args.output_load_ff,
-            'abc_delay_target_ps': args.target_ps,
+            'abc_delay_target_ps': args.target_ps, 'abc_fast': args.abc_fast,
         },
         'storage': 'Internal memories are lowered to standard cells. External services '
                    'remain top-level ports; no design modules are blackboxed.',
@@ -194,6 +214,23 @@ def map_profile(args, name, sources, hashes, library, tools):
         raise RuntimeError('Production source changed during synthesis: ' + ', '.join(changed))
     design = json.loads((directory / 'mapped.json').read_text())
     module = design['modules'][profile['top']]
+    before = json.loads((directory / 'premap.json').read_text())['modules'][profile['top']]
+    def port_signature(item):
+        return {name: {key: value[key] for key in ('direction', 'offset', 'upto', 'signed')
+                       if key in value} | {'width': len(value['bits'])}
+                for name, value in item['ports'].items()}
+    def sequential_signature(item):
+        return {name: cell['type'] for name, cell in item['cells'].items()
+                if cell['type'] in library and library[cell['type']]['sequential']}
+    if port_signature(before) != port_signature(module):
+        raise RuntimeError('Top-level ports changed during ABC mapping')
+    if sequential_signature(before) != sequential_signature(module):
+        raise RuntimeError('Sequential cell names or types changed during ABC mapping')
+    equivalence_passed = None
+    if args.abc_fast:
+        equivalence_passed = 'Networks are equivalent' in (directory / 'synthesis.log').read_text()
+        if not equivalence_passed:
+            raise RuntimeError('ABC combinational equivalence was not established')
     counts = Counter(cell['type'] for cell in module['cells'].values())
     unknown = set(counts) - set(library)
     if unknown:
@@ -215,10 +252,19 @@ def map_profile(args, name, sources, hashes, library, tools):
         'cell_area_library_units': sum(count * library[name]['area']
                                        for name, count in counts.items()),
         'ports': ports,
+        'pre_mapping_ports': port_signature(before),
+        'interface_and_sequential_cells_preserved': True,
+        'combinational_equivalence_passed': equivalence_passed,
+        'equivalence_method': ('ABC CEC compares all extracted combinational inputs and outputs '
+                               'by name. Top-level ports and every sequential cell name and type '
+                               'are checked against the netlist before ABC mapping.'
+                               if args.abc_fast else None),
         'unmapped_cell_types': [], 'design_blackboxes': [],
         'artifact_sha256': {filename: digest(directory / filename) for filename in
-                            ('mapped.v', 'mapped.json', 'stat.json', 'synth.ys', 'abc.constr',
-                             'synthesis.log')},
+                            ('mapped.v', 'mapped.json', 'premap.json', 'stat.json', 'synth.ys',
+                             'abc.constr', 'synthesis.log') +
+                            (('abc_fast.script', 'abc_before.blif', 'abc_after.blif')
+                             if args.abc_fast else ())},
     }
     write_json(directory / 'result.json', result)
     print(f'MAP_PASS profile={name} cells={result["standard_cell_count"]} '
@@ -236,6 +282,8 @@ def main():
     parser.add_argument('--out', type=Path)
     parser.add_argument('--liberty', type=Path)
     parser.add_argument('--abc', type=Path, help='Default: yosys-abc bundled with pyosys')
+    parser.add_argument('--abc-fast', action='store_true',
+                        help='Use an explicit ABC map/buffer/upsize/dnsize sequence')
     parser.add_argument('--profiles', nargs='+', choices=tuple(PROFILES), default=list(PROFILES))
     parser.add_argument('--jobs', type=int, choices=(1, 2), default=1)
     parser.add_argument('--target-ps', type=float, default=6000)
@@ -279,6 +327,7 @@ def main():
     write_json(args.out / 'summary.json', {
         'passed': all(result['passed'] for result in results),
         'source_commit': git_output(args.repo, 'rev-parse', 'HEAD'),
+        'abc_mode': 'explicit_map' if args.abc_fast else 'default',
         'profiles': results,
         'scope': 'Module standard-cell mapping at existing RTL ports. Timing analysis '
                  'requires the mapped netlist and the same Liberty library.',
