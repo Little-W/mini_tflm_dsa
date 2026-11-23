@@ -27,7 +27,7 @@ module requant_group_buffer #(
     logic [p_addr_width-1:0] write_addr_q, read_addr_q;
     logic [p_count_width-1:0] stored_rows_q;
     logic [p_count_width-1:0] stored_rows_next;
-    logic [p_count_width-1:0] expected_rows_q, pending_rows_q;
+    logic [p_count_width-1:0] pending_rows_q;
     logic head_valid_q;
     logic push_row, read_row, consume_row;
     logic storage_i_wr_en, storage_i_rd_en, storage_i_wr_mask;
@@ -126,19 +126,13 @@ module requant_group_buffer #(
     // 整行输出才释放预留；阵列尚未产生的行同样占用已预留容量。
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            expected_rows_q <= '0;
             pending_rows_q <= '0;
         end else if (i_clear) begin
-            expected_rows_q <= '0;
             pending_rows_q <= '0;
-        end else begin
-            if (i_group_start) begin
-                expected_rows_q <= p_count_width'(i_group_rows) - p_count_width'(push_row);
-                pending_rows_q <= p_count_width'(i_group_rows);
-            end else begin
-                if (push_row) expected_rows_q <= expected_rows_q - 1'b1;
-                if (i_output_valid) pending_rows_q <= pending_rows_q - 1'b1;
-            end
+        end else if (i_group_start) begin
+            pending_rows_q <= p_count_width'(i_group_rows);
+        end else if (i_output_valid) begin
+            pending_rows_q <= pending_rows_q - 1'b1;
         end
     end
 

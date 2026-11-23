@@ -69,10 +69,10 @@ if (TB_FIFO_VLEN == 16 && TB_FIFO_TRANSPOSE != 0) begin : g_fifo_compare
             if (npu_top.cfg_stage2_fire) begin
                 configuration_count++;
                 if (configuration_seen) begin
-                    if (!configured_mode && npu_top.u_matrix_engine.u_task_configuration.cfg_mode_q[2]) ws_to_is++;
-                    if (configured_mode && !npu_top.u_matrix_engine.u_task_configuration.cfg_mode_q[2]) is_to_ws++;
+                    if (!configured_mode && npu_top.u_matrix_engine.u_task_configuration.configuration.is_mode) ws_to_is++;
+                    if (configured_mode && !npu_top.u_matrix_engine.u_task_configuration.configuration.is_mode) is_to_ws++;
                 end
-                configured_mode<=npu_top.u_matrix_engine.u_task_configuration.cfg_mode_q[2];
+                configured_mode<=npu_top.u_matrix_engine.u_task_configuration.configuration.is_mode;
                 configuration_seen<=1;
                 assert(!read_active && npu_top.u_matrix_engine.u_output_pipeline.u_vec_s8_to_fifo.g_full.skid_count==0 &&
                        npu_top.u_matrix_engine.u_output_pipeline.u_vec_s8_to_fifo.g_full.u_full.bank_ready=='0 &&

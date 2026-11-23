@@ -42,8 +42,9 @@ def main():
                     'read_slang --top registered_multiplier_s32 '
                     f'-Gp_input_register={a_registered} -Gp_b_input_register={b_registered} ' +
                     ' '.join(shlex.quote(str(p)) for p in [path, common]),
-                    'prep -top registered_multiplier_s32 -flatten', 'wreduce', 'opt -full',
-                    'rename -hide w:u_upper_add.*',
+                    'prep -top registered_multiplier_s32 -flatten', 'memory_map', 'wreduce', 'opt -full',
+                    # 乘积端口检查全部 64 位；内部合并节点按各自寄存阶段展开。
+                    'rename -hide w:u_upper_add.* w:upper_sum',
                     f'rename -top {label}', f'design -stash {label}']
             commands += ['design -copy-from gold -as gold gold', 'design -copy-from gate -as gate gate',
                          'equiv_make gold gate proof', 'hierarchy -top proof',

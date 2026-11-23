@@ -26,7 +26,9 @@ module vector_softmax_accumulator (
     //! -----------
 
     assign sum_clear = !rst_n || i_clear;
-    parallel_prefix_add #(.p_width(32)) u_accumulate (
+    parallel_prefix_add #(
+        .p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)
+    ) u_accumulate (
         .i_a(sum), .i_b({12'd0, value_stage}), .i_carry(increment_stage),
         .o_sum(sum_next), .o_carry(unused_sum_carry)
     );

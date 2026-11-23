@@ -25,7 +25,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True,exist_ok=True)
-    sources = [ROOT/'rtl/npu/conv/vector_pe.sv',ROOT/'rtl/npu/conv/registered_vector_pe.sv',
+    sources = [ROOT/'rtl/npu/conv/vector_pe.sv',
                HERE/'pe_test_top.sv',HERE/'main.cpp']
     hashes = {str(path.relative_to(ROOT)):hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}
     run([args.verilator,'--cc','--exe','--assert','--top-module','pe_test_top','-Wno-fatal',

@@ -38,13 +38,18 @@ module vector_config_check #(
   logic [63:0] selected_bytes,range_bytes_q;
   logic selected_enable,range_enable_q,range_size_ok;
   logic [32:0] range_end_q,output_end_q;
-  logic [33:0] range_output_distance, output_range_distance;
   logic range_before_output, output_before_range;
-  // 扩展后的无符号差值保留完整借位，范围端点寄存后并行比较两种地址次序。
-  assign range_output_distance = {2'b00,cfg.output_base} - {1'b0,range_end_q};
-  assign output_range_distance = {2'b00,range_base_q} - {1'b0,output_end_q};
-  assign range_before_output = !range_output_distance[33];
-  assign output_before_range = !output_range_distance[33];
+  logic range_output_less, output_range_less;
+  logic unused_range_output_equal, unused_output_range_equal;
+  // 两个完整三十三位端点并行比较，输出范围检查直接使用无借位关系。
+  unsigned_compare #(.p_width(33)) u_range_before_output (
+      .i_a({1'b0,cfg.output_base}), .i_b(range_end_q),
+      .o_less(range_output_less), .o_equal(unused_range_output_equal));
+  unsigned_compare #(.p_width(33)) u_output_before_range (
+      .i_a({1'b0,range_base_q}), .i_b(output_end_q),
+      .o_less(output_range_less), .o_equal(unused_output_range_equal));
+  assign range_before_output = !range_output_less;
+  assign output_before_range = !output_range_less;
   logic [7:0] range_end_low;
   logic range_end_carry;
   logic [24:0] range_end_high;

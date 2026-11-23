@@ -19,7 +19,7 @@ def main():
  reports=[]
  for profile in a.profiles:
   n,w=map(int,profile.split(':'));folder=out/f'n{n}_w{w}';folder.mkdir(exist_ok=True)
-  cmd=['verilator','--binary','--timing','-Wno-fatal','-j','1','--top-module','tb_kernel_buffer_equivalence','--Mdir',str(folder/'obj'),f'-GSIZE={n}',f'-GDATA_WIDTH={w}',f'-GRANDOM_CYCLES={a.cycles}',*[f'-D{value}' for value in a.define],str(src),str(mem),str(bench),str(ref),*[str(path.resolve()) for path in a.extra_source]]
+  cmd=['verilator','--binary','--timing','-Wno-fatal','-j','1','-CFLAGS','-std=c++20','--top-module','tb_kernel_buffer_equivalence','--Mdir',str(folder/'obj'),f'-GSIZE={n}',f'-GDATA_WIDTH={w}',f'-GRANDOM_CYCLES={a.cycles}',*[f'-D{value}' for value in a.define],str(src),str(mem),str(bench),str(ref),*[str(path.resolve()) for path in a.extra_source]]
   with(folder/'compile.log').open('w')as log:subprocess.run(cmd,cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,check=True)
   binary=folder/'obj/Vtb_kernel_buffer_equivalence';r=subprocess.run([str(binary)],text=True,capture_output=True)
   (folder/'run.log').write_text(r.stdout+r.stderr)

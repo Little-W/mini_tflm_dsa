@@ -34,6 +34,7 @@ PROFILES = [
     (1, 128, 1, 7, 1, 0, 0),
     (32, 64, 8, 1, 1, 0, 0),
     (64, 512, 8, 1, 0, 0, 0),
+    (513, 1024, 513, 1, 1, 0, 33),
 ]
 
 
@@ -45,6 +46,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--simulation-only", action="store_true")
+    parser.add_argument("--profiles", nargs="+", type=int,
+                        help="选择 PROFILES 中的配置序号，省略时检查全部配置")
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -60,7 +63,10 @@ def main():
     hashes = {str(path.relative_to(out)): digest(path) for path in snapshots}
     report = {"passed": False, "source_sha256": hashes, "profiles": [],
               "macro_model": "同步功能模型，物理端口同址读写立即报告失败"}
-    for width, depth, unit, ports, sync, macros128, macros1024 in PROFILES:
+    if args.profiles is not None and any(index < 0 or index >= len(PROFILES) for index in args.profiles):
+        parser.error("配置序号超出 PROFILES 范围")
+    profiles = PROFILES if args.profiles is None else [PROFILES[index] for index in args.profiles]
+    for width, depth, unit, ports, sync, macros128, macros1024 in profiles:
         name = f"w{width}_d{depth}_u{unit}_r{ports}_s{sync}"
         folder = out / name
         folder.mkdir(exist_ok=True)

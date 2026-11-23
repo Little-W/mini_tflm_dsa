@@ -11,7 +11,7 @@ module requant_group_npu_observer #(parameter int p_rows=512);
             issued_pending<=0;
         end else begin
             assert(requant_group_buffer.stored_rows_q<=p_rows);
-            assert(requant_group_buffer.expected_rows_q==input_remaining);
+            assert(input_remaining>=0 && input_remaining<=p_rows);
             assert(requant_group_buffer.pending_rows_q==output_remaining);
             assert(output_remaining==input_remaining+int'(requant_group_buffer.stored_rows_q)+
                 int'(requant_group_buffer.head_valid_q)+issued_pending);

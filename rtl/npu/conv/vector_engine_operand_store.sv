@@ -517,7 +517,7 @@ module vector_engine_operand_store #(
       .i_carry_in(1'b0), .o_equal(tap_last_zero)
   );
   add_equal #(.p_width(p_tap_count_w)) u_tap_last_increment (
-      .i_a(weight_tap_nxt), .i_b(p_tap_count_w'(1)), .i_target(taps),
+      .i_a(tap), .i_b(p_tap_count_w'(2)), .i_target(taps),
       .i_carry_in(1'b0), .o_equal(tap_last_increment)
   );
   // 同步读取提前准备当前或下一卷积核位置；加载权重期间不发起共享 RAM 读取。
@@ -796,7 +796,7 @@ module vector_engine_operand_store #(
           dma_input_write_valid[bank%p_bus_bytes]) &&
           load_index[$clog2(p_input_banks)-1:0] == $clog2(p_input_banks)'(bank);
       assign write_valid = pool_bank_valid[bank] || window_bank_valid[bank] || load_valid;
-      assign write_row = global_pool ? pool_bank_row[bank] : spatial ?
+      assign write_row = global_pool ? p_input_row_width'(pool_bank_row[bank]) : spatial ?
           p_input_row_width'(window_bank_index[bank]>>$clog2(p_input_banks)) :
           p_input_row_width'(load_index>>$clog2(p_input_banks));
 

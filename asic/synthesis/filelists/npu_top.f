@@ -4,7 +4,6 @@
 ../../rtl/npu/conv/vector_engine_control_pkg.sv
 ../../rtl/npu/writeback/requant_pkg.sv
 ../../rtl/npu/conv/vector_pe.sv
-../../rtl/npu/conv/registered_vector_pe.sv
 ../../rtl/npu/conv/vector_reduce_alu.sv
 ../../rtl/npu/conv/vector_softmax.sv
 ../../rtl/npu/conv/vector_softmax_accumulator.sv
@@ -67,13 +66,9 @@
 
 ../../rtl/npu/compute/bias_mux.sv
 ../../rtl/npu/compute/select_add.sv
+../../rtl/npu/compute/registered_vector_add.sv
 ../../rtl/npu/compute/ws_systolic_cell.sv
 ../../rtl/npu/compute/ws_systolic_array.sv
-../../rtl/npu/compute/de_diagonalizer.sv
-../../rtl/npu/compute/data_setup.sv
-../../rtl/npu/compute/shift_accumulator.sv
-../../rtl/npu/compute/accumulator_array.sv
-../../rtl/npu/buffers/ps_buffer_fifo.sv
 ../../rtl/npu/ps_compact/ps_adaptive_encoder.sv
 ../../rtl/npu/ps_compact/ps_adaptive_decoder.sv
 ../../rtl/npu/ps_compact/ps_frame_store.sv
@@ -99,11 +94,11 @@
 ../../rtl/npu/loaders/bias_loader_buffer.sv
 ../../rtl/npu/loaders/bias_loader.sv
 ../../rtl/npu/loaders/ia_buffer_wrapper.sv
-../../rtl/npu/loaders/ia_ordered_coordinate_same.sv
 ../../rtl/npu/loaders/ia_loader_cache_mgr.sv
 ../../rtl/npu/loaders/ia_loader_ctrl.sv
 ../../rtl/npu/loaders/ia_loader.sv
 ../../rtl/npu/loaders/ia_ordered_coordinate_equal.sv
+../../rtl/npu/loaders/ia_ordered_coordinate_same.sv
 ../../rtl/npu/loaders/kernel_loader_ctrl.sv
 ../../rtl/npu/loaders/kernel_count_increment.sv
 ../../rtl/npu/loaders/kernel_count_compare.sv

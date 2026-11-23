@@ -1,4 +1,4 @@
-#include "Vrequant_compute_lane.h"
+#include "Vrequant_compute_lane_test.h"
 #include "verilated.h"
 
 #include <array>
@@ -18,7 +18,7 @@ static int64_t signed32(uint32_t value) {
     return value < 0x80000000U ? int64_t(value) : int64_t(value) - 0x100000000LL;
 }
 
-static Result reference(const Vrequant_compute_lane &dut) {
+static Result reference(const Vrequant_compute_lane_test &dut) {
     Result result;
     result.valid = dut.i_valid;
     if (!dut.i_valid || !dut.i_lane_enable) return result;
@@ -57,7 +57,7 @@ static Result reference(const Vrequant_compute_lane &dut) {
 
 int main(int argc, char **argv) {
     Verilated::commandArgs(argc, argv);
-    Vrequant_compute_lane dut;
+    Vrequant_compute_lane_test dut;
     std::array<Result, 7> pipeline{};
     std::mt19937_64 rng(0x74917531ce205699ULL);
     uint64_t cycles = 0, outputs = 0, holds = 0, clears = 0, resets = 0, disabled_lanes = 0;

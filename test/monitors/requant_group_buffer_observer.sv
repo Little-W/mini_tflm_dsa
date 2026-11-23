@@ -6,6 +6,19 @@
 module requant_group_buffer_observer #(
     parameter int unsigned p_rows = 512
 );
+    localparam int p_count_width = (p_rows <= 1) ? 1 : $clog2(p_rows + 1);
+    logic [p_count_width-1:0] expected_rows_q;
+
+    // 观察器独立记录已预留、尚未到达的输入行。
+    always_ff @(posedge requant_group_buffer.clk or negedge requant_group_buffer.rst_n) begin
+        if (!requant_group_buffer.rst_n) expected_rows_q <= '0;
+        else if (requant_group_buffer.i_clear) expected_rows_q <= '0;
+        else if (requant_group_buffer.i_group_start)
+            expected_rows_q <= p_count_width'(requant_group_buffer.i_group_rows) -
+                               p_count_width'(requant_group_buffer.push_row);
+        else if (requant_group_buffer.push_row) expected_rows_q <= expected_rows_q - 1'b1;
+    end
+
     always_ff @(posedge requant_group_buffer.clk) begin
         if (requant_group_buffer.rst_n && !requant_group_buffer.i_clear) begin
             if (requant_group_buffer.i_group_start) begin
@@ -17,7 +30,7 @@ module requant_group_buffer_observer #(
                        !requant_group_buffer.i_output_valid);
             end
             if (requant_group_buffer.push_row) begin
-                assert(requant_group_buffer.i_group_start || requant_group_buffer.expected_rows_q != 0);
+                assert(requant_group_buffer.i_group_start || expected_rows_q != 0);
                 assert(requant_group_buffer.stored_rows_q < p_rows || requant_group_buffer.read_row);
             end
             if (requant_group_buffer.i_output_valid) assert(requant_group_buffer.pending_rows_q != 0);

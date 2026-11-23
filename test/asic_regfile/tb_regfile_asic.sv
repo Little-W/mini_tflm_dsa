@@ -21,6 +21,16 @@ module tb_regfile_asic #(
     int checks = 0, collisions = 0, held = 0, unknown_controls = 0, invalid_reads = 0;
     int seed;
 
+    // 按三十二位片段生成数据，覆盖超过总线宽度的完整存储行。
+    function automatic logic [p_width-1:0] random_data();
+        logic [p_width-1:0] value;
+        value = '0;
+        for (int first = 0; first < p_width; first += 32) begin
+            value |= p_width'($urandom) << first;
+        end
+        return value;
+    endfunction
+
     regfile #(
         .p_data_width(p_width), .p_depth(p_depth), .p_addr_width(p_address_width),
         .p_write_unit(p_unit), .p_read_ports(p_ports), .p_sync_read(p_sync)
@@ -70,7 +80,7 @@ module tb_regfile_asic #(
             @(negedge clk);
             write_enable = 1;
             write_address = p_address_width'(address);
-            write_data = p_width'({$urandom, $urandom});
+            write_data = random_data();
             write_mask = '1;
             read_enable = '1;
             for (int port_index = 0; port_index < p_ports; port_index++)
@@ -80,7 +90,7 @@ module tb_regfile_asic #(
             @(negedge clk);
             write_enable = 1'($urandom);
             write_address = p_address_width'($urandom);
-            write_data = p_width'({$urandom, $urandom});
+            write_data = random_data();
             write_mask = (p_width/p_unit)'($urandom);
             if (cycle % 31 == 0) begin write_enable = 1'bx; unknown_controls++; end
             if (cycle % 37 == 0) begin write_enable = 1'bz; unknown_controls++; end

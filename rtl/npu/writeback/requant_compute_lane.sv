@@ -41,7 +41,7 @@ module requant_compute_lane #(
     logic signed [33:0] shift_o_quotient;
     logic shift_o_increment;
     logic unused_round_carry;
-    logic signed [35:0] rounded_q, round_value, offset_value;
+    logic signed [34:0] rounded_q, round_value, offset_value;
     logic [1:0] bound_less;
 
     //! 1. 接收数据与参数
@@ -74,10 +74,11 @@ module requant_compute_lane #(
     //! 2. 舍入并保存偏移结果
     //! ----------------------
 
+    // 34 位商、32 位偏移和舍入增量的完整和使用 35 位有符号数保存。
     // INT16 的输出零点为零；任务配置保持稳定，同一个加法加入偏移与舍入增量。
-    assign offset_value = i_s16 ? 36'sd0 : {{4{i_dst_offset[31]}}, i_dst_offset};
-    assign {unused_round_carry, round_value} = {1'b0, {2{shift_o_quotient[33]}}, shift_o_quotient} +
-        {1'b0, offset_value} + 37'(shift_o_increment);
+    assign offset_value = i_s16 ? 35'sd0 : {{3{i_dst_offset[31]}}, i_dst_offset};
+    assign {unused_round_carry, round_value} = {1'b0, shift_o_quotient[33], shift_o_quotient} +
+        {1'b0, offset_value} + 36'(shift_o_increment);
     always_ff @(posedge clk) begin
         if (arithmetic_en) rounded_q <= round_value;
     end
@@ -87,20 +88,20 @@ module requant_compute_lane #(
 
     // 各字节独立比较，高位相等时再采用低位关系。
     for (genvar bound = 0; bound < 2; bound++) begin : g_bound
-        logic [35:0] lhs, rhs;
+        logic [34:0] lhs, rhs;
         logic [4:0] equal_group, greater_group, greater_selected;
         if (bound == 0) begin : g_minimum
             assign lhs = rounded_q;
-            assign rhs = {{4{i_activation_min[31]}}, i_activation_min};
+            assign rhs = {{3{i_activation_min[31]}}, i_activation_min};
         end else begin : g_maximum
-            assign lhs = {{4{i_activation_max[31]}}, i_activation_max};
+            assign lhs = {{3{i_activation_max[31]}}, i_activation_max};
             assign rhs = rounded_q;
         end
         for (genvar group = 0; group < 5; group++) begin : g_group
-            localparam int p_bits = group == 4 ? 4 : 8;
+            localparam int p_bits = group == 4 ? 3 : 8;
             assign equal_group[group] = lhs[8*group +: p_bits] == rhs[8*group +: p_bits];
             if (group == 4) begin : g_sign
-                assign greater_group[group] = $signed(lhs[35:32]) > $signed(rhs[35:32]);
+                assign greater_group[group] = $signed(lhs[34:32]) > $signed(rhs[34:32]);
                 assign greater_selected[group] = greater_group[group];
             end else begin : g_unsigned
                 assign greater_group[group] = lhs[8*group +: 8] > rhs[8*group +: 8];
@@ -131,13 +132,13 @@ module requant_compute_lane #(
             end else begin
                 if (bound_less[0]) o_s16 <= i_activation_min[15:0];
                 else if (bound_less[1]) o_s16 <= i_activation_max[15:0];
-                else if (rounded_q < -36'sd32768) o_s16 <= -16'sd32768;
-                else if (rounded_q > 36'sd32767) o_s16 <= 16'sd32767;
+                else if (rounded_q < -35'sd32768) o_s16 <= -16'sd32768;
+                else if (rounded_q > 35'sd32767) o_s16 <= 16'sd32767;
                 else o_s16 <= rounded_q[15:0];
                 if (bound_less[0]) o_s8 <= i_activation_min[7:0];
                 else if (bound_less[1]) o_s8 <= i_activation_max[7:0];
-                else if (rounded_q > 36'sd127) o_s8 <= 8'sd127;
-                else if (rounded_q < -36'sd128) o_s8 <= -8'sd128;
+                else if (rounded_q > 35'sd127) o_s8 <= 8'sd127;
+                else if (rounded_q < -35'sd128) o_s8 <= -8'sd128;
                 else o_s8 <= rounded_q[7:0];
             end
         end

@@ -352,32 +352,19 @@ module npu_output_pipeline #(
                 end
             end
         end
-    genvar rq_i;
-    generate
-        for (rq_i = 0; rq_i < p_size; rq_i = rq_i + 1) begin : gen_requant_in_vec
-            logic signed [31:0] add_i_lhs;
-            logic signed [31:0] add_i_rhs0;
-            logic signed [31:0] add_i_rhs1;
-            logic add_i_rhs_select;
-            logic add_i_enable;
-            logic signed [31:0] add_o_sum;
-            assign add_i_lhs = i_acc_data_out[rq_i];
-            assign add_i_rhs0 = i_compute_bias_latched[rq_i];
-            assign add_i_rhs1 = is_bias_scalar;
-            assign add_i_rhs_select = i_is_mode;
-            assign add_i_enable = i_is_mode || i_ws_final_bias;
-            assign requant_in_vec[rq_i] = add_o_sum;
-            // 偏置选择和三十二位模加位于计算输出寄存与量化输入缓存之间。
-            select_add #(.p_width(32)) u_bias_add (
-                .i_lhs       (add_i_lhs),
-                .i_rhs0      (add_i_rhs0),
-                .i_rhs1      (add_i_rhs1),
-                .i_rhs_select(add_i_rhs_select),
-                .i_add_enable(add_i_enable),
-                .o_sum       (add_o_sum)
-            );
-        end
-    endgenerate
+    logic signed [31:0] bias_rhs [p_size];
+    logic bias_clear, bias_valid, bias_tile_done;
+    assign bias_clear = i_exec_init_requant || i_ps_capacity_fault;
+    for (genvar lane = 0; lane < p_size; lane++) begin : g_bias_input
+        assign bias_rhs[lane] = i_is_mode ? is_bias_scalar :
+            (i_ws_final_bias ? i_compute_bias_latched[lane] : 32'sd0);
+    end
+    registered_vector_add #(.p_lanes(p_size)) u_bias_add (
+        .clk(clk), .rst_n(rst_n), .i_clear(bias_clear),
+        .i_valid(i_acc_data_valid), .i_tile_done(i_tile_calc_over),
+        .i_lhs(i_acc_data_out), .i_rhs(bias_rhs),
+        .o_valid(bias_valid), .o_tile_done(bias_tile_done), .o_sum(requant_in_vec)
+    );
     assign o_load_quant_req = load_quant_req_s8;
     assign o_quant_params_valid = quant_params_valid_s8;
         vec_requant #(.BUS_WIDTH(p_bus_width),
@@ -430,8 +417,8 @@ module npu_output_pipeline #(
             .dma_lhs_zp        (o_quant_dma_lhs_zp),
             .dma_raw_data      (i_quant_dma_raw_data),
             .dma_raw_valid     (i_quant_dma_raw_valid),
-            .in_valid          (i_acc_data_valid && !i_ps_capacity_fault),
-            .in_tile_done      (i_tile_calc_over),
+            .in_valid          (bias_valid),
+            .in_tile_done      (bias_tile_done),
             .in_vec_s32        (requant_in_vec),
         .out_valid         (requant_out_valid),
         .out_tile_done     (requant_out_tile_done),

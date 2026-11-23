@@ -322,10 +322,10 @@ module vector_engine_control #(
   logic signed [63:0] add_rounded;
   logic signed [31:0] reduce_acc;
   logic signed [31:0] reduce_next;
-  logic signed [33:0] input_y;
-  logic signed [33:0] input_x;
-  logic signed [33:0] input_origin_x;
-  logic signed [33:0] input_origin_y;
+  logic signed [17:0] input_y;
+  logic signed [17:0] input_x;
+  logic signed [17:0] input_origin_x;
+  logic signed [17:0] input_origin_y;
   logic param_bad;
   logic dw_in_bounds;
   logic [15:0] output_last_column;
@@ -375,10 +375,10 @@ module vector_engine_control #(
   logic window_response_fault;
   logic [31:0] fetch_position;
   logic [15:0] fetch_ox;
-  logic signed [33:0] fetch_x;
-  logic signed [33:0] fetch_y;
-  logic signed [33:0] fetch_origin_x;
-  logic signed [33:0] fetch_origin_y;
+  logic signed [17:0] fetch_x;
+  logic signed [17:0] fetch_y;
+  logic signed [17:0] fetch_origin_x;
+  logic signed [17:0] fetch_origin_y;
   logic [33:0] coordinate_step_o_value [8];
   logic next_window_valid_q;
   logic signed [33:0] next_window_x;
@@ -517,10 +517,10 @@ module vector_engine_control #(
   assign o_add_rounded = add_rounded;
   assign o_reduce_acc = reduce_acc;
   assign reduce_next = i_reduce_next;
-  assign o_input_y = input_y;
-  assign o_input_x = input_x;
-  assign o_input_origin_x = input_origin_x;
-  assign o_input_origin_y = input_origin_y;
+  assign o_input_y = 34'(input_y);
+  assign o_input_x = 34'(input_x);
+  assign o_input_origin_x = 34'(input_origin_x);
+  assign o_input_origin_y = 34'(input_origin_y);
   assign param_bad = i_param_bad;
   assign dw_in_bounds = i_dw_in_bounds;
   assign output_last_column = i_output_last_column;
@@ -570,10 +570,10 @@ module vector_engine_control #(
   assign window_response_fault = i_window_response_fault;
   assign o_fetch_position = fetch_position;
   assign o_fetch_ox = fetch_ox;
-  assign o_fetch_x = fetch_x;
-  assign o_fetch_y = fetch_y;
-  assign o_fetch_origin_x = fetch_origin_x;
-  assign o_fetch_origin_y = fetch_origin_y;
+  assign o_fetch_x = 34'(fetch_x);
+  assign o_fetch_y = 34'(fetch_y);
+  assign o_fetch_origin_x = 34'(fetch_origin_x);
+  assign o_fetch_origin_y = 34'(fetch_origin_y);
   assign coordinate_step_o_value = i_coordinate_step_o_value;
   assign next_window_valid_q = i_next_window_valid_q;
   assign next_window_x = i_next_window_x;
@@ -776,21 +776,21 @@ module vector_engine_control #(
           fetch_position<=fetch_position_next;fetch_tap<=0;fetch_tap_offset<=0;fetch_kx<=0;
           if (fetch_ox==output_last_column) begin
             fetch_ox<=0;
-            fetch_origin_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});
-            fetch_origin_y<=$signed(coordinate_step_o_value[7]);
-            fetch_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});
-            fetch_y<=$signed(coordinate_step_o_value[7]);
+            fetch_origin_x<=$signed({{2{(|c.image.pad_left)}}, padding_x_negative});
+            fetch_origin_y<=18'($signed(coordinate_step_o_value[7]));
+            fetch_x<=$signed({{2{(|c.image.pad_left)}}, padding_x_negative});
+            fetch_y<=18'($signed(coordinate_step_o_value[7]));
           end else begin
             fetch_ox<=fetch_ox_next;
-            fetch_origin_x<=$signed(coordinate_step_o_value[6]);
-            fetch_x<=$signed(coordinate_step_o_value[6]);fetch_y<=fetch_origin_y;
+            fetch_origin_x<=18'($signed(coordinate_step_o_value[6]));
+            fetch_x<=18'($signed(coordinate_step_o_value[6]));fetch_y<=fetch_origin_y;
           end
         end else begin
           fetch_tap<=fetch_tap+1;fetch_tap_offset<=fetch_tap_offset_next;
           if (fetch_kx==kernel_last_column) begin
-            fetch_kx<=0;fetch_x<=fetch_origin_x;fetch_y<=$signed(coordinate_step_o_value[5]);
+            fetch_kx<=0;fetch_x<=fetch_origin_x;fetch_y<=18'($signed(coordinate_step_o_value[5]));
           end else begin
-            fetch_kx<=fetch_kx+1;fetch_x<=$signed(coordinate_step_o_value[4]);
+            fetch_kx<=fetch_kx+1;fetch_x<=18'($signed(coordinate_step_o_value[4]));
           end
         end
       end
@@ -829,13 +829,13 @@ module vector_engine_control #(
         end
         vector_engine_control_pkg::CONFIGURE: if (dma_cfg_ready) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(spatial ? vector_engine_control_pkg::TILE_INIT : vector_engine_control_pkg::VECTOR_INIT);
         vector_engine_control_pkg::TILE_INIT: begin
-          {active_lane_mask,active}<=active_count_value(channel_remaining<p_tile ? channel_remaining : 32'(p_tile));
+          {active_lane_mask,active}<=active_count_value(p_active_count_w'(channel_remaining<p_tile ? channel_remaining : 32'(p_tile)));
           position<=0;position_offset<=0;ox<=0;oy<=0;load_tap<=0;load_kind<=vector_engine_control_pkg::LD_WEIGHT;
-          input_origin_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});input_origin_y<=$signed({{18{(|c.image.pad_top)}}, padding_y_negative});
+          input_origin_x<=$signed({{2{(|c.image.pad_left)}}, padding_x_negative});input_origin_y<=$signed({{2{(|c.image.pad_top)}}, padding_y_negative});
           read_bank<=0;wf_bank<=0;window_received<=0;
           fetch_position<=0;fetch_tap<=0;fetch_tap_offset<=0;fetch_ox<=0;fetch_kx<=0;
-          fetch_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});fetch_y<=$signed({{18{(|c.image.pad_top)}}, padding_y_negative});
-          fetch_origin_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});fetch_origin_y<=$signed({{18{(|c.image.pad_top)}}, padding_y_negative});
+          fetch_x<=$signed({{2{(|c.image.pad_left)}}, padding_x_negative});fetch_y<=$signed({{2{(|c.image.pad_top)}}, padding_y_negative});
+          fetch_origin_x<=$signed({{2{(|c.image.pad_left)}}, padding_x_negative});fetch_origin_y<=$signed({{2{(|c.image.pad_top)}}, padding_y_negative});
           {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(depthwise ? vector_engine_control_pkg::LOAD_REQ : vector_engine_control_pkg::OUTPUT_INIT);
         end
         vector_engine_control_pkg::LOAD_REQ: if (rd_granted) begin
@@ -883,7 +883,7 @@ module vector_engine_control #(
             if (tap_last_modulo) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DW_FINISH);
             else begin
               tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;
-              input_x<=next_window_x;input_y<=next_window_y;
+              input_x<=18'(next_window_x);input_y<=18'(next_window_y);
               if (kernel_column_end) begin kx<=0;ky<=ky+1'b1;end
               else kx<=kx+1'b1;
             end
@@ -895,14 +895,14 @@ module vector_engine_control #(
             position<=position_next;position_offset<=position_offset_next;
             if (ox==output_last_column) begin
               ox<=0;oy<=oy_next;
-              input_origin_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});
-              input_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});
-              input_origin_y<=$signed(coordinate_step_o_value[3]);
-              input_y<=$signed(coordinate_step_o_value[3]);
+              input_origin_x<=$signed({{2{(|c.image.pad_left)}}, padding_x_negative});
+              input_x<=$signed({{2{(|c.image.pad_left)}}, padding_x_negative});
+              input_origin_y<=18'($signed(coordinate_step_o_value[3]));
+              input_y<=18'($signed(coordinate_step_o_value[3]));
             end else begin
               ox<=ox_next;
-              input_origin_x<=$signed(coordinate_step_o_value[2]);
-              input_x<=$signed(coordinate_step_o_value[2]);
+              input_origin_x<=18'($signed(coordinate_step_o_value[2]));
+              input_x<=18'($signed(coordinate_step_o_value[2]));
               input_y<=input_origin_y;
             end
             {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DW_EXECUTE);
@@ -950,7 +950,7 @@ module vector_engine_control #(
             read_bank<=(read_bank+1'b1)&input_bank_mask;{compute_pool_group,compute_index}<=compute_index_value(0);
             if (tap_last_wide) begin quant_index<=0;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::QUANT_INIT);end
             else begin
-              tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;input_x<=next_window_x;input_y<=next_window_y;
+              tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;input_x<=18'(next_window_x);input_y<=18'(next_window_y);
               if (kernel_column_end) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
               if (next_window_valid_q) begin
                 valid_taps<=valid_taps+1;
@@ -992,7 +992,7 @@ module vector_engine_control #(
         end
         vector_engine_control_pkg::TAP_NEXT: if (tap_last_wide) begin quant_index<=0;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::QUANT_INIT);end
           else begin
-            tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;input_x<=next_window_x;input_y<=next_window_y;
+            tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;input_x<=18'(next_window_x);input_y<=18'(next_window_y);
             if (kernel_column_end) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
             {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::TAP_CHECK);
           end
@@ -1037,10 +1037,10 @@ module vector_engine_control #(
           if (position_next<32'(position_count)) begin
             position<=position_next;position_offset<=position_offset_next;
             if (ox==output_last_column) begin
-              ox<=0;oy<=oy_next;input_origin_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});
-              input_origin_y<=$signed(coordinate_step_o_value[3]);
+              ox<=0;oy<=oy_next;input_origin_x<=$signed({{2{(|c.image.pad_left)}}, padding_x_negative});
+              input_origin_y<=18'($signed(coordinate_step_o_value[3]));
             end else begin
-              ox<=ox_next;input_origin_x<=$signed(coordinate_step_o_value[2]);
+              ox<=ox_next;input_origin_x<=18'($signed(coordinate_step_o_value[2]));
             end
             {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::OUTPUT_INIT);
           end else if (channel_has_more) begin
@@ -1064,7 +1064,7 @@ module vector_engine_control #(
         vector_engine_control_pkg::SOFT_LUT_REQ: if (rd_granted) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::SOFT_LUT_WAIT);
         vector_engine_control_pkg::SOFT_LUT_WAIT: if (read_done_q) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::SOFT_RUN);
         vector_engine_control_pkg::VECTOR_INIT: begin
-          vector_offset<=0;{active_lane_mask,active}<=active_count_value(c.length<p_tile ? c.length : 32'(p_tile));
+          vector_offset<=0;{active_lane_mask,active}<=active_count_value(p_active_count_w'(c.length<p_tile ? c.length : 32'(p_tile)));
           load_kind<=vector_engine_control_pkg::LD_A;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);
         end
         vector_engine_control_pkg::VECTOR_NEXT: if (vector_has_more) begin

@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import subprocess
 import time
 
@@ -47,6 +48,9 @@ def main():
         source_root / "rtl/common/unsigned_compare.sv",
         *(path.resolve() for path in args.extra_source),
     ]
+    resolver = root / "scripts/rtl/source_files.py"
+    sources = runpy.run_path(str(resolver))["with_dependencies"](sources, source_root)
+    sources.append(resolver)
     def source_key(path):
         return str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
 

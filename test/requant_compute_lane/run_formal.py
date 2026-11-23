@@ -20,7 +20,7 @@ def actual_tail(source):
 def unit(source):
     ports='''(
     input logic clk,rst_n,i_en,i_clear,i_valid,i_lane_enable,
-    input logic signed [35:0] rounded_q,
+    input logic signed [34:0] rounded_q,
     input logic signed [31:0] i_activation_min,i_activation_max,
     output logic o_valid,
     output logic signed [7:0] o_s8,
@@ -36,9 +36,9 @@ def unit(source):
     reference='module lane_reference '+ports+'''
     logic [6:0] valid_model;
     logic [5:0] enable_model;
-    logic signed [35:0] low_bound,high_bound;
-    assign low_bound={{4{i_activation_min[31]}},i_activation_min};
-    assign high_bound={{4{i_activation_max[31]}},i_activation_max};
+    logic signed [34:0] low_bound,high_bound;
+    assign low_bound={{3{i_activation_min[31]}},i_activation_min};
+    assign high_bound={{3{i_activation_max[31]}},i_activation_max};
     assign o_valid=valid_model[6];
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n)begin
@@ -55,10 +55,10 @@ def unit(source):
                 end else if(rounded_q>high_bound)begin
                     o_s8<=i_activation_max[7:0];o_s16<=i_activation_max[15:0];
                 end else begin
-                    o_s8<=(rounded_q < -36'sd128) ? -8'sd128 :
-                           (rounded_q > 36'sd127) ? 8'sd127 : rounded_q[7:0];
-                    o_s16<=(rounded_q < -36'sd32768) ? -16'sd32768 :
-                            (rounded_q > 36'sd32767) ? 16'sd32767 : rounded_q[15:0];
+                    o_s8<=(rounded_q < -35'sd128) ? -8'sd128 :
+                           (rounded_q > 35'sd127) ? 8'sd127 : rounded_q[7:0];
+                    o_s16<=(rounded_q < -35'sd32768) ? -16'sd32768 :
+                            (rounded_q > 35'sd32767) ? 16'sd32767 : rounded_q[15:0];
                 end
             end
         end
@@ -95,7 +95,7 @@ def main():
     assert 'Induction step proven' in log.read_text()
     bench=out/'tb.sv';bench.write_text('''module tb;
     reg clk=0,rst_n=0,i_en=1,i_clear=0,i_valid=0,i_lane_enable=0;
-    reg signed [35:0] rounded_q=0;
+    reg signed [34:0] rounded_q=0;
     reg signed [31:0] i_activation_min=0,i_activation_max=0;
     wire valid_a,valid_b;
     wire signed [7:0] s8_a,s8_b;
@@ -139,7 +139,7 @@ endmodule
     assert coverage is not None
     assert source==path.read_text()
     result={'passed':True,'source_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
-        'formal_input_value_bits':100,'formal_inputs_constrained':False,'outputs_compared_bits':25,
+        'formal_input_value_bits':99,'formal_inputs_constrained':False,'outputs_compared_bits':25,
         'four_state_control_bits':5,'four_state_cycles':65536,'four_state_comparisons':131072,
         'four_state_valid_checks':int(coverage[1]),'four_state_active_data_checks':int(coverage[2]),
         'latency_enabled_edges':7,'log_sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in (log,simlog)}}

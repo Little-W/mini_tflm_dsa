@@ -180,7 +180,7 @@ module kernel_pending #(
     assign dbg_top_state=dut.top_state;
     assign dbg_ctrl_state=dut.u_ctrl.state;
     assign dbg_prefetch_state=dut.prefetch_state;
-    assign dbg_valid_count=dut.u_buf.valid_count;
+    assign dbg_valid_count={1'b0,dut.u_buf.slot_loaded[0]}+{1'b0,dut.u_buf.slot_loaded[1]};
     assign dbg_transfer_active=dut.transfer_active;
     assign dbg_transfer_prefetch=dut.transfer_prefetch;
     assign dbg_transfer_discard=dut.transfer_discard;

@@ -100,13 +100,17 @@ def main() -> None:
                 assert number(params['SIZE']) == 48
                 assert number(params['RD_PORTS']) == 1
                 assert number(params['RD_CLK_ENABLE']) == 1
+                assert number(params['WR_PORTS']) == 1
+                assert number(params['WR_CLK_ENABLE']) == 1
                 assert number(params['RD_TRANSPARENCY_MASK']) == 0
                 assert number(params['RD_COLLISION_X_MASK']) == 0
                 capacity += number(params['WIDTH']) * number(params['SIZE'])
             assert capacity == 12288
             result = dict(macro_count=0, matrix_inferred_memories=16,
                           matrix_storage_bits=capacity, register_bits=flip_flops,
-                          synchronous_read=True, same_address_read='old data')
+                          synchronous_read=True, synchronous_write=True,
+                          read_ports_per_column=1, write_ports_per_column=1,
+                          same_address_read='old data')
         entry = dict(mode=mode, passed=True, script_sha256=sha(script), log_sha256=sha(log),
                      netlist_sha256=sha(netlist), **result)
         report['profiles'].append(entry)

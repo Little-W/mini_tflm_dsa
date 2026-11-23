@@ -11,7 +11,8 @@ module ps_raw_address #(
     output wire [2:0] remainder
 );
     // 向上取整的定点倒数生成商估计，高位截取保留所需的整数部分。
-    localparam [WIDTH:0] RECIPROCAL=((64'd1<<WIDTH)+DIVISOR-1)/DIVISOR;
+    localparam [WIDTH:0] RECIPROCAL = (WIDTH+1)'(
+        ((64'd1 << WIDTH) + 64'($unsigned(DIVISOR)) - 64'd1) / 64'($unsigned(DIVISOR)));
     wire [2*WIDTH:0] product=linear*RECIPROCAL;
     wire [WIDTH:0] estimate=product[2*WIDTH:WIDTH];
     wire [WIDTH+3:0] scaled_estimate=estimate*(WIDTH+4)'(DIVISOR);

@@ -9,12 +9,13 @@ import json
 from pathlib import Path
 import random
 import re
+import runpy
 import shlex
 import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_current_source as read_rtl_text
+from rtl_reference import read_current_source as read_rtl_text, read_rtl_source, SOURCE_GROUPS
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = "rtl/soc/picorv32_npu.v"
@@ -255,21 +256,35 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--source-root", default=ROOT, type=Path)
-    parser.add_argument("--reference", default="349e7d98")
+    parser.add_argument("--reference", default="caace9471dafe0236f0e2a9a40b8ddb48bdb844d")
     parser.add_argument("--skip-cpu-formal", action="store_true")
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     sources = {"current": out / "current.v", "reference": out / "reference.v"}
     original = args.source_root.resolve() / SOURCE
-    sources["current"].write_bytes(original.read_bytes())
-    sources["reference"].write_bytes(subprocess.check_output(
-        ["git", "show", args.reference + ":" + SOURCE], cwd=ROOT))
-    source_hash = digest(original)
+    sources["current"].write_text(read_rtl_text(original))
+    sources["reference"].write_bytes(read_rtl_source(args.reference + ":" + SOURCE))
+    dependencies = runpy.run_path(str(ROOT / "scripts/rtl/source_files.py"))["with_dependencies"]
+    tracked = [original.with_name(name) for name in SOURCE_GROUPS[original.name]]
+    current_helpers = []
+    for label, path in sources.items():
+        helpers = [p for p in dependencies([path], args.source_root) if p != path]
+        body = path.read_text()
+        for helper in helpers:
+            relative = helper.relative_to(args.source_root.resolve()).as_posix()
+            body += "\n" + (helper.read_text() if label == "current" else
+                             read_rtl_source(args.reference + ":" + relative, text=True))
+        path.write_text(body)
+        if label == "current":
+            current_helpers = helpers
+            tracked.extend(helpers)
+    source_hash = {str(path.relative_to(args.source_root.resolve())): digest(path) for path in tracked}
     module_file = out / "division_modules.v"
     module_file.write_text("\n\n".join(
         module_text(read_rtl_text(source), "division_" + label)
-        for label, source in sources.items()))
+        for label, source in sources.items()) + "\n" +
+        "\n".join(path.read_text() for path in current_helpers))
     result = {"passed": False, "reference": args.reference,
               "source_sha256": source_hash, "reference_sha256": digest(sources["reference"]),
               "inputs_constrained": False}
@@ -283,7 +298,7 @@ def main() -> None:
         spec.loader.exec_module(module)
         result["cpu_formal"] = module.formal(out / "cpu_formal", sources)
         result["cpu_formal_helper_sha256"] = digest(helper)
-    if source_hash != digest(original):
+    if source_hash != {str(path.relative_to(args.source_root.resolve())): digest(path) for path in tracked}:
         raise RuntimeError("验证期间源文件发生变化")
     result["passed"] = True
     save(out / "summary.json", result)

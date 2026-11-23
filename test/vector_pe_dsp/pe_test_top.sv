@@ -10,17 +10,28 @@ module pe_test_top (
     output logic signed [31:0] o_extended
 );
     vector_pe #(.ENABLE_EXTENDED_MULTIPLY(1'b1)) u_extended (
-        .op(i_op), .a(i_a), .b(i_b), .acc(i_acc), .result(o_extended)
+        .clk(clk), .i_en(i_en), .i_op(i_op), .i_a(i_a), .i_b(i_b), .i_acc(i_acc),
+        .o_result(o_extended)
     );
-    registered_vector_pe u_candidate (
+    vector_pe #(.ENABLE_EXTENDED_MULTIPLY(1'b0)) u_candidate (
         .clk(clk), .i_en(i_en), .i_op(i_op), .i_a(i_a), .i_b(i_b), .i_acc(i_acc),
         .o_result(o_result)
     );
-    logic signed [15:0] saved_a,saved_b;
-    logic signed [31:0] saved_acc;
-    always_ff @(posedge clk)begin
-        if(i_en)begin saved_a<=i_a;saved_b<=i_b;saved_acc<=i_acc;end
+    logic signed [31:0] reference_next;
+    logic signed [63:0] product;
+    assign product = 64'(i_a) * 64'(i_b);
+    always_comb begin
+        case (i_op)
+            3'd0: reference_next = 32'(product + 64'(i_acc));
+            3'd1: reference_next = i_acc + 32'(i_a);
+            3'd2: reference_next = i_acc > 32'(i_a) ? i_acc : 32'(i_a);
+            3'd3: reference_next = i_acc < 32'(i_a) ? i_acc : 32'(i_a);
+            3'd4: reference_next = 32'(product);
+            3'd5, 3'd6: reference_next = 32'sd0;
+            default: reference_next = i_acc;
+        endcase
     end
-    vector_pe #(.ENABLE_EXTENDED_MULTIPLY(1'b0)) u_reference(
-        .op(i_op),.a(saved_a),.b(saved_b),.acc(saved_acc),.result(o_reference));
+    always_ff @(posedge clk) begin
+        if (i_en) o_reference <= reference_next;
+    end
 endmodule

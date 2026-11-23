@@ -74,7 +74,7 @@ module registered_multiplier_s32 #(
                                (diagonal & high_low_extended) |
                                (low_high_extended & high_low_extended)) << 1;
     parallel_prefix_add #(
-        .p_width(48), .p_group_width(8), .p_preserve_groups(1'b1)
+        .p_width(48), .p_group_width(4), .p_preserve_groups(1'b1)
     ) u_upper_add (
         .i_a(compressed_sum),
         .i_b(compressed_carry),

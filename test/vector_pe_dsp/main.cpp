@@ -28,12 +28,13 @@ int main(int argc, char **argv) {
     int16_t saved_a = 0, saved_b = 0;
     int32_t saved_acc = 0;
     bool initialized = false;
+    unsigned saved_op = 0;
     uint64_t cycles = 0, comparisons = 0, enabled_cycles = 0, stalled_cycles = 0;
     std::array<uint64_t, 8> operations{};
 
     auto check = [&]() {
         if (!initialized) return;
-        const uint32_t want = expected(dut.i_op, saved_a, saved_b, saved_acc);
+        const uint32_t want = expected(saved_op, saved_a, saved_b, saved_acc);
         if (uint32_t(dut.o_result) != want || uint32_t(dut.o_reference) != want) {
             std::fprintf(stderr,
                          "PE mismatch cycle=%llu clock=%u enable=%u op=%u a=%d b=%d acc=%d "
@@ -43,7 +44,13 @@ int main(int argc, char **argv) {
                          uint32_t(dut.o_result), uint32_t(dut.o_reference));
             std::exit(1);
         }
-        ++comparisons;
+        const uint32_t extended_want = expected(saved_op, saved_a, saved_b, saved_acc, true);
+        if (uint32_t(dut.o_extended) != extended_want) {
+            std::fprintf(stderr, "Extended PE mismatch saved_op=%u expected=%08x got=%08x\n",
+                         saved_op, extended_want, uint32_t(dut.o_extended));
+            std::exit(1);
+        }
+        comparisons += 3;
     };
     auto cycle = [&](bool enable, unsigned operation, int16_t a, int16_t b, int32_t acc) {
         dut.clk = 0;
@@ -53,15 +60,10 @@ int main(int argc, char **argv) {
         dut.i_b = uint16_t(b);
         dut.i_acc = uint32_t(acc);
         dut.eval();
-        const uint32_t direct_want = expected(operation, a, b, acc, true);
-        if (uint32_t(dut.o_extended) != direct_want) {
-            std::fprintf(stderr, "Extended PE mismatch op=%u a=%d b=%d acc=%d expected=%08x got=%08x\n",
-                         operation, int(a), int(b), int(acc), direct_want, uint32_t(dut.o_extended));
-            std::exit(1);
-        }
         check();
         dut.clk = 1;
         if (enable) {
+            saved_op = operation;
             saved_a = a;
             saved_b = b;
             saved_acc = acc;
@@ -84,9 +86,10 @@ int main(int argc, char **argv) {
     for (int16_t a : values_a) {
         for (int16_t b : values_b) {
             for (int32_t acc : values_acc) {
-                cycle(true, 0, a, b, acc);
                 for (unsigned operation = 0; operation < 8; ++operation) {
-                    cycle(false, operation, int16_t(random()), int16_t(random()), int32_t(random()));
+                    cycle(true, operation, a, b, acc);
+                    for (unsigned held_op = 0; held_op < 8; ++held_op)
+                        cycle(false, held_op, int16_t(random()), int16_t(random()), int32_t(random()));
                 }
             }
         }

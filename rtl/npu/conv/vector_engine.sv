@@ -198,7 +198,6 @@ module vector_engine #(
   logic [TILE-1:0] result_write_enable;
   logic [7:0] result_write_data [TILE];
   logic [2:0] pe_op;
-  logic [2:0] pe_op_q;
   logic pe_operand_en;
   logic signed [15:0] pe_a [PE_COUNT];
   logic signed [15:0] pe_b [PE_COUNT];
@@ -405,6 +404,7 @@ module vector_engine #(
   logic reduce_alu_i_max;
   logic reduce_alu_i_min;
   wire signed [POOL_SUM_WIDTH-1:0] avg_pool_sum;
+  logic signed [POOL_SUM_WIDTH-1:0] avg_sum_q;
   logic [POOL_SUM_WIDTH-1:0] avg_negated_sum;
   logic signed [AVG_SCALE_BITS+1:0] avg_residual_next;
   wire [POOL_SUM_WIDTH-1:0] avg_unsigned_magnitude;
@@ -719,6 +719,8 @@ module vector_engine #(
     .i_c(c),
     .i_spatial(spatial),
     .i_depthwise(depthwise),
+    .i_vector_hadamard(vector_hadamard),
+    .i_add_s8(add_s8),
     .i_binary_vector(binary_vector),
     .i_softmax_s8(softmax_s8),
     .o_channels(channels),
@@ -1074,13 +1076,11 @@ module vector_engine #(
     // 无效通道的 a 和 acc 已为零，各运算结果与 b 的取值无关。
     assign pe_b[lane]=depthwise ? 16'($signed(weight_lane[lane])) : rhs_lane[lane];
     // 同一通道连续发射时使用上一拍乘加结果，其余通道读取已提交的累加值。
-    // 逐元素乘法在现有输入选择器中提供零累加值。
-    assign pe_acc[lane]=(!enabled || vector_hadamard) ? 32'sd0 :
+    // 逐元素乘法的零累加值由 PE 在操作数接收边沿选择。
+    assign pe_acc[lane]=!enabled ? 32'sd0 :
         (depthwise && dw_commit_vld && dw_commit_index==compute_index) ? pe_result[lane] : accum_lane[lane];
   end
-  always_ff @(posedge clk) if (pe_operand_en) pe_op_q<=pe_op;
-
-  // 操作码在 EXECUTE 更新；操作数独立等待写出允许后接收，下一周期提交结果。
+  // 操作码与操作数共同等待写出允许，在统一 PE 内保存并计算。
   for (genvar lane = 0; lane < PE_COUNT; lane++) begin : g_pe
     logic pe_i_en;
     logic [2:0] pe_i_op;
@@ -1090,20 +1090,22 @@ module vector_engine #(
     logic signed [31:0] pe_o_result;
 
     assign pe_i_en = pe_operand_en;
-    assign pe_i_op = pe_op_q;
+    assign pe_i_op = pe_op;
     assign pe_i_a = pe_a[lane];
     assign pe_i_b = pe_b[lane];
     assign pe_i_acc = pe_acc[lane];
     assign pe_result[lane] = pe_o_result;
-    registered_vector_pe #(.p_accumulator_preselected(1'b1)) u_pe (
+    vector_pe #(.ENABLE_EXTENDED_MULTIPLY(1'b0)) u_pe (
       .clk(clk), .i_en(pe_i_en), .i_op(pe_i_op), .i_a(pe_i_a), .i_b(pe_i_b),
       .i_acc(pe_i_acc), .o_result(pe_o_result)
     );
   end
 
+  logic [ADD_INDEX_WIDTH-1:0] add_next_input_index;
+  assign add_next_input_index = ADD_INDEX_WIDTH'(compute_index)+ADD_INDEX_WIDTH'(1);
   assign add_first_lhs = p_input_bank_storage ? add_input_saved : input_buf[0][7:0];
   assign add_next_lhs = p_input_bank_storage ? add_input_saved :
-      input_buf[ADD_INDEX_WIDTH'(compute_index)+ADD_INDEX_WIDTH'(1)][7:0];
+      input_buf[INPUT_INDEX_W'(add_next_input_index)][7:0];
   assign add_rhs = rhs_buf[ADD_INDEX_WIDTH'(compute_index)][7:0];
   // 有效 S8 操作数加上 [-127,128] 内的偏移，结果范围为 [-255,255]。
   assign add_first_lhs_offset = $signed({add_first_lhs[7],add_first_lhs})+$signed(c.add.input1_offset[8:0]);
@@ -1132,7 +1134,7 @@ module vector_engine #(
           reduce_index + TILE_INDEX_W'(1) : '0;
     end
   end
-  assign serial_acc_read_data = acc_buf[serial_acc_read_index];
+  assign serial_acc_read_data = acc_buf[32'(serial_acc_read_index)];
   // 指数值采用单写入、单读取的普通数组，计算通道保存独立的工作累加值。
   always_ff @(posedge clk) begin
     if (rst_n && soft_exp_write_valid) soft_exp_memory[soft_exp_write_index] <= soft_lut_data;
@@ -1156,7 +1158,7 @@ module vector_engine #(
     .clk(clk), .i_lhs(reduce_alu_i_lhs), .i_rhs(reduce_alu_i_rhs),
     .i_max(reduce_alu_i_max), .i_min(reduce_alu_i_min), .o_result(reduce_next)
   );
-  assign avg_pool_sum = serial_acc_read_data[POOL_SUM_WIDTH-1:0];
+  assign avg_pool_sum = avg_sum_q;
   assign avg_negated_sum = $unsigned(-avg_pool_sum);
   assign avg_residual_next = $signed({2'b00,avg_numerator_q}) - $signed({1'b0,avg_check_q});
   assign avg_unsigned_magnitude = avg_pool_sum<0 ?
@@ -1166,10 +1168,11 @@ module vector_engine #(
   assign avg_twice_remainder={avg_remainder_q,1'b0};
   assign avg_done=state==AVG_WAIT && avg_phase==4'd10;
   always_ff @(posedge clk) begin
-    // 倒数平均运算先经过 QUANT_INIT，累加器选择和绝对值计算在进入乘法器前完成。
-    if (state==QUANT_INIT && avg_pool && !avg_power_two)
-      avg_numerator_q<=AVG_SCALE_BITS'(avg_input_magnitude);
+    // 累加项在 QUANT_INIT 保存，下一周期准备绝对值并启动倒数乘法。
+    if (state==QUANT_INIT && avg_pool)
+      avg_sum_q<=serial_acc_read_data[POOL_SUM_WIDTH-1:0];
     if (state==AVG_START && !avg_power_two) begin
+      avg_numerator_q<=AVG_SCALE_BITS'(avg_input_magnitude);
       avg_phase<=0;
     end else if (state==AVG_WAIT) begin
       if (avg_phase==1) avg_estimate_q<=8'(multiplier_product >> AVG_SCALE_BITS);
@@ -1197,7 +1200,7 @@ module vector_engine #(
   end
 
   assign multiplier_a=avg_pool ?
-      (state==AVG_START ? $signed(32'(avg_numerator_q)) : $signed({24'd0,avg_estimate_q})) :
+      (state==AVG_START ? $signed(32'(avg_input_magnitude)) : $signed({24'd0,avg_estimate_q})) :
       add_s8 ? add_operand : softmax_s8 ? soft_mul_a : q_accumulator;
   assign multiplier_b=avg_pool ?
       (state==AVG_START ? $signed(32'(avg_reciprocal_data)) : $signed(32'(valid_taps))) :

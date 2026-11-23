@@ -73,7 +73,14 @@ module picorv32_pcpi_div (
     wire [31:0] negative_rs2 = 32'd0 - pcpi_rs2;
     wire [32:0] remainder_difference =
         {1'b0, dividend} - {1'b0, divisor[31:0]};
-    wire subtract_permitted = !(|divisor[62:32]) && !remainder_difference[32];
+    wire remainder_less;
+    wire unused_remainder_equal;
+    wire subtract_permitted = !(|divisor[62:32]) && !remainder_less;
+    // 商位资格独立比较，余数减法只承担数据计算。
+    unsigned_compare #(.p_width(32)) u_remainder_compare (
+        .i_a(dividend), .i_b(divisor[31:0]),
+        .o_less(remainder_less), .o_equal(unused_remainder_equal)
+    );
     wire [31:0] unsigned_result = (instr_div || instr_divu) ? quotient : dividend;
     wire [31:0] negative_result = 32'd0 - unsigned_result;
 

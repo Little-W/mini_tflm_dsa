@@ -4,7 +4,6 @@
 ../../rtl/npu/conv/vector_engine_control_pkg.sv
 ../../rtl/npu/writeback/requant_pkg.sv
 ../../rtl/npu/conv/vector_pe.sv
-../../rtl/npu/conv/registered_vector_pe.sv
 ../../rtl/npu/conv/vector_reduce_alu.sv
 ../../rtl/npu/conv/vector_softmax.sv
 ../../rtl/npu/conv/vector_softmax_accumulator.sv
@@ -43,6 +42,7 @@
 ../../rtl/npu/dma/cache/conv_cache_metadata_way.sv
 ../../rtl/npu/dma/cache/conv_cache_rank_table.sv
 ../../rtl/npu/dma/cache/conv_sdp_ram.sv
++incdir+../../include
 +incdir+../../rtl/npu/ps_compact
 ../../rtl/axi_top/npu_axil_reg_if.sv
 ../../rtl/axi_top/npu_axil_top.sv
@@ -52,13 +52,13 @@
 ../../rtl/npu/loaders/bias_loader_ctrl.sv
 ../../rtl/npu/compute/bias_mux.sv
 ../../rtl/npu/compute/select_add.sv
+../../rtl/npu/compute/registered_vector_add.sv
 ../../rtl/npu/dma/axi_block_dma_arbiter.sv
 ../../rtl/npu/dma/axi_linear_block_dma.sv
 ../../rtl/npu/dma/axi_write_page_guard.sv
 ../../rtl/npu/dma/axi_dual_block_dma.sv
 ../../rtl/npu/dma/dma_register_buffer.sv
 ../../rtl/npu/compute/compute_core.sv
-../../rtl/npu/compute/de_diagonalizer.sv
 ../../rtl/npu/loaders/ia_loader.sv
 ../../rtl/npu/loaders/ia_ordered_coordinate_equal.sv
 ../../rtl/npu/loaders/ia_ordered_coordinate_same.sv
@@ -98,7 +98,6 @@
 ../../rtl/npu/buffers/ps_buffer.sv
 ../../rtl/npu/buffers/ps_buffer_wide_fifo.sv
 ../../rtl/npu/buffers/ps_buffer_exact_ram.sv
-../../rtl/npu/buffers/ps_buffer_fifo.sv
 ../../rtl/common/pseudo_dual_port_ram.v
 ../../rtl/common/regfile.v
 ../../rtl/common/add_equal.sv

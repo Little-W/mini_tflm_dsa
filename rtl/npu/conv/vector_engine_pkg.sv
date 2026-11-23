@@ -29,4 +29,13 @@ package vector_engine_pkg;
   localparam logic [2:0] PE_MADD = 3'd0, PE_SUM = 3'd1,
     PE_MAX = 3'd2, PE_MIN = 3'd3, PE_MUL = 3'd4,
     PE_MUL_UU = 3'd5, PE_MUL_SU = 3'd6;
+
+  // 坐标只用于十六位图像范围判断；超过最大尺寸后保持统一的越界值。
+  function automatic logic signed [17:0] advance_coordinate(
+      input logic signed [17:0] coordinate,
+      input logic [15:0] increment);
+    logic signed [18:0] sum;
+    sum = $signed({coordinate[17], coordinate}) + $signed({3'b000, increment});
+    advance_coordinate = !sum[18] && (|sum[17:16]) ? 18'sd65536 : sum[17:0];
+  endfunction
 endpackage

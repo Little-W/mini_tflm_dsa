@@ -66,7 +66,6 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $pico_root picosoc simpleuart.v] \
         [file join $soc_root axi_top npu_axil_reg_if.sv] \
         [file join $soc_root axi_top npu_axil_top.sv] \
-        [file join $npu_compute_root accumulator_array.sv] \
         [file join $npu_dma_root axi_block_dma_arbiter.sv] \
         [file join $npu_dma_root axi_write_page_guard.sv] \
         [file join $npu_dma_root axi_dual_block_dma.sv] \
@@ -76,9 +75,8 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_loaders_root bias_loader_ctrl.sv] \
         [file join $npu_compute_root bias_mux.sv] \
         [file join $npu_compute_root select_add.sv] \
+        [file join $npu_compute_root registered_vector_add.sv] \
         [file join $npu_compute_root compute_core.sv] \
-        [file join $npu_compute_root data_setup.sv] \
-        [file join $npu_compute_root de_diagonalizer.sv] \
         [file join $npu_loaders_root ia_buffer_wrapper.sv] \
         [file join $npu_loaders_root ia_loader.sv] \
         [file join $npu_loaders_root ia_ordered_coordinate_same.sv] \
@@ -104,14 +102,12 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_buffers_root ia_ps_shared_ram.sv] \
         [file join $npu_buffers_root vector_shared_store.sv] \
         [file join $npu_buffers_root ps_buffer.sv] \
-        [file join $npu_buffers_root ps_buffer_fifo.sv] \
         [file join $common_root pseudo_dual_port_ram.v] \
         [file join $common_root regfile.v] \
         [file join $common_root add_equal.sv] \
         [file join $common_root add3_equal.sv] \
         [file join $common_root onehot_check.sv] \
         [file join $common_root parallel_prefix_add.sv] \
-        [file join $npu_compute_root shift_accumulator.sv] \
         [file join $npu_writeback_root requant_compute_lane.sv] \
         [file join $npu_writeback_root requant_group_buffer.sv] \
         [file join $npu_writeback_root vec_requant.sv] \

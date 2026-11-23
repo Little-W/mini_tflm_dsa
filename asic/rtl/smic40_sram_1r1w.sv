@@ -22,8 +22,8 @@ module smic40_sram_1r1w #(
     reg [BANK_BITS-1:0] read_bank;
     localparam integer LOW_BITS = (MACRO_DEPTH == 128) ? 7 : 10;
     always @(posedge clk)
-        if (read_enable) read_bank <= read_address >> LOW_BITS;
-    assign read_data = bank_data[read_bank];
+        if (read_enable) read_bank <= BANK_BITS'(read_address >> LOW_BITS);
+    assign read_data = DATA_WIDTH'(bank_data[read_bank]);
 
     genvar b, lane;
     generate for (b=0; b<BANKS; b=b+1) begin: g_bank
@@ -31,16 +31,16 @@ module smic40_sram_1r1w #(
         wire wr = write_enable && ((write_address >> LOW_BITS) == b);
         for (lane=0; lane<LANES; lane=lane+1) begin: g_lane
             if (MACRO_DEPTH == 128) begin: g_128
-                wire [6:0] ra = read_address;
-                wire [6:0] wa = write_address;
+                wire [6:0] ra = 7'(read_address);
+                wire [6:0] wa = 7'(write_address);
                 RAMTP128X16 u_sram (
                     .QA(bank_data[b][lane*16 +: 16]), .CLKA(clk), .CENA(~rd), .AA(ra),
                     .CLKB(clk), .CENB(~wr), .WENB(~mask_padded[lane*16 +: 16]), .AB(wa),
                     .DB(write_padded[lane*16 +: 16]), .EMAA(3'b010), .EMAB(3'b010),
                     .RET1N(1'b1), .COLLDISN(1'b1));
             end else begin: g_1024
-                wire [9:0] ra = read_address;
-                wire [9:0] wa = write_address;
+                wire [9:0] ra = 10'(read_address);
+                wire [9:0] wa = 10'(write_address);
                 RAMTP1024X16 u_sram (
                     .QA(bank_data[b][lane*16 +: 16]), .CLKA(clk), .CENA(~rd), .AA(ra),
                     .CLKB(clk), .CENB(~wr), .WENB(~mask_padded[lane*16 +: 16]), .AB(wa),

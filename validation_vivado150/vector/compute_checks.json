@@ -1,0 +1,1270 @@
+{
+  "passed": true,
+  "scope": "统一向量 PE、标量乘法器与量化通道的数值、等价和容量检查",
+  "production_source_sha256": {
+    "rtl/npu/conv/registered_multiplier_s32.sv": "a90920f46be466d6853e475461fe0a5dbe2c7de21d8d3c2371eb45c6be0398c3",
+    "rtl/npu/conv/vector_config_check.sv": "55a64dc599ac5ccdd885483abcdd7848a275f9705d7471b546508b8c0513acdf",
+    "rtl/npu/conv/vector_engine.sv": "b9bef139d455f47910caa9fedf4f07e74f7c8906b281461d5235cda97a422f0f",
+    "rtl/npu/conv/vector_engine_address.sv": "68016bd20a752d4dff0da64aae2e9a29529775c7734e32ba7c0d09728caa23c7",
+    "rtl/npu/conv/vector_engine_control.sv": "3dea6def020078ac08bc15b8728929a54c031f1348dc32ee11981da24977fe37",
+    "rtl/npu/conv/vector_engine_operand_store.sv": "da3358cecdb5ced2bddd0bb3b6d1c9a4ec775b720d12012764fac1515b3e9485",
+    "rtl/npu/conv/vector_engine_pkg.sv": "28b42e82aec52fd9b81a2f3a2d62cd8388e992baa5cea7b95feee5ebb8279605",
+    "rtl/npu/conv/vector_interval_bound.sv": "3085273f76733fb3fde46b816b9ed27bfcd37867d6cb0d080be0578fc19f688e",
+    "rtl/npu/conv/vector_pe.sv": "3e2f60c237635bddbaa04ca4c08c4bf6f054f529dbfc639ea1fbaac74e69edd2",
+    "rtl/npu/conv/vector_reduce_alu.sv": "762bbdb1a4bb340abbc06008f03ab6066e6f8020053ab0e481b3b57d411b8cb1",
+    "rtl/npu/conv/vector_softmax.sv": "289e555d804d5253ff7ffbca8f2555119252b0b099888f424998c696f4d1cd87",
+    "rtl/npu/conv/vector_softmax_accumulator.sv": "6a7ee9b09df247a4d707d7e5fbee532acbe6f81b8e22c4368bb798e1e4c2ee85",
+    "rtl/npu/writeback/requant_compute_lane.sv": "8d5576519c7226a0b327a94482826bece4abffe1f5f23792c988ca5f1165a141",
+    "rtl/npu/writeback/requant_group_buffer.sv": "d2fa3f8bc9c89ba0e9e5338d53a1060ba1c3172bcaa8209bc165cc48f8a04194"
+  },
+  "test_source_sha256": {
+    "test/vector_scalar_dsp_pair/run.py": "837fcd02ce5c50ff3ed8dc18739163c972eb72a72d0bfa2aecae35ad1bb84644",
+    "test/vector_engine/run.py": "ff2938a01b08b0001a27702a9919f53b59d58d1b820d999edbed97c77c2c00d5",
+    "test/monitors/vector_engine_observer.sv": "fc82746b8306935875125fc1fc9339e25fe05c2e98932f7f412fae5d55b3dfc2",
+    "test/monitors/requant_group_buffer_observer.sv": "fc5599bb2e5491f458c70c757bf2116f4b1515b1ee228aba03bbfe09a95b5047",
+    "test/conv_portable/prepare_measurement.py": "ae41ba23368b527b2ee74129d8ad4c6854ee40f4eea31d740bb51941577ce1a1",
+    "test/ps_channels/run_npu_structure.py": "08613cc01c449f9c6e7be0305a32039604932b87dc13b3694096e3b6b6b6c909",
+    "test/vector_pe_dsp/run_capacity.py": "62bf2bac534bbd07bce4d28b3f0bd20020a32d0b032c69f9152371b7a8fd709f",
+    "test/vector_extremum/run.py": "e70981e54687f2040aa9207ccdf7cb90f21cf61bcd0f03efc191444e8f72aaed",
+    "test/vector_extremum/README.md": "5e73b4bec3aac06c110917e2a906c2621a7378beba710f0af81d3e788b456752",
+    "test/vector_pe_accumulator/run.py": "943aa0e1e3098bf105fe70bb2af907b9b43b0a8b3f1fcbbc3c23a8b294021ae4",
+    "test/vector_pe_dsp/run_engine_formal.py": "e11bba226f30e967d1e52d7c75e899f23b52962bcf10f41d09857082096787e8",
+    "test/vector_pe_dsp/README.md": "952f66e2313ac44aa1b1ced3530bc1f4b89311e87d70d3bec62a9f0b647beb36",
+    "test/vector_pe_b_select/run_formal.py": "3d7a4655a7f81f43e981fa71afe61dd6acc60994d547e87d71bfbc867ba9d74a",
+    "test/vector_pe_b_select/README.md": "544d58615f7cfa04bd4a2114804e7f70eb9b86dbae25413c248e28274568285b",
+    "test/vector_shared_mac/run_formal.py": "283baac7b17a760faa2402bffe3fa740a65d7997ad624f293c2b90d79e66676e",
+    "test/vector_shared_mac/README.md": "91950e5fae46c1584d0845db526db5ea255917cea490fea00cb8e4678a370a3c",
+    "test/vector_engine/synth_pe.py": "3cacbc440817ecdf36ff7cc763d91a3103bfdc9115d2c2b3598e4f9668ae9a67",
+    "test/vector_control_flags/README.md": "a932434e629d4fb5a83f9efd9cc915abd702a669208dfb3308e4e9768749974e",
+    "test/vector_pe_dsp/run.py": "121fb4da282031c2d312eaada8bc072cd0affbebecc4cb6b26403b9eeebd4fb6",
+    "test/vector_pe_dsp/main.cpp": "cd9dee5dd02b54b4ad1d4464feaacef9a05cec4cf32d2f121bbca21e8b892b48",
+    "test/vector_pe_dsp/pe_test_top.sv": "e7817ed1744adccd6c802256d0350a7d8f57f767558b063edc44c3d03415e99a",
+    "test/requant_time_share/buffer_proof.sv": "2411fe359184112cab8d73b46fac586639f2cd65f70322c39104b93f99fa447e",
+    "test/requant_time_share/npu_observer.sv": "512219094cf555bebb906504d967aa4574d55b28f6ed897863d549736a41a0d1",
+    "test/requant_input_stage/buffer_proof.sv": "1d63934289a558e7cca3b4f992b9f21ff56ae60faf3cc606f796052a65d1c844",
+    "test/requant_compute_lane/run_formal.py": "f8a0ef316cd2b770efc4633642743054a68b0dffca0093ccb3b22f83ca8ad68c",
+    "test/requant_compute_lane/main.cpp": "6dc564ca27d1180707c5ee01f64a1de02eeab376f31e7046e8f0f6e2c98f938c",
+    "test/requant_compute_lane/run.py": "f2a60ce4727d02167e0eb61745a1a8eaa819180d58bca767ce686141131fa15f",
+    "test/requant_compute_lane/test_top.sv": "6f024e901752d935682d8fcbc35b5322ef493c90e0a165ab22b1699621634083",
+    "test/requant_compute_lane/run_width.py": "6bf4bada9a02136db41de7852d753fa19fbf7e7a97547573da9b958b9e21c325"
+  },
+  "leaf_checks": {
+    "vector_pe": {
+      "summary_sha256": "822ffe9c7f6a9b93a35151c3db2ce0fb053113b9f75e6572db8a828a94185d3b",
+      "result": {
+        "passed": true,
+        "executable_sha256": "af042c45fa7e4a3bf7c79485678b23a9fa4bf7dfdd219c58866d2f106cd29f57",
+        "cycles": 342664,
+        "comparisons": 2055981,
+        "enabled_cycles": 197686,
+        "stalled_cycles": 144978,
+        "operations": {
+          "0": 42927,
+          "1": 43189,
+          "2": 42943,
+          "3": 42768,
+          "4": 42735,
+          "5": 42747,
+          "6": 42867,
+          "7": 42488
+        }
+      },
+      "validated_source_sha256": {
+        "rtl/npu/conv/vector_pe.sv": "3e2f60c237635bddbaa04ca4c08c4bf6f054f529dbfc639ea1fbaac74e69edd2",
+        "test/vector_pe_dsp/pe_test_top.sv": "e7817ed1744adccd6c802256d0350a7d8f57f767558b063edc44c3d03415e99a",
+        "test/vector_pe_dsp/main.cpp": "cd9dee5dd02b54b4ad1d4464feaacef9a05cec4cf32d2f121bbca21e8b892b48"
+      }
+    },
+    "scalar": {
+      "summary_sha256": "5d51f887cc6dd1aa2b01ddf18b47e86fa1891fa186254214b311d7e5e5da922f",
+      "result": {
+        "formal": [
+          {
+            "input_a_registered": 0,
+            "input_b_registered": 0,
+            "passed": true,
+            "elapsed_seconds": 1.2,
+            "peak_process_tree_rss_bytes": 109543424,
+            "memory_sample_interval_seconds": 0.2
+          },
+          {
+            "input_a_registered": 0,
+            "input_b_registered": 1,
+            "passed": true,
+            "elapsed_seconds": 1.2,
+            "peak_process_tree_rss_bytes": 109572096,
+            "memory_sample_interval_seconds": 0.2
+          },
+          {
+            "input_a_registered": 1,
+            "input_b_registered": 0,
+            "passed": true,
+            "elapsed_seconds": 1.41,
+            "peak_process_tree_rss_bytes": 109846528,
+            "memory_sample_interval_seconds": 0.2
+          },
+          {
+            "input_a_registered": 1,
+            "input_b_registered": 1,
+            "passed": true,
+            "elapsed_seconds": 1.21,
+            "peak_process_tree_rss_bytes": 109293568,
+            "memory_sample_interval_seconds": 0.2
+          }
+        ],
+        "four_state": {
+          "samples": 23091,
+          "checks": 92364,
+          "passed": true
+        },
+        "numeric": {
+          "samples": 1134343,
+          "accepted": 934343,
+          "checks_0": 1134342,
+          "checks_1": 1134341,
+          "holds_0": 200000,
+          "holds_1": 200000,
+          "latency_0": 2,
+          "latency_1": 3,
+          "initiation_interval": 1,
+          "passed": true
+        },
+        "passed": true
+      },
+      "validated_source_sha256": {
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/conv/registered_multiplier_s32.sv": "64c685c13825c982f2f5ea354e2b5c1915c4191035a893422d8741ddeb7b5d9a",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/vector_scalar_dsp_pair/reference_multiplier.sv": "4e60f8caa3647d049f126b799a79fd4483dad731b220e3695185327fcb6e9c33",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/vector_scalar_dsp_pair/tb_four_state.sv": "1ceed8c2376131f8b5d148f3144123b31c3e8402d79ff57c01fd3a29edc8a06d",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/vector_scalar_dsp_pair/tb_numeric.sv": "bdd3049f05462707f4b9aacbb3dadc6cf5549e77f57ea11ac75c5b0ee8c3e072",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/vector_scalar_dsp_pair/run.py": "837fcd02ce5c50ff3ed8dc18739163c972eb72a72d0bfa2aecae35ad1bb84644"
+      }
+    },
+    "vector_pe_formal": {
+      "summary_sha256": "000b442f4138a261e8fe7d1561daa8331e7fc694be077d5d5fe79bfe0594812d",
+      "result": {
+        "reference": "caace9471dafe0236f0e2a9a40b8ddb48bdb844d",
+        "reference_sha256": "9eeed20de84eea63c38e4ecd6a9dbf0c48c734dad11bd4bfd64047c48b4bb5a4",
+        "input_constraints": null,
+        "runs": [
+          {
+            "case": "extended0_selected0",
+            "passed": true,
+            "arithmetic_output_bits": 32,
+            "captured_state_bits": 67,
+            "arithmetic_input_constraints": null,
+            "initial_capture_enabled": true,
+            "log_sha256": {
+              "extended0_selected0_arithmetic.log": "4077210c8192984ed04ef86660084a36c04d731aa8a66705d1c6eeb22641c522",
+              "extended0_selected0_state.log": "97b783e29da023a12b1cf9c98dd8a31d40c07344cdc530be84803e32d9fa8300"
+            }
+          },
+          {
+            "case": "extended0_selected1",
+            "passed": true,
+            "arithmetic_output_bits": 32,
+            "captured_state_bits": 67,
+            "arithmetic_input_constraints": null,
+            "initial_capture_enabled": true,
+            "log_sha256": {
+              "extended0_selected1_arithmetic.log": "b02c7077219d734706adf4fb9597a22346eed5ee0aaca7641c318726921553a5",
+              "extended0_selected1_state.log": "ceb46c3a92a028b5b0669fc9eea13dbb17a23db8ee539be187d78ee48b3c453d"
+            }
+          },
+          {
+            "case": "extended1_selected0",
+            "passed": true,
+            "arithmetic_output_bits": 32,
+            "captured_state_bits": 67,
+            "arithmetic_input_constraints": null,
+            "initial_capture_enabled": true,
+            "log_sha256": {
+              "extended1_selected0_arithmetic.log": "45c52735b47db391ec42aa6c94ef6031552e221ca7c3f07376e6d37fe65ef71b",
+              "extended1_selected0_state.log": "6a9bc39e5706bd362916499cbce41a818facd4794eb6bdb168e8f30fa3b43de9"
+            }
+          },
+          {
+            "case": "extended1_selected1",
+            "passed": true,
+            "arithmetic_output_bits": 32,
+            "captured_state_bits": 67,
+            "arithmetic_input_constraints": null,
+            "initial_capture_enabled": true,
+            "log_sha256": {
+              "extended1_selected1_arithmetic.log": "cd3a5388b8de0cb881c247fbb12983aa2a0d5011d0928d5c2a7287ab21e3e630",
+              "extended1_selected1_state.log": "acd205c59bc5ff8f86bbd64ba7f62bba91c4f74cae4886441ae0dc21cfe4ef7b"
+            }
+          }
+        ],
+        "preselection": [
+          {
+            "extended": 0,
+            "passed": true,
+            "log_sha256": "917f15366cebedeeb2e6ce39d4e95a8c723d134ade4df673a8b19e865b1f3bf6"
+          },
+          {
+            "extended": 1,
+            "passed": true,
+            "log_sha256": "eab9c9fdbf8dbd1f3a49a583a391b92209ecfb1e7d9d22c308d37dae07dc13fd"
+          }
+        ],
+        "four_state": {
+          "samples": 282625,
+          "checks": 1130500,
+          "hold_checks": 24576,
+          "passed": true
+        },
+        "passed": true
+      },
+      "validated_source_sha256": {
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/conv/vector_pe.sv": "3e2f60c237635bddbaa04ca4c08c4bf6f054f529dbfc639ea1fbaac74e69edd2",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/vector_extremum/run.py": "e70981e54687f2040aa9207ccdf7cb90f21cf61bcd0f03efc191444e8f72aaed"
+      }
+    },
+    "vector_engine_formal": {
+      "summary_sha256": "78136e9ca02d0f8fdac4734eed8338e9ff0cd79784a6d53371f8f2970a3db0fd",
+      "result": {
+        "passed": true,
+        "reference_revision": "caace9471dafe0236f0e2a9a40b8ddb48bdb844d",
+        "reference_pe_sha256": "ed1239bd2b9c170d713fc0f6a9297cf74d5991a7f32be1c50561e0d771123514",
+        "input_constraints": null,
+        "runs": [
+          {
+            "tile": 1,
+            "pe_count": 1,
+            "passed": true,
+            "compared_operand_state_bits": 67,
+            "result_bits": 32,
+            "equivalent_bits": 153,
+            "log_sha256": "d46c4f4dffb6e5d4f0344390e75757f924b0e098e22fd2a6ac2d8e40c3a0a899"
+          },
+          {
+            "tile": 3,
+            "pe_count": 2,
+            "passed": true,
+            "compared_operand_state_bits": 134,
+            "result_bits": 64,
+            "equivalent_bits": 305,
+            "log_sha256": "06c5a311caaa0ebfc8c9fc9c1635d059056402151914e7cbf45a89d745ad5447"
+          },
+          {
+            "tile": 16,
+            "pe_count": 8,
+            "passed": true,
+            "compared_operand_state_bits": 536,
+            "result_bits": 256,
+            "equivalent_bits": 1217,
+            "log_sha256": "7aacb43875f867699383de32a7cd025ce062c3db3f1249cccc3cae12979383cf"
+          },
+          {
+            "tile": 32,
+            "pe_count": 16,
+            "passed": true,
+            "compared_operand_state_bits": 1072,
+            "result_bits": 512,
+            "equivalent_bits": 2433,
+            "log_sha256": "7e30671bc473229b5c9fe3d1653e2e99abede74280192815ac8bca9fd49cab09"
+          }
+        ]
+      },
+      "validated_source_sha256": {
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/conv/vector_engine.sv": "b9bef139d455f47910caa9fedf4f07e74f7c8906b281461d5235cda97a422f0f",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/conv/vector_pe.sv": "3e2f60c237635bddbaa04ca4c08c4bf6f054f529dbfc639ea1fbaac74e69edd2",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/conv/vector_engine_pkg.sv": "28b42e82aec52fd9b81a2f3a2d62cd8388e992baa5cea7b95feee5ebb8279605",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/conv/vector_engine_control_pkg.sv": "468c03eb88992e3b6d0f380689dec7b11e0891accbe4fbf0880f882ddd3ec1e6",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/vector_pe_dsp/run_engine_formal.py": "e11bba226f30e967d1e52d7c75e899f23b52962bcf10f41d09857082096787e8",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/vector_extremum/run.py": "e70981e54687f2040aa9207ccdf7cb90f21cf61bcd0f03efc191444e8f72aaed"
+      }
+    },
+    "vector_pe_b_select": {
+      "summary_sha256": "6b20ef214a43c5a0c729b02a1b0bd0fc96a5875a1097666a445a5d2eac632f1e",
+      "result": {
+        "passed": true,
+        "engine_summary_sha256": "78136e9ca02d0f8fdac4734eed8338e9ff0cd79784a6d53371f8f2970a3db0fd",
+        "initialization": {
+          "first_cycle_i_en": 1,
+          "later_cycle_inputs": "unconstrained"
+        }
+      },
+      "validated_source_sha256": {
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/conv/vector_pe.sv": "3e2f60c237635bddbaa04ca4c08c4bf6f054f529dbfc639ea1fbaac74e69edd2"
+      }
+    },
+    "vector_pe_accumulator": {
+      "summary_sha256": "206f19045dd19db20f2e9a0c4b898c209b2024577301ec207ae02ca82324c0d1",
+      "result": {
+        "passed": true,
+        "arithmetic_summary_sha256": "000b442f4138a261e8fe7d1561daa8331e7fc694be077d5d5fe79bfe0594812d",
+        "operation_decode": {
+          "passed": true,
+          "input_codes": 16
+        }
+      },
+      "validated_source_sha256": {
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/conv/vector_engine_control.sv": "3dea6def020078ac08bc15b8728929a54c031f1348dc32ee11981da24977fe37",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/conv/vector_pe.sv": "3e2f60c237635bddbaa04ca4c08c4bf6f054f529dbfc639ea1fbaac74e69edd2"
+      }
+    },
+    "vector_shared_mac": {
+      "summary_sha256": "038a822a1907ace196b7c2a6022246780fa7107564362f893c0a8900ff0789ee",
+      "result": {
+        "passed": true,
+        "reference_revision": "caace9471dafe0236f0e2a9a40b8ddb48bdb844d",
+        "operand_constraints": [],
+        "compared_output_bits": 32,
+        "runs": [
+          {
+            "extended_multiply": 0,
+            "operation": 0,
+            "passed": true,
+            "proof": "extended0_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 0,
+            "operation": 1,
+            "passed": true,
+            "proof": "extended0_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 0,
+            "operation": 2,
+            "passed": true,
+            "proof": "extended0_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 0,
+            "operation": 3,
+            "passed": true,
+            "proof": "extended0_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 0,
+            "operation": 4,
+            "passed": true,
+            "proof": "extended0_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 0,
+            "operation": 5,
+            "passed": true,
+            "proof": "extended0_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 0,
+            "operation": 6,
+            "passed": true,
+            "proof": "extended0_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 0,
+            "operation": 7,
+            "passed": true,
+            "proof": "extended0_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 1,
+            "operation": 0,
+            "passed": true,
+            "proof": "extended1_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 1,
+            "operation": 1,
+            "passed": true,
+            "proof": "extended1_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 1,
+            "operation": 2,
+            "passed": true,
+            "proof": "extended1_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 1,
+            "operation": 3,
+            "passed": true,
+            "proof": "extended1_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 1,
+            "operation": 4,
+            "passed": true,
+            "proof": "extended1_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 1,
+            "operation": 5,
+            "passed": true,
+            "proof": "extended1_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 1,
+            "operation": 6,
+            "passed": true,
+            "proof": "extended1_selected0",
+            "compared_output_bits": 32
+          },
+          {
+            "extended_multiply": 1,
+            "operation": 7,
+            "passed": true,
+            "proof": "extended1_selected0",
+            "compared_output_bits": 32
+          }
+        ],
+        "arithmetic_summary_sha256": "000b442f4138a261e8fe7d1561daa8331e7fc694be077d5d5fe79bfe0594812d"
+      },
+      "validated_source_sha256": "3e2f60c237635bddbaa04ca4c08c4bf6f054f529dbfc639ea1fbaac74e69edd2"
+    },
+    "vector_pe_generic": {
+      "summary_sha256": "93567e7b5af7d8b7279e3c2d48b92787ea9ecbfa57ee9651b39153b24b9760c2",
+      "result": {
+        "scope": "统一寄存 PE 及其运算逻辑，统计通用逻辑单元和寄存器。",
+        "tool": "pyosys 0.71.post40",
+        "runner_sha256": "3cacbc440817ecdf36ff7cc763d91a3103bfdc9115d2c2b3598e4f9668ae9a67",
+        "metadata_cell_types": [
+          "$scopeinfo"
+        ],
+        "configurations": [
+          {
+            "pe_count": 1,
+            "arithmetic_cells": {
+              "$sdffce": 2,
+              "$dffe": 2,
+              "$reduce_or": 4,
+              "$eq": 11,
+              "$add": 1,
+              "$mul": 1,
+              "$lt": 1,
+              "$mux": 2,
+              "$xor": 1,
+              "$pmux": 1,
+              "$logic_not": 1
+            },
+            "arithmetic_metadata_cells": {
+              "$scopeinfo": 1
+            },
+            "generic_cells": {
+              "$_NAND_": 937,
+              "$_AND_": 452,
+              "$_OR_": 131,
+              "$_XNOR_": 176,
+              "$_XOR_": 536,
+              "$_ANDNOT_": 6,
+              "$_ORNOT_": 23,
+              "$_NOR_": 15,
+              "$_MUX_": 23,
+              "$_NOT_": 18,
+              "$_SDFFCE_PP0P_": 47,
+              "$_DFFE_PP_": 19,
+              "$_SDFFCE_PP1P_": 1
+            },
+            "generic_cell_count": 2384,
+            "generic_metadata_cells": {
+              "$scopeinfo": 1
+            },
+            "passed": true
+          },
+          {
+            "pe_count": 8,
+            "arithmetic_cells": {
+              "$sdffce": 16,
+              "$dffe": 9,
+              "$reduce_or": 4,
+              "$add": 8,
+              "$mul": 8,
+              "$eq": 18,
+              "$lt": 8,
+              "$mux": 16,
+              "$xor": 8,
+              "$pmux": 8,
+              "$logic_not": 1
+            },
+            "arithmetic_metadata_cells": {
+              "$scopeinfo": 8
+            },
+            "generic_cells": {
+              "$_NOT_": 148,
+              "$_AND_": 3576,
+              "$_NAND_": 7456,
+              "$_XOR_": 4289,
+              "$_XNOR_": 1405,
+              "$_OR_": 997,
+              "$_ANDNOT_": 60,
+              "$_NOR_": 106,
+              "$_MUX_": 187,
+              "$_ORNOT_": 143,
+              "$_SDFFCE_PP0P_": 376,
+              "$_SDFFCE_PP1P_": 8,
+              "$_DFFE_PP_": 131
+            },
+            "generic_cell_count": 18882,
+            "generic_metadata_cells": {
+              "$scopeinfo": 8
+            },
+            "passed": true
+          },
+          {
+            "pe_count": 16,
+            "arithmetic_cells": {
+              "$sdffce": 32,
+              "$dffe": 17,
+              "$reduce_or": 4,
+              "$add": 16,
+              "$mul": 16,
+              "$eq": 26,
+              "$lt": 16,
+              "$mux": 32,
+              "$xor": 16,
+              "$pmux": 16,
+              "$logic_not": 1
+            },
+            "arithmetic_metadata_cells": {
+              "$scopeinfo": 16
+            },
+            "generic_cells": {
+              "$_NOT_": 288,
+              "$_NAND_": 14941,
+              "$_ORNOT_": 277,
+              "$_AND_": 7132,
+              "$_XNOR_": 2816,
+              "$_OR_": 1998,
+              "$_XOR_": 8570,
+              "$_ANDNOT_": 120,
+              "$_NOR_": 210,
+              "$_MUX_": 375,
+              "$_SDFFCE_PP0P_": 752,
+              "$_SDFFCE_PP1P_": 16,
+              "$_DFFE_PP_": 259
+            },
+            "generic_cell_count": 37754,
+            "generic_metadata_cells": {
+              "$scopeinfo": 16
+            },
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "validated_source_sha256": "3e2f60c237635bddbaa04ca4c08c4bf6f054f529dbfc639ea1fbaac74e69edd2"
+    },
+    "requant_width": {
+      "summary_sha256": "2630c8d520225b2db242dde3644cc845ed1526614f4b7e5fc3685a52aa5e39cc",
+      "result": {
+        "passed": true,
+        "result_width": 35,
+        "reference_width": 64,
+        "formal_unconstrained_input_bits": 68,
+        "minimum_result": -10737418240,
+        "maximum_result": 10737418239,
+        "four_state": {
+          "checks": 280832,
+          "directed": 256,
+          "unknown_inputs": 278528
+        },
+        "log_sha256": {
+          "formal.log": "515dcb0058c7d23430fdeaab4212c6c3a50a8df9fd92ce6927229a059b7d485f",
+          "simulation.log": "8614d50ffe73fab8c6107e541d76d93d9eb312f2a9c8780ef6480dfda6fb3c31"
+        }
+      },
+      "validated_source_sha256": {
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/writeback/requant_compute_lane.sv": "8d5576519c7226a0b327a94482826bece4abffe1f5f23792c988ca5f1165a141",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/requant_compute_lane/run_width.py": "6bf4bada9a02136db41de7852d753fa19fbf7e7a97547573da9b958b9e21c325"
+      }
+    },
+    "requant_tail": {
+      "summary_sha256": "93186debc07985ae06940ac89b5b268ff18f64c5af32a4f95e423de960e07401",
+      "result": {
+        "passed": true,
+        "formal_input_value_bits": 99,
+        "formal_inputs_constrained": false,
+        "outputs_compared_bits": 25,
+        "four_state_control_bits": 5,
+        "four_state_cycles": 65536,
+        "four_state_comparisons": 131072,
+        "four_state_valid_checks": 12480,
+        "four_state_active_data_checks": 8456,
+        "latency_enabled_edges": 7,
+        "log_sha256": {
+          "proof.log": "e92c80d85a27d15313a4f1affe9aea864c129168024b30571e70fc007f6db642",
+          "four_state.log": "ddea2edbb758ccd18a147044862a883523d11f62bb311eb3ecf4667f815b89a7"
+        }
+      },
+      "validated_source_sha256": "8d5576519c7226a0b327a94482826bece4abffe1f5f23792c988ca5f1165a141"
+    },
+    "requant_lane": {
+      "summary_sha256": "02b3ecd0bfb56ffd5979271062d97d9a534550b3cc05c7ace93b2885ae5a08f6",
+      "result": {
+        "passed": true,
+        "latency_enabled_edges": 7,
+        "cases": {
+          "generic_delayed0": {
+            "passed": true,
+            "variant": "generic",
+            "delayed_parameters": 0,
+            "checks": {
+              "cycles": 1057912,
+              "outputs": 850859,
+              "directed": 524288,
+              "random": 524288,
+              "holds": 73578,
+              "clears": 3129,
+              "resets": 468,
+              "disabled_lanes": 42431,
+              "clear_during_hold": 787,
+              "latency": 7
+            },
+            "executable_sha256": "b013d4ee7c74483ccbcf8d35c0eb109695384713be49e3f89e9b110ffa6f86a5",
+            "log_sha256": "3c5e8b7e572f99f9df0cd9d5844af05d85d30794a46cb9969c653289acf41a14"
+          },
+          "generic_delayed1": {
+            "passed": true,
+            "variant": "generic",
+            "delayed_parameters": 1,
+            "checks": {
+              "cycles": 1057912,
+              "outputs": 850859,
+              "directed": 524288,
+              "random": 524288,
+              "holds": 73578,
+              "clears": 3129,
+              "resets": 468,
+              "disabled_lanes": 42431,
+              "clear_during_hold": 787,
+              "latency": 7
+            },
+            "executable_sha256": "02288300b43339cefb87b6878bf3e7434e4f1fc0a99ee87a1588a41fd83de996",
+            "log_sha256": "3c5e8b7e572f99f9df0cd9d5844af05d85d30794a46cb9969c653289acf41a14"
+          },
+          "fpga_delayed0": {
+            "passed": true,
+            "variant": "fpga",
+            "delayed_parameters": 0,
+            "checks": {
+              "cycles": 1057912,
+              "outputs": 850859,
+              "directed": 524288,
+              "random": 524288,
+              "holds": 73578,
+              "clears": 3129,
+              "resets": 468,
+              "disabled_lanes": 42431,
+              "clear_during_hold": 787,
+              "latency": 7
+            },
+            "executable_sha256": "b013d4ee7c74483ccbcf8d35c0eb109695384713be49e3f89e9b110ffa6f86a5",
+            "log_sha256": "3c5e8b7e572f99f9df0cd9d5844af05d85d30794a46cb9969c653289acf41a14"
+          },
+          "fpga_delayed1": {
+            "passed": true,
+            "variant": "fpga",
+            "delayed_parameters": 1,
+            "checks": {
+              "cycles": 1057912,
+              "outputs": 850859,
+              "directed": 524288,
+              "random": 524288,
+              "holds": 73578,
+              "clears": 3129,
+              "resets": 468,
+              "disabled_lanes": 42431,
+              "clear_during_hold": 787,
+              "latency": 7
+            },
+            "executable_sha256": "02288300b43339cefb87b6878bf3e7434e4f1fc0a99ee87a1588a41fd83de996",
+            "log_sha256": "3c5e8b7e572f99f9df0cd9d5844af05d85d30794a46cb9969c653289acf41a14"
+          }
+        }
+      },
+      "validated_source_sha256": {
+        "rtl/npu/writeback/requant_pkg.sv": "869759e4bb58908d6996648f13160e0201e1463d609519fab004e24dc15bb59d",
+        "rtl/npu/writeback/requant_shift_pipeline.sv": "cbb4c2c9ffa96d7d98311383065a119949540a3c5badd12575a0c780dce7a739",
+        "rtl/npu/writeback/requant_compute_lane.sv": "8d5576519c7226a0b327a94482826bece4abffe1f5f23792c988ca5f1165a141",
+        "rtl/npu/conv/registered_multiplier_s32.sv": "64c685c13825c982f2f5ea354e2b5c1915c4191035a893422d8741ddeb7b5d9a",
+        "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d"
+      }
+    },
+    "requant_capacity": {
+      "summary_sha256": "86cef8db93e112cfc084021e0d7da8c3514b0cca35a94c6aa1cf33cec53b3f9d",
+      "result": {
+        "passed": true,
+        "proof_sha256": "48ac43379c6d5444aaf045eeb02fc7ebc0a2ce0d9abb188eac59c10ce659461f",
+        "profiles": [
+          {
+            "rows": 1,
+            "passed": true,
+            "script_sha256": "c1050dc68bcf67729d7e48f14f67d4ec2c040072b5685d228c849e2c377595dc"
+          },
+          {
+            "rows": 3,
+            "passed": true,
+            "script_sha256": "8e16e28bc1cb416c53ec3a5b6de9b2aa8a96c7d44e2c9a1a3fba937be3be5ec9"
+          },
+          {
+            "rows": 16,
+            "passed": true,
+            "script_sha256": "a7268e3f769043b3da77ca156003d34b95ad7935877d88ff0e6fa369b4c73fec"
+          },
+          {
+            "rows": 127,
+            "passed": true,
+            "script_sha256": "322e02e6cadf98e26e5282af589bc94b6e532dc19bd049d8fba0f2cd1653ad56"
+          },
+          {
+            "rows": 128,
+            "passed": true,
+            "script_sha256": "7d8a25d60f9ae148fe99e7f49275d42063ff424e3a374af0dd49c8aa64188263"
+          },
+          {
+            "rows": 129,
+            "passed": true,
+            "script_sha256": "abe2dce3861dffc20dbb5008854322be47c466a8e8303c9b90e1dc9a526d960c"
+          },
+          {
+            "rows": 511,
+            "passed": true,
+            "script_sha256": "e64747919ac2dc5514504b3d639e50915ed2f4fb4b8315e85da3bd21c35de6fb"
+          },
+          {
+            "rows": 512,
+            "passed": true,
+            "script_sha256": "3c4489caba5b3c12877061cab85e43a1005a4df59a04d4426f137244171b3e0b"
+          },
+          {
+            "rows": 513,
+            "passed": true,
+            "script_sha256": "150ee8dc361329cec9ba860a7e9e3e80cfced067db35cb43d1b8d28836def743"
+          },
+          {
+            "rows": 1024,
+            "passed": true,
+            "script_sha256": "99af1bb341e02834223e3295b03e543e2a3dca22c98e526f1529815d2196afb6"
+          }
+        ],
+        "properties": [
+          "整组预留覆盖全部未完成行",
+          "地址始终位于有效行范围",
+          "循环地址距离与未读取行数一致",
+          "同步 SRAM 不发生同地址读写"
+        ],
+        "assumptions": [
+          "整组仅在 ready 时预留，行数在 1 至容量之间",
+          "输入行数不超过已预留行数",
+          "输出只消费已发射的行"
+        ],
+        "unconstrained_inputs": [
+          "组到达时间",
+          "输入行到达时间",
+          "输出背压",
+          "流水完成时间",
+          "复位和清空"
+        ]
+      },
+      "validated_source_sha256": {
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/npu/writeback/requant_group_buffer.sv": "d2fa3f8bc9c89ba0e9e5338d53a1060ba1c3172bcaa8209bc165cc48f8a04194",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/requant_time_share/buffer_proof.sv": "2411fe359184112cab8d73b46fac586639f2cd65f70322c39104b93f99fa447e",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/monitors/requant_group_buffer_observer.sv": "fc5599bb2e5491f458c70c757bf2116f4b1515b1ee228aba03bbfe09a95b5047",
+        "/workspace/scratch/e1a5fa683a84/mini_tflm_dsa/test/requant_group_buffer_memory/run_control.py": "a5aeecf439b262595d770662810bb5db98cf8964daad322a06aa86a35b6b721d"
+      }
+    },
+    "requant_input_capacity": {
+      "summary_sha256": "094c54e37830eb2012303fe4fcfc890189e9c15c267a2532d2259155349f5cfc",
+      "result": {
+        "formal": {
+          "passed": true,
+          "results": [
+            {
+              "rows": 1,
+              "passed": true,
+              "elapsed_seconds": 0.2,
+              "peak_process_tree_rss_bytes": 94208,
+              "memory_sample_interval_seconds": 0.2
+            },
+            {
+              "rows": 3,
+              "passed": true,
+              "elapsed_seconds": 0.2,
+              "peak_process_tree_rss_bytes": 90112,
+              "memory_sample_interval_seconds": 0.2
+            },
+            {
+              "rows": 16,
+              "passed": true,
+              "elapsed_seconds": 0.4,
+              "peak_process_tree_rss_bytes": 56614912,
+              "memory_sample_interval_seconds": 0.2
+            },
+            {
+              "rows": 512,
+              "passed": true,
+              "elapsed_seconds": 3.21,
+              "peak_process_tree_rss_bytes": 62328832,
+              "memory_sample_interval_seconds": 0.2
+            },
+            {
+              "rows": 1024,
+              "passed": true,
+              "elapsed_seconds": 13.89,
+              "peak_process_tree_rss_bytes": 64798720,
+              "memory_sample_interval_seconds": 0.2
+            }
+          ],
+          "assumptions": [
+            "组开始时已就绪且行数在容量以内",
+            "生产者不超过已预留行数",
+            "输出只释放已经发射的行"
+          ],
+          "arbitrary_inputs": [
+            "生产者间隔",
+            "缓存读取暂停",
+            "量化输出等待",
+            "复位与清空"
+          ],
+          "invariant": "未完成预留等于未产生行、生产者寄存行、RAM行、读出行与已发射行之和"
+        }
+      },
+      "validated_source_sha256": {
+        "rtl/npu/writeback/requant_group_buffer.sv": "d2fa3f8bc9c89ba0e9e5338d53a1060ba1c3172bcaa8209bc165cc48f8a04194",
+        "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
+        "test/requant_input_stage/buffer_proof.sv": "1d63934289a558e7cca3b4f992b9f21ff56ae60faf3cc606f796052a65d1c844",
+        "test/monitors/requant_group_buffer_observer.sv": "fc5599bb2e5491f458c70c757bf2116f4b1515b1ee228aba03bbfe09a95b5047"
+      }
+    }
+  },
+  "vector_system_checks": [
+    {
+      "profile": "vector_fpga8",
+      "verification": "RTL engine + production DMA; independent signed-integer nearest-even reference",
+      "tile": 16,
+      "cache_sets": 128,
+      "cache_policy": 3,
+      "cache_line_bytes": 16,
+      "cache_bytes": 4096,
+      "bus_width": 64,
+      "window_lanes": 8,
+      "shared_quant": true,
+      "shared_storage": true,
+      "shared_bank_bytes": 8192,
+      "shared_bank_count": 7,
+      "shared_ia_banks": 1,
+      "check_weight_prefetch": true,
+      "check_weight_write_stage": true,
+      "rtl_assertions": true,
+      "stable_stimulus": true,
+      "implementation": "generic",
+      "primitive_library_sha256": null,
+      "verilator": "rev vUNKNOWN-built20260516-4e853d8",
+      "passed": true,
+      "pe_count": 8,
+      "totals": {
+        "cases": 616,
+        "outputs": 170743,
+        "add_cases": 143,
+        "add_outputs": 135758,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "cycles": 3479871,
+      "executable_sha256": "6a74d62ff32bf31eab5a0253f048e29fe3ffbc40c2bc1a4d5f6ae8b82d859543",
+      "summary_sha256": "9d4959b88e437df49e465092dc41df0160729faa838fddbc26f113dd3e7980bb",
+      "validated_production_source_sha256": {
+        "rtl/npu/conv/registered_multiplier_s32.sv": "64c685c13825c982f2f5ea354e2b5c1915c4191035a893422d8741ddeb7b5d9a",
+        "rtl/npu/conv/vector_config_check.sv": "55a64dc599ac5ccdd885483abcdd7848a275f9705d7471b546508b8c0513acdf",
+        "rtl/npu/conv/vector_engine.sv": "b9bef139d455f47910caa9fedf4f07e74f7c8906b281461d5235cda97a422f0f",
+        "rtl/npu/conv/vector_engine_address.sv": "68016bd20a752d4dff0da64aae2e9a29529775c7734e32ba7c0d09728caa23c7",
+        "rtl/npu/conv/vector_engine_control.sv": "3dea6def020078ac08bc15b8728929a54c031f1348dc32ee11981da24977fe37",
+        "rtl/npu/conv/vector_engine_operand_store.sv": "da3358cecdb5ced2bddd0bb3b6d1c9a4ec775b720d12012764fac1515b3e9485",
+        "rtl/npu/conv/vector_engine_pkg.sv": "28b42e82aec52fd9b81a2f3a2d62cd8388e992baa5cea7b95feee5ebb8279605",
+        "rtl/npu/conv/vector_interval_bound.sv": "3085273f76733fb3fde46b816b9ed27bfcd37867d6cb0d080be0578fc19f688e",
+        "rtl/npu/conv/vector_pe.sv": "3e2f60c237635bddbaa04ca4c08c4bf6f054f529dbfc639ea1fbaac74e69edd2",
+        "rtl/npu/conv/vector_reduce_alu.sv": "762bbdb1a4bb340abbc06008f03ab6066e6f8020053ab0e481b3b57d411b8cb1",
+        "rtl/npu/conv/vector_softmax.sv": "289e555d804d5253ff7ffbca8f2555119252b0b099888f424998c696f4d1cd87",
+        "rtl/npu/conv/vector_softmax_accumulator.sv": "6a7ee9b09df247a4d707d7e5fbee532acbe6f81b8e22c4368bb798e1e4c2ee85",
+        "rtl/npu/writeback/requant_compute_lane.sv": "1455164c6eaefa419ea8082316dc7358b16b7857017404916e5942da510d9d44",
+        "rtl/npu/writeback/requant_group_buffer.sv": "6f6f73f37eb16a04de75f6ae476272e25e606f24827ad93a4c09c41f25543d50"
+      }
+    },
+    {
+      "profile": "vector_dc16",
+      "verification": "RTL engine + production DMA; independent signed-integer nearest-even reference",
+      "tile": 16,
+      "cache_sets": 16,
+      "cache_policy": 3,
+      "cache_line_bytes": 128,
+      "cache_bytes": 4096,
+      "bus_width": 64,
+      "window_lanes": 16,
+      "shared_quant": false,
+      "shared_storage": true,
+      "shared_bank_bytes": 8192,
+      "shared_bank_count": 7,
+      "shared_ia_banks": 2,
+      "check_weight_prefetch": true,
+      "check_weight_write_stage": true,
+      "rtl_assertions": true,
+      "stable_stimulus": true,
+      "implementation": "generic",
+      "primitive_library_sha256": null,
+      "verilator": "rev vUNKNOWN-built20260516-4e853d8",
+      "passed": true,
+      "pe_count": 16,
+      "totals": {
+        "cases": 616,
+        "outputs": 170743,
+        "add_cases": 143,
+        "add_outputs": 135758,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "cycles": 3593803,
+      "executable_sha256": "65e16a608cfc10de973c6d900075c57f3dafb25e370bc512af090267ba7044d7",
+      "summary_sha256": "6324f6a72e3557bd8cb3d51a27f75fa7f081dafb07074d48bf2386dc4bb3c4fe",
+      "validated_production_source_sha256": {
+        "rtl/npu/conv/registered_multiplier_s32.sv": "64c685c13825c982f2f5ea354e2b5c1915c4191035a893422d8741ddeb7b5d9a",
+        "rtl/npu/conv/vector_config_check.sv": "55a64dc599ac5ccdd885483abcdd7848a275f9705d7471b546508b8c0513acdf",
+        "rtl/npu/conv/vector_engine.sv": "b9bef139d455f47910caa9fedf4f07e74f7c8906b281461d5235cda97a422f0f",
+        "rtl/npu/conv/vector_engine_address.sv": "68016bd20a752d4dff0da64aae2e9a29529775c7734e32ba7c0d09728caa23c7",
+        "rtl/npu/conv/vector_engine_control.sv": "3dea6def020078ac08bc15b8728929a54c031f1348dc32ee11981da24977fe37",
+        "rtl/npu/conv/vector_engine_operand_store.sv": "da3358cecdb5ced2bddd0bb3b6d1c9a4ec775b720d12012764fac1515b3e9485",
+        "rtl/npu/conv/vector_engine_pkg.sv": "28b42e82aec52fd9b81a2f3a2d62cd8388e992baa5cea7b95feee5ebb8279605",
+        "rtl/npu/conv/vector_interval_bound.sv": "3085273f76733fb3fde46b816b9ed27bfcd37867d6cb0d080be0578fc19f688e",
+        "rtl/npu/conv/vector_pe.sv": "3e2f60c237635bddbaa04ca4c08c4bf6f054f529dbfc639ea1fbaac74e69edd2",
+        "rtl/npu/conv/vector_reduce_alu.sv": "762bbdb1a4bb340abbc06008f03ab6066e6f8020053ab0e481b3b57d411b8cb1",
+        "rtl/npu/conv/vector_softmax.sv": "289e555d804d5253ff7ffbca8f2555119252b0b099888f424998c696f4d1cd87",
+        "rtl/npu/conv/vector_softmax_accumulator.sv": "6a7ee9b09df247a4d707d7e5fbee532acbe6f81b8e22c4368bb798e1e4c2ee85",
+        "rtl/npu/writeback/requant_compute_lane.sv": "1455164c6eaefa419ea8082316dc7358b16b7857017404916e5942da510d9d44",
+        "rtl/npu/writeback/requant_group_buffer.sv": "6f6f73f37eb16a04de75f6ae476272e25e606f24827ad93a4c09c41f25543d50"
+      }
+    }
+  ],
+  "capacity_checks": [
+    {
+      "profile": "vector_capacity",
+      "passed": true,
+      "configuration": {
+        "PCR_ENGINE": 1,
+        "SIZE": 16,
+        "IA_CACHE_BLOCKS": 4,
+        "PS_FRAME_COUNT": 16,
+        "NPU_AXI_DATA_WIDTH": 64,
+        "IA_COMPACT_ENABLE": 0,
+        "IM2COL_CACHE_BYTES": 4096,
+        "SHARED_BANK_BYTES": 8192,
+        "SHARED_BANK_COUNT": 7,
+        "AXI_READ_OUTSTANDING": 4,
+        "PS_POOL_BYTES": 49152,
+        "PS_FORCE_RAW": 1,
+        "CAPACITY_BUDGET_BYTES": 131072,
+        "CAPACITY_BUDGET_SCOPE": "buffer-ram",
+        "CAPACITY_REPRESENTATION": "raw32"
+      },
+      "runs": [
+        {
+          "pe_count": 8,
+          "passed": true,
+          "total_state_bits": 827614,
+          "buffer_arrays_bits": {
+            "vector_buffers": 2912,
+            "vector_write_queue": 1024,
+            "vector_pool_reciprocal_rom": 4626,
+            "vector_dw_result_queue": 256,
+            "conv_prefetch_queue": 1032,
+            "conv_data_cache": 32768,
+            "conv_cache_metadata": 4736,
+            "conv_request_queue": 270,
+            "conv_response_queue": 130,
+            "ia_ps_shared_ram": 458752,
+            "ia_slot_metadata": 384,
+            "ia_cache_tags": 1984,
+            "kernel_cache": 12288,
+            "bias_cache": 16384,
+            "ps_decoded_fifo": 4096,
+            "ps_frame_valid": 16,
+            "ps_frame_lengths": 144,
+            "requant_is_cache": 9984,
+            "requant_input_rows": 131328,
+            "oa_s8_fifo": 65536,
+            "oa_s16_fifo": 16384
+          },
+          "register_arrays_bits": {
+            "core_row_metadata": 65,
+            "requant_ws_parameters": 1648
+          },
+          "vector_pe_instances": 8,
+          "systolic_cell_instances": 256,
+          "hardware_configuration": {
+            "PCR_ENGINE": 1,
+            "SIZE": 16,
+            "IA_CACHE_BLOCKS": 4,
+            "PS_FRAME_COUNT": 16,
+            "AXI_READ_OUTSTANDING": 4,
+            "PS_POOL_BYTES": 49152,
+            "PS_FORCE_RAW": 1,
+            "NPU_AXI_DATA_WIDTH": 64,
+            "IA_COMPACT_ENABLE": 0,
+            "SHARED_BANK_BYTES": 8192,
+            "SHARED_BANK_COUNT": 7,
+            "IM2COL_CACHE_BYTES": 4096,
+            "CONV_LINE_BYTES": 128,
+            "CONV_CACHE_WAYS": 2,
+            "VECTOR_PE_COUNT": 8,
+            "WINDOW_LANES": 8,
+            "SHARED_STORAGE_ENABLE": 1,
+            "SHARED_QUANT_ENABLE": 0,
+            "QUANT_LANES": 1
+          }
+        },
+        {
+          "pe_count": 16,
+          "passed": true,
+          "total_state_bits": 829312,
+          "buffer_arrays_bits": {
+            "vector_buffers": 3424,
+            "vector_write_queue": 1024,
+            "vector_pool_reciprocal_rom": 4626,
+            "vector_dw_result_queue": 256,
+            "conv_prefetch_queue": 1032,
+            "conv_data_cache": 32768,
+            "conv_cache_metadata": 4736,
+            "conv_request_queue": 270,
+            "conv_response_queue": 258,
+            "ia_ps_shared_ram": 458752,
+            "ia_slot_metadata": 384,
+            "ia_cache_tags": 1984,
+            "kernel_cache": 12288,
+            "bias_cache": 16384,
+            "ps_decoded_fifo": 4096,
+            "ps_frame_valid": 16,
+            "ps_frame_lengths": 144,
+            "requant_is_cache": 9984,
+            "requant_input_rows": 131328,
+            "oa_s8_fifo": 65536,
+            "oa_s16_fifo": 16384
+          },
+          "register_arrays_bits": {
+            "core_row_metadata": 65,
+            "requant_ws_parameters": 1648
+          },
+          "vector_pe_instances": 16,
+          "systolic_cell_instances": 256,
+          "hardware_configuration": {
+            "PCR_ENGINE": 1,
+            "SIZE": 16,
+            "IA_CACHE_BLOCKS": 4,
+            "PS_FRAME_COUNT": 16,
+            "AXI_READ_OUTSTANDING": 4,
+            "PS_POOL_BYTES": 49152,
+            "PS_FORCE_RAW": 1,
+            "NPU_AXI_DATA_WIDTH": 64,
+            "IA_COMPACT_ENABLE": 0,
+            "SHARED_BANK_BYTES": 8192,
+            "SHARED_BANK_COUNT": 7,
+            "IM2COL_CACHE_BYTES": 4096,
+            "CONV_LINE_BYTES": 128,
+            "CONV_CACHE_WAYS": 2,
+            "VECTOR_PE_COUNT": 16,
+            "WINDOW_LANES": 16,
+            "SHARED_STORAGE_ENABLE": 1,
+            "SHARED_QUANT_ENABLE": 0,
+            "QUANT_LANES": 1
+          }
+        }
+      ],
+      "summary_sha256": "e55571625849b6d9055fdaafd5e2c6751f7fc73033bbdad9d295cd1aea89231c",
+      "validated_production_source_sha256": {
+        "rtl/npu/conv/vector_engine_pkg.sv": "28b42e82aec52fd9b81a2f3a2d62cd8388e992baa5cea7b95feee5ebb8279605",
+        "rtl/npu/conv/vector_pe.sv": "3e2f60c237635bddbaa04ca4c08c4bf6f054f529dbfc639ea1fbaac74e69edd2",
+        "rtl/npu/conv/vector_reduce_alu.sv": "762bbdb1a4bb340abbc06008f03ab6066e6f8020053ab0e481b3b57d411b8cb1",
+        "rtl/npu/conv/vector_softmax.sv": "289e555d804d5253ff7ffbca8f2555119252b0b099888f424998c696f4d1cd87",
+        "rtl/npu/conv/vector_softmax_accumulator.sv": "6a7ee9b09df247a4d707d7e5fbee532acbe6f81b8e22c4368bb798e1e4c2ee85",
+        "rtl/npu/conv/vector_config_check.sv": "55a64dc599ac5ccdd885483abcdd7848a275f9705d7471b546508b8c0513acdf",
+        "rtl/npu/conv/registered_multiplier_s32.sv": "64c685c13825c982f2f5ea354e2b5c1915c4191035a893422d8741ddeb7b5d9a",
+        "rtl/npu/conv/vector_engine.sv": "b9bef139d455f47910caa9fedf4f07e74f7c8906b281461d5235cda97a422f0f",
+        "rtl/npu/conv/vector_engine_control.sv": "3dea6def020078ac08bc15b8728929a54c031f1348dc32ee11981da24977fe37",
+        "rtl/npu/conv/vector_engine_address.sv": "68016bd20a752d4dff0da64aae2e9a29529775c7734e32ba7c0d09728caa23c7",
+        "rtl/npu/conv/vector_engine_operand_store.sv": "da3358cecdb5ced2bddd0bb3b6d1c9a4ec775b720d12012764fac1515b3e9485",
+        "rtl/npu/conv/vector_interval_bound.sv": "3085273f76733fb3fde46b816b9ed27bfcd37867d6cb0d080be0578fc19f688e",
+        "rtl/npu/writeback/requant_compute_lane.sv": "8d5576519c7226a0b327a94482826bece4abffe1f5f23792c988ca5f1165a141",
+        "rtl/npu/writeback/requant_group_buffer.sv": "d2fa3f8bc9c89ba0e9e5338d53a1060ba1c3172bcaa8209bc165cc48f8a04194"
+      }
+    },
+    {
+      "profile": "vector_capacity_compact",
+      "passed": true,
+      "configuration": {
+        "PCR_ENGINE": 1,
+        "SIZE": 16,
+        "IA_CACHE_BLOCKS": 4,
+        "PS_FRAME_COUNT": 16,
+        "NPU_AXI_DATA_WIDTH": 64,
+        "IA_COMPACT_ENABLE": 1,
+        "IM2COL_CACHE_BYTES": 4096,
+        "SHARED_BANK_BYTES": 8192,
+        "SHARED_BANK_COUNT": 7,
+        "AXI_READ_OUTSTANDING": 4,
+        "PS_POOL_BYTES": 49152,
+        "PS_FORCE_RAW": 1,
+        "CAPACITY_BUDGET_BYTES": 131072,
+        "CAPACITY_BUDGET_SCOPE": "buffer-ram",
+        "CAPACITY_REPRESENTATION": "raw32"
+      },
+      "runs": [
+        {
+          "pe_count": 16,
+          "passed": true,
+          "total_state_bits": 989784,
+          "buffer_arrays_bits": {
+            "vector_buffers": 3424,
+            "vector_write_queue": 1024,
+            "vector_pool_reciprocal_rom": 4626,
+            "vector_dw_result_queue": 256,
+            "conv_prefetch_queue": 1032,
+            "conv_data_cache": 32768,
+            "conv_cache_metadata": 4736,
+            "conv_request_queue": 270,
+            "conv_response_queue": 258,
+            "ia_ps_shared_ram": 458752,
+            "ia_slot_metadata": 768,
+            "ia_cache_tags": 3968,
+            "kernel_cache": 12288,
+            "bias_cache": 32768,
+            "ps_decoded_fifo": 4096,
+            "ps_frame_valid": 16,
+            "ps_frame_lengths": 160,
+            "requant_is_cache": 19968,
+            "requant_input_rows": 262656,
+            "oa_s8_fifo": 65536,
+            "oa_s16_fifo": 16384
+          },
+          "register_arrays_bits": {
+            "core_row_metadata": 65,
+            "requant_ws_parameters": 1648
+          },
+          "vector_pe_instances": 16,
+          "systolic_cell_instances": 256,
+          "hardware_configuration": {
+            "PCR_ENGINE": 1,
+            "SIZE": 16,
+            "IA_CACHE_BLOCKS": 4,
+            "PS_FRAME_COUNT": 16,
+            "AXI_READ_OUTSTANDING": 4,
+            "PS_POOL_BYTES": 49152,
+            "PS_FORCE_RAW": 1,
+            "NPU_AXI_DATA_WIDTH": 64,
+            "IA_COMPACT_ENABLE": 1,
+            "SHARED_BANK_BYTES": 8192,
+            "SHARED_BANK_COUNT": 7,
+            "IM2COL_CACHE_BYTES": 4096,
+            "CONV_LINE_BYTES": 128,
+            "CONV_CACHE_WAYS": 2,
+            "VECTOR_PE_COUNT": 16,
+            "WINDOW_LANES": 16,
+            "SHARED_STORAGE_ENABLE": 1,
+            "SHARED_QUANT_ENABLE": 0,
+            "QUANT_LANES": 1
+          }
+        }
+      ],
+      "summary_sha256": "794274451aa421005c9c54eb56274a9a08b1bf7aa3265579c522bbf86ee6d34f",
+      "validated_production_source_sha256": {
+        "rtl/npu/conv/vector_engine_pkg.sv": "28b42e82aec52fd9b81a2f3a2d62cd8388e992baa5cea7b95feee5ebb8279605",
+        "rtl/npu/conv/vector_pe.sv": "3e2f60c237635bddbaa04ca4c08c4bf6f054f529dbfc639ea1fbaac74e69edd2",
+        "rtl/npu/conv/vector_reduce_alu.sv": "762bbdb1a4bb340abbc06008f03ab6066e6f8020053ab0e481b3b57d411b8cb1",
+        "rtl/npu/conv/vector_softmax.sv": "289e555d804d5253ff7ffbca8f2555119252b0b099888f424998c696f4d1cd87",
+        "rtl/npu/conv/vector_softmax_accumulator.sv": "6a7ee9b09df247a4d707d7e5fbee532acbe6f81b8e22c4368bb798e1e4c2ee85",
+        "rtl/npu/conv/vector_config_check.sv": "55a64dc599ac5ccdd885483abcdd7848a275f9705d7471b546508b8c0513acdf",
+        "rtl/npu/conv/registered_multiplier_s32.sv": "64c685c13825c982f2f5ea354e2b5c1915c4191035a893422d8741ddeb7b5d9a",
+        "rtl/npu/conv/vector_engine.sv": "b9bef139d455f47910caa9fedf4f07e74f7c8906b281461d5235cda97a422f0f",
+        "rtl/npu/conv/vector_engine_control.sv": "3dea6def020078ac08bc15b8728929a54c031f1348dc32ee11981da24977fe37",
+        "rtl/npu/conv/vector_engine_address.sv": "68016bd20a752d4dff0da64aae2e9a29529775c7734e32ba7c0d09728caa23c7",
+        "rtl/npu/conv/vector_engine_operand_store.sv": "da3358cecdb5ced2bddd0bb3b6d1c9a4ec775b720d12012764fac1515b3e9485",
+        "rtl/npu/conv/vector_interval_bound.sv": "3085273f76733fb3fde46b816b9ed27bfcd37867d6cb0d080be0578fc19f688e",
+        "rtl/npu/writeback/requant_compute_lane.sv": "8d5576519c7226a0b327a94482826bece4abffe1f5f23792c988ca5f1165a141",
+        "rtl/npu/writeback/requant_group_buffer.sv": "d2fa3f8bc9c89ba0e9e5338d53a1060ba1c3172bcaa8209bc165cc48f8a04194"
+      }
+    }
+  ],
+  "fpga_structure": {
+    "passed": true,
+    "buffer_arrays_bits": {
+      "vector_buffers": 3424,
+      "vector_write_queue": 1024,
+      "vector_pool_reciprocal_rom": 4626,
+      "vector_dw_result_queue": 256,
+      "conv_prefetch_queue": 1544,
+      "conv_data_cache": 32768,
+      "conv_cache_metadata": 4736,
+      "conv_request_queue": 270,
+      "conv_response_queue": 258,
+      "ia_ps_shared_ram": 458752,
+      "ia_slot_metadata": 384,
+      "ia_cache_tags": 1984,
+      "kernel_cache": 12288,
+      "bias_cache": 16384,
+      "ps_decoded_fifo": 4096,
+      "ps_frame_valid": 16,
+      "ps_frame_lengths": 144,
+      "requant_is_cache": 9984,
+      "requant_input_rows": 131328,
+      "oa_s8_fifo": 65536,
+      "oa_s16_fifo": 16384
+    },
+    "register_arrays_bits": {
+      "core_row_metadata": 65,
+      "requant_ws_parameters": 1648
+    },
+    "vector_pe_parameters": {
+      "ENABLE_EXTENDED_MULTIPLY": 0,
+      "p_accumulator_preselected": 0
+    },
+    "matrix_parameters": {
+      "IA_REUSE_NUM_MAX": 16
+    },
+    "parameters": {
+      "p_fixed_ps_channels": 1,
+      "SHARED_RAM_ENABLED": 1,
+      "SHARED_MAX_IA_BANKS": 2,
+      "IA_MAX_CACHE_BLOCKS": 32
+    },
+    "validated_production_source_sha256": {
+      "rtl/npu/conv/vector_engine_pkg.sv": "28b42e82aec52fd9b81a2f3a2d62cd8388e992baa5cea7b95feee5ebb8279605",
+      "rtl/npu/conv/vector_pe.sv": "3e2f60c237635bddbaa04ca4c08c4bf6f054f529dbfc639ea1fbaac74e69edd2",
+      "rtl/npu/conv/vector_reduce_alu.sv": "762bbdb1a4bb340abbc06008f03ab6066e6f8020053ab0e481b3b57d411b8cb1",
+      "rtl/npu/conv/vector_softmax.sv": "289e555d804d5253ff7ffbca8f2555119252b0b099888f424998c696f4d1cd87",
+      "rtl/npu/conv/vector_softmax_accumulator.sv": "6a7ee9b09df247a4d707d7e5fbee532acbe6f81b8e22c4368bb798e1e4c2ee85",
+      "rtl/npu/conv/vector_config_check.sv": "55a64dc599ac5ccdd885483abcdd7848a275f9705d7471b546508b8c0513acdf",
+      "rtl/npu/conv/registered_multiplier_s32.sv": "64c685c13825c982f2f5ea354e2b5c1915c4191035a893422d8741ddeb7b5d9a",
+      "rtl/npu/conv/vector_engine.sv": "b9bef139d455f47910caa9fedf4f07e74f7c8906b281461d5235cda97a422f0f",
+      "rtl/npu/conv/vector_engine_control.sv": "3dea6def020078ac08bc15b8728929a54c031f1348dc32ee11981da24977fe37",
+      "rtl/npu/conv/vector_engine_address.sv": "68016bd20a752d4dff0da64aae2e9a29529775c7734e32ba7c0d09728caa23c7",
+      "rtl/npu/conv/vector_engine_operand_store.sv": "da3358cecdb5ced2bddd0bb3b6d1c9a4ec775b720d12012764fac1515b3e9485",
+      "rtl/npu/conv/vector_interval_bound.sv": "3085273f76733fb3fde46b816b9ed27bfcd37867d6cb0d080be0578fc19f688e",
+      "rtl/npu/writeback/requant_compute_lane.sv": "8d5576519c7226a0b327a94482826bece4abffe1f5f23792c988ca5f1165a141",
+      "rtl/npu/writeback/requant_group_buffer.sv": "d2fa3f8bc9c89ba0e9e5338d53a1060ba1c3172bcaa8209bc165cc48f8a04194"
+    }
+  },
+  "native_synthesis_measured": false,
+  "selected_scalar": {
+    "passed": true,
+    "record": "validation_vivado150/vector/scalar_mapped_comparison.json",
+    "record_sha256": "5952728e025d3cc95f6078d878e2242b4803864b37558aa8a947f35692af0da0",
+    "production_source_sha256": "a90920f46be466d6853e475461fe0a5dbe2c7de21d8d3c2371eb45c6be0398c3",
+    "proof_scope": "输入寄存、完整乘积和使能暂停的形式等价，以及同拍和延迟参数的量化数值检查。"
+  }
+}

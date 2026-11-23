@@ -38,7 +38,9 @@ module vector_reduce_alu (
   assign lhs_less = (i_lhs[31] ^ i_rhs[31]) ? i_lhs[31] : (|less_terms);
   assign lhs_greater = (i_lhs[31] ^ i_rhs[31]) ? i_rhs[31] : (|greater_terms);
 
-  parallel_prefix_add #(.p_width(32), .p_group_width(4)) u_sum (
+  parallel_prefix_add #(
+      .p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)
+  ) u_sum (
     .i_a(sum_i_a),
     .i_b(sum_i_b),
     .i_carry(sum_i_carry),

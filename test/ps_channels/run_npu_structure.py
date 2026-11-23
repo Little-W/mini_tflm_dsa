@@ -9,15 +9,17 @@ import subprocess
 import sys
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
-from scripts.capacity import config,elaboration
+from scripts.capacity import config,elaboration,model
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out',type=Path,required=True)
-    parser.add_argument('--verilator',default='verilator-modern')
+    parser.add_argument('--verilator',default='verilator')
+    parser.add_argument('--pes',type=int,choices=(8,16),default=16)
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     values=config.validate_config(config.selected_config(ROOT/'config/npu_fpga.mk'),check_budget=False)
+    values['VECTOR_PE_COUNT']=args.pes
     hashes=elaboration.sources_sha256()
     generic=elaboration.measure(values,verilator=args.verilator,output_dir=out/'generic')
     if not generic['passed']:raise RuntimeError('Generic capacity check failed')
@@ -43,21 +45,29 @@ def main():
         subprocess.run(command,cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,check=True)
     tree=json.loads(tree_path.read_text());state=elaboration.inventory(tree)
     counts=state['module_instances']
-    expected=generic['expected_buffer_arrays_bits']
+    hardware=generic['hardware_configuration']
+    expected=model.buffer_arrays_bits(values['IA_CACHE_BLOCKS'], values['PS_FRAME_COUNT'],
+        values['PS_POOL_BYTES'], values['SIZE'], bool(values['PCR_ENGINE']),
+        bank_bytes=values['SHARED_BANK_BYTES'], bank_count=values['SHARED_BANK_COUNT'],
+        ia_compact_enable=bool(hardware['IA_COMPACT_ENABLE']),
+        im2col_cache_bytes=hardware['IM2COL_CACHE_BYTES'],
+        bus_width=hardware['NPU_AXI_DATA_WIDTH'], vector_pe_count=hardware['VECTOR_PE_COUNT'],
+        target='generic')
     if state['buffer_arrays_bits']!=expected:raise RuntimeError('FPGA storage capacity differs')
     if state['register_arrays_bits']!=generic['expected_register_arrays_bits']:raise RuntimeError('FPGA metadata dimensions differ')
     if counts.get('ia_ps_channel_ram')!=1 or counts.get('ia_ps_shared_ram',0)!=0:raise RuntimeError('Fixed channel memory absent')
     if counts.get('BUFGCE')!=1:raise RuntimeError('Clock buffer declaration count differs')
-    if counts.get('ws_systolic_cell')!=256 or counts.get('registered_vector_pe')!=8:
+    if counts.get('ws_systolic_cell')!=values['SIZE']**2 or counts.get('vector_pe')!=args.pes:
         raise RuntimeError('Compute array dimensions differ')
-    pe_parameters=elaboration.constant_parameters(tree,'registered_vector_pe',('p_accumulator_preselected',))
-    if counts.get('vector_pe',0)!=counts['registered_vector_pe']:
-        raise RuntimeError('Registered FPGA vector arithmetic differs')
+    pe_parameters=elaboration.constant_parameters(tree,'vector_pe',('ENABLE_EXTENDED_MULTIPLY','p_accumulator_preselected'))
+    if pe_parameters!={'ENABLE_EXTENDED_MULTIPLY':0,'p_accumulator_preselected':0}:
+        raise RuntimeError('Vector arithmetic mode differs')
     if counts.get('ps_frame_store')!=1 or state['declaration_counts']['ia_ps_shared_ram']!=9:raise RuntimeError('Storage instance count differs')
     memories=[d for d in state['sequential_declarations'] if d['buffer_category']=='ia_ps_shared_ram']
     expected_shapes=[128*512]+[128*128]*4+[128*640]*4
     if sorted(d['bits'] for d in memories)!=sorted(expected_shapes):raise RuntimeError('Storage geometry differs')
-    parameters=elaboration.constant_parameters(tree,'npu_top',('p_fixed_ps_channels','SHARED_RAM_ENABLED','SHARED_MAX_IA_BANKS','IA_MAX_CACHE_BLOCKS','IA_REUSE_NUM_MAX'))
+    parameters=elaboration.constant_parameters(tree,'npu_top',('p_fixed_ps_channels','SHARED_RAM_ENABLED','SHARED_MAX_IA_BANKS','IA_MAX_CACHE_BLOCKS'))
+    matrix_parameters=elaboration.constant_parameters(tree,'npu_matrix_engine',('IA_REUSE_NUM_MAX',))
     if parameters['p_fixed_ps_channels']!=1 or parameters['SHARED_RAM_ENABLED']!=1:raise RuntimeError('FPGA layout parameter differs')
     if hashes!=elaboration.sources_sha256():raise RuntimeError('Source changed during FPGA elaboration')
     result={'passed':True,'configuration':values,'source_sha256':hashes,'command':command,
@@ -65,13 +75,14 @@ def main():
             'generated_primitive_models_sha256':hashlib.sha256(primitives.read_bytes()).hexdigest(),
             'clock_primitive_declaration_library_sha256':hashlib.sha256(clock_library.read_bytes()).hexdigest(),
             'clock_primitive_scope':'BUFGCE declaration for structural enumeration',
-            'buffer_arrays_bits':state['buffer_arrays_bits'],'register_arrays_bits':state['register_arrays_bits'],
+            'buffer_arrays_bits':state['buffer_arrays_bits'],'expected_buffer_arrays_bits':expected,
+            'register_arrays_bits':state['register_arrays_bits'],
             'module_instances':counts,'shared_memory_declarations':memories,'parameters':parameters,
-            'vector_pe_parameters':pe_parameters}
+            'vector_pe_parameters':pe_parameters,'matrix_parameters':matrix_parameters}
     (out/'summary.json').write_text(json.dumps(result,indent=2)+'\n');tree_path.unlink()
     print(json.dumps({'passed':True,'shared_data_bits':state['buffer_arrays_bits']['ia_ps_shared_ram'],
                       'shared_memories':len(memories),'systolic_cells':counts['ws_systolic_cell'],
-                      'registered_vector_pe':counts['registered_vector_pe']}))
+                      'vector_pe':counts['vector_pe']}))
 
 
 if __name__=='__main__':main()

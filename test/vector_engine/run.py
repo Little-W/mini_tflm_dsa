@@ -105,7 +105,9 @@ def main():
     if a.prepared: result['replay']=prepare_replay(a.prepared,replay)
     for pe in a.pes:
         folder=out/f'pe{pe}';folder.mkdir(exist_ok=True);objects=[]
-        sources=set(csrc+svsrc+[HERE/'main.cpp',HERE/'prepare_add_replay.py',HERE/'compare_reference.py',Path(__file__)]+list(HERE.glob('*.h')))
+        source_reader=runpy.run_path(str(ROOT/'scripts/rtl/source_files.py'))
+        rtl_inputs=source_reader['input_files'](svsrc,source_root)
+        sources=set(csrc+rtl_inputs+[HERE/'main.cpp',HERE/'prepare_add_replay.py',HERE/'compare_reference.py',Path(__file__)]+list(HERE.glob('*.h')))
         for src in csrc:
             deps=subprocess.check_output(list(map(str,['gcc',*cflags,'-MM','-MT','deps',src])),cwd=ROOT,text=True)
             sources.update((ROOT/x).resolve() for x in shlex.split(deps.replace('\\\n',' ').split(':',1)[1]))
@@ -131,7 +133,7 @@ def main():
                      '--Mdir',folder/'obj',
                      '--output-groups','0','--output-split','12000','--output-split-cfuncs','200',
                      '-CFLAGS',f'-std=c++{20 if a.rtl_assertions else 17} --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_TILE_SIZE={a.tile} -DTEST_BUS_WIDTH={a.bus_width}',
-                     '-LDFLAGS',lib,ROOT/'test/conv_npu/simulator.vlt',*svsrc,*primitive_options,
+                     '-LDFLAGS',lib,f'-I{source_root}/include',ROOT/'test/conv_npu/simulator.vlt',*svsrc,*primitive_options,
                      *(['-DVECTOR_CHECK_REGISTERED_WRITE=1'] if a.check_weight_write_stage else []),
                      *(['-DNPU_SIM_ASSERT=1','--timing'] if a.rtl_assertions else []),HERE/'main.cpp'],folder/'verilate.log')
             command(['make','-C',folder/'obj','-f','Vvector_engine_dma_top.mk','-j',a.jobs,

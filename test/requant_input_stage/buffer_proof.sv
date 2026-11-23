@@ -67,11 +67,10 @@ module requant_input_stage_proof #(
     always_comb begin
         if (rst_n) begin
             assert(u_buffer.pending_rows_q <= p_rows);
-            assert(u_buffer.expected_rows_q <= p_rows);
             assert(u_buffer.stored_rows_q <= p_rows);
             assert(source_expected_q <= p_rows);
             assert(issued_rows_q <= p_rows);
-            assert(32'(u_buffer.expected_rows_q) == 32'(source_expected_q) + 32'(source_valid_q));
+            assert(32'(source_expected_q) + 32'(source_valid_q) <= p_rows);
             assert(32'(u_buffer.pending_rows_q) == 32'(source_expected_q) + 32'(source_valid_q) +
                 32'(u_buffer.stored_rows_q) + 32'(row_valid) + 32'(issued_rows_q));
             if (group_ready) begin

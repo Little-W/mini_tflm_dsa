@@ -81,6 +81,8 @@ module vector_engine_address #(
   input wire vector_engine_pkg::vector_engine_cfg_t i_c,
   input wire logic i_spatial,
   input wire logic i_depthwise,
+  input wire logic i_vector_hadamard,
+  input wire logic i_add_s8,
   input wire logic i_binary_vector,
   input wire logic i_softmax_s8,
   output logic [31:0] o_channels,
@@ -248,6 +250,7 @@ module vector_engine_address #(
   logic [p_tap_count_w-1:0] valid_taps;
   logic [31:0] vector_offset;
   logic [31:0] channel_remaining;
+  logic signed [16:0] channel_remaining_q;
   logic [15:0] channel_next;
   logic channel_has_more;
   logic [p_active_count_w-1:0] vector_next_active;
@@ -547,7 +550,6 @@ module vector_engine_address #(
   logic input_response_pending;
   logic [33:0] coordinate_step_i_value [8];
   logic [33:0] coordinate_step_i_delta [8];
-  logic [7:0] unused_coordinate_step_carry;
   logic next_window_valid;
   logic signed [33:0] next_column_x;
   logic signed [33:0] next_row_y;
@@ -589,14 +591,6 @@ module vector_engine_address #(
   logic [31:0] parameter_row_stride_next;
   logic parameter_two_rows_next;
   logic parameter_three_rows_next;
-  logic [31:0] ordinary_read_address;
-  logic [31:0] pool_read_address;
-  logic [31:0] soft_read_address;
-  logic [31:0] ordinary_sum;
-  logic [31:0] ordinary_four_state;
-  logic unused_ordinary_carry;
-  logic [1:0] unused_pool_read_carry;
-  logic [1:0] unused_soft_read_carry;
   logic [31:0] write_address_offset;
   logic [31:0] write_main_offset;
   logic [15:0] write_channel_offset;
@@ -631,11 +625,12 @@ module vector_engine_address #(
     assign coordinate_step_i_delta[4*coordinate_group+3] = {18'd0, c.image.stride_h};
   end
   for (genvar coordinate = 0; coordinate < 8; coordinate++) begin : g_coordinate_step
-    parallel_prefix_add #(.p_width(34), .p_group_width(4)) u_step (
-        .i_a(coordinate_step_i_value[coordinate]), .i_b(coordinate_step_i_delta[coordinate]),
-        .i_carry(1'b0), .o_sum(coordinate_step_o_value[coordinate]),
-        .o_carry(unused_coordinate_step_carry[coordinate])
-    );
+    logic signed [17:0] coordinate_next;
+    // 步长非负，越界坐标只会继续增大；行切换时重新装载对应起点。
+    assign coordinate_next = vector_engine_pkg::advance_coordinate(
+        $signed(coordinate_step_i_value[coordinate][17:0]),
+        coordinate_step_i_delta[coordinate][15:0]);
+    assign coordinate_step_o_value[coordinate] = {{16{coordinate_next[17]}}, coordinate_next};
   end
   // 完成条件逐位检查所需进位，保留接收计数的三十二位回绕行为。
   assign window_count_i_value = window_received;
@@ -652,7 +647,15 @@ module vector_engine_address #(
       .i_a(window_count_i_value), .i_b(window_count_i_increment), .i_carry(window_count_i_carry),
       .o_sum(window_count_o_sum), .o_carry(unused_window_count_carry)
   );
-  assign kernel_column_end = kx==kernel_last_column;
+  // 每组三位并行检查核列编号，组间归并供坐标与范围选择共同使用。
+  localparam int p_column_equal_groups = (p_tap_count_w + 2) / 3;
+  (* keep = 1 *) logic [p_column_equal_groups-1:0] kernel_column_equal;
+  for (genvar group = 0; group < p_column_equal_groups; group++) begin : g_kernel_column_equal
+    localparam int p_group_width = p_tap_count_w-3*group < 3 ? p_tap_count_w-3*group : 3;
+    assign kernel_column_equal[group] =
+        kx[3*group+:p_group_width] == kernel_last_column[3*group+:p_group_width];
+  end
+  assign kernel_column_end = &kernel_column_equal;
   assign next_column_x = $signed(coordinate_step_o_value[0]);
   assign next_row_y = $signed(coordinate_step_o_value[1]);
 
@@ -776,7 +779,11 @@ module vector_engine_address #(
     vector_next_active <= vector_next_active_comb;
   end
   assign channels = {16'd0,c.image.input_c};
-  assign channel_remaining = channels - 32'(channel_base);
+  // CONFIGURE 或 DRAIN_TILE 保存完整差值，TILE_INIT 再形成通道数与掩码。
+  always_ff @(posedge clk) begin
+    channel_remaining_q <= $signed({1'b0, c.image.input_c}) - $signed({1'b0, channel_base});
+  end
+  assign channel_remaining = 32'(channel_remaining_q);
   assign channel_next_value = {1'b0,channel_base} + 17'(active);
   always_ff @(posedge clk) begin
     channel_next <= channel_next_value[15:0];
@@ -932,8 +939,8 @@ module vector_engine_address #(
       default: begin cache_channel_shift_next=0;cache_power_two_next=1'b0;end
     endcase
     pool_next_pixels=pool_capacity;
-    if (pool_next_pixels>pool_taps_remaining) pool_next_pixels=(p_input_index_w+1)'(pool_taps_remaining);
-    pool_next_elements=cache_power_two ? pool_next_pixels<<cache_channel_shift : active;
+    if (32'(pool_next_pixels)>32'(pool_taps_remaining)) pool_next_pixels=(p_input_index_w+1)'(pool_taps_remaining);
+    pool_next_elements=cache_power_two ? pool_next_pixels<<cache_channel_shift : (p_input_index_w+1)'(active);
     next_window_x=kernel_column_end ? input_origin_x : next_column_x;
     next_window_y=kernel_column_end ? next_row_y : input_y;
     // 两组候选坐标先分别检查范围，再选择下一个卷积核位置。
@@ -1080,57 +1087,44 @@ module vector_engine_address #(
       end
       default: begin end
     endcase
+    case (state)
+      vector_engine_control_pkg::SOFT_LUT_REQ, vector_engine_control_pkg::SOFT_LUT_WAIT: begin
+        read_address_base = c.rhs_base;
+        read_address_offset = {22'd0, soft_lut_index_q, 2'b00};
+      end
+      vector_engine_control_pkg::POOL_LOAD_REQ, vector_engine_control_pkg::POOL_LOAD_WAIT: begin
+        read_address_base = c.input_base;
+        read_address_offset = pool_byte_offset;
+        read_address_channel = channel_base;
+      end
+      default: begin end
+    endcase
   end
-  vector_read_address_add #(.p_preserve_groups(1'b0)) u_read_address (
+  vector_read_address_add u_read_address (
     .clk(clk), .i_base(read_address_base), .i_offset(read_address_offset),
-    .i_channel(read_address_channel), .o_address(ordinary_four_state),
+    .i_channel(read_address_channel), .o_address(rd_base_addr),
     .o_carry(unused_read_address_carry)
   );
-  parallel_prefix_add #(.p_width(32), .p_group_width(3), .p_preserve_groups(1'b1)) u_ordinary_sum (
-    .i_a(read_address_base), .i_b(read_address_offset), .i_carry(1'b0),
-    .o_sum(ordinary_sum), .o_carry(unused_ordinary_carry)
-  );
-  always_comb begin
-    case (^{read_address_base, read_address_offset})
-      1'b0, 1'b1: ordinary_read_address = ordinary_sum;
-      default: ordinary_read_address = ordinary_four_state;
-    endcase
-  end
-  vector_read_address_add u_pool_read_address (
-    .clk(clk), .i_base(c.input_base), .i_offset(pool_byte_offset),
-    .i_channel(channel_base), .o_address(pool_read_address), .o_carry(unused_pool_read_carry)
-  );
-  vector_read_address_add u_soft_read_address (
-    .clk(clk), .i_base(c.rhs_base), .i_offset({22'd0, soft_lut_index_q, 2'b00}),
-    .i_channel(16'd0), .o_address(soft_read_address), .o_carry(unused_soft_read_carry)
-  );
-  always_comb begin
-    case (state)
-      vector_engine_control_pkg::SOFT_LUT_REQ, vector_engine_control_pkg::SOFT_LUT_WAIT: rd_base_addr = soft_read_address;
-      vector_engine_control_pkg::POOL_LOAD_REQ, vector_engine_control_pkg::POOL_LOAD_WAIT: rd_base_addr = pool_read_address;
-      default: rd_base_addr = ordinary_read_address;
-    endcase
-  end
   always_comb begin
     rd_im2col = 1'b0;
     rd_p0 = 0;
     rd_q0 = 0;
     rd_row_stride = 0;
     rd_rows_to_read = 1;
-    rd_valid_cols = active;
+    rd_valid_cols = 32'(active);
     rd_use_16bits = !spatial && c.vector_s16;
-    load_bytes = active << rd_use_16bits;
+    load_bytes = 32'(active) << rd_use_16bits;
     case (load_kind)
       vector_engine_control_pkg::LD_WEIGHT: begin
         rd_use_16bits = 1'b0;
         rd_rows_to_read = 32'(taps);
         rd_row_stride = channels;
-        load_bytes = active;
+        load_bytes = 32'(active);
       end
       vector_engine_control_pkg::LD_BIAS, vector_engine_control_pkg::LD_MULT, vector_engine_control_pkg::LD_SHIFT: begin
         rd_use_16bits = 1'b0;
-        load_bytes = active << 2;
-        rd_valid_cols = active << 2;
+        load_bytes = 32'(active) << 2;
+        rd_valid_cols = 32'(active) << 2;
         if (load_kind==vector_engine_control_pkg::LD_BIAS && parameter_three_rows) begin
           rd_rows_to_read = 3;
           rd_row_stride = parameter_row_stride;
@@ -1148,11 +1142,11 @@ module vector_engine_address #(
     end
     if (state==vector_engine_control_pkg::POOL_LOAD_REQ || state==vector_engine_control_pkg::POOL_LOAD_WAIT) begin
       rd_use_16bits = 1'b0;
-      if (channels==active) begin
-        rd_rows_to_read=1;rd_valid_cols=pool_elements;rd_row_stride=0;
+      if (channels==32'(active)) begin
+        rd_rows_to_read=1;rd_valid_cols=32'(pool_elements);rd_row_stride=0;
         rd_burst_len_m1=burst_length_from_bytes(32'(pool_elements));
       end else begin
-        rd_rows_to_read=pool_pixels;rd_valid_cols=active;rd_row_stride=channels;
+        rd_rows_to_read=32'(pool_pixels);rd_valid_cols=32'(active);rd_row_stride=channels;
         rd_burst_len_m1=burst_length_from_bytes(32'(active));
       end
     end
@@ -1165,28 +1159,22 @@ module vector_engine_address #(
     end
   end
 
-  // 写回状态选择完整偏移，公共加法器生成最终输出地址。
+  // 任务模式选择完整偏移，公共加法器生成各有效写入阶段的输出地址。
   always_comb begin
     write_address_offset = 32'd0;
     write_main_offset = 32'd0;
     write_channel_offset = 16'd0;
-    case (state)
-      vector_engine_control_pkg::EXECUTE_COMMIT: begin
-        write_address_offset = vector_offset << 2;
-        write_main_offset = vector_offset << 2;
-      end
-      vector_engine_control_pkg::ADD_STORE: begin
-        write_address_offset = vector_offset;
-        write_main_offset = vector_offset;
-      end
-      // 空间位置与通道号分别参与三操作数压缩，减少连续进位计算。
-      vector_engine_control_pkg::AVG_POWER_STORE, vector_engine_control_pkg::AVG_WAIT, vector_engine_control_pkg::POOL_STORE, vector_engine_control_pkg::DW_FINISH: begin
-        write_address_offset = position_offset + {16'd0, channel_base};
-        write_main_offset = position_offset;
-        write_channel_offset = channel_base;
-      end
-      default: begin end
-    endcase
+    if (spatial) begin
+      write_address_offset = position_offset + {16'd0, channel_base};
+      write_main_offset = position_offset;
+      write_channel_offset = channel_base;
+    end else if (i_vector_hadamard) begin
+      write_address_offset = vector_offset << 2;
+      write_main_offset = vector_offset << 2;
+    end else if (i_add_s8) begin
+      write_address_offset = vector_offset;
+      write_main_offset = vector_offset;
+    end
   end
   vector_read_address_add u_write_origin (
       .clk(clk), .i_base(c.output_base), .i_offset(write_main_offset),

@@ -95,6 +95,7 @@ module vector_softmax #(
   logic signed [33:0] update_scaled;
   logic signed [31:0] update_saturated;
   logic [31:0] estimate_lhs, estimate_rhs, estimate_next;
+  logic estimate_initial_q;
   logic [31:0] residual_next;
   logic unused_estimate_carry;
   logic signed [32:0] reciprocal_scaled;
@@ -180,9 +181,11 @@ module vector_softmax #(
       update_scaled[33:31]!={3{update_scaled[31]}} ?
       (update_scaled[33] ? 32'sh8000_0000 : 32'sh7fff_ffff) : update_scaled[31:0];
   // 初值和迭代更新共用完整三十二位模加法，操作数选择与后续舍入分属不同周期。
-  assign estimate_lhs = (c_st == RECIP_INIT_WAIT) ? 32'd1515870810 : estimate;
-  assign estimate_rhs = (c_st == RECIP_INIT_WAIT) ? reciprocal_q31 : update_saturated;
-  parallel_prefix_add #(.p_width(32), .p_group_width(4)) u_estimate_add (
+  assign estimate_lhs = estimate_initial_q ? 32'd1515870810 : estimate;
+  assign estimate_rhs = estimate_initial_q ? reciprocal_q31 : update_saturated;
+  parallel_prefix_add #(
+      .p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)
+  ) u_estimate_add (
       .i_a(estimate_lhs), .i_b(estimate_rhs), .i_carry(1'b0),
       .o_sum(estimate_next), .o_carry(unused_estimate_carry)
   );
@@ -191,6 +194,13 @@ module vector_softmax #(
   assign reciprocal_saturated =
       reciprocal_scaled[32:31]!={2{reciprocal_scaled[31]}} ?
       (reciprocal_scaled[32] ? 32'sh8000_0000 : 32'sh7fff_ffff) : reciprocal_scaled[31:0];
+
+  // 初值与迭代类型随乘法请求保存，完成周期直接使用已准备的操作数选择。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) estimate_initial_q <= 1'b0;
+    else if (c_st == RECIP_INIT) estimate_initial_q <= 1'b1;
+    else if (c_st == RECIP_UPDATE) estimate_initial_q <= 1'b0;
+  end
 
   // 响应边沿保存指数数据及舍入增量，下一边沿完成累加。
   assign lut_accept_fire = (c_st == LUT_WAIT) && lut_rsp_valid && !lut_rsp_error && !lut_rsp_data[31];

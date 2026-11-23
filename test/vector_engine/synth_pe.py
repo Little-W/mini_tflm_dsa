@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Synthesize independent vector_pe banks with a shared operation input."""
+"""综合统一寄存 PE，检查并行乘法器数量及通用逻辑规模。"""
 import argparse
 import hashlib
 import json
 from pathlib import Path
+import shlex
+import shutil
 import subprocess
 import sys
 
@@ -26,15 +28,21 @@ def counts(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--yosys', default='yosys')
+    parser.add_argument('--yosys')
     parser.add_argument('--counts', type=int, nargs='+', default=[1, 2, 4, 8, 16])
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     source = ROOT / 'rtl/npu/conv/vector_pe.sv'
     digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    yosys = args.yosys or shutil.which('yosys')
+    if yosys:
+        tool = subprocess.check_output([yosys, '-V'], text=True).strip()
+    else:
+        from importlib.metadata import version
+        tool = 'pyosys ' + version('pyosys')
     summary = {
-        'scope': 'Combinational PE bank only; excludes engine control, storage, DMA and physical implementation.',
-        'tool': subprocess.check_output([args.yosys, '-V'], text=True).strip(),
+        'scope': '统一寄存 PE 及其运算逻辑，统计通用逻辑单元和寄存器。',
+        'tool': tool,
         'source_sha256': digest,
         'runner_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         'metadata_cell_types': sorted(METADATA_CELL_TYPES),
@@ -47,6 +55,7 @@ def main():
         out.mkdir(exist_ok=True)
         wrapper = out / 'vector_pe_bank.sv'
         wrapper.write_text(f'''module vector_pe_bank (
+  input wire clk, i_en,
   input wire [2:0] op,
   input wire [{count * 16 - 1}:0] a, b,
   input wire [{count * 32 - 1}:0] acc,
@@ -54,23 +63,26 @@ def main():
 );
   genvar lane;
   generate for(lane=0; lane<{count}; lane=lane+1) begin: pe
-    vector_pe unit(.op(op), .a(a[lane*16+:16]), .b(b[lane*16+:16]),
-      .acc(acc[lane*32+:32]), .result(result[lane*32+:32]));
+    vector_pe #(.ENABLE_EXTENDED_MULTIPLY(1'b0)) unit(
+      .clk(clk), .i_en(i_en), .i_op(op), .i_a(a[lane*16+:16]), .i_b(b[lane*16+:16]),
+      .i_acc(acc[lane*32+:32]), .o_result(result[lane*32+:32]));
   end endgenerate
 endmodule
 ''')
         script = out / 'synth.ys'
         script.write_text(
-            f'read_verilog -sv {source} {wrapper}\n'
+            'read_verilog -sv '+shlex.join(map(str, (source, wrapper)))+'\n'
             'hierarchy -check -top vector_pe_bank\n'
             'proc; flatten; opt\n'
-            f'write_json {out / "arithmetic.json"}\n'
+            f'write_json {shlex.quote(str(out / "arithmetic.json"))}\n'
             'synth -top vector_pe_bank\n'
             'check -assert\n'
-            f'write_json {out / "generic.json"}\n'
+            f'write_json {shlex.quote(str(out / "generic.json"))}\n'
             'stat\n')
         with (out / 'synth.log').open('w') as log:
-            subprocess.run([args.yosys, '-s', str(script)], stdout=log,
+            command = [yosys, '-s', str(script)] if yosys else [sys.executable,
+                str(ROOT / 'scripts/fpga/open_fpga_synth.py'), '--worker', str(script)]
+            subprocess.run(command, stdout=log,
                            stderr=subprocess.STDOUT, check=True, timeout=600)
         arithmetic, arithmetic_metadata = counts(out / 'arithmetic.json')
         generic, generic_metadata = counts(out / 'generic.json')

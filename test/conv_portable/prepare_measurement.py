@@ -28,7 +28,7 @@ def main():
   output logic [{args.pes-1}:0][31:0] o_result
 );
   for(genvar lane=0;lane<{args.pes};lane++)begin:g_lane
-    registered_vector_pe u_pe(
+    vector_pe #(.ENABLE_EXTENDED_MULTIPLY(1'b0)) u_pe(
       .clk,.i_en,.i_op,.i_a(i_a[lane]),.i_b(i_b[lane]),.i_acc(i_acc[lane]),.o_result(o_result[lane]));
   end
 endmodule
@@ -36,7 +36,7 @@ endmodule
     conv = ROOT/'rtl/npu/conv'
     cases = {}
     specs = {
-        'pe_bank': ([wrapper, conv/'registered_vector_pe.sv'], [],
+        'pe_bank': ([wrapper, conv/'vector_pe.sv'], [],
                     f'{args.pes} registered PEs, INT16 inputs, INT32 accumulators'),
         'vector_engine': ([conv/'vector_engine.sv'], ['-GTILE=16', '-GBUS_WIDTH=64', f'-GPE_COUNT={args.pes}'],
                           f'TILE16 BUS64 PE{args.pes}, complete vector engine'),

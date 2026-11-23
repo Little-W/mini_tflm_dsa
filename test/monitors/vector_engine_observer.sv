@@ -469,6 +469,13 @@ module vector_engine_invariants #(
   logic [$clog2(4*TILE+1)-1:0] previous_writeback_bytes;
   logic previous_writeback_last, previous_writeback_coalesce;
   logic [32*TILE-1:0] previous_writeback_words;
+  // 纯乘法在接收边沿保存零累加值，下一采样边沿检查实际 PE 状态。
+  for (genvar lane=0;lane<PE_COUNT;lane++) begin : g_pe_multiply_state
+    assert property (@(posedge vector_engine.clk) disable iff (!vector_engine.rst_n)
+      (vector_engine.pe_operand_en && vector_engine.vector_hadamard) |=>
+      (vector_engine.g_pe[lane].u_pe.op == PE_MUL &&
+       vector_engine.g_pe[lane].u_pe.acc === 32'sd0));
+  end
   always @(posedge vector_engine.clk) begin
     if (!vector_engine.rst_n) begin
       writeback_metadata_stalled <= 1'b0;
@@ -493,9 +500,6 @@ module vector_engine_invariants #(
       end
       if (vector_engine.pe_operand_en) begin
         assert(vector_engine.vector_hadamard == (vector_engine.pe_op == PE_MUL));
-        if (vector_engine.vector_hadamard) begin
-          for (int lane=0;lane<PE_COUNT;lane++) assert(vector_engine.pe_acc[lane] === 32'sd0);
-        end
       end
       if (vector_engine.state_compute_commit && vector_engine.global_pool)
         assert(vector_engine.pool_pixel_has_more_q == (vector_engine.pool_pixel+1<vector_engine.pool_pixels));

@@ -9,7 +9,7 @@ using Row=std::array<uint32_t,16>;
 Vps_raw_store_tb d;
 std::array<std::array<uint32_t,4>,1024> mem{};
 std::vector<Row> replay;
-uint64_t cycles=0,values=0,commands=0;
+uint64_t cycles=0,values=0,commands=0,cancellations=0;
 unsigned banks=4;
 void require(bool c,const char* text){if(!c)throw std::runtime_error(text);}
 void tick(){
@@ -35,6 +35,14 @@ void tick(){
 template<class F>void wait(F f){for(int n=0;n<1000&&!f();n++)tick();require(f(),"timeout");}
 void command(unsigned id,const std::vector<Row>& old,const std::vector<Row>& next,bool final){
  replay.clear();d.frame_id=id;d.frame_rows=old.empty()?next.size():old.size();d.frame_init=old.empty();d.frame_final=final;d.frame_request=1;
+ if ((commands & 1)==0) {
+  for (unsigned n=0;n<1+(commands%7);n++) tick();
+  d.frame_request=0;tick();tick();tick();
+  require(!d.frame_ready && !d.frame_pressure,"cancelled request remained ready or pressured");
+  require(replay.empty(),"cancelled request emitted replay data");
+  require(!d.ram_write_en,"cancelled request wrote committed storage");
+  ++cancellations;d.frame_request=1;
+ }
  wait([]{return d.frame_ready;});d.frame_accept=1;tick();d.frame_accept=0;d.frame_request=0;
  if(!old.empty()){d.replay_trigger=1;tick();d.replay_trigger=0;wait([&]{return replay.size()==old.size();});
   require(replay==old,"RAW32 replay value mismatch");values+=old.size()*16;}
@@ -63,5 +71,5 @@ int main(int argc,char**argv){try{
   }
   for(unsigned id=0;id<4;id++)if(!saved[id].empty())command(id,saved[id],{},true);
  }
- std::cout<<"RAW_STORE_PASS commands="<<commands<<" int32_values="<<values<<" cycles="<<cycles<<"\n";
+ std::cout<<"RAW_STORE_PASS commands="<<commands<<" int32_values="<<values<<" cancellations="<<cancellations<<" cycles="<<cycles<<"\n";
  }catch(const std::exception&e){std::cerr<<e.what()<<"\n";return 1;} }
