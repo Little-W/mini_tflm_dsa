@@ -480,6 +480,59 @@ module vector_engine_invariants #(
       (vector_engine.g_pe[lane].u_pe.op == PE_MUL &&
        vector_engine.g_pe[lane].u_pe.acc === 32'sd0));
   end
+  // 逐次接收操作数并独立累加，检查快照值及后续像素的偏置初始化。
+  for (genvar entry=0;entry<TILE;entry++) begin : g_dw_snapshot_reference
+    localparam int p_lane_index = entry % PE_COUNT;
+    localparam int p_group_base = entry - p_lane_index;
+    logic signed [31:0] accumulator;
+    logic signed [31:0] product;
+    assign product = 32'($signed(vector_engine.input_lane[p_lane_index])) *
+        32'($signed(vector_engine.weight_lane[p_lane_index]));
+    always_ff @(posedge vector_engine.clk) begin
+      if (vector_engine.rst_n && vector_engine.depthwise) begin
+        if (vector_engine.state_output_init || vector_engine.dw_snapshot_fire)
+          accumulator <= vector_engine.u_operand_store.bias_buf[entry];
+        else if (vector_engine.dw_issue_fire && vector_engine.active_lane_mask[entry] &&
+                 vector_engine.compute_index == TILE_INDEX_W'(p_group_base))
+          accumulator <= accumulator + product;
+        if (vector_engine.dw_snapshot_fire && vector_engine.active_lane_mask[entry]) begin
+          assert(vector_engine.dw_snapshot_value[entry] === accumulator);
+          if (SHARED_STORAGE_ENABLE)
+            assert(vector_engine.o_ps_write_data[32*entry+:32] === accumulator);
+        end
+      end
+    end
+    assert property (@(posedge vector_engine.clk) disable iff (!vector_engine.rst_n)
+      vector_engine.dw_snapshot_fire |=>
+      vector_engine.acc_buf[entry] === $past(vector_engine.u_operand_store.bias_buf[entry]));
+    if (!SHARED_STORAGE_ENABLE) begin : g_private_capture
+      logic pending;
+      logic signed [31:0] expected_value;
+      always_ff @(posedge vector_engine.clk) begin
+        if (!vector_engine.rst_n) pending <= 1'b0;
+        else begin
+          if (pending) assert(vector_engine.quant_req_accumulator[entry] === expected_value);
+          pending <= vector_engine.dw_snapshot_fire && vector_engine.active_lane_mask[entry];
+          if (vector_engine.dw_snapshot_fire) expected_value <= accumulator;
+        end
+      end
+    end
+  end
+  int unsigned snapshot_forwarded = 0;
+  int unsigned snapshot_buffered = 0;
+  int unsigned snapshot_partial_group = 0;
+  int unsigned snapshot_multiple_groups = 0;
+  always @(posedge vector_engine.clk) begin
+    if (vector_engine.rst_n && vector_engine.dw_snapshot_fire) begin
+      if (vector_engine.dw_commit_vld) begin
+        snapshot_forwarded++;
+        if (32'(vector_engine.active) % PE_COUNT != 0) snapshot_partial_group++;
+        if (32'(vector_engine.active) > PE_COUNT) snapshot_multiple_groups++;
+      end else snapshot_buffered++;
+    end
+  end
+  final $display("VECTOR_DW_SNAPSHOT_CHECK forwarded=%0d buffered=%0d partial_group=%0d multiple_groups=%0d",
+      snapshot_forwarded, snapshot_buffered, snapshot_partial_group, snapshot_multiple_groups);
   always @(posedge vector_engine.clk) begin
     if (!vector_engine.rst_n) begin
       writeback_metadata_stalled <= 1'b0;
@@ -511,7 +564,7 @@ module vector_engine_invariants #(
         assert(vector_engine.serial_acc_read_data === vector_engine.acc_buf[0]);
       if (vector_engine.state==VECTOR_REDUCE && vector_engine.reduce_index+1<TILE)
         assert(vector_engine.serial_acc_read_data === vector_engine.acc_buf[vector_engine.reduce_index+TILE_INDEX_W'(1)]);
-      if (vector_engine.dw_snapshot_fire) assert(!vector_engine.dw_commit_vld);
+      if (vector_engine.dw_snapshot_fire) assert(!vector_engine.dw_issue_fire);
       assert(vector_engine.writeback_accept_pending == previous_writeback_sink_fire);
       assert(!(vector_engine.writeback_metadata_valid && vector_engine.writeback_accept_pending));
       if (vector_engine.writeback_metadata_valid && !vector_engine.state_failed)

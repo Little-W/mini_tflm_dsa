@@ -255,6 +255,7 @@ module vector_engine #(
   logic [TILE_INDEX_W-1:0] dw_commit_index;
   logic dw_snapshot_fire;
   logic dw_snapshot_vld;
+  logic signed [31:0] dw_snapshot_value [TILE];
   logic dw_quant_start;
   logic dw_quant_last_issue;
   logic dw_snapshot_data_ready;
@@ -1048,8 +1049,8 @@ module vector_engine #(
   assign dw_group_last = compute_index + TILE_INDEX_W'(PE_COUNT) >= TILE_INDEX_W'(active);
   assign dw_issue_fire = state_dw_execute && !window_response_fault && dw_in_bounds && input_ready[read_bank] && weight_data_ready;
   assign dw_tap_advance = state_dw_execute && (!dw_in_bounds || (dw_issue_fire && dw_group_last));
-  // 完成事件等待最后一次 PE 提交，整行快照由完整的累加存储提供。
-  assign dw_snapshot_fire = state_dw_finish && !dw_snapshot_vld && !dw_commit_vld;
+  // 最后一个通道组的 PE 结果可在完成边沿直接写入快照。
+  assign dw_snapshot_fire = state_dw_finish && !dw_snapshot_vld;
   assign quant_req_valid = SHARED_QUANT_ENABLE && dw_snapshot_vld && dw_snapshot_data_ready &&
       !dw_result_reserved[dw_quant_next_slot] && !state_failed;
   assign quant_req_tag = dw_quant_next_slot;
@@ -1350,8 +1351,17 @@ module vector_engine #(
     assign result_write_data[entry] = write_value;
   end
 
-  // 完成的像素保存到独立存储行，量化读取期间，PE 继续累加下一像素。
-  // 最后一次计算先提交到累加存储，下一边沿读取整行并初始化下一像素。
+  // 已提交通道读取累加存储，当前返回的通道组直接读取 PE 结果。
+  for (genvar entry=0;entry<TILE;entry++) begin : g_snapshot_value
+    localparam int p_lane_index = entry % PE_COUNT;
+    localparam int p_group_base = entry - p_lane_index;
+    logic result_selected;
+    assign result_selected = dw_commit_vld && active_lane_mask[entry] &&
+        dw_commit_index == TILE_INDEX_W'(p_group_base);
+    assign dw_snapshot_value[entry] = result_selected ? pe_result[p_lane_index] : acc_buf[entry];
+  end
+  // 完成的像素保存到独立存储行，同一边沿将累加存储初始化为下一像素的偏置。
+  // 量化读取快照期间，PE 继续累加下一像素。
   if (SHARED_STORAGE_ENABLE) begin : g_shared_snapshot
     logic read_pending, data_valid;
     assign o_ps_write_en = rst_n && dw_snapshot_fire && !i_storage_error;
@@ -1360,7 +1370,7 @@ module vector_engine #(
     assign o_ps_read_addr = '0;
     assign dw_snapshot_data_ready = data_valid || i_ps_read_valid;
     for (genvar entry=0;entry<TILE;entry++) begin : g_channel
-      assign o_ps_write_data[32*entry+:32] = acc_buf[entry];
+      assign o_ps_write_data[32*entry+:32] = dw_snapshot_value[entry];
       assign quant_req_accumulator[entry] = $signed(i_ps_read_data[32*entry+:32]);
     end
     // 写入和读取分处相邻周期；RAM 输出保持有效，直到该像素的量化输入全部接收。
@@ -1392,7 +1402,7 @@ module vector_engine #(
     assign o_ps_write_data = '0;
     for (genvar entry=0;entry<TILE;entry++) begin : g_channel
       always_ff @(posedge clk) begin
-        if (dw_snapshot_fire) dw_snapshot[entry] <= acc_buf[entry];
+        if (dw_snapshot_fire) dw_snapshot[entry] <= dw_snapshot_value[entry];
       end
     end
   end
