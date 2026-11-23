@@ -148,7 +148,7 @@ module tb_conv_npu;
         .clk(clk), .rst_n(u_dut.core_rst_n),
         .cycle(cycle), .job(ps_observer_job),
         .write_valid(u_dut.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.encoder_start), .write_data(u_dut.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.write_data),
-        .frame_accept(u_dut.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.frame_accept), .frame_complete(u_dut.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.frame_complete),
+        .frame_accept(u_dut.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.frame_accept), .frame_complete(u_dut.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.complete_now),
         .frame_id(32'(u_dut.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.frame_id)), .frame_rows(u_dut.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.frame_rows),
         .frame_init(u_dut.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.frame_init), .frame_final(u_dut.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.frame_final),
         .replay_valid(u_dut.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.replay_valid), .replay_data(u_dut.u_matrix_engine.u_compute_core.u_ps_buffer.g_compressed.u_store.replay_data),

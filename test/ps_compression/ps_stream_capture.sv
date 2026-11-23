@@ -46,20 +46,6 @@ module ps_stream_capture #(
             live_rows = '0; live = 0; active = 0;
             active_id = 0; active_rows = 0; write_row = 0; read_row = 0;
         end else begin
-            if (frame_accept) begin
-                assert(!active && frame_id < FRAME_COUNT && frame_rows > 0 && frame_rows <= MAX_FRAME_ROWS)
-                    else $fatal(1, "Invalid PS observer descriptor");
-                active = 1; active_id = int'(frame_id); active_rows = int'(frame_rows);
-                active_init = frame_init; active_final = frame_final;
-                write_row = 0; read_row = 0;
-                for (int row=0; row<MAX_FRAME_ROWS; row++) begin
-                    index = active_id * MAX_FRAME_ROWS + row;
-                    assert(live_rows[index] == (!frame_init && row < active_rows))
-                        else $fatal(1, "PS frame occupancy differs at acceptance");
-                end
-                if (fd != 0) $fdisplay(fd, "F cycle=%0d job=%0d frame=%0d rows=%0d init=%0d final=%0d",
-                    cycle, job, active_id, active_rows, active_init, active_final);
-            end
             if (write_valid) begin
                 assert(active && !active_final && write_row < active_rows)
                     else $fatal(1, "PS write outside the active descriptor");
@@ -77,6 +63,21 @@ module ps_stream_capture #(
                     else $fatal(1, "Incomplete PS frame at completion");
                 if (fd != 0) $fdisplay(fd, "E cycle=%0d job=%0d frame=%0d", cycle, job, active_id);
                 active = 0; frames++;
+            end
+            // 当前帧的数据和完成事件先处理，随后接收同拍到达的下一帧描述符。
+            if (frame_accept) begin
+                assert(!active && frame_id < FRAME_COUNT && frame_rows > 0 && frame_rows <= MAX_FRAME_ROWS)
+                    else $fatal(1, "Invalid PS observer descriptor");
+                active = 1; active_id = int'(frame_id); active_rows = int'(frame_rows);
+                active_init = frame_init; active_final = frame_final;
+                write_row = 0; read_row = 0;
+                for (int row=0; row<MAX_FRAME_ROWS; row++) begin
+                    index = active_id * MAX_FRAME_ROWS + row;
+                    assert(live_rows[index] == (!frame_init && row < active_rows))
+                        else $fatal(1, "PS frame occupancy differs at acceptance");
+                end
+                if (fd != 0) $fdisplay(fd, "F cycle=%0d job=%0d frame=%0d rows=%0d init=%0d final=%0d",
+                    cycle, job, active_id, active_rows, active_init, active_final);
             end
             payload_write_bytes += 16 * $countones(payload_write_en);
             payload_read_bytes += 16 * $countones(payload_read_en);
