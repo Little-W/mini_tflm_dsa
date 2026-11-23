@@ -67,7 +67,7 @@ $(VK_GLOBAL_OBJS): %.o: %.cpp
                "-MAKEFLAGS", f"-B CXX={args.compiler} OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}"]
     if args.force_raw:
         command.append("+define+GEMMORA_PS_FORCE_RAW")
-    command.extend(str(path) for path in sources if path.suffix in (".sv", ".cpp"))
+    command.extend(str(path) for path in sources if path.suffix in (".sv", ".v", ".cpp"))
     binary = obj / ("V" + top)
     started = time.monotonic()
     if not args.reuse_build:

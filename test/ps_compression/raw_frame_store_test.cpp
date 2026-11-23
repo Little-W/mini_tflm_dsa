@@ -73,11 +73,73 @@ struct Test {
     }
     void pressure() {
         dut.frame_request=1;dut.frame_id=4;dut.frame_rows=1;dut.frame_init=1;dut.frame_final=0;
+        unsigned wait=0;
+        while(!dut.frame_pressure) {
+            tick();require(++wait<10,"Capacity pressure did not arrive");
+            require(!dut.frame_ready,"Out-of-capacity frame was admitted");
+        }
         for(unsigned edge=0;edge<5;++edge) {
             dut.eval();require(dut.frame_pressure && !dut.frame_ready,"Out-of-capacity frame was admitted");
             tick();++pressure_checks;
         }
         dut.frame_request=0;tick();
+    }
+    void following_command(unsigned count,bool cancel,bool initial) {
+        reset();
+        if(!initial)command(0,true,false,count);
+        const auto rows=values(count);
+        dut.frame_request=1;dut.frame_id=0;dut.frame_rows=count;
+        dut.frame_init=initial;dut.frame_final=0;
+        unsigned wait=0;
+        while(!dut.frame_ready) {tick();require(++wait<100,"Initial admission did not complete");}
+        dut.frame_accept=1;tick();dut.frame_accept=0;dut.frame_request=0;tick();
+        if(!initial) {
+            for(unsigned edge=0;edge<10;++edge)tick();
+            dut.replay_trigger=1;tick();dut.replay_trigger=0;
+            unsigned index=0;
+            wait=0;
+            while(index<count) {
+                tick();require(++wait<count+32,"Update replay did not complete");
+                if(dut.replay_valid) {
+                    for(unsigned lane=0;lane<16;++lane) {
+                        require(dut.replay_data[lane]==frames[0][index][lane],"Update frame value differs");
+                        ++checked;
+                    }
+                    ++index;
+                } else require(index==0,"Update replay stream stalled");
+            }
+        }
+        dut.frame_request=1;dut.frame_init=0;dut.frame_final=1;
+        tick();tick();
+        if(cancel) {
+            dut.frame_request=0;tick();
+            dut.frame_request=1;tick();
+        }
+        for(unsigned index=0;index<count;++index) {
+            for(unsigned lane=0;lane<16;++lane)dut.write_data[lane]=rows[index][lane];
+            dut.write_valid=1;dut.write_frame_end=index+1==count;tick();
+        }
+        dut.write_valid=0;dut.write_frame_end=0;
+        wait=0;
+        while(!dut.frame_ready) {tick();require(++wait<100,"Following admission did not complete");}
+        dut.frame_accept=1;dut.replay_trigger=1;tick();
+        dut.frame_accept=0;dut.replay_trigger=0;dut.frame_request=0;
+        unsigned index=0;
+        wait=0;
+        while(index<count) {
+            tick();require(++wait<count+32,"Immediate replay did not complete");
+            if(dut.replay_valid) {
+                for(unsigned lane=0;lane<16;++lane) {
+                    require(dut.replay_data[lane]==rows[index][lane],"Following frame value differs");
+                    ++checked;
+                }
+                ++index;
+            } else require(index==0,"Immediate replay stream stalled");
+        }
+        dut.write_frame_end=1;tick();dut.write_frame_end=0;
+        wait=0;
+        while(!dut.frame_complete) {tick();require(++wait<100,"Following completion did not arrive");}
+        commands+=2;
     }
     void run() {
         for(unsigned linear=0;linear<8192;++linear) {
@@ -99,6 +161,8 @@ struct Test {
             for(unsigned id=4;id--;)command(id,false,true,frames[id].size());
         }
         reset();command(0,true,false,64);reset();command(0,true,false,47);command(0,false,true,47);
+        for(auto count:sizes)for(bool cancel:{false,true})for(bool initial:{false,true})
+            following_command(count,cancel,initial);
         std::cout<<"{\"passed\":true,\"commands\":"<<commands
             <<",\"address_cases\":24576,\"checked_read_int32\":"<<checked<<",\"pressure_checks\":"<<pressure_checks
             <<",\"reset_cases\":"<<resets<<",\"cycles\":"<<cycles<<"}\n";
