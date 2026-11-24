@@ -31,8 +31,7 @@ module axi_dual_block_dma #(
     parameter int unsigned CONV_CACHE_SETS = 128,
     parameter int unsigned CONV_CACHE_WAYS = 2,
     parameter int unsigned CONV_LINE_BYTES = 16,
-    parameter int unsigned CONV_CACHE_POLICY = 3,
-    parameter bit CONV_LOW_LATENCY = 1'b0
+    parameter int unsigned CONV_CACHE_POLICY = 3
 ) (
     input wire logic clk,
     input wire logic rst_n,
@@ -490,10 +489,10 @@ module axi_dual_block_dma #(
             .SIZE(IM2COL_SIZE), .SLOT_W(SLOT_W), .LANES(WINDOW_LANES),
             .CACHE_SETS(CONV_CACHE_SETS), .CACHE_WAYS(CONV_CACHE_WAYS),
             .LINE_BYTES(CONV_LINE_BYTES), .CACHE_POLICY(CONV_CACHE_POLICY),
-            .REGISTER_DESCRIPTOR(!CONV_LOW_LATENCY),
-            .REGISTER_ROW_ADDRESS(!CONV_LOW_LATENCY),
-            .REGISTER_CACHE_REQUEST(!CONV_LOW_LATENCY),
-            .CACHE_RESPONSE_DEPTH(CONV_LOW_LATENCY ? 1 : 2)
+            .REGISTER_DESCRIPTOR(1'b0),
+            .REGISTER_ROW_ADDRESS(1'b0),
+            .REGISTER_CACHE_REQUEST(1'b0),
+            .CACHE_RESPONSE_DEPTH(1)
         ) u_frontend (
             .clk, .rst_n, .cfg_valid(cfg_fire && conv_enable), .cfg_ready(fe_cfg_ready),
             .cfg(conv_cfg), .cfg_sched_r(conv_sched_r), .cfg_sched_groups(conv_sched_groups),

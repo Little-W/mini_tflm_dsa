@@ -39,8 +39,8 @@ class ModelTests(unittest.TestCase):
                         bias_cache=2*4*16*32, requant_is_cache=4*16*39,
                         oa_s8_fifo=16*16*16*8, oa_s16_fifo=4*16*16*16,
                         conv_data_cache=16*2*128*8, conv_cache_metadata=16*2*148,
-                        conv_prefetch_queue=8*129, conv_request_queue=2*135,
-                        conv_response_queue=2*129, vector_buffers=16*(80+49*8+134),
+                        conv_prefetch_queue=8*129, conv_request_queue=135,
+                        conv_response_queue=129, vector_buffers=16*(80+49*8+134),
                         vector_dw_snapshot=16*32, vector_dw_result_queue=2*16*8,
                         vector_write_queue=2*64*8,
                         vector_pool_reciprocal_rom=257*18,
@@ -143,7 +143,7 @@ class ModelTests(unittest.TestCase):
         self.assertNotIn("requant_input_rows", fixed)
 
     def test_production_bank_configurations_preserve_capacity_budget(self):
-        expected_bytes = {6: 107527.25, 7: 115719.25, 8: 106457.25, 9: 114649.25}
+        expected_bytes = {6: 107494.25, 7: 115686.25, 8: 106424.25, 9: 114616.25}
         for bank_count, expected in expected_bytes.items():
             arrays = model.buffer_arrays_bits(4, 16, 49152, bank_bytes=8192,
                                              bank_count=bank_count, ia_compact_enable=True)

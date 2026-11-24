@@ -58,9 +58,6 @@ def hardware_config(values):
     result["SHARED_BANK_BYTES"] = values.get("SHARED_BANK_BYTES", 2048)
     result["SHARED_BANK_COUNT"] = values.get("SHARED_BANK_COUNT", 7)
     result["IM2COL_CACHE_BYTES"] = values.get("IM2COL_CACHE_BYTES", 4096)
-    result["CONV_LOW_LATENCY"] = values.get("CONV_LOW_LATENCY", 0)
-    if type(result["CONV_LOW_LATENCY"]) is not int or result["CONV_LOW_LATENCY"] not in (0, 1):
-        raise ValueError("CONV_LOW_LATENCY must be 0 or 1")
     result["CONV_LINE_BYTES"] = model.im2col_cache.LINE_BYTES
     result["CONV_CACHE_WAYS"] = model.im2col_cache.WAYS
     result["VECTOR_PE_COUNT"] = values.get("VECTOR_PE_COUNT", min(values["SIZE"], 16))
@@ -516,7 +513,6 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
                f'-GSHARED_BANK_BYTES={hardware_config(values)["SHARED_BANK_BYTES"]}',
                f'-GSHARED_BANK_COUNT={hardware_config(values)["SHARED_BANK_COUNT"]}',
                f'-GIM2COL_CACHE_BYTES={hardware_config(values)["IM2COL_CACHE_BYTES"]}',
-               f'-GCONV_LOW_LATENCY={hardware_config(values)["CONV_LOW_LATENCY"]}',
                "-GENABLE_VECTOR_ENGINE=1", f'-GVECTOR_PE_COUNT={hardware_config(values)["VECTOR_PE_COUNT"]}',
                f'-GSIZE={values["SIZE"]}', f'-GIA_CACHE_BLOCKS={values["IA_CACHE_BLOCKS"]}',
                f'-GPS_FRAME_COUNT={values["PS_FRAME_COUNT"]}',
@@ -538,14 +534,14 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
         capabilities = {
             "npu_axil_top": constant_parameters(tree, "npu_axil_top", (
                 "IA_COMPACT_ENABLE", "PS_CAPS", "SHARED_CAPABLE", "MATRIX_S8_BANKS", "MATRIX_S16_BANKS",
-                "IM2COL_CACHE_BYTES", "CONV_CACHE_SETS", "CONV_CACHE_WAYS", "CONV_LINE_BYTES", "CONV_LOW_LATENCY")),
+                "IM2COL_CACHE_BYTES", "CONV_CACHE_SETS", "CONV_CACHE_WAYS", "CONV_LINE_BYTES")),
             "npu_axil_reg_if": constant_parameters(tree, "npu_axil_reg_if", (
                 "PS_CAPS", "PS_POOL_BYTES", "IA_CACHE_BYTES", "SHARED_TOTAL_BYTES",
                 "SHARED_BANK_BYTES", "SHARED_IA_BANK_MASK", "PS_DIRECTORY_ROWS", "SHARED_CAPABLE",
                 "MATRIX_S8_BANKS", "MATRIX_S16_BANKS", "CONV_CACHE_BYTES")),
             "npu_top": constant_parameters(tree, "npu_top", (
                 "IA_COMPACT_ENABLE", "SHARED_RAM_ENABLED", "IA_MAX_CACHE_BLOCKS",
-                "IM2COL_CACHE_BYTES", "CONV_CACHE_SETS", "CONV_CACHE_WAYS", "CONV_LINE_BYTES", "CONV_LOW_LATENCY",
+                "IM2COL_CACHE_BYTES", "CONV_CACHE_SETS", "CONV_CACHE_WAYS", "CONV_LINE_BYTES",
                 "VECTOR_PE_COUNT", "WINDOW_LANES", "MATRIX_INPUT_LANES",
                 "REQUANT_COMPUTE_LANES", "DW_SHARED_QUANT_ENABLE")),
             "npu_matrix_engine": constant_parameters(tree, "npu_matrix_engine", (
@@ -568,7 +564,6 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
                                          im2col_cache_bytes=hardware_config(values)["IM2COL_CACHE_BYTES"],
                                          bus_width=hardware_config(values)["NPU_AXI_DATA_WIDTH"],
                                          vector_pe_count=hardware_config(values)["VECTOR_PE_COUNT"],
-                                         conv_low_latency=bool(hardware_config(values)["CONV_LOW_LATENCY"]),
                                          target=target,
                                          **geometry_options)
     expected_registers = model.register_arrays_bits(values["IA_CACHE_BLOCKS"], values["PS_FRAME_COUNT"],
@@ -591,13 +586,10 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
         capabilities["npu_top"]["WINDOW_LANES"] == hardware_config(values)["WINDOW_LANES"] and \
         frontend_parameters["LANES"] == hardware_config(values)["WINDOW_LANES"] and \
         frontend_parameters["p_cache_read_width"] == 8 * hardware_config(values)["WINDOW_LANES"]
-    conv_low_latency = hardware_config(values)["CONV_LOW_LATENCY"]
     architecture = architecture and \
-        capabilities["npu_axil_top"]["CONV_LOW_LATENCY"] == conv_low_latency and \
-        capabilities["npu_top"]["CONV_LOW_LATENCY"] == conv_low_latency and \
-        all(frontend_parameters[key] == 1 - conv_low_latency for key in (
+        all(frontend_parameters[key] == 0 for key in (
             "REGISTER_DESCRIPTOR", "REGISTER_ROW_ADDRESS", "REGISTER_CACHE_REQUEST")) and \
-        frontend_parameters["CACHE_RESPONSE_DEPTH"] == (1 if conv_low_latency else 2)
+        frontend_parameters["CACHE_RESPONSE_DEPTH"] == 1
     layout = model.memory_geometry(values["IA_CACHE_BLOCKS"], values["PS_FRAME_COUNT"],
                                    values["PS_POOL_BYTES"], values["SIZE"], bool(values["PCR_ENGINE"]),
                                    **geometry_options)

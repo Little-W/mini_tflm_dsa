@@ -22,8 +22,7 @@ def main():
     parser.add_argument('--line-bytes', type=int, default=128)
     parser.add_argument('--fpga', action='store_true')
     parser.add_argument('--synthesis', action='store_true')
-    parser.add_argument('--register-descriptor', type=int, choices=(0, 1))
-    parser.add_argument('--conv-low-latency', action='store_true')
+    parser.add_argument('--register-descriptor', type=int, choices=(0, 1), default=0)
     parser.add_argument('--admission', choices=('finish', 'idle'),
                         help='持续请求的接收阶段；默认在前一项完成时允许接收')
     parser.add_argument('--window', type=int, choices=(0, 1))
@@ -32,8 +31,6 @@ def main():
     parser.add_argument('--continuous', action='store_true',
                         help='持续提供描述符并检查输出顺序、完成次数和在途容量')
     args = parser.parse_args()
-    if args.conv_low_latency and args.register_descriptor is not None:
-        parser.error('Select either --conv-low-latency or --register-descriptor')
     if args.admission is None:
         args.admission = 'finish'
     root, out = args.source_root.resolve(), args.out.resolve()
@@ -57,17 +54,13 @@ def main():
         if args.continuous and name == 'tb_conv_im2col_frontend':
             from continuous_frontend import continuous_bench
             bench = continuous_bench(bench, admission=args.admission,
-                descriptor_capacity=1 if args.conv_low_latency or args.register_descriptor == 0 else 2)
+                descriptor_capacity=1 if args.register_descriptor == 0 else 2)
         if args.fixed_ready and name=='tb_conv_im2col_frontend':
             bench=bench.replace('wr_ready<=USE_TILE_PATH || lfsr[5] || lfsr[9];', "wr_ready<=1'b1;")
             bench=bench.replace('arready<=!mem_active && (lfsr[0] || lfsr[3]);', 'arready<=!mem_active;')
             bench=bench.replace('mem_active && !rvalid && lfsr[2]', 'mem_active && !rvalid')
         if args.register_descriptor is not None:
             bench=bench.replace('conv_im2col_frontend #(', 'conv_im2col_frontend #(.REGISTER_DESCRIPTOR(1\'b' + str(args.register_descriptor) + '),', 1)
-        if args.conv_low_latency:
-            bench=bench.replace('conv_im2col_frontend #(',
-                "conv_im2col_frontend #(.REGISTER_DESCRIPTOR(1'b0), .REGISTER_ROW_ADDRESS(1'b0), "
-                ".REGISTER_CACHE_REQUEST(1'b0), .CACHE_RESPONSE_DEPTH(1),", 1)
         p.write_text(bench)
         benches[name] = p
     hashes = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in [*sources, *benches.values()]}
@@ -130,8 +123,7 @@ def main():
                'cache_sets': args.cache_sets, 'line_bytes': args.line_bytes, 'xilinx_fpga': args.fpga,
                'continuous_descriptors': args.continuous, 'synthesis': args.synthesis,
                'register_descriptor': args.register_descriptor, 'admission': args.admission,
-               'conv_low_latency': args.conv_low_latency,
-               'descriptor_capacity': 1 if args.conv_low_latency or args.register_descriptor == 0 else 2,
+               'descriptor_capacity': 1 if args.register_descriptor == 0 else 2,
                'fixed_ready': args.fixed_ready,
                'source_sha256': hashes, 'configurations': results}
     (out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')

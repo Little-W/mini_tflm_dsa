@@ -55,9 +55,8 @@ def hardware_profile(args, normalize):
     profile.update({key: vector[key] for key in (
         "vector_pe_count", "quantization_lanes", "window_lanes", "shared_quant_enable")})
     profile.update(resolve_cache_configuration(args.repo, args.cache_bytes))
-    profile['conv_low_latency'] = int(args.conv_low_latency)
-    profile['conv_cache_demand_outstanding'] = 1 if args.conv_low_latency else 2
-    profile['conv_register_descriptor'] = 0 if args.conv_low_latency else 1
+    profile['conv_cache_demand_outstanding'] = 1
+    profile['conv_register_descriptor'] = 0
     return profile
 
 
@@ -189,7 +188,6 @@ def testbench(args):
     text = text.replace("module tb_common_conv;", "module tb_latest_operators;")
     text = text.replace("localparam int WORDS = 131072;", "localparam int WORDS = 524288;")
     text = text.replace(".DMA_MAX_BYTES(`TB_DMA_MAX_BYTES),", ".DMA_MAX_BYTES(`TB_DMA_MAX_BYTES),\n"
-        "              .CONV_LOW_LATENCY(`TB_CONV_LOW_LATENCY),\n"
         "              .VECTOR_PE_COUNT(`TB_VECTOR_PE_COUNT),\n"
         + ("              .WINDOW_LANES(`TB_WINDOW_LANES),\n" if vector["top_window_parameter"] else "") +
         "              .SHARED_BANK_BYTES(`TB_SHARED_BANK_BYTES), .SHARED_BANK_COUNT(`TB_SHARED_BANK_COUNT),\n"
@@ -235,9 +233,8 @@ def testbench(args):
                 u_dut.CONV_CACHE_SETS == `TB_CONV_CACHE_SETS &&
                 u_dut.CONV_LINE_BYTES * u_dut.CONV_CACHE_WAYS * u_dut.CONV_CACHE_SETS == `TB_IM2COL_CACHE_BYTES)
             else $fatal(1, "Cache geometry differs from the experiment");
-        $display("COMMON_CACHE cache_line_bytes=%0d cache_sets=%0d cache_ways=%0d conv_low_latency=%0d conv_cache_demand_outstanding=%0d conv_register_descriptor=%0d",
+        $display("COMMON_CACHE cache_line_bytes=%0d cache_sets=%0d cache_ways=%0d conv_cache_demand_outstanding=%0d conv_register_descriptor=%0d",
             u_dut.CONV_LINE_BYTES, u_dut.CONV_CACHE_SETS, u_dut.CONV_CACHE_WAYS,
-            u_dut.CONV_LOW_LATENCY,
             u_dut.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.CACHE_RESPONSE_DEPTH,
             u_dut.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.REGISTER_DESCRIPTOR);
 '''
@@ -280,7 +277,6 @@ def build(args, runner, profile):
             raise ValueError("已有仿真器的文件内容与构建记录不一致")
         return binary
     defines = ["-DGEMPACT_PS_COMPRESS=1", "-DGEMMORA_PS_FORCE_RAW=1", f"-DGEMMORA_PS_POOL_BYTES={(args.bank_count-1)*args.bank_bytes}",
-        f"-DTB_CONV_LOW_LATENCY={int(args.conv_low_latency)}",
         f"-DTB_VECTOR_PE_COUNT={args.pe_count}",
         f"-DTB_QUANT_LANES={profile['quantization_lanes']}", f"-DTB_WINDOW_LANES={profile['window_lanes']}",
         f"-DTB_SHARED_QUANT_ENABLE={profile['shared_quant_enable']}",
@@ -322,8 +318,6 @@ def main():
     ap.add_argument("--cache-bytes", type=int, default=4096)
     ap.add_argument("--pe-count", type=int, choices=(8, 16), default=8,
                     help="向量乘累加单元数量；实际量化及窗口并行度写入配置记录")
-    ap.add_argument("--conv-low-latency", action="store_true",
-                    help="选择减少前端寄存等待的硬件配置")
     ap.add_argument("--prepare-only", action="store_true")
     ap.add_argument("--skip-build", action="store_true")
     ap.add_argument("--cases", nargs="+")
@@ -381,7 +375,7 @@ def main():
                     quantization_lanes=profile["quantization_lanes"], window_lanes=profile["window_lanes"],
                     shared_quant_enable=profile["shared_quant_enable"])
                 passed = passed and actual_cache[0] == {key: profile[key] for key in (
-                    "cache_line_bytes", "cache_sets", "cache_ways", "conv_low_latency",
+                    "cache_line_bytes", "cache_sets", "cache_ways",
                     "conv_cache_demand_outstanding", "conv_register_descriptor")}
             row.update(passed=passed, returncode=returncode, command=command)
             if passed:

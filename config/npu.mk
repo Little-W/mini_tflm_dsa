@@ -9,7 +9,7 @@ SIZE ?= 16
 # The CPU and NPU AXI-Lite register data interfaces remain 32 bits.
 NPU_AXI_DATA_WIDTH ?= 64
 # Original-image cache used by hardware im2col and vector image reads.
-# Data bytes only; two ways, 16-byte lines. Power of two: 512..65536.
+# Data bytes only; two ways, 128-byte lines. Power of two: 512..65536.
 # 4 KiB holds one 3-row K16 band up to width 85 (S8) or 42 (S16),
 # for aligned NHWC, channels divisible by 16, and dilation 1.
 # See docs/im2col_cache_configuration.md for convolution-size guidance.

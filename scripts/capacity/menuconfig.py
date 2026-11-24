@@ -69,9 +69,6 @@ FIELDS = (
           "Original-image data bytes, separate from shared IA/PS RAM. Two ways and 16-byte lines; "
           "512 B to 64 KiB in powers of two. Press ? for convolution sizes at the selected capacity.",
           im2col_cache.BYTE_CHOICES, byte_size=True),
-    Field("CONV_LOW_LATENCY", "Convolution input cache", "Low latency frontend",
-          "Use direct descriptor, row-address and cache-request logic with one queued response. "
-          "Zero retains the registered frontend and two queued responses.", (0, 1)),
 )
 
 ACTIONS = (("optimize", "Optimize capacity for the selected workloads"),

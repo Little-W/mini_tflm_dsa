@@ -55,7 +55,7 @@ def _field_value(key, value):
             raise ValueError(f"{key} must be a supported text choice")
         value = config.literal_value(key, value)
 
-    if key in ("PCR_ENGINE", "PS_FORCE_RAW", "CONV_LOW_LATENCY") and value not in (0, 1):
+    if key in ("PCR_ENGINE", "PS_FORCE_RAW") and value not in (0, 1):
         raise ValueError(f"{key} must be 0 or 1")
     if key == "PS_FORCE_RAW" and value != 1:
         raise ValueError("PS_FORCE_RAW must be 1 for the INT32 partial-sum store")
@@ -205,7 +205,6 @@ class MenuConfigState:
                              bank_bytes=self.values["SHARED_BANK_BYTES"],
                              cache_blocks=self.values["IA_CACHE_BLOCKS"], frame_count=self.values["PS_FRAME_COUNT"],
                              ps_build_bytes=self.values["PS_POOL_BYTES"],
-                             conv_low_latency=bool(self.values["CONV_LOW_LATENCY"]),
                              ia_compact_enable=bool(self.values["IA_COMPACT_ENABLE"]))
         allocation = result["allocation"]
         updated = {**self.values, "PCR_ENGINE": 1, "SIZE": model.TILE,

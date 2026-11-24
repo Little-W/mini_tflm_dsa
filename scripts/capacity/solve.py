@@ -138,7 +138,6 @@ def main(argv=None):
                              bank_bytes=values["SHARED_BANK_BYTES"],
                              cache_blocks=values["IA_CACHE_BLOCKS"], frame_count=values["PS_FRAME_COUNT"],
                              ps_build_bytes=values["PS_POOL_BYTES"],
-                             conv_low_latency=bool(values["CONV_LOW_LATENCY"]),
                              ia_compact_enable=bool(values["IA_COMPACT_ENABLE"]))
         alloc = result["allocation"]
         updates = {"PCR_ENGINE": 1, "SIZE": model.TILE,

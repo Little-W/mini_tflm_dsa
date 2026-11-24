@@ -33,7 +33,7 @@ class Im2colCacheConfiguration(unittest.TestCase):
             if previous is not None:
                 old_capacity, old_arrays = previous
                 self.assertEqual(sum(arrays.values()) - sum(old_arrays.values()),
-                                 (capacity - old_capacity) // 128 * (1024 + 148) + 2)
+                                 (capacity - old_capacity) // 128 * (1024 + 148) + 1)
             previous = capacity, arrays
 
     def test_invalid_capacities(self):

@@ -22,7 +22,7 @@ OUTPUTS = ('cfg_ready', 'tile_ready', 'wr_valid', 'wr_slot', 'wr_row', 'wr_col',
            'arvalid', 'araddr', 'arlen', 'arsize', 'arburst', 'rready')
 
 
-def compare_bench(source, register_cache_request=None, register_descriptor=None, cache_response_depth=None):
+def compare_bench(source, register_cache_request=0, register_descriptor=0, cache_response_depth=1):
     match = re.search(r'conv_im2col_frontend\s+#\(.*?\)\s+dut\s*\(.*?\);', source, re.S)
     if match is None:
         raise ValueError('frontend instance missing')
@@ -180,11 +180,11 @@ def main():
                         help='0 为宽输出，1 为窄输出，2 为逐分块交替')
     parser.add_argument('--fpga', action='store_true', help='启用 XILINX_FPGA 配置')
     parser.add_argument('--synthesis', action='store_true', help='验证 SYNTHESIS 条件下的 RTL 表达式')
-    parser.add_argument('--register-cache-request', type=int, choices=(0, 1),
+    parser.add_argument('--register-cache-request', type=int, choices=(0, 1), default=0,
                         help='显式选择两个比较实例的请求寄存配置')
-    parser.add_argument('--register-descriptor', type=int, choices=(0, 1),
+    parser.add_argument('--register-descriptor', type=int, choices=(0, 1), default=0,
                         help='显式选择两个比较实例的描述符寄存配置')
-    parser.add_argument('--cache-response-depth', type=int,
+    parser.add_argument('--cache-response-depth', type=int, default=1,
                         help='显式选择两个比较实例的缓存响应队列深度')
     args = parser.parse_args()
     out = args.out.resolve()

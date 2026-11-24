@@ -98,8 +98,7 @@ def shared_configuration(*, ps_pool_bytes=None, shared_bank_bytes=None,
 
 def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=524288,pe_count=8,picorv32=None,
               ia_cache_blocks=None,ps_storage_rows=None,s16_output_banks=4,cpu_profile='performance',dma_max_bytes=None,bus_width=None,first_read_latency=8,ps_pool_bytes=None,
-              shared_bank_bytes=None,shared_bank_count=None,im2col_cache_bytes=None,ps_frame_count=None,hardware_raw=None,
-              conv_low_latency=False):
+              shared_bank_bytes=None,shared_bank_count=None,im2col_cache_bytes=None,ps_frame_count=None,hardware_raw=None):
     storage = shared_configuration(ps_pool_bytes=ps_pool_bytes, shared_bank_bytes=shared_bank_bytes,
         shared_bank_count=shared_bank_count, ia_cache_blocks=ia_cache_blocks,
         ps_frame_count=ps_frame_count, hardware_raw=hardware_raw)
@@ -158,7 +157,6 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
     window_lanes=vector['window_lanes']
     quantization_lanes=vector['quantization_lanes']
     profile={'size':16,'pe_count':pe_count,'vector_pe_count':pe_count,
-             'conv_low_latency':int(conv_low_latency),
              'quantization_lanes':quantization_lanes,'window_lanes':window_lanes,
              'shared_quant_enable':vector['shared_quant_enable'],
              'ram_words':ram_words,'cpu_icache':icache,
@@ -174,7 +172,7 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
              'conv_cache_data_bytes':im2col_cache_bytes,'conv_cache_policy':'windowed',
              'im2col_cache_bytes':im2col_cache_bytes,
              'conv_cache_prefetch':True,'vector_line_cache_bytes':0,
-             'conv_cache_demand_outstanding':1 if conv_low_latency else 2,'vector_window_outstanding':4,
+             'conv_cache_demand_outstanding':1,'vector_window_outstanding':4,
              'im2col_corrected_elements_per_cycle':window_lanes,
              'cpu':'PicoRV32','cpu_profile':cpu_profile,**CPU_PROFILES[cpu_profile],
              'cpu_isa':'RV32IM','cpu_compressed_isa':0,
@@ -210,7 +208,6 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
           f'-DSOC_NETWORK_SHARED_BANK_BYTES={shared_bank_bytes}',
           f'-DSOC_NETWORK_SHARED_BANK_COUNT={shared_bank_count}',
           f'-DSOC_NETWORK_IM2COL_CACHE_BYTES={im2col_cache_bytes}',
-          f'-DSOC_NETWORK_CONV_LOW_LATENCY={int(conv_low_latency)}',
           *(['-DGEMMORA_PS_FORCE_RAW'] if hardware_raw else []),
           *[f'-DSOC_NETWORK_{key.upper()}={value}' for key,value in CPU_PROFILES[cpu_profile].items()],
           f'-DSOC_NETWORK_IA_CACHE_BLOCKS={ia_cache_blocks}',

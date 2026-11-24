@@ -50,7 +50,7 @@ class ElaborationTargetTests(unittest.TestCase):
         for bus_width, pe_count, response_bits in ((32, 8, 33), (64, 8, 65), (32, 16, 129), (64, 16, 129)):
             arrays = model.buffer_arrays_bits(4, 16, 12288, bus_width=bus_width,
                                               vector_pe_count=pe_count)
-            self.assertEqual(arrays["conv_response_queue"], 2 * response_bits)
+            self.assertEqual(arrays["conv_response_queue"], response_bits)
             self.assertEqual(arrays["conv_data_cache"], 4096 * 8)
 
     def test_prefetch_selected_port_has_target_specific_storage(self):

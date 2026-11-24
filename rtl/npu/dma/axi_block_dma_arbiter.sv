@@ -27,7 +27,6 @@ module axi_block_dma_arbiter #(
     parameter int unsigned CONV_CACHE_WAYS = 2,
     parameter int unsigned CONV_LINE_BYTES = 16,
     parameter int unsigned CONV_CACHE_POLICY = 3,
-    parameter bit CONV_LOW_LATENCY = 1'b0,
     parameter bit p_register_bus_error = 1'b0
 ) (
     input logic clk,
@@ -697,8 +696,7 @@ module axi_block_dma_arbiter #(
         .RD_TAG_WIDTH     (3),
         .WRITE_OUTSTANDING(WRITE_OUTSTANDING),
         .CONV_CACHE_SETS(CONV_CACHE_SETS), .CONV_CACHE_WAYS(CONV_CACHE_WAYS),
-        .CONV_LINE_BYTES(CONV_LINE_BYTES), .CONV_CACHE_POLICY(CONV_CACHE_POLICY),
-        .CONV_LOW_LATENCY(CONV_LOW_LATENCY)
+        .CONV_LINE_BYTES(CONV_LINE_BYTES), .CONV_CACHE_POLICY(CONV_CACHE_POLICY)
     ) u_dma (
         .clk                (clk),
         .rst_n              (rst_n),

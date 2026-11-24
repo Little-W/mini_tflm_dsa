@@ -1,6 +1,3 @@
-`ifndef TB_CONV_LOW_LATENCY
-`define TB_CONV_LOW_LATENCY 0
-`endif
 module tb_axi_dual_block_dma;
   localparam int SIZE = 8;
   localparam int DATA_WIDTH = 32;
@@ -82,7 +79,6 @@ module tb_axi_dual_block_dma;
   logic [BUS_WIDTH-1:0] mem [0:MEM_DEPTH-1];
 
   axi_dual_block_dma #(
-    .CONV_LOW_LATENCY(`TB_CONV_LOW_LATENCY),
     .DATA_WIDTH(DATA_WIDTH),
     .SIZE(SIZE),
     .BUS_WIDTH(BUS_WIDTH),

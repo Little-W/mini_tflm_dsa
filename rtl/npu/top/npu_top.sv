@@ -34,7 +34,6 @@ module npu_top #(
     parameter int unsigned CONV_LINE_BYTES = 128,
     parameter int unsigned CONV_CACHE_SETS = IM2COL_CACHE_BYTES / (CONV_CACHE_WAYS * CONV_LINE_BYTES),
     parameter int unsigned CONV_CACHE_POLICY = 3,
-    parameter bit CONV_LOW_LATENCY = 1'b0,
     parameter int unsigned ENABLE_DW_POOL = 1,
     parameter int unsigned DW_PE_COUNT = (SIZE < 16) ? SIZE : 16,
     parameter int unsigned ENABLE_VECTOR_ENGINE = ENABLE_DW_POOL,
@@ -852,7 +851,6 @@ module npu_top #(
             .CONV_CACHE_WAYS(CONV_CACHE_WAYS),
             .CONV_LINE_BYTES(CONV_LINE_BYTES),
             .CONV_CACHE_POLICY(CONV_CACHE_POLICY),
-            .CONV_LOW_LATENCY(CONV_LOW_LATENCY),
             .p_register_bus_error(1'b1)
         ) u_block_dma_arbiter (
             .clk                     (clk),

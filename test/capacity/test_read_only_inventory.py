@@ -150,10 +150,10 @@ class ReadOnlyInventoryTests(unittest.TestCase):
         self.assertEqual(arrays["vector_pool_reciprocal_rom"], 4626)
         writable = copy.deepcopy(arrays)
         del writable["vector_pool_reciprocal_rom"]
-        self.assertEqual(sum(writable.values()), 921128)
-        self.assertEqual(sum(arrays.values()), 925754)
+        self.assertEqual(sum(writable.values()), 920864)
+        self.assertEqual(sum(arrays.values()), 925490)
         allocation = model.allocation(4, 16, 49152, 131072, bank_bytes=8192, bank_count=7, ia_compact_enable=True)
-        self.assertEqual(allocation["budget_used_bytes"], 115720)
+        self.assertEqual(allocation["budget_used_bytes"], 115687)
         self.assertGreaterEqual(allocation["unused_budget_bytes"], 0)
 
 

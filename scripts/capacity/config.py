@@ -12,7 +12,7 @@ from . import model, im2col_cache
 DEFAULTS = {
     "PCR_ENGINE": 1, "SIZE": 16, "IA_CACHE_BLOCKS": 4, "PS_FRAME_COUNT": 16,
     "NPU_AXI_DATA_WIDTH": 64, "IA_COMPACT_ENABLE": 0,
-    "IM2COL_CACHE_BYTES": im2col_cache.DEFAULT_BYTES, "CONV_LOW_LATENCY": 0,
+    "IM2COL_CACHE_BYTES": im2col_cache.DEFAULT_BYTES,
     "SHARED_BANK_BYTES": 2048, "SHARED_BANK_COUNT": 7,
     "AXI_READ_OUTSTANDING": 4, "PS_POOL_BYTES": 12288, "PS_FORCE_RAW": 1,
     "CAPACITY_BUDGET_BYTES": 131072,
@@ -74,14 +74,14 @@ def parse_override(text):
 
 def validate_config(values, require_pcr=False, *, check_budget=True, state_report=None,
                     target="asic"):
-    missing = [key for key in MANAGED_KEYS if key not in values and key != "CONV_LOW_LATENCY"]
+    missing = [key for key in MANAGED_KEYS if key not in values]
     if missing:
         raise ValueError("configuration is missing: " + ", ".join(missing))
     normalized = {**DEFAULTS, **values}
     for key in INTEGER_KEYS:
         if type(normalized[key]) is not int:
             raise ValueError(f"{key} must be an integer")
-    for key in ("PCR_ENGINE", "PS_FORCE_RAW", "IA_COMPACT_ENABLE", "CONV_LOW_LATENCY"):
+    for key in ("PCR_ENGINE", "PS_FORCE_RAW", "IA_COMPACT_ENABLE"):
         if normalized[key] not in (0, 1):
             raise ValueError(f"{key} must be 0 or 1")
     if normalized["PS_FORCE_RAW"] != 1:
@@ -142,7 +142,7 @@ def selected_config(config_path=None):
 def environment_settings():
     """Literal hardware overrides applied before explicit command arguments."""
     return {key: literal_value(key, os.environ[key])
-            for key in ("NPU_AXI_DATA_WIDTH", "IM2COL_CACHE_BYTES", "SHARED_BANK_BYTES", "SHARED_BANK_COUNT", "IA_COMPACT_ENABLE", "CONV_LOW_LATENCY")
+            for key in ("NPU_AXI_DATA_WIDTH", "IM2COL_CACHE_BYTES", "SHARED_BANK_BYTES", "SHARED_BANK_COUNT", "IA_COMPACT_ENABLE")
             if key in os.environ}
 
 
@@ -168,7 +168,6 @@ def allocation_from_config(values, *, state_report=None, target="asic"):
                               im2col_cache_bytes=values["IM2COL_CACHE_BYTES"],
                               bus_width=values["NPU_AXI_DATA_WIDTH"],
                               vector_pe_count=values.get("VECTOR_PE_COUNT"),
-                              conv_low_latency=bool(values.get("CONV_LOW_LATENCY", 0)),
                               target=target,
                               **shared_geometry(values))
     result["state_measurement"] = None if report is None else {
