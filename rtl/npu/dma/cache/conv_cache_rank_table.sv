@@ -23,6 +23,7 @@ module conv_cache_rank_table #(
   logic [2:0][p_addr_width-1:0] bank_i_rd_addr [3];
   logic bank_i_wr_mask;
   logic [2:0] bank_i_rd_en;
+  logic hit_write_eligible;
 
   assign bank_i_wr_mask = 1'b1;
   assign bank_i_rd_en = 3'b111;
@@ -31,8 +32,13 @@ module conv_cache_rank_table #(
   assign bank_i_wr_en[0] = i_clear_en || (i_write_en && i_fill_valid);
   assign bank_i_wr_en[1] = i_clear_en || (i_write_en && i_hint_valid &&
     !(i_fill_valid && i_fill_addr == i_hint_addr));
-  assign bank_i_wr_en[2] = i_clear_en || (i_write_en && i_hit_valid &&
-    !(i_fill_valid && i_fill_addr == i_hit_addr) && !(i_hint_valid && i_hint_addr == i_hit_addr));
+  // 填充和提示的同址优先级提前形成，命中只控制最终写入资格。
+  assign hit_write_eligible = i_write_en && !(i_fill_valid && i_fill_addr == i_hit_addr) &&
+      !(i_hint_valid && i_hint_addr == i_hit_addr);
+  conv_cache_rank_hit_write u_hit_write (
+    .i_clear(i_clear_en), .i_eligible(hit_write_eligible), .i_hit(i_hit_valid),
+    .o_write(bank_i_wr_en[2])
+  );
   assign bank_i_wr_addr[0] = i_clear_en ? i_clear_addr : i_fill_addr;
   assign bank_i_wr_addr[1] = i_clear_en ? i_clear_addr : i_hint_addr;
   assign bank_i_wr_addr[2] = i_clear_en ? i_clear_addr : i_hit_addr;
@@ -66,6 +72,15 @@ module conv_cache_rank_table #(
     if (i_read_en)
       o_read_data <= bank_o_rd_data[0][0] ^ bank_o_rd_data[1][0] ^ bank_o_rd_data[2][0];
   end
+endmodule
+
+// 运行资格与命中事件独立计算，清除保持所有来源的最高写入优先级。
+(* keep_hierarchy = "yes" *)
+module conv_cache_rank_hit_write (
+  input wire logic i_clear, i_eligible, i_hit,
+  output logic o_write
+);
+  assign o_write = i_clear || (i_eligible && i_hit);
 endmodule
 
 `default_nettype wire

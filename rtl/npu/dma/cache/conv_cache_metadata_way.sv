@@ -5,6 +5,7 @@
 module conv_cache_metadata_way #(
   parameter int p_sets = 32,
   parameter int p_demand_depth = 4,
+  parameter bit p_preview_request = 1'b0,
   parameter int p_set_width = $clog2(p_sets),
   parameter int p_line_shift = 4,
   parameter int p_epoch_width = 17 - p_line_shift
@@ -18,6 +19,7 @@ module conv_cache_metadata_way #(
   input wire logic [1:0][p_set_width-1:0] i_offer_tag_set,
   input wire logic [p_set_width-1:0] i_lookup_snapshot_set,
   input wire logic [3:0][p_set_width-1:0] i_lookup_candidate_set,
+  input wire logic [1:0][p_set_width-1:0] i_lookup_input_set,
   input wire logic [1:0] i_lookup_candidate_select,
   input wire logic i_lookup_saved_fill_match,
   input wire logic [31:p_line_shift] i_fill_tag, i_hint_tag,
@@ -35,8 +37,8 @@ module conv_cache_metadata_way #(
   output logic [4:0][31:p_line_shift] o_tags,
   output logic [31:p_line_shift] o_lookup_tag_raw,
   output logic o_lookup_valid_raw, o_lookup_valid_saved,
-  output logic [2:0][31:p_line_shift] o_lookup_candidate_tags,
-  output logic [2:0] o_lookup_candidate_valid,
+  output logic [3:0][31:p_line_shift] o_lookup_source_tags,
+  output logic [3:0] o_lookup_source_valid,
   output logic [p_epoch_width-1:0] o_epoch,
   output logic [31:0] o_rank
 );
@@ -49,11 +51,13 @@ module conv_cache_metadata_way #(
     logic valid_i_wr_en;
     logic [SI-1:0] valid_i_wr_addr;
     logic [0:0] valid_i_wr_data, valid_i_wr_mask;
-    localparam int p_valid_read_ports = DEMAND_DEPTH > 1 ? 10 : 9;
+    localparam bit p_parallel_preview = DEMAND_DEPTH == 1 && p_preview_request;
+    localparam int p_valid_read_ports = DEMAND_DEPTH > 1 ? 10 : 9 + int'(p_parallel_preview);
     logic [p_valid_read_ports-1:0] valid_i_rd_en;
     logic [p_valid_read_ports-1:0][SI-1:0] valid_i_rd_addr;
     logic [p_valid_read_ports-1:0][0:0] valid_o_rd_data;
     logic [5:0] valid_active;
+    logic valid_clear_write, valid_fill_write, valid_fill_data;
 
     // 配置清除和填充结束共用一个写端口，填充期间屏蔽被替换行。
     // 前一行完成与下一行开始可以同周期发生，两行的有效状态独立处理。
@@ -63,19 +67,66 @@ module conv_cache_metadata_way #(
     assign valid_i_wr_data = !i_clearing && i_metadata_fill_good && !i_bypass;
     assign valid_i_wr_mask = 1'b1;
     assign valid_i_rd_en = '1;
+    assign valid_clear_write = rst_n && i_metadata_enable && i_clearing;
+    assign valid_fill_write = rst_n && i_metadata_enable && !i_clearing && i_metadata_fill && i_fill_selected;
+    assign valid_fill_data = i_metadata_fill_good && !i_bypass;
     logic [5:0] valid_read_value;
     logic [5:0][SI-1:0] valid_match_address;
     // 有效位与标签同时准备，同拍写入显式转发到保存结果。
     if (DEMAND_DEPTH == 1) begin : g_saved_lookup_valid
       logic lookup_valid_q;
       assign valid_i_rd_addr[0] = i_read_set[0];
-      // 队首、输入和缺失地址分别读取有效位，同拍写入各自转发。
+      // 队首、正式输入和缺失地址分别读取有效位，同拍写入各自转发。
       for (genvar candidate = 0; candidate < 3; candidate++) begin : g_candidate
         localparam int p_source = candidate == 0 ? 0 : candidate + 1;
-        assign valid_i_rd_addr[6+candidate] = i_lookup_candidate_set[p_source];
-        assign o_lookup_candidate_valid[candidate] =
-            valid_i_wr_en && valid_i_wr_addr == i_lookup_candidate_set[p_source] ?
-            valid_i_wr_data[0] : valid_o_rd_data[6+candidate][0];
+        wire [SI-1:0] source_set = candidate == 1 ?
+            i_lookup_input_set[0] : i_lookup_candidate_set[p_source];
+        (* keep = 1 *) logic clear_matches, fill_matches;
+        logic forwarded_valid;
+        assign valid_i_rd_addr[6+candidate] = source_set;
+        assign clear_matches = source_set == i_clear_set;
+        assign fill_matches = source_set == i_fill_set;
+        conv_cache_valid_forward u_forward (
+          .i_clear_write(valid_clear_write), .i_clear_match(clear_matches),
+          .i_fill_write(valid_fill_write), .i_fill_match(fill_matches),
+          .i_fill_valid(valid_fill_data), .i_stored_valid(valid_o_rd_data[6+candidate][0]),
+          .o_valid(forwarded_valid)
+        );
+        always_comb begin
+          o_lookup_source_valid[candidate] = forwarded_valid;
+          case (^{rst_n, i_metadata_enable, i_clearing, i_metadata_fill,
+                   i_fill_selected, i_metadata_fill_good, i_bypass})
+            1'b0, 1'b1: begin end
+            default: o_lookup_source_valid[candidate] =
+                valid_i_wr_en && valid_i_wr_addr == source_set ?
+                valid_i_wr_data[0] : valid_o_rd_data[6+candidate][0];
+          endcase
+        end
+      end
+      if (p_parallel_preview) begin : g_preview
+        (* keep = 1 *) logic clear_matches, fill_matches;
+        logic forwarded_valid;
+        assign valid_i_rd_addr[9] = i_lookup_input_set[1];
+        assign clear_matches = i_lookup_input_set[1] == i_clear_set;
+        assign fill_matches = i_lookup_input_set[1] == i_fill_set;
+        conv_cache_valid_forward u_forward (
+          .i_clear_write(valid_clear_write), .i_clear_match(clear_matches),
+          .i_fill_write(valid_fill_write), .i_fill_match(fill_matches),
+          .i_fill_valid(valid_fill_data), .i_stored_valid(valid_o_rd_data[9][0]),
+          .o_valid(forwarded_valid)
+        );
+        always_comb begin
+          o_lookup_source_valid[3] = forwarded_valid;
+          case (^{rst_n, i_metadata_enable, i_clearing, i_metadata_fill,
+                   i_fill_selected, i_metadata_fill_good, i_bypass})
+            1'b0, 1'b1: begin end
+            default: o_lookup_source_valid[3] =
+                valid_i_wr_en && valid_i_wr_addr == i_lookup_input_set[1] ?
+                valid_i_wr_data[0] : valid_o_rd_data[9][0];
+          endcase
+        end
+      end else begin : g_no_preview
+        assign o_lookup_source_valid[3] = 1'b0;
       end
       always_ff @(posedge clk) begin
         if (rst_n && !(i_cfg_accept))
@@ -84,7 +135,7 @@ module conv_cache_metadata_way #(
       end
       assign valid_read_value[0] = lookup_valid_q;
     end else begin : g_current_lookup_valid
-      assign o_lookup_candidate_valid = '0;
+      assign o_lookup_source_valid = '0;
       logic lookup_valid_q;
       (* keep = "true" *) logic [3:0] lookup_candidate_valid;
       assign valid_i_rd_addr[0] = i_read_set[0];
@@ -166,12 +217,12 @@ module conv_cache_metadata_way #(
     logic [31:0] fill_rank_q, hit_rank_q, hint_rank_q;
     logic [1:0] rank_source_q;
     logic rank_source_i_clear_en, rank_source_i_hit_valid, rank_source_i_read_en;
-    logic fill_update, hit_update, hint_update;
+    logic fill_update, hit_update, hint_update, rank_hit_update;
     logic tags_i_wr_en;
     logic [SI-1:0] tags_i_wr_addr;
     logic [p_tag_width-1:0] tags_i_wr_data;
     logic [0:0] tags_i_wr_mask;
-    localparam int p_tag_read_ports = DEMAND_DEPTH == 1 ? 8 : 5;
+    localparam int p_tag_read_ports = DEMAND_DEPTH == 1 ? 8 + int'(p_parallel_preview) : 5;
     logic [p_tag_read_ports-1:0] tags_i_rd_en;
     logic [p_tag_read_ports-1:0][SI-1:0] tags_i_rd_addr;
     logic [p_tag_read_ports-1:0][p_tag_width-1:0] tags_raw_data;
@@ -207,6 +258,10 @@ module conv_cache_metadata_way #(
 
     assign fill_update = i_metadata_enable && i_metadata_fill_good && i_fill_selected;
     assign hit_update = i_metadata_enable && i_metadata_hit && i_hit_selected;
+    conv_cache_metadata_rank_hit u_rank_hit (
+      .i_enable(i_metadata_enable), .i_hit(i_metadata_hit), .i_selected(i_hit_selected),
+      .i_windowed(i_windowed), .i_hint_valid(i_hint_valid), .o_update(rank_hit_update)
+    );
     assign hint_update = i_metadata_enable && i_hint_resolved && !i_windowed &&
         o_valid[5] && o_tags[4] == i_hint_tag;
     assign tags_i_wr_en = fill_update;
@@ -223,11 +278,18 @@ module conv_cache_metadata_way #(
       // 各候选独立读取标签，请求状态只选择完成比较后的命中位。
       for (genvar candidate = 0; candidate < 3; candidate++) begin : g_candidate
         localparam int p_source = candidate == 0 ? 0 : candidate + 1;
-        assign tags_i_rd_addr[5+candidate] = i_lookup_candidate_set[p_source];
-        assign o_lookup_candidate_tags[candidate] = tags_raw_data[5+candidate];
+        assign tags_i_rd_addr[5+candidate] = candidate == 1 ?
+            i_lookup_input_set[0] : i_lookup_candidate_set[p_source];
+        assign o_lookup_source_tags[candidate] = tags_raw_data[5+candidate];
+      end
+      if (p_parallel_preview) begin : g_preview
+        assign tags_i_rd_addr[8] = i_lookup_input_set[1];
+        assign o_lookup_source_tags[3] = tags_raw_data[8];
+      end else begin : g_no_preview
+        assign o_lookup_source_tags[3] = '0;
       end
     end else begin : g_registered_lookup_tags
-      assign o_lookup_candidate_tags = '0;
+      assign o_lookup_source_tags = '0;
     end
     assign o_tags[0] = tags_o_rd_data[0];
     assign o_tags[1] = tags_o_rd_data[1];
@@ -300,7 +362,7 @@ module conv_cache_metadata_way #(
     assign hit_rank_i_rd_en = metadata_i_rd_en;
     assign hit_rank_i_rd_addr = metadata_i_rd_addr;
     assign hit_rank_i_wr_mask = metadata_i_wr_mask;
-    assign hit_rank_i_wr_en = hit_update && (i_windowed || i_hint_valid);
+    assign hit_rank_i_wr_en = rank_hit_update;
     assign hit_rank_i_wr_addr = i_lookup_set;
     assign hit_rank_i_wr_data = i_hit_rank;
     assign hit_rank_q = hit_rank_o_rd_data;
@@ -329,7 +391,7 @@ module conv_cache_metadata_way #(
     );
     // 三个写入来源保留独立端口，同步读取组合后的来源编码。
     assign rank_source_i_clear_en = rst_n && i_metadata_enable && i_clearing;
-    assign rank_source_i_hit_valid = hit_update && (i_windowed || i_hint_valid);
+    assign rank_source_i_hit_valid = rank_hit_update;
     assign rank_source_i_read_en = !i_select_stage_valid;
     conv_cache_rank_table #(.p_depth(SETS), .p_addr_width(SI)) u_rank_source (
       .clk(clk), .i_clear_en(rank_source_i_clear_en), .i_clear_addr(i_clear_set),
@@ -404,6 +466,26 @@ module conv_cache_metadata_way #(
         assert (!$isunknown({rank_source_q, o_epoch, o_rank}));
     end
 `endif
+endmodule
+
+// 清除和填充的地址匹配独立完成，最终转发保留清除优先级。
+(* keep_hierarchy = "yes" *)
+module conv_cache_valid_forward (
+  input wire logic i_clear_write, i_clear_match,
+  input wire logic i_fill_write, i_fill_match, i_fill_valid, i_stored_valid,
+  output logic o_valid
+);
+  assign o_valid = (i_clear_write && i_clear_match) ? 1'b0 :
+      ((i_fill_write && i_fill_match) ? i_fill_valid : i_stored_valid);
+endmodule
+
+// 更新模式提前提供，命中事件在末级同时控制顺序值和来源标记。
+(* keep_hierarchy = "yes" *)
+module conv_cache_metadata_rank_hit (
+  input wire logic i_enable, i_hit, i_selected, i_windowed, i_hint_valid,
+  output logic o_update
+);
+  assign o_update = i_enable && i_hit && i_selected && (i_windowed || i_hint_valid);
 endmodule
 
 `default_nettype wire
