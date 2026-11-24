@@ -97,6 +97,7 @@ module conv_im2col_geometry #(
   output logic [31:0] o_cfg_red,
   output logic [31:0] o_cfg_positions,
   output logic [15:0] o_last_group_channel_q,
+  output logic o_group_nonzero_q,
   output logic [31:0] o_channel_addr,
   output logic [31:0] o_next_row_group_base,
   output logic [2:0] o_decode_end_o_equal,
@@ -126,6 +127,8 @@ module conv_im2col_geometry #(
   output logic [31:0] o_stream_channel_full,
   output logic [p_coord_w-1:0] o_bound_sum [7],
   output logic [6:0] o_bound_valid,
+  output logic [2:0] o_skip_bound_valid,
+  output logic [2:0] o_window_padding,
   output logic o_next_word_o_equal,
   output logic signed [p_coord_w-1:0] o_tap_pair_dx,
   output logic [31:0] o_tap_pair_pixels,
@@ -237,7 +240,9 @@ module conv_im2col_geometry #(
   logic [p_coord_w-1:0] bound_a [7];
   logic [p_coord_w-1:0] bound_b [7];
   logic [15:0] bound_limit [7];
+  logic [6:0] bound_valid_reference;
   logic [31-p_word_shift:0] next_word_i_target;
+  logic [1:0] next_word_match;
   logic [2:0][p_coord_w-1:0] tap_pair_i_a;
   logic [2:0][p_coord_w-1:0] tap_pair_i_b;
   logic [2:0][p_coord_w-1:0] tap_pair_o_sum;
@@ -283,7 +288,19 @@ module conv_im2col_geometry #(
   logic [17:0] history_reduce_generate;
   logic [18:0] history_reduce_full_sum;
   logic history_width_reached;
+  logic [16:0] history_column_sum, history_column_reduced;
+  logic history_column_advance;
   logic unused_history_reduce_high;
+  logic unused_history_delta_carry;
+  logic [16:0] history_next_y;
+  logic unused_history_next_y_carry;
+  (* keep = 1 *) logic [2:0] fast_position_source;
+  (* keep = 1 *) logic [1:0][63:0] fast_position_pair;
+  logic [63:0] fast_position_power, fast_position_cache;
+  logic [63:0] fast_position_history, fast_position_next_row;
+  logic [63:0] fast_position_data;
+  logic [3:0] fast_wrap_source, fast_wrap_value;
+  logic fast_wrap_selected;
   logic [5:0] q_decode_value;
   logic [3:0] q_decode_o_quotient;
   logic [1:0] q_decode_o_remainder;
@@ -363,17 +380,189 @@ module conv_im2col_geometry #(
       // 坐标和值和范围条件使用同一组输入，边界检查独立于完整进位传播。
       conv_coordinate_step #(.p_width(p_coord_w)) u_step (
         .i_base(bound_a[axis]), .i_delta(bound_b[axis]), .i_limit(bound_limit[axis]),
-        .o_sum(o_bound_sum[axis]), .o_valid(o_bound_valid[axis])
+        .o_sum(o_bound_sum[axis]), .o_valid(bound_valid_reference[axis])
       );
     end else begin : g_prepared_coordinate
       assign o_bound_sum[axis] = '0;
-      assign o_bound_valid[axis] = 1'b0;
+      assign bound_valid_reference[axis] = 1'b0;
     end
+  end
+
+  // 固定步长对应的坐标区间在配置准备边沿保存，运行时分别比较高位和低十六位。
+  if (!p_register_descriptor) begin : g_prepared_bounds
+    logic [7:0][p_coord_w-1:0] range_delta, range_lower, range_upper;
+    logic [7:0][p_coord_w-1:0] range_lower_q, range_upper_q;
+    logic [7:0][15:0] range_limit;
+    logic [7:0] range_cross, range_cross_q;
+    logic [10:0] range_valid;
+    logic row_y_valid, tap_y_valid;
+    logic [6:0] prepared_valid;
+
+    assign range_delta[0] = p_coord_w'(i_c.stride_w);
+    assign range_delta[1] = p_coord_w'(i_row_wrap_dx);
+    assign range_delta[2] = p_coord_w'(i_c.stride_h);
+    assign range_delta[3] = p_coord_w'(i_c.dilation_w);
+    assign range_delta[4] = p_coord_w'(i_tap_wrap_dx);
+    assign range_delta[5] = p_coord_w'(i_c.dilation_h);
+    assign range_delta[6] = o_tap_pair_dx;
+    assign range_delta[7] = p_coord_w'(i_c.dilation_w) << 1;
+    for (genvar range_index = 0; range_index < 8; range_index++) begin : g_range
+      logic unused_lower_carry, unused_upper_carry;
+      assign range_limit[range_index] = range_index == 2 || range_index == 5 ? i_c.input_h : i_c.input_w;
+      parallel_prefix_add #(.p_width(p_coord_w), .p_group_width(8), .p_preserve_groups(1'b1), .p_carry_select_width(16)) u_lower (
+        .i_a(p_coord_w'(0)), .i_b(~range_delta[range_index]), .i_carry(1'b1),
+        .o_sum(range_lower[range_index]), .o_carry(unused_lower_carry)
+      );
+      parallel_prefix_add #(.p_width(p_coord_w), .p_group_width(8), .p_preserve_groups(1'b1), .p_carry_select_width(16)) u_upper (
+        .i_a(p_coord_w'(range_limit[range_index])), .i_b(~range_delta[range_index]), .i_carry(1'b1),
+        .o_sum(range_upper[range_index]), .o_carry(unused_upper_carry)
+      );
+      assign range_cross[range_index] = (|range_delta[range_index][15:0]) &&
+          range_delta[range_index][15:0] <= range_limit[range_index];
+    end
+    always_ff @(posedge i_clk) begin
+      if (i_address_step_phase == 2'd3) begin
+        range_lower_q <= range_lower;
+        range_upper_q <= range_upper;
+        range_cross_q <= range_cross;
+      end
+    end
+
+    for (genvar candidate = 0; candidate < 11; candidate++) begin : g_lookup
+      localparam int p_range_index = candidate < 6 ? candidate : candidate - 3;
+      logic [p_coord_w-1:0] coordinate_base;
+      assign coordinate_base = candidate == 2 || candidate == 8 ? i_row_base_iy :
+          candidate == 3 || candidate == 4 ? i_ix : candidate == 5 ? i_iy : i_row_base_ix;
+      conv_coordinate_range #(.p_width(p_coord_w)) u_range (
+        .i_base(coordinate_base), .i_lower(range_lower_q[p_range_index]),
+        .i_upper(range_upper_q[p_range_index]), .i_block_cross(range_cross_q[p_range_index]),
+        .o_valid(range_valid[candidate])
+      );
+    end
+    assign row_y_valid = !(|i_row_base_iy[p_coord_w-1:16]) && i_row_base_iy[15:0] < i_c.input_h;
+    assign tap_y_valid = !(|i_iy[p_coord_w-1:16]) && i_iy[15:0] < i_c.input_h;
+    assign prepared_valid[0] = o_row_wrap ? range_valid[1] : range_valid[0];
+    assign prepared_valid[1] = o_row_wrap ? range_valid[2] : row_y_valid;
+    assign prepared_valid[2] = o_tap_wrap ? range_valid[4] : range_valid[3];
+    assign prepared_valid[3] = o_tap_wrap ? range_valid[5] : tap_y_valid;
+    assign prepared_valid[6:4] = range_valid[8:6];
+    assign o_skip_bound_valid = {row_y_valid, range_valid[10:9]};
+
+    // 行步长端点已保存，窗口的前向、后向及前一核行端点继续完成固定偏移。
+    logic [5:0][p_coord_w-1:0] window_lower_q, window_upper_q;
+    logic [5:0] window_cross_q, window_valid;
+    for (genvar step = 0; step < 6; step++) begin : g_window_range
+      localparam int p_base_range = step < 4 ? step % 2 : 2;
+      logic [p_coord_w-1:0] lower_base, upper_base, adjustment;
+      logic [p_coord_w-1:0] lower_sum, upper_sum, coordinate_base;
+      logic [15:0] base_delta_low, adjustment_low, delta_low, coordinate_limit;
+      logic block_cross;
+      logic unused_lower_carry, unused_upper_carry;
+
+      assign lower_base = step == 4 ? '0 : range_lower_q[p_base_range];
+      assign upper_base = step == 4 ? p_coord_w'(i_c.input_h) : range_upper_q[p_base_range];
+      assign adjustment = step < 2 ? ~p_coord_w'(i_c.dilation_w) :
+          step < 4 ? p_coord_w'(i_c.dilation_w) : p_coord_w'(i_c.dilation_h);
+      parallel_prefix_add #(.p_width(p_coord_w), .p_group_width(8), .p_preserve_groups(1'b1), .p_carry_select_width(16)) u_lower (
+        .i_a(lower_base), .i_b(adjustment), .i_carry(step < 2),
+        .o_sum(lower_sum), .o_carry(unused_lower_carry)
+      );
+      parallel_prefix_add #(.p_width(p_coord_w), .p_group_width(8), .p_preserve_groups(1'b1), .p_carry_select_width(16)) u_upper (
+        .i_a(upper_base), .i_b(adjustment), .i_carry(step < 2),
+        .o_sum(upper_sum), .o_carry(unused_upper_carry)
+      );
+      assign base_delta_low = step == 4 ? 16'd0 : range_delta[p_base_range][15:0];
+      assign adjustment_low = step < 2 ? i_c.dilation_w :
+          step < 4 ? range_lower_q[3][15:0] : range_lower_q[5][15:0];
+      assign delta_low = base_delta_low + adjustment_low;
+      assign coordinate_limit = step < 4 ? i_c.input_w : i_c.input_h;
+      assign block_cross = (|delta_low) && delta_low <= coordinate_limit;
+      always_ff @(posedge i_clk) begin
+        if (i_address_step_phase == 2'd0) begin
+          window_lower_q[step] <= lower_sum;
+          window_upper_q[step] <= upper_sum;
+          window_cross_q[step] <= block_cross;
+        end
+      end
+      assign coordinate_base = step < 4 ? i_row_base_ix : i_row_base_iy;
+      conv_coordinate_range #(.p_width(p_coord_w)) u_range (
+        .i_base(coordinate_base), .i_lower(window_lower_q[step]),
+        .i_upper(window_upper_q[step]), .i_block_cross(window_cross_q[step]),
+        .o_valid(window_valid[step])
+      );
+`ifdef NPU_SIM_ASSERT
+      logic [p_coord_w-1:0] reference_delta;
+      assign reference_delta = (step == 4 ? p_coord_w'(0) : range_delta[p_base_range]) +
+          (step < 2 ? p_coord_w'(i_c.dilation_w) : step < 4 ?
+           -p_coord_w'(i_c.dilation_w) : -p_coord_w'(i_c.dilation_h));
+      always @(posedge i_clk) begin
+        if (i_rst_n && o_cfg_prepare_phase == 0 && i_address_step_phase == 0 &&
+            !i_state[$clog2(IDLE)]) begin
+          assert (window_lower_q[step] == -reference_delta);
+          assert (window_upper_q[step] == p_coord_w'(coordinate_limit) - reference_delta);
+        end
+      end
+`endif
+    end
+    assign o_window_padding[0] = !(o_row_wrap ? window_valid[1] : window_valid[0]) || !o_bound_valid[1];
+    assign o_window_padding[1] = !(o_row_wrap ? window_valid[3] : window_valid[2]) || !o_bound_valid[1];
+    assign o_window_padding[2] = !(o_row_wrap ? window_valid[1] : window_valid[0]) ||
+        !(o_row_wrap ? window_valid[5] : window_valid[4]);
+    for (genvar axis = 0; axis < 7; axis++) begin : g_result
+`ifdef SYNTHESIS
+      assign o_bound_valid[axis] = prepared_valid[axis];
+`else
+      always_comb begin
+        case (^{bound_a[axis], bound_b[axis], bound_limit[axis]})
+          1'b0, 1'b1: o_bound_valid[axis] = prepared_valid[axis];
+          default: o_bound_valid[axis] = bound_valid_reference[axis];
+        endcase
+      end
+`endif
+    end
+`ifdef NPU_SIM_ASSERT
+    always @(posedge i_clk) begin
+      if (i_rst_n && o_cfg_prepare_phase == 0 && i_address_step_phase == 0 &&
+          !i_state[$clog2(IDLE)]) begin
+        assert (o_bound_valid == bound_valid_reference);
+        for (int range_index = 0; range_index < 8; range_index++) begin
+          assert (range_lower_q[range_index] == -range_delta[range_index]);
+          assert (range_upper_q[range_index] == p_coord_w'(range_limit[range_index]) - range_delta[range_index]);
+        end
+      end
+    end
+`endif
+  end else begin : g_direct_bounds
+    assign o_bound_valid = bound_valid_reference;
+    assign o_skip_bound_valid = '0;
+    assign o_window_padding = '0;
   end
 
   // 数据字匹配比较读取范围以外的高位，字内偏移单独提供进位。
   assign next_word_i_target = i_addr[31:p_word_shift];
-  assign o_next_word_o_equal = o_next_tap_addr[31:p_word_shift] == next_word_i_target;
+  for (genvar wrap = 0; wrap < 2; wrap++) begin : g_next_word_match
+    logic [31:0] byte_step;
+    logic [p_word_shift:0] low_sum;
+    assign byte_step = wrap == 0 ? i_tap_step_bytes : i_tap_wrap_bytes;
+    assign low_sum = {1'b0, i_tap_group_base[p_word_shift-1:0]} +
+        {1'b0, byte_step[p_word_shift-1:0]};
+    (* keep_hierarchy = "yes" *)
+    add_equal #(.p_width(32-p_word_shift), .p_preserve_bits(1'b1)) u_match (
+      .i_a(i_tap_group_base[31:p_word_shift]), .i_b(byte_step[31:p_word_shift]),
+      .i_target(next_word_i_target), .i_carry_in(low_sum[p_word_shift]),
+      .o_equal(next_word_match[wrap])
+    );
+  end
+`ifdef SYNTHESIS
+  assign o_next_word_o_equal = o_tap_wrap ? next_word_match[1] : next_word_match[0];
+`else
+  always_comb begin
+    case (^{i_tap_group_base, i_tap_step_bytes, i_tap_wrap_bytes, o_tap_wrap, i_addr})
+      1'b0, 1'b1: o_next_word_o_equal = o_tap_wrap ? next_word_match[1] : next_word_match[0];
+      default: o_next_word_o_equal = o_next_tap_addr[31:p_word_shift] == next_word_i_target;
+    endcase
+  end
+`endif
 
   // 双核位置步长在配置准备期间保存，运行时只执行一次地址或坐标加法。
   assign tap_pair_i_a = {p_coord_w'(i_tap_wrap_bytes), p_coord_w'(32'(i_tap_wrap_pixels)), p_coord_w'(i_tap_wrap_dx)};
@@ -561,7 +750,7 @@ module conv_im2col_geometry #(
   // 解码行尾在减去输出宽度之前检查模加法等式，与坐标结果并行。
   assign p_decode = i_p0;
   assign o_p_cache_select = 2'(p_decode >> p_cw);
-  if (p_register_descriptor && p_register_cache_request) begin : g_saved_position_lookup
+  if (p_register_cache_request) begin : g_saved_position_lookup
     logic [1:0] lookup_index;
     logic [63:0] lookup_data;
     logic lookup_hit;
@@ -586,6 +775,18 @@ module conv_im2col_geometry #(
     end
     assign p_cache_hit = hit_q;
     assign {p_cache_y, p_cache_x} = coordinates_q;
+`ifdef NPU_SIM_ASSERT
+    always @(posedge i_clk) begin
+      if (i_rst_n) begin
+        assert (!(i_tile_commit && !committing_tile.invalid && p_cache_write_enable));
+        if (i_state[$clog2(P_DECODE)]) begin
+          assert (hit_q == (i_p_cache_valid[o_p_cache_select] &&
+              p_cache_data[o_p_cache_select][63:32] == i_p0));
+          if (hit_q) assert (coordinates_q == p_cache_data[o_p_cache_select][31:0]);
+        end
+      end
+    end
+`endif
   end else begin : g_current_position_lookup
     logic [31:0] lookup_key;
     assign {lookup_key, p_cache_y, p_cache_x} = p_cache_data[o_p_cache_select];
@@ -622,7 +823,10 @@ module conv_im2col_geometry #(
   end
   // 接收位置与历史位置的差值先保存，坐标解码只执行一次分组加法。
   // 位置差在描述符提交时保存；历史位置更新为当前位置时，差值同时归零。
-  assign history_delta_full = {1'b0, committing_tile.position} - {1'b0, i_last_p};
+  parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1)) u_history_delta (
+    .i_a({1'b0, committing_tile.position}), .i_b(~{1'b0, i_last_p}), .i_carry(1'b1),
+    .o_sum(history_delta_full), .o_carry(unused_history_delta_carry)
+  );
   assign history_carry_i_a = ~i_c.output_w;
   assign history_carry_i_b = i_p0[15:0];
   unsigned_compare #(.p_width(16)) u_history_carry (
@@ -647,8 +851,9 @@ module conv_im2col_geometry #(
     if (!i_rst_n) p_wrap_target_q <= 16'd0;
     else if (i_cfg_valid && i_cfg_ready) p_wrap_target_q <= {i_cfg.output_w[14:0], 1'b0} - 16'd1;
   end
-  assign p_delta = p_register_descriptor ? p_history_delta_q[15:0] : 16'(p_decode - i_last_p);
-  parallel_prefix_add #(.p_width(17), .p_group_width(4), .p_preserve_groups(1'b1)) u_history_sum (
+  // 位置与位置差在同一个提交事件保存，历史位置更新时差值同时归零。
+  assign p_delta = p_history_delta_q[15:0];
+  parallel_prefix_add #(.p_width(17), .p_group_width(4), .p_preserve_groups(1'b1), .p_carry_select_width(8)) u_history_sum (
     .i_a({1'b0, i_last_x}), .i_b({1'b0, p_delta}), .i_carry(1'b0),
     .o_sum(p_sum), .o_carry(unused_p_sum_carry)
   );
@@ -658,10 +863,93 @@ module conv_im2col_geometry #(
   assign history_reduce_generate = ({2'b0, i_last_x} & {2'b0, p_delta}) |
     (({2'b0, i_last_x} | {2'b0, p_delta}) & ~{2'b0, i_c.output_w});
   assign {unused_history_reduce_high, history_reduce_i_b} = {history_reduce_generate, 1'b1};
-  assign history_reduce_full_sum = {1'b0, history_reduce_i_a} + {1'b0, history_reduce_i_b};
+  parallel_prefix_add #(.p_width(18), .p_group_width(4), .p_preserve_groups(1'b1), .p_carry_select_width(8)) u_history_reduce (
+    .i_a(history_reduce_i_a), .i_b(history_reduce_i_b), .i_carry(1'b0),
+    .o_sum(history_reduce_full_sum[17:0]), .o_carry(history_reduce_full_sum[18])
+  );
   assign {unused_p_sum_reduced_carry, history_reduce_o_sum} = history_reduce_full_sum;
   assign p_sum_reduced = history_reduce_o_sum[16:0];
   assign history_width_reached = !history_reduce_o_sum[17];
+
+  // 历史起点持续准备，接收位置在原描述符边沿形成列与换行候选。
+  if (!p_register_descriptor) begin : g_history_columns
+    logic [17:0] origin_value, limit_value, origin_q, limit_q;
+    logic [17:0] limit_xor, limit_generate;
+    logic [16:0] column_sum, column_sum_q;
+    logic [17:0] column_reduced, column_reduced_q;
+    logic position_borrow;
+    logic unused_origin_carry, unused_limit_carry;
+    logic unused_sum_carry, unused_reduced_carry;
+
+    parallel_prefix_add #(.p_width(18), .p_group_width(4), .p_preserve_groups(1'b1), .p_carry_select_width(9)) u_origin (
+      .i_a({2'b0, i_last_p[15:0]}), .i_b(~{2'b0, i_last_x}), .i_carry(1'b1),
+      .o_sum(origin_value), .o_carry(unused_origin_carry)
+    );
+    assign limit_xor = {2'b0, i_last_p[15:0]} ^ ~{2'b0, i_last_x} ^ {2'b0, i_c.output_w};
+    assign limit_generate = ({2'b0, i_last_p[15:0]} & ~{2'b0, i_last_x}) |
+      (({2'b0, i_last_p[15:0]} | ~{2'b0, i_last_x}) & {2'b0, i_c.output_w});
+    parallel_prefix_add #(.p_width(18), .p_group_width(4), .p_preserve_groups(1'b1), .p_carry_select_width(9)) u_limit (
+      .i_a(limit_xor), .i_b({limit_generate[16:0], 1'b0}), .i_carry(1'b1),
+      .o_sum(limit_value), .o_carry(unused_limit_carry)
+    );
+    always_ff @(posedge i_clk) begin
+      origin_q <= origin_value;
+      limit_q <= limit_value;
+    end
+    assign position_borrow = committing_tile.position[15:0] < i_last_p[15:0];
+    parallel_prefix_add #(.p_width(17), .p_group_width(4), .p_preserve_groups(1'b1), .p_carry_select_width(9)) u_column (
+      .i_a({1'b0, committing_tile.position[15:0]}), .i_b(~origin_q[16:0]), .i_carry(1'b1),
+      .o_sum(column_sum), .o_carry(unused_sum_carry)
+    );
+    parallel_prefix_add #(.p_width(18), .p_group_width(4), .p_preserve_groups(1'b1), .p_carry_select_width(9)) u_reduced (
+      .i_a({2'b0, committing_tile.position[15:0]}), .i_b(~limit_q), .i_carry(1'b1),
+      .o_sum(column_reduced), .o_carry(unused_reduced_carry)
+    );
+    // 位置差按十六位取模，借位修正仅影响候选的第十六位及其进位。
+    always_ff @(posedge i_clk) begin
+      column_sum_q <= {column_sum[16] ^ position_borrow, column_sum[15:0]};
+      column_reduced_q <= {column_reduced[17:16] + 2'(position_borrow), column_reduced[15:0]};
+    end
+`ifdef SYNTHESIS
+    assign history_column_sum = column_sum_q;
+    assign history_column_reduced = column_reduced_q[16:0];
+    assign history_column_advance = !column_reduced_q[17];
+`else
+    // 未知的历史字段使用原定宽表达式传播，已知字段使用准备结果。
+    always_comb begin
+      case (^{i_last_x, p_history_delta_q, i_c.output_w})
+        1'b0, 1'b1: begin
+          history_column_sum = column_sum_q;
+          history_column_reduced = column_reduced_q[16:0];
+          history_column_advance = !column_reduced_q[17];
+        end
+        default: begin
+          history_column_sum = p_sum;
+          history_column_reduced = p_sum_reduced;
+          history_column_advance = history_width_reached;
+        end
+      endcase
+    end
+`endif
+`ifdef NPU_SIM_ASSERT
+    always @(posedge i_clk) begin
+      if (i_rst_n && i_tile_commit && !committing_tile.invalid) begin
+        assert (origin_q == {2'b0, i_last_p[15:0]} - {2'b0, i_last_x});
+        assert (limit_q == {2'b0, i_last_p[15:0]} - {2'b0, i_last_x} + {2'b0, i_c.output_w});
+      end
+      if (i_rst_n && i_state[$clog2(P_DECODE)]) begin
+        assert (column_sum_q == p_sum);
+        assert (column_reduced_q[16:0] == p_sum_reduced);
+        assert (!column_reduced_q[17] == history_width_reached);
+      end
+    end
+`endif
+  end else begin : g_history_columns_direct
+    assign history_column_sum = p_sum;
+    assign history_column_reduced = p_sum_reduced;
+    assign history_column_advance = history_width_reached;
+  end
+
   // 已保存的位置差与历史列数直接组成行尾等式，逐位比较和坐标求和并行。
   assign p_sum_wrap_i_a = i_last_x;
   assign p_sum_wrap_i_b = p_history_delta_q[15:0];
@@ -685,8 +973,8 @@ module conv_im2col_geometry #(
   );
   always_comb begin
     history_result.valid = history_range_valid;
-    history_result.row_advance = history_width_reached;
-    history_result.column = history_width_reached ? p_sum_reduced : p_sum;
+    history_result.row_advance = history_column_advance;
+    history_result.column = history_column_advance ? history_column_reduced : history_column_sum;
     history_result.wrap = i_c.output_w != 16'd0 &&
         ((p_sum_last_o_equal && i_last_x <= p_sum_last_i_target) ||
          (p_sum_wrap_o_equal && (!o_last_output_col_q[15] || i_last_x > p_sum_wrap_i_target)));
@@ -700,6 +988,37 @@ module conv_im2col_geometry #(
     assign history_result_q = '0;
     assign selected_history = history_result;
   end
+  // 相邻行坐标独立求和，行边界结果只控制末端选择。
+  parallel_prefix_add #(.p_width(17), .p_group_width(4), .p_preserve_groups(1'b1)) u_history_next_y (
+    .i_a({1'b0, i_last_y}), .i_b(17'd1), .i_carry(1'b0),
+    .o_sum(history_next_y), .o_carry(unused_history_next_y_carry)
+  );
+  // 各坐标来源独立形成候选，历史行进位只参与末端掩码选择。
+  assign fast_position_source[0] = p_decode != 32'd0 && output_shape_o_valid;
+  assign fast_position_source[1] = p_decode != 32'd0 && !output_shape_o_valid && p_cache_hit;
+  assign fast_position_source[2] = p_decode != 32'd0 && !output_shape_o_valid &&
+    !p_cache_hit && selected_history.valid;
+  assign fast_position_power = {p_decode >> output_width_shift, p_decode & {16'd0, o_last_output_col_q}};
+  assign fast_position_cache = {32'(p_cache_y), 32'(p_cache_x)};
+  assign fast_position_history = {32'(i_last_y),
+    p_register_descriptor ? 32'(selected_history.column) : 32'(history_column_sum)};
+  assign fast_position_next_row = {32'(history_next_y),
+    p_register_descriptor ? 32'(selected_history.column) : 32'(history_column_reduced)};
+  assign fast_position_pair[0] = (fast_position_power & {64{fast_position_source[0]}}) |
+    (fast_position_cache & {64{fast_position_source[1]}});
+  assign fast_position_pair[1] =
+    (fast_position_history & {64{fast_position_source[2] && !selected_history.row_advance}}) |
+    (fast_position_next_row & {64{fast_position_source[2] && selected_history.row_advance}});
+  assign fast_position_data = fast_position_pair[0] | fast_position_pair[1];
+  // 四种列末结果先完成各自比较，位置来源只参与末级选择。
+  assign fast_wrap_source = {fast_position_source, !(|fast_position_source)};
+  assign fast_wrap_value[0] = i_c.output_w != 16'd0 && o_last_output_col_q == 16'd0;
+  assign fast_wrap_value[1] = (p_decode[15:0] & o_last_output_col_q) == o_last_output_col_q;
+  assign fast_wrap_value[2] = i_c.output_w != 16'd0 && p_cache_x == o_last_output_col_q;
+  assign fast_wrap_value[3] = selected_history.wrap;
+  onehot_mux #(.p_choices(4), .p_width(1)) u_fast_wrap (
+    .i_select(fast_wrap_source), .i_data(fast_wrap_value), .o_data(fast_wrap_selected)
+  );
   always_comb begin
     o_p_fast_valid=0;o_p_fast_y=0;o_p_fast_x=0;
     o_p_fast_wrap = i_c.output_w != 16'd0 && o_last_output_col_q == 16'd0;
@@ -715,10 +1034,14 @@ module conv_im2col_geometry #(
       o_p_fast_wrap = i_c.output_w != 16'd0 && p_cache_x == o_last_output_col_q;
     end else if (selected_history.valid) begin
       o_p_fast_valid = 1'b1;
-      o_p_fast_y = 32'(i_last_y) + 32'(selected_history.row_advance);
+      o_p_fast_y = selected_history.row_advance ? 32'(history_next_y) : 32'(i_last_y);
       o_p_fast_x = 32'(selected_history.column);
       o_p_fast_wrap = selected_history.wrap;
     end
+`ifdef SYNTHESIS
+    {o_p_fast_y, o_p_fast_x} = fast_position_data;
+    o_p_fast_wrap = fast_wrap_selected;
+`endif
   end
 
   // 五位三通道解码使用完整的组合选择，同时输出商和余数。
@@ -969,6 +1292,7 @@ module conv_im2col_geometry #(
       o_last_kernel_col_q <= 16'd0;
 
       o_last_group_channel_q <= 16'hffff;
+      o_group_nonzero_q <= 1'b0;
 
       o_kernel_width_valid_q <= 1'b0;
     end else if (i_cfg_valid && i_cfg_ready) begin
@@ -999,6 +1323,7 @@ module conv_im2col_geometry #(
       o_last_kernel_col_q <= i_cfg.kernel_w - 16'd1;
 
       o_last_group_channel_q <= i_cfg.group_c - 16'd1;
+      o_group_nonzero_q <= |i_cfg.group_c;
 
       o_kernel_width_valid_q <= i_cfg.kernel_w != 16'd0;
     end

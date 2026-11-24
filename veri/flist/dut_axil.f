@@ -33,8 +33,10 @@
 ../../rtl/npu/conv/conv_im2col_geometry.sv
 ../../rtl/npu/conv/conv_im2col_descriptor.sv
 ../../rtl/npu/conv/conv_im2col_stream.sv
+../../rtl/npu/conv/conv_channel_range_compare.sv
 ../../rtl/npu/conv/conv_im2col_prefetch.sv
 ../../rtl/npu/conv/conv_coordinate_step.sv
+../../rtl/npu/conv/conv_coordinate_range.sv
 ../../rtl/npu/dma/cache/conv_next_use_predictor.sv
 ../../rtl/npu/dma/cache/conv_read_cache.sv
 ../../rtl/npu/dma/cache/conv_read_cache_reference.sv
@@ -104,6 +106,9 @@
 ../../rtl/common/add_equal.sv
 ../../rtl/common/add3_equal.sv
 ../../rtl/common/parallel_prefix_add.sv
+../../rtl/common/borrow_select_subtract.sv
+../../rtl/common/increment_equal.sv
+../../rtl/common/onehot_mux.sv
 ../../rtl/common/unsigned_compare.sv
 ../../rtl/common/onehot_check.sv
 ../../rtl/npu/writeback/vec_requant.sv

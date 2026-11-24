@@ -20,13 +20,13 @@ module conv_coordinate_step #(
   logic unused_difference_carry;
   logic high_zero, low_less;
 
-  parallel_prefix_add #(.p_width(p_width), .p_group_width(8), .p_preserve_groups(1'b1)) u_coordinate (
+  parallel_prefix_add #(.p_width(p_width), .p_group_width(8), .p_preserve_groups(1'b1), .p_carry_select_width(16)) u_coordinate (
     .i_a(i_base), .i_b(i_delta), .i_carry(1'b0),
     .o_sum(coordinate_sum), .o_carry(unused_coordinate_carry)
   );
 
   // 低十六位的进位独立求出，高位零值关系只比较相邻输入位的进位一致性。
-  parallel_prefix_add #(.p_width(16), .p_group_width(4), .p_preserve_groups(1'b1)) u_low_carry (
+  parallel_prefix_add #(.p_width(16), .p_group_width(4), .p_preserve_groups(1'b1), .p_carry_select_width(8)) u_low_carry (
     .i_a(i_base[15:0]), .i_b(i_delta[15:0]), .i_carry(1'b0),
     .o_sum(unused_low_sum), .o_carry(low_carry)
   );
@@ -40,7 +40,7 @@ module conv_coordinate_step #(
   assign difference_xor = i_base[15:0] ^ i_delta[15:0] ^ ~i_limit;
   assign difference_majority = (i_base[15:0] & i_delta[15:0]) |
       ((i_base[15:0] | i_delta[15:0]) & ~i_limit);
-  parallel_prefix_add #(.p_width(17), .p_group_width(4), .p_preserve_groups(1'b1)) u_difference (
+  parallel_prefix_add #(.p_width(17), .p_group_width(4), .p_preserve_groups(1'b1), .p_carry_select_width(9)) u_difference (
     .i_a({1'b0, difference_xor}), .i_b({difference_majority, 1'b0}), .i_carry(1'b1),
     .o_sum(difference_sum), .o_carry(unused_difference_carry)
   );

@@ -29,8 +29,8 @@ module conv_im2col_prefetch #(
   input wire logic [31:0] i_ch0,
   input wire logic signed [p_coord_w-1:0] i_ix,
   input wire logic signed [p_coord_w-1:0] i_iy,
-  input wire logic i_stream_next_request,
-  input wire logic i_next_row_request,
+  input wire logic i_request_stream_context,
+  input wire logic i_request_row_context,
   input wire logic i_incoming_context,
   input wire logic i_incoming_next_tile_fast,
   input wire logic i_incoming_next_position_fast,
@@ -380,21 +380,21 @@ module conv_im2col_prefetch #(
         0: if (i_cache_port_valid && i_cache_port_ready && i_c.prefetch_enable) begin
           // 预取上下文与实际接收地址同时保存，连续换行和换描述符时使用新坐标。
           accepted_coordinate_q[0] <= !p_register_cache_request && i_incoming_context ? i_incoming_ix :
-              !p_register_cache_request && i_next_row_request ? i_next_row_ix : i_ix;
+              !p_register_cache_request && i_request_row_context ? i_next_row_ix : i_ix;
           accepted_coordinate_q[1] <= !p_register_cache_request ? i_request_y : i_iy;
           channel_q[0] <= !p_register_cache_request && i_incoming_context ? i_incoming_ch :
-              !p_register_cache_request && i_next_row_request ? i_ch0 :
-              !p_register_cache_request && i_stream_next_request ? i_stream_channel_full : i_ch;
+              !p_register_cache_request && i_request_row_context ? i_ch0 :
+              !p_register_cache_request && i_request_stream_context ? i_stream_channel_full : i_ch;
           pfa_origin_channel <= !p_register_cache_request && i_incoming_context ? i_incoming_ch : i_ch0;
           output_coordinate_q[0] <= !p_register_cache_request && i_incoming_next_position_fast && i_incoming_context ?
               {16'd0, i_window_next_x} : !p_register_cache_request &&
-              (i_next_row_request || (i_incoming_context && i_incoming_next_tile_fast)) ?
+              (i_request_row_context || (i_incoming_context && i_incoming_next_tile_fast)) ?
               (i_row_wrap ? 32'd0 : i_ox+32'd1) : i_ox;
           output_coordinate_q[1] <= !p_register_cache_request ? i_request_output_y : i_oy;
           pfa_kernel_x <= !p_register_cache_request && i_incoming_context ? i_incoming_kx :
-              !p_register_cache_request && i_next_row_request ? i_kx0 : i_kx;
+              !p_register_cache_request && i_request_row_context ? i_kx0 : i_kx;
           pfa_kernel_y <= !p_register_cache_request && i_incoming_context ? 16'(i_incoming_ky) :
-              !p_register_cache_request && i_next_row_request ? i_ky0_q : i_ky_q;
+              !p_register_cache_request && i_request_row_context ? i_ky0_q : i_ky_q;
           tile_extent_q[0] <= !p_register_cache_request && i_incoming_context ? 32'(i_tile_rows) : 32'(i_rows_q);
           tile_extent_q[1] <= !p_register_cache_request && i_incoming_context ?
               (i_tile_cols=='0 ? 32'(p_size) : 32'(i_tile_cols)) : 32'(i_cols_q);

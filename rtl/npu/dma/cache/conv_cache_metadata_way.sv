@@ -34,6 +34,9 @@ module conv_cache_metadata_way #(
   output logic [5:0] o_valid,
   output logic [4:0][31:p_line_shift] o_tags,
   output logic [31:p_line_shift] o_lookup_tag_raw,
+  output logic o_lookup_valid_raw, o_lookup_valid_saved,
+  output logic [2:0][31:p_line_shift] o_lookup_candidate_tags,
+  output logic [2:0] o_lookup_candidate_valid,
   output logic [p_epoch_width-1:0] o_epoch,
   output logic [31:0] o_rank
 );
@@ -46,7 +49,7 @@ module conv_cache_metadata_way #(
     logic valid_i_wr_en;
     logic [SI-1:0] valid_i_wr_addr;
     logic [0:0] valid_i_wr_data, valid_i_wr_mask;
-    localparam int p_valid_read_ports = DEMAND_DEPTH > 1 ? 10 : 6;
+    localparam int p_valid_read_ports = DEMAND_DEPTH > 1 ? 10 : 9;
     logic [p_valid_read_ports-1:0] valid_i_rd_en;
     logic [p_valid_read_ports-1:0][SI-1:0] valid_i_rd_addr;
     logic [p_valid_read_ports-1:0][0:0] valid_o_rd_data;
@@ -66,6 +69,14 @@ module conv_cache_metadata_way #(
     if (DEMAND_DEPTH == 1) begin : g_saved_lookup_valid
       logic lookup_valid_q;
       assign valid_i_rd_addr[0] = i_read_set[0];
+      // 队首、输入和缺失地址分别读取有效位，同拍写入各自转发。
+      for (genvar candidate = 0; candidate < 3; candidate++) begin : g_candidate
+        localparam int p_source = candidate == 0 ? 0 : candidate + 1;
+        assign valid_i_rd_addr[6+candidate] = i_lookup_candidate_set[p_source];
+        assign o_lookup_candidate_valid[candidate] =
+            valid_i_wr_en && valid_i_wr_addr == i_lookup_candidate_set[p_source] ?
+            valid_i_wr_data[0] : valid_o_rd_data[6+candidate][0];
+      end
       always_ff @(posedge clk) begin
         if (rst_n && !(i_cfg_accept))
           lookup_valid_q <= valid_i_wr_en && valid_i_wr_addr == i_read_set[0] ?
@@ -73,6 +84,7 @@ module conv_cache_metadata_way #(
       end
       assign valid_read_value[0] = lookup_valid_q;
     end else begin : g_current_lookup_valid
+      assign o_lookup_candidate_valid = '0;
       logic lookup_valid_q;
       (* keep = "true" *) logic [3:0] lookup_candidate_valid;
       assign valid_i_rd_addr[0] = i_read_set[0];
@@ -103,6 +115,9 @@ module conv_cache_metadata_way #(
       end
       assign valid_read_value[0] = lookup_valid_q;
     end
+    assign o_lookup_valid_raw = valid_i_wr_en && valid_i_wr_addr == i_read_set[0] ?
+        valid_i_wr_data[0] : valid_o_rd_data[0][0];
+    assign o_lookup_valid_saved = valid_read_value[0];
     assign valid_match_address[0] = i_lookup_snapshot_set;
     for (genvar read_port = 1; read_port < 6; read_port++) begin : g_current_valid
       assign valid_read_value[read_port] = valid_o_rd_data[read_port][0];
@@ -156,9 +171,11 @@ module conv_cache_metadata_way #(
     logic [SI-1:0] tags_i_wr_addr;
     logic [p_tag_width-1:0] tags_i_wr_data;
     logic [0:0] tags_i_wr_mask;
-    logic [4:0] tags_i_rd_en;
-    logic [4:0][SI-1:0] tags_i_rd_addr;
-    logic [4:0][p_tag_width-1:0] tags_o_rd_data, tags_raw_data;
+    localparam int p_tag_read_ports = DEMAND_DEPTH == 1 ? 8 : 5;
+    logic [p_tag_read_ports-1:0] tags_i_rd_en;
+    logic [p_tag_read_ports-1:0][SI-1:0] tags_i_rd_addr;
+    logic [p_tag_read_ports-1:0][p_tag_width-1:0] tags_raw_data;
+    logic [4:0][p_tag_width-1:0] tags_o_rd_data;
     logic metadata_i_rd_en;
     logic [SI-1:0] metadata_i_rd_addr;
     logic [0:0] metadata_i_wr_mask;
@@ -202,6 +219,16 @@ module conv_cache_metadata_way #(
     assign tags_i_rd_addr[2] = i_offer_tag_set[0];
     assign tags_i_rd_addr[3] = i_offer_tag_set[1];
     assign tags_i_rd_addr[4] = i_read_set[5];
+    if (DEMAND_DEPTH == 1) begin : g_lookup_candidate_tags
+      // 各候选独立读取标签，请求状态只选择完成比较后的命中位。
+      for (genvar candidate = 0; candidate < 3; candidate++) begin : g_candidate
+        localparam int p_source = candidate == 0 ? 0 : candidate + 1;
+        assign tags_i_rd_addr[5+candidate] = i_lookup_candidate_set[p_source];
+        assign o_lookup_candidate_tags[candidate] = tags_raw_data[5+candidate];
+      end
+    end else begin : g_registered_lookup_tags
+      assign o_lookup_candidate_tags = '0;
+    end
     assign o_tags[0] = tags_o_rd_data[0];
     assign o_tags[1] = tags_o_rd_data[1];
     assign o_tags[2] = tags_o_rd_data[2];
@@ -213,10 +240,10 @@ module conv_cache_metadata_way #(
 
     // 各标签端口保持原有同步周期，第一个端口的地址匹配与读取一起保存。
     assign o_lookup_tag_raw = tags_raw_data[0];
-    always_ff @(posedge clk) tags_o_rd_data <= tags_raw_data;
+    always_ff @(posedge clk) tags_o_rd_data <= tags_raw_data[4:0];
     regfile #(
       .p_data_width(p_tag_width), .p_depth(SETS), .p_addr_width(SI),
-      .p_write_unit(p_tag_width), .p_read_ports(5), .p_sync_read(1'b0),
+      .p_write_unit(p_tag_width), .p_read_ports(p_tag_read_ports), .p_sync_read(1'b0),
       .p_ram_style(DEMAND_DEPTH > 1 ? "block" : "auto")
     ) u_tags (
       .clk(clk), .i_wr_en(tags_i_wr_en), .i_wr_addr(tags_i_wr_addr),

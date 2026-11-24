@@ -19,7 +19,8 @@ module conv_read_cache #(
   parameter int DEPTH=WAYS*SETS*(LINE_BYTES/4),
   parameter int DA=$clog2(DEPTH),
   parameter int TAGW=32-LB-SI,
-  parameter bit p_defer_retire_shift=1'b0
+  parameter bit p_defer_retire_shift=1'b0,
+  parameter bit p_preview_request=1'b0
 ) (
   input wire logic clk, rst_n,
   input wire logic cfg_valid,
@@ -29,6 +30,10 @@ module conv_read_cache #(
   input wire logic cfg_geometry = 1'b0,
   input wire logic req_valid,
   output logic req_ready,
+  input wire logic preview_valid = 1'b0,
+  input wire logic [31:0] preview_addr = 32'd0,
+  input wire logic preview_index_valid = 1'b0,
+  input wire logic [31:0] preview_index = 32'd0,
   input wire logic [31:0] req_addr,
   input wire logic req_geometry = 1'b0,
   input wire logic req_event_first = 1'b0,
@@ -39,6 +44,8 @@ module conv_read_cache #(
   input wire logic rsp_ready,
   output logic [READ_WIDTH-1:0] rsp_data,
   output logic rsp_error,
+  output logic rsp_success,
+  output logic rsp_failure,
   output logic arvalid,
   input wire logic arready,
   output logic [31:0] araddr,
@@ -73,11 +80,14 @@ module conv_read_cache #(
   generate if (CACHE_POLICY==3) begin : g_window
     conv_windowed_cache #(.SETS(SETS),.WAYS(WAYS),.LINE_BYTES(LINE_BYTES),
       .DEMAND_DEPTH(DEMAND_DEPTH),.BUS_WIDTH(BUS_WIDTH),.READ_WIDTH(READ_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES),
-      .p_defer_retire_shift(p_defer_retire_shift)) u_window (.*);
+      .p_defer_retire_shift(p_defer_retire_shift),
+      .p_preview_request(p_preview_request)) u_window (.*);
   end else begin : g_reference
     conv_read_cache_reference #(.SETS(SETS),.WAYS(WAYS),.LINE_BYTES(LINE_BYTES),
       .CACHE_POLICY(CACHE_POLICY),.BUS_WIDTH(BUS_WIDTH),.READ_WIDTH(READ_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_reference (.*);
     assign prefetch_ready=1'b0;
+    assign rsp_success = rsp_valid && !rsp_error;
+    assign rsp_failure = rsp_valid && rsp_error;
   end endgenerate
 endmodule
 

@@ -48,6 +48,7 @@ module conv_window_queue #(
   logic active,failed,accept,retire,launch,response_fire;
   logic [p_active_width-1:0] active_count;
   logic active_retire;
+  logic frontend_slot_available, frontend_tail_accept;
   (* keep = 1 *) logic descriptor_available, descriptor_multiple;
   logic descriptor_prepared, descriptor_read_available;
   logic [PTR_W-1:0] descriptor_read_index;
@@ -95,9 +96,20 @@ module conv_window_queue #(
   assign descriptor_available = count > COUNT_W'(active_count);
   assign descriptor_multiple = {1'b0, count} >
     ((COUNT_W+1)'(active_count) + (COUNT_W+1)'(1));
-  // 准备项始终占用队列位置，显式非空条件使空闲配置与前端发送保持互斥。
-  assign frontend_valid=enable && !configure && !failed && !frontend_error && busy &&
-    (active_count < p_active_width'(p_frontend_outstanding) || active_retire) && descriptor_prepared;
+  // 容量与正常末拍接收并行判断，已准备描述符在末级取得发送资格。
+  assign frontend_slot_available = active_count < p_active_width'(p_frontend_outstanding);
+  assign frontend_tail_accept = (|count) && frontend_rsp_valid && rsp_ready && frontend_rsp_last;
+  always_comb begin
+    frontend_valid = enable && !configure && !failed && !frontend_error && busy &&
+        (frontend_slot_available || frontend_tail_accept) && descriptor_prepared;
+    // 未知状态保留响应有效、末拍与在途资格的逐项传播。
+    case (^{enable, configure, failed, frontend_error, busy, active_count, count,
+             frontend_rsp_valid, rsp_ready, frontend_rsp_last, descriptor_prepared})
+      1'b0, 1'b1: begin end
+      default: frontend_valid = enable && !configure && !failed && !frontend_error && busy &&
+          (frontend_slot_available || active_retire) && descriptor_prepared;
+    endcase
+  end
   assign frontend_rsp_ready=active && rsp_ready;
   assign launch=frontend_valid && frontend_ready;
   // 发送当前准备项的同时读取下一项，连续单拍窗口可以逐周期接收。

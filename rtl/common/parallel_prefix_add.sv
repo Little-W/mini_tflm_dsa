@@ -5,7 +5,8 @@
 module parallel_prefix_add #(
     parameter int unsigned p_width = 32,
     parameter int unsigned p_group_width = 8,
-    parameter bit p_preserve_groups = 1'b0
+    parameter bit p_preserve_groups = 1'b0,
+    parameter int unsigned p_carry_select_width = 0
 ) (
     input  wire logic [p_width-1:0] i_a,
     input  wire logic [p_width-1:0] i_b,
@@ -16,6 +17,35 @@ module parallel_prefix_add #(
     logic [p_width-1:0] prefix_sum;
     logic prefix_carry;
     assign {o_carry, o_sum} = {prefix_carry, prefix_sum};
+`ifdef SYNTHESIS
+    if (p_carry_select_width > 0 && p_carry_select_width < p_width) begin : g_carry_select
+        localparam int unsigned p_low_width = p_carry_select_width;
+        localparam int unsigned p_high_width = p_width - p_low_width;
+        logic [p_low_width:0] low_sum;
+        logic [p_high_width:0] high_zero, high_one;
+        // 低段进位只选择两种预先完成的高段和值。
+        // 低段末位直接形成和值与进位，进位条件参与高段结果选择。
+        if (p_low_width == 1) begin : g_single_low
+            assign low_sum[0] = i_a[0] ^ i_b[0] ^ i_carry;
+            assign low_sum[1] = (i_a[0] & i_b[0]) | ((i_a[0] | i_b[0]) & i_carry);
+        end else begin : g_multiple_low
+            logic [p_low_width-1:0] lower_sum;
+            assign lower_sum = {1'b0, i_a[p_low_width-2:0]} +
+                {1'b0, i_b[p_low_width-2:0]} + p_low_width'(i_carry);
+            assign low_sum = {
+                (i_a[p_low_width-1] & i_b[p_low_width-1]) |
+                    ((i_a[p_low_width-1] | i_b[p_low_width-1]) & lower_sum[p_low_width-1]),
+                i_a[p_low_width-1] ^ i_b[p_low_width-1] ^ lower_sum[p_low_width-1],
+                lower_sum[p_low_width-2:0]};
+        end
+        assign high_zero = {1'b0, i_a[p_width-1:p_low_width]} +
+            {1'b0, i_b[p_width-1:p_low_width]};
+        assign high_one = ~(~{1'b0, i_a[p_width-1:p_low_width]} +
+            ~{1'b0, i_b[p_width-1:p_low_width]});
+        assign {prefix_carry, prefix_sum} = {
+            low_sum[p_low_width] ? high_one : high_zero, low_sum[p_low_width-1:0]};
+    end else
+`endif
     if (1) begin : g_grouped
         localparam int unsigned p_groups = (p_width + p_group_width - 1) / p_group_width;
         logic [p_width-1:0] bit_generate, bit_propagate;

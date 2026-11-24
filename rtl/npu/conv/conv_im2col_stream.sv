@@ -34,6 +34,7 @@ module conv_im2col_stream #(
   input wire conv_im2col_pkg::conv_cfg_t i_cfg,
   input wire logic i_tile_valid,
   input wire logic i_tile_ready,
+  input wire logic i_tile_admission_ready,
   input wire logic [p_rw-1:0] i_tile_rows,
   input wire logic [p_rw-1:0] i_tile_cols,
   input wire logic i_wr_valid,
@@ -118,6 +119,9 @@ module conv_im2col_stream #(
   output logic o_cache_rsp_ready,
   output logic o_stream_next_request,
   output logic o_next_row_request,
+  output logic o_request_stream_context,
+  output logic o_request_row_context,
+  output logic o_request_tap_context,
   output logic o_active_after_chunk,
   output logic o_incoming_context,
   output logic o_incoming_word_hit,
@@ -164,8 +168,7 @@ module conv_im2col_stream #(
   logic [p_lanes-1:0] word_lane_s16;
   logic [p_lanes-1:0] chunk_end_s8;
   logic [p_lanes-1:0] chunk_end_s16;
-  logic [p_lanes-1:0] chunk_padding_end_s8;
-  logic [p_lanes-1:0] chunk_padding_end_s16;
+  (* keep = 1 *) logic [p_lanes-1:0] chunk_static_end;
   logic [p_lanes-1:0] chunk_data_allowed;
   logic [4:0] address_update_select;
   logic [31:0] address_update_value;
@@ -215,9 +218,11 @@ module conv_im2col_stream #(
   (* keep = 1 *) logic [p_saved_group_lanes:0] range_decode_value;
   logic [3:0] range_update_select;
   logic [p_saved_group_lanes:0] range_update_value;
+  logic range_commit_context;
   st_t stream_static_state;
   logic stream_request_selected;
   logic stream_row_selected;
+  logic stream_tap_selected;
   assign committing_tile = prepared_tile_t'(i_committing_tile_packed);
 
   assign o_chunk_selected[0] = p_contiguous_chunk ? !o_chunk_lane_allowed[0] : !(|o_chunk_lane_allowed);
@@ -301,19 +306,47 @@ module conv_im2col_stream #(
     assign {unused_position_carry, o_next_q_current} = {1'b0, i_q_current} + 34'(o_chunk_count);
   end
 
-  // 通道递增直接描述为定宽加法，综合工具可以选择算术资源。
-
-  assign channel_position_sum = {1'b0, o_ch_q} + 17'(o_chunk_count);
+  if (p_lanes <= 16 && p_chunk_count_w < 16) begin : g_channel_step
+    (* keep = 1 *) logic [p_lanes:0][p_chunk_count_w:0] low_for_step;
+    logic [p_chunk_count_w:0] channel_low;
+    logic [16-p_chunk_count_w:0] channel_high_next;
+    // 通道低位提前计算固定步长，高位加一与传输数量选择并行。
+    for (genvar step = 0; step <= p_lanes; step++) begin : g_step
+      assign low_for_step[step] = {1'b0, o_ch_q[p_chunk_count_w-1:0]} + (p_chunk_count_w+1)'(step);
+    end
+    always_comb begin
+      channel_low = '0;
+      for (int step = 0; step <= p_lanes; step++)
+        channel_low |= {(p_chunk_count_w+1){o_chunk_selected[step]}} & low_for_step[step];
+    end
+    assign channel_high_next = {1'b0, o_ch_q[15:p_chunk_count_w]} + (17-p_chunk_count_w)'(1);
+    assign channel_position_sum = {
+        channel_low[p_chunk_count_w] ? channel_high_next : {1'b0, o_ch_q[15:p_chunk_count_w]},
+        channel_low[p_chunk_count_w-1:0]};
+  end else begin : g_channel_step_wide
+    assign channel_position_sum = {1'b0, o_ch_q} + 17'(o_chunk_count);
+  end
   assign {unused_channel_position_carry, next_channel} = channel_position_sum;
 
   // 当前组的剩余通道数共用一次扩展减法，窗口上下文保存对应剩余值。
-  assign o_initial_group_remaining = {1'b0, i_c.group_c} - {1'b0, i_ch0_q};
+  logic [16:0] initial_group_remaining_value;
+  logic unused_initial_group_carry;
+  parallel_prefix_add #(.p_width(17), .p_group_width(8), .p_preserve_groups(1'b1)) u_initial_group_remaining (
+    .i_a({1'b0, i_c.group_c}), .i_b(~{1'b0, i_ch0_q}), .i_carry(1'b1),
+    .o_sum(initial_group_remaining_value), .o_carry(unused_initial_group_carry)
+  );
+  always_comb begin
+    case (^{i_c.group_c, i_ch0_q})
+      1'b0, 1'b1: o_initial_group_remaining = initial_group_remaining_value;
+      default: o_initial_group_remaining = 'x;
+    endcase
+  end
   for (genvar source = 0; source < 2; source++) begin : g_tile_group_range
     logic [15:0] first_channel;
     logic [16:0] requested_columns;
     assign first_channel = source == 0 ? i_window_next_ch : i_ch0_q;
     assign requested_columns = i_tile_cols == '0 ? 17'(p_size) : 17'(i_tile_cols);
-    if (p_tile_count_w < 16 && p_rw <= p_tile_count_w) begin : g_remaining
+    if (source == 0 && p_tile_count_w < 16 && p_rw <= p_tile_count_w) begin : g_remaining
       logic [16:0] remaining;
       (* keep = 1 *) logic full_tile_fits, explicit_tile_fits;
       assign remaining = source == 0 ? i_window_group_remaining_q : o_initial_group_remaining;
@@ -449,6 +482,13 @@ module conv_im2col_stream #(
   assign row_request_eligible = !p_register_row_address && o_chunk_reaches_end && !i_row_last_q &&
       i_row_base_valid && !i_geometry_tile && !i_next_row_padding && !next_row_word_hit;
   assign o_stream_next_request = i_wr_valid && i_wr_ready && stream_request_eligible;
+  // 请求坐标由运行阶段提前选择，传输握手控制请求有效信号。
+  assign o_request_stream_context = stream_context;
+  assign o_request_row_context =
+      (stream_context || i_state[$clog2(ZERO_STREAM)]) && row_request_eligible;
+  assign o_request_tap_context = p_register_cache_request &&
+      (stream_context || i_state[$clog2(ZERO_STREAM)]) &&
+      !o_chunk_reaches_end && o_group_end_o_equal;
   // 字命中标志与当前地址同时保存，请求有效条件只读取一位状态。
   assign o_current_word_hit = p_register_descriptor ? addr_word_hit_q :
     i_word_valid && i_word_addr == {o_addr[31:p_word_shift], {p_word_shift{1'b0}}};
@@ -473,10 +513,12 @@ module conv_im2col_stream #(
     i_tile_q_before_end && i_tile_rows_in_range;
   assign o_cache_req_valid = incoming_request ||
                            (i_state[$clog2(FETCH)] && !(o_current_word_hit)) ||
-                           o_stream_next_request || o_next_row_request;
-  assign o_incoming_context=!p_register_descriptor && i_tile_valid && i_incoming_fast &&
+                           o_stream_next_request || o_next_row_request ||
+                           (i_wr_valid && i_wr_ready && stream_tap_selected);
+  assign o_incoming_context=!p_register_descriptor && i_tile_valid &&
     (i_state[$clog2(IDLE)] || ((i_state[$clog2(WAIT_WORD)] || i_state[$clog2(STREAM)] || i_state[$clog2(ZERO_STREAM)]) && i_wr_last));
-  assign o_cache_req_addr=o_incoming_context ? i_incoming_addr : o_next_row_request ? i_next_row_addr :
+  assign o_cache_req_addr=o_request_tap_context ? i_next_tap_addr :
+      o_incoming_context ? i_incoming_addr : o_request_row_context ? i_next_row_addr :
       stream_context ? stream_request_addr : o_addr;
   assign o_cache_rsp_ready = i_state[$clog2(WAIT_WORD)] && (i_wr_ready || i_cache_rsp_error);
   assign o_cache_config_valid = i_cache_cfg_pending && !i_pred_cfg_pending && !i_pred_cfg_busy;
@@ -519,11 +561,21 @@ module conv_im2col_stream #(
 
   if (p_lanes <= 16) begin : g_short_group_lane
     localparam int p_lane_compare_width = $clog2(p_saved_group_lanes+1);
-    logic [16:0] configured_remaining;
+    logic [p_lane_compare_width:0] configured_remaining;
+    (* keep = 1 *) logic configured_high_equal, configured_high_next_equal, configured_high_last;
     logic configured_high_nonzero;
 
-    assign configured_remaining = {1'b0, i_cfg.group_c} - {1'b0, o_ch_q};
-    assign configured_high_nonzero = |configured_remaining[16:p_lane_compare_width];
+    assign configured_remaining = {1'b0, i_cfg.group_c[p_lane_compare_width-1:0]} -
+        {1'b0, o_ch_q[p_lane_compare_width-1:0]};
+    assign configured_high_equal = i_cfg.group_c[15:p_lane_compare_width] == o_ch_q[15:p_lane_compare_width];
+    assign configured_high_last = &o_ch_q[15:p_lane_compare_width];
+    increment_equal #(.p_width(16-p_lane_compare_width)) u_configured_high_next (
+          .i_a(o_ch_q[15:p_lane_compare_width]), .i_target(i_cfg.group_c[15:p_lane_compare_width]),
+          .o_equal(configured_high_next_equal)
+        );
+    // 低段借位只选择高段相等关系，高段比较与低段减法并行。
+    assign configured_high_nonzero = configured_remaining[p_lane_compare_width] ?
+        !configured_high_next_equal || configured_high_last : !configured_high_equal;
     // 常量通道边界仅比较低位，高位非零条件由全部通道共用。
     for (genvar lane = 0; lane <= p_saved_group_lanes; lane++) begin : g_cfg_lane
       assign group_range_cfg[lane] = configured_high_nonzero ||
@@ -533,12 +585,15 @@ module conv_im2col_stream #(
     for (genvar source = 0; source < 6; source++) begin : g_source
       if (source == 5) begin : g_stream_advance
         localparam int p_range_low_w = $clog2(p_lanes+p_saved_group_lanes+1);
-        logic [16:0] remaining;
+        (* keep = 1 *) logic [p_range_low_w:0] remaining;
+        (* keep = 1 *) logic remaining_high_equal, remaining_high_next_equal;
         logic remaining_high_nonzero;
         logic channel_high_last;
         logic [p_lanes:0] channel_wrap;
         logic [p_saved_group_lanes:0][p_lanes:0] selected_range;
         logic [p_saved_group_lanes:0][p_lanes:0] selected_transfer_range;
+        logic [p_saved_group_lanes:0][p_lanes:0] transfer_range_allowed;
+        logic [p_lanes:0] transfer_ends;
         logic [p_lanes-1:0] transfer_lane_allowed;
         logic [p_lanes:0] transfer_selected;
 
@@ -562,8 +617,17 @@ module conv_im2col_stream #(
         end
 
         // 剩余数量只依赖当前坐标；传输数量不经过宽位加减运算。
-        assign remaining = {1'b0, i_c.group_c} - {1'b0, o_ch_q};
-        assign remaining_high_nonzero = |remaining[15:p_range_low_w];
+        borrow_select_subtract #(.p_width(p_range_low_w)) u_remaining (
+          .i_a(i_c.group_c[p_range_low_w-1:0]), .i_b(o_ch_q[p_range_low_w-1:0]),
+          .o_difference(remaining)
+        );
+        assign remaining_high_equal = i_c.group_c[15:p_range_low_w] == o_ch_q[15:p_range_low_w];
+        increment_equal #(.p_width(16-p_range_low_w)) u_remaining_high_next (
+          .i_a(o_ch_q[15:p_range_low_w]), .i_target(i_c.group_c[15:p_range_low_w]),
+          .o_equal(remaining_high_next_equal)
+        );
+        assign remaining_high_nonzero = remaining[p_range_low_w] ?
+            !remaining_high_next_equal : !remaining_high_equal;
         assign channel_high_last = &o_ch_q[15:p_range_low_w];
         for (genvar step = 0; step <= p_lanes; step++) begin : g_step
           logic remaining_before_step;
@@ -578,33 +642,84 @@ module conv_im2col_stream #(
                 o_ch_q[p_range_low_w-1:0] > p_range_low_w'((1<<p_range_low_w)-step-1);
             assign remaining_before_step = remaining[p_range_low_w-1:0] < p_range_low_w'(step);
           end
+          assign transfer_ends[step] = reaches_group_end;
           for (genvar lane = 0; lane <= p_saved_group_lanes; lane++) begin : g_lane
             logic range_allowed;
-            // 差值处于 [step, step+lane] 时该通道无效，其余差值均有效。
-            // 通道坐标按十六位回绕，差值最高位随同一回绕关系判断。
-            assign range_allowed = remaining_high_nonzero ||
-                (remaining[16] != channel_wrap[step]) ||
-                remaining_before_step ||
-                (remaining[p_range_low_w-1:0] > p_range_low_w'(step+lane));
+            conv_channel_range_compare #(
+              .p_width(p_range_low_w), .p_step(step), .p_lane(lane)
+            ) u_range (
+              .i_remaining_low(remaining[p_range_low_w-1:0]),
+              .i_channel_low(o_ch_q[p_range_low_w-1:0]),
+              .i_remaining_borrow(remaining[p_range_low_w]),
+              .i_high_nonzero(remaining_high_nonzero),
+              .i_channel_high_last(channel_high_last), .o_allowed(range_allowed)
+            );
+            assign transfer_range_allowed[lane][step] = range_allowed;
             assign selected_range[lane][step] = o_chunk_selected[step] && range_allowed;
             // 每个固定步长先选择组切换或组内递增，再由当前传输数量选取。
             assign selected_transfer_range[lane][step] = transfer_selected[step] &&
                 (reaches_group_end ? o_group_range_next[0][lane] : range_allowed);
           end
         end
+        // 组首与组内递增分别归并，每个局部结果只组合两个传输候选。
+        localparam int p_transfer_pairs = (p_lanes+2)/2;
+        localparam int p_restart_groups = (p_lanes+3)/3;
+        (* keep = 1 *) logic [p_restart_groups-1:0] restart_group;
+        logic restart_any;
+        for (genvar group_index = 0; group_index < p_restart_groups; group_index++) begin : g_restart
+          logic [2:0] selected;
+          for (genvar item = 0; item < 3; item++) begin : g_item
+            localparam int p_step = 3*group_index+item;
+            if (p_step <= p_lanes) begin : g_present
+              assign selected[item] = transfer_selected[p_step] && transfer_ends[p_step];
+            end else begin : g_unused
+              assign selected[item] = 1'b0;
+            end
+          end
+          assign restart_group[group_index] = |selected;
+        end
+        assign restart_any = |restart_group;
         for (genvar lane = 0; lane <= p_saved_group_lanes; lane++) begin : g_select_lane
+          (* keep = 1 *) logic [p_transfer_pairs-1:0] advance_pair;
+          logic reduced_range;
+          for (genvar pair = 0; pair < p_transfer_pairs; pair++) begin : g_pair
+            logic [1:0] selected;
+            for (genvar item = 0; item < 2; item++) begin : g_item
+              localparam int p_step = 2*pair+item;
+              if (p_step <= p_lanes) begin : g_present
+                assign selected[item] = transfer_selected[p_step] && !transfer_ends[p_step] &&
+                    transfer_range_allowed[lane][p_step];
+              end else begin : g_unused
+                assign selected[item] = 1'b0;
+              end
+            end
+            assign advance_pair[pair] = |selected;
+          end
+          assign reduced_range = (|advance_pair) || (restart_any && o_group_range_next[0][lane]);
           assign o_group_range_next[source][lane] = |selected_range[lane];
-          assign group_transfer_range[lane] = |selected_transfer_range[lane];
+          always_comb begin
+            group_transfer_range[lane] = |selected_transfer_range[lane];
+            case (^{transfer_selected, transfer_ends, transfer_range_allowed[lane], o_group_range_next[0][lane]})
+              1'b0, 1'b1: group_transfer_range[lane] = reduced_range;
+              default: ;
+            endcase
+          end
         end
       end else begin : g_direct_range
-        logic [16:0] remaining;
+        logic [p_lane_compare_width:0] remaining;
+        (* keep = 1 *) logic high_equal, high_next_equal, high_last;
         logic high_nonzero;
-        if (source == 1) begin : g_initial
-          assign remaining = o_initial_group_remaining;
-        end else begin : g_other
-          assign remaining = {1'b0, i_c.group_c} - {1'b0, o_group_range_channel[source]};
-        end
-        assign high_nonzero = |remaining[16:p_lane_compare_width];
+        assign remaining = {1'b0, i_c.group_c[p_lane_compare_width-1:0]} -
+            {1'b0, o_group_range_channel[source][p_lane_compare_width-1:0]};
+        assign high_equal = i_c.group_c[15:p_lane_compare_width] ==
+            o_group_range_channel[source][15:p_lane_compare_width];
+        assign high_last = &o_group_range_channel[source][15:p_lane_compare_width];
+        increment_equal #(.p_width(16-p_lane_compare_width)) u_high_next (
+          .i_a(o_group_range_channel[source][15:p_lane_compare_width]), .i_target(i_c.group_c[15:p_lane_compare_width]),
+          .o_equal(high_next_equal)
+        );
+        assign high_nonzero = remaining[p_lane_compare_width] ?
+            !high_next_equal || high_last : !high_equal;
         for (genvar lane = 0; lane <= p_saved_group_lanes; lane++) begin : g_lane
           assign o_group_range_next[source][lane] = high_nonzero ||
               p_lane_compare_width'(lane) < remaining[p_lane_compare_width-1:0];
@@ -703,29 +818,32 @@ module conv_im2col_stream #(
     assign chunk_data_allowed[lane] = lane_context_allowed[lane] &&
         (!i_word_output_q || word_lane_allowed[lane]);
     if (p_tile_count_w >= p_chunk_count_w) begin : g_complete_column
-      // 数据区和补零区分别准备行末资格，有效列结束标志只参与末级合并。
-      assign chunk_padding_end_s8[lane] = (!i_narrow_output || lane < p_narrow_lanes) &&
+      // 数据区和补零区共用行末位置，各格式分别检查缓存字覆盖范围。
+      assign chunk_static_end[lane] = (!i_narrow_output || lane < p_narrow_lanes) &&
           column_lane_allowed_q[lane] && !column_lane_allowed_q[lane+1] &&
-          (!i_word_output_q || allowed_s8);
-      assign chunk_padding_end_s16[lane] = (!i_narrow_output || lane < p_narrow_lanes) &&
-          column_lane_allowed_q[lane] && !column_lane_allowed_q[lane+1] &&
-          (!i_word_output_q || allowed_s16);
-      assign chunk_end_s8[lane] = chunk_padding_end_s8[lane] &&
-          group_lane_allowed[lane] && active_lane_allowed_q[lane];
-      assign chunk_end_s16[lane] = chunk_padding_end_s16[lane] &&
-          group_lane_allowed[lane] && active_lane_allowed_q[lane];
+          (i_past_active_q || (group_lane_allowed[lane] && active_lane_allowed_q[lane]));
+      assign chunk_end_s8[lane] = chunk_static_end[lane] && allowed_s8;
+      assign chunk_end_s16[lane] = chunk_static_end[lane] && allowed_s16;
     end else begin : g_wrapped_column
       assign chunk_end_s8[lane] = 1'b0;
       assign chunk_end_s16[lane] = 1'b0;
-      assign chunk_padding_end_s8[lane] = 1'b0;
-      assign chunk_padding_end_s16[lane] = 1'b0;
+      assign chunk_static_end[lane] = 1'b0;
     end
   end
   if (p_tile_count_w >= p_chunk_count_w) begin : g_direct_chunk_end
-    logic end_s8, end_s16;
-    // 有效列结束时，补零通道沿用当前字和行宽限制；两种格式提前形成行末条件。
-    assign end_s8 = (|chunk_end_s8) || (i_past_active_q && (|chunk_padding_end_s8));
-    assign end_s16 = (|chunk_end_s16) || (i_past_active_q && (|chunk_padding_end_s16));
+    localparam int p_end_groups = (p_lanes + 2) / 3;
+    (* keep = 1 *) logic [p_end_groups-1:0] end_s8_group, end_s16_group;
+    logic end_s8, end_s16, padding_end;
+    // 三条通道并行归约，输入格式只选择最终的行末结果。
+    for (genvar group_index = 0; group_index < p_end_groups; group_index++) begin : g_group
+      localparam int p_first = group_index * 3;
+      localparam int p_count = p_lanes - p_first < 3 ? p_lanes - p_first : 3;
+      assign end_s8_group[group_index] = |chunk_end_s8[p_first +: p_count];
+      assign end_s16_group[group_index] = |chunk_end_s16[p_first +: p_count];
+    end
+    assign padding_end = !i_word_output_q && (|chunk_static_end);
+    assign end_s8 = (|end_s8_group) || padding_end;
+    assign end_s16 = (|end_s16_group) || padding_end;
     assign o_chunk_reaches_end = !column_lane_allowed_q[0] ||
         (i_c.input_s16 ? end_s16 : end_s8);
   end else begin : g_narrow_chunk_end
@@ -764,12 +882,111 @@ module conv_im2col_stream #(
       assign o_wr_mask[output_lane] = |o_chunk_lane_allowed[p_lanes-1:output_lane];
     end
   end
-  always_comb begin
-    for (int l=0;l<p_lanes;l++) begin
-      o_wr_data[l]=0;
-      if ((i_state[$clog2(STREAM)] || i_state[$clog2(WAIT_WORD)]) && o_wr_mask[l]) begin
-        if (i_c.input_s16) o_wr_data[l]=$signed(16'(selected_word>>(l*16)));
-        else o_wr_data[l]=$signed(corrected_s8_value[l]);
+  if (p_lanes <= 16 && p_cache_read_bytes <= 16) begin : g_parallel_formatter
+    (* keep = 1 *) logic [1:0][p_cache_read_bytes-1:0][8:0] source_corrected;
+
+    // 返回字与保存字分别完成偏移运算，地址和格式只选择最终候选。
+    for (genvar source = 0; source < 2; source++) begin : g_source
+      for (genvar byte_index = 0; byte_index < p_cache_read_bytes; byte_index++) begin : g_byte
+        logic [7:0] sample;
+        logic unused_carry;
+        assign sample = source == 0 ? i_cache_rsp_data[8*byte_index +: 8] :
+            i_word_buf[8*byte_index +: 8];
+        parallel_prefix_add #(.p_width(9), .p_group_width(3), .p_preserve_groups(1'b1)) u_offset (
+          .i_a({sample[7], sample}), .i_b(i_c.input_offset[8:0]), .i_carry(1'b0),
+          .o_sum(source_corrected[source][byte_index]), .o_carry(unused_carry)
+        );
+      end
+    end
+    for (genvar data_lane = 0; data_lane < p_lanes; data_lane++) begin : g_lane
+      localparam int p_s8_candidates = p_cache_read_bytes > data_lane ? p_cache_read_bytes - data_lane : 0;
+      localparam int p_s16_candidates = p_cache_read_bytes > 2*data_lane ? p_cache_read_bytes - 2*data_lane : 0;
+      localparam int p_candidates = 2*(p_s8_candidates + p_s16_candidates) + 1;
+      localparam int p_groups = (p_candidates + 2) / 3;
+      localparam int p_upper_groups = (p_groups + 5) / 6;
+      logic [p_candidates-1:0][15:0] candidate;
+      (* keep = 1 *) logic [p_candidates-1:0] selected;
+      (* keep = 1 *) logic [p_groups-1:0][15:0] grouped;
+      (* keep = 1 *) logic [p_upper_groups-1:0][15:0] upper;
+      logic [15:0] parallel_value;
+
+      for (genvar source = 0; source < 2; source++) begin : g_source
+        logic [p_cache_read_width-1:0] word_value;
+        assign word_value = source == 0 ? i_cache_rsp_data : i_word_buf;
+        for (genvar byte_index = data_lane; byte_index < p_cache_read_bytes; byte_index++) begin : g_s8
+          localparam int p_candidate = 2*(byte_index - data_lane) + source;
+          assign selected[p_candidate] = o_addr[p_word_shift-1:0] == p_word_shift'(byte_index - data_lane) &&
+              (source == 0 ? i_state[$clog2(WAIT_WORD)] : !i_state[$clog2(WAIT_WORD)]) &&
+              !i_c.input_s16 && stream_context && o_wr_mask[data_lane];
+          assign candidate[p_candidate] = {16{selected[p_candidate]}} &
+              {{7{source_corrected[source][byte_index][8]}}, source_corrected[source][byte_index]};
+        end
+        for (genvar byte_index = 2*data_lane; byte_index < p_cache_read_bytes; byte_index++) begin : g_s16
+          localparam int p_candidate = 2*p_s8_candidates + 2*(byte_index - 2*data_lane) + source;
+          assign selected[p_candidate] = o_addr[p_word_shift-1:0] == p_word_shift'(byte_index - 2*data_lane) &&
+              (source == 0 ? i_state[$clog2(WAIT_WORD)] : !i_state[$clog2(WAIT_WORD)]) &&
+              i_c.input_s16 && stream_context && o_wr_mask[data_lane];
+          assign candidate[p_candidate] = {16{selected[p_candidate]}} & 16'(word_value >> (8*byte_index));
+        end
+      end
+      // 字尾之外的八位样本为零，其偏移结果仍参与完整输出语义。
+      assign selected[p_candidates-1] =
+          (data_lane >= p_cache_read_bytes || {1'b0, o_addr[p_word_shift-1:0]} >=
+              (p_word_shift+1)'(p_cache_read_bytes - data_lane)) &&
+          !i_c.input_s16 && stream_context && o_wr_mask[data_lane];
+      assign candidate[p_candidates-1] = {16{selected[p_candidates-1]}} &
+          {{7{i_c.input_offset[8]}}, i_c.input_offset[8:0]};
+      // 小组先归并三个候选，再合并六个小组，保存组合归约边界。
+      for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_group
+        localparam int p_count = p_candidates - 3*group_index < 3 ? p_candidates - 3*group_index : 3;
+        for (genvar data_bit = 0; data_bit < 16; data_bit++) begin : g_bit
+          logic [p_count-1:0] values;
+          for (genvar item = 0; item < p_count; item++) begin : g_item
+            assign values[item] = candidate[3*group_index + item][data_bit];
+          end
+          assign grouped[group_index][data_bit] = |values;
+        end
+      end
+      for (genvar group_index = 0; group_index < p_upper_groups; group_index++) begin : g_upper
+        localparam int p_count = p_groups - 6*group_index < 6 ? p_groups - 6*group_index : 6;
+        for (genvar data_bit = 0; data_bit < 16; data_bit++) begin : g_bit
+          logic [p_count-1:0] values;
+          for (genvar item = 0; item < p_count; item++) begin : g_item
+            assign values[item] = grouped[6*group_index + item][data_bit];
+          end
+          assign upper[group_index][data_bit] = |values;
+        end
+      end
+      for (genvar data_bit = 0; data_bit < 16; data_bit++) begin : g_result_bit
+        logic [p_upper_groups-1:0] values;
+        for (genvar group_index = 0; group_index < p_upper_groups; group_index++) begin : g_group
+          assign values[group_index] = upper[group_index][data_bit];
+        end
+        assign parallel_value[data_bit] = |values;
+      end
+      always_comb begin
+        o_wr_data[data_lane] = '0;
+        // 未知选择值沿用字移位和符号运算的四态语义。
+        case (^{i_cache_rsp_data, i_word_buf, i_c.input_offset[8:0], i_c.input_s16,
+                o_addr[p_word_shift-1:0], i_state[$clog2(WAIT_WORD)], stream_context, o_wr_mask[data_lane]})
+          1'b0, 1'b1: o_wr_data[data_lane] = $signed(parallel_value);
+          default: begin
+            if (stream_context && o_wr_mask[data_lane]) begin
+              if (i_c.input_s16) o_wr_data[data_lane] = $signed(16'(selected_word >> (data_lane*16)));
+              else o_wr_data[data_lane] = $signed(corrected_s8_value[data_lane]);
+            end
+          end
+        endcase
+      end
+    end
+  end else begin : g_wide_formatter
+    always_comb begin
+      for (int l=0;l<p_lanes;l++) begin
+        o_wr_data[l]=0;
+        if ((i_state[$clog2(STREAM)] || i_state[$clog2(WAIT_WORD)]) && o_wr_mask[l]) begin
+          if (i_c.input_s16) o_wr_data[l]=$signed(16'(selected_word>>(l*16)));
+          else o_wr_data[l]=$signed(corrected_s8_value[l]);
+        end
       end
     end
   end
@@ -849,22 +1066,27 @@ module conv_im2col_stream #(
   end else begin : g_stream_range_write
     assign range_stream_allowed = i_wr_ready;
   end
+  logic [3:0] range_decode_select;
   // 译码选择保持状态优先次序，其数据准备与配置及输出握手独立。
   always_comb begin
     range_decode_write = 1'b0;
     range_decode_value = o_group_range_next[4];
+    range_decode_select = 4'b1000;
     unique case (1'b1)
       i_state[$clog2(P_DECODE)], i_state[$clog2(P_START)], i_state[$clog2(P_WAIT)]: ;
       i_state[$clog2(Q_DECODE)]: begin
         if (i_q0 == 32'd0) begin
           range_decode_write = 1'b1;
           range_decode_value = o_group_range_next[0];
+          range_decode_select = 4'b0001;
         end else if (i_group_shape_o_valid) begin
           range_decode_write = 1'b1;
           range_decode_value = o_group_range_next[2];
+          range_decode_select = 4'b0010;
         end else if (i_c.group_c == 16'd3 && i_q0 < 32'd27) begin
           range_decode_write = 1'b1;
           range_decode_value = o_group_range_next[3];
+          range_decode_select = 4'b0100;
         end
       end
       i_state[$clog2(Q_START)]: ;
@@ -880,15 +1102,58 @@ module conv_im2col_stream #(
   assign range_update_select[2] = i_tile_commit && !committing_tile.invalid && committing_tile.fast;
   assign range_update_select[3] = !i_tile_commit &&
       i_wr_valid && range_stream_allowed;
+  assign range_commit_context = p_register_descriptor ? range_update_select[2] :
+      o_incoming_context && i_tile_admission_ready;
   if (p_lanes <= 16) begin : g_range_data_choice
-    // 保存资格只控制时钟使能，流式数据独立选择行首或递增范围。
-    // 有效列结束后的范围随输出准备；再次进入有效数据前由行首或描述符装入。
+    logic [3:0] range_value_select;
+    logic [6:0] range_source_select;
+    (* keep = 1 *) logic [7:0] range_data_select;
+    logic [7:0][p_saved_group_lanes:0] range_candidate;
+    logic [p_saved_group_lanes:0] selected_range_value;
+    // 先确定范围来源，再选择各来源独立准备的通道范围。
     always_comb begin
-      range_update_value = group_range_stream_value;
+      range_value_select = 4'b0001;
+      case (1'b1)
+        range_update_select[1]: range_value_select = 4'b0010;
+        (!p_register_descriptor &&
+            (i_state[$clog2(Q_DECODE)] || i_state[$clog2(Q_WAIT)])):
+          range_value_select = 4'b1000;
+        range_commit_context: range_value_select = 4'b0100;
+        range_update_select[0]: range_value_select = 4'b1000;
+        default: ;
+      endcase
+    end
+    assign range_source_select[2:0] = range_value_select[2:0];
+    assign range_source_select[6:3] = {4{range_value_select[3]}} & range_decode_select;
+    assign range_data_select[6:1] = range_source_select[6:1];
+    assign range_data_select[0] = range_source_select[0] && !o_chunk_reaches_end;
+    assign range_data_select[7] = range_source_select[0] && o_chunk_reaches_end;
+    assign range_candidate[0] = group_transfer_range;
+    assign range_candidate[1] = group_range_cfg;
+    assign range_candidate[2] = committing_tile.channel_range;
+    assign range_candidate[3] = o_group_range_next[0];
+    assign range_candidate[4] = o_group_range_next[2];
+    assign range_candidate[5] = o_group_range_next[3];
+    assign range_candidate[6] = o_group_range_next[4];
+    assign range_candidate[7] = o_group_range_next[1];
+    onehot_mux #(.p_choices(8), .p_width(p_saved_group_lanes+1)) u_range_data (
+      .i_select(range_data_select), .i_data(range_candidate), .o_data(selected_range_value)
+    );
+    always_comb begin
+      range_update_value = '0;
       unique case (1'b1)
-        range_update_select[1]: range_update_value = group_range_cfg;
-        range_update_select[2]: range_update_value = committing_tile.channel_range;
-        range_update_select[0]: range_update_value = range_decode_value;
+        range_source_select[0]: range_update_value = group_range_stream_value;
+        range_source_select[1]: range_update_value = group_range_cfg;
+        range_source_select[2]: range_update_value = committing_tile.channel_range;
+        range_source_select[3]: range_update_value = o_group_range_next[0];
+        range_source_select[4]: range_update_value = o_group_range_next[2];
+        range_source_select[5]: range_update_value = o_group_range_next[3];
+        range_source_select[6]: range_update_value = o_group_range_next[4];
+        default: ;
+      endcase
+      // 来源含未知值时保留优先选择的四态语义。
+      case (^{range_data_select, range_candidate})
+        1'b0, 1'b1: range_update_value = selected_range_value;
         default: ;
       endcase
     end
@@ -904,13 +1169,79 @@ module conv_im2col_stream #(
     else if (|range_update_select) group_range_q <= range_update_value;
   end
 
-  // 当前通道和新描述符并行准备，接收事件只选择最终数据。
+  // 通道数据按运行阶段预选，缓存返回只控制最终保存。
+  logic channel_write_enable;
+  logic [15:0] channel_store_value;
+  logic [3:0] channel_data_select;
+  logic [3:0][15:0] channel_data_candidate;
+  logic [15:0] channel_selected_value, channel_stream_value, channel_decode_value;
+  logic channel_phase_write, channel_commit_context;
   assign channel_value = i_channel_accept_fire ? 16'(committing_tile.channel) : channel_update;
+  assign channel_commit_context = p_register_descriptor ? i_channel_accept_fire :
+      o_incoming_context && i_tile_admission_ready;
+  assign channel_stream_value = o_chunk_reaches_end ? 16'(i_ch0) :
+      o_group_end_o_equal ? 16'd0 : next_channel;
+  always_comb begin
+    channel_decode_value = 16'd0;
+    if (i_q0 != 32'd0) begin
+      if (i_group_shape_o_valid) channel_decode_value = o_group_range_channel[2];
+      else if (i_c.group_c == 16'd3 && i_q0 < 32'd27)
+        channel_decode_value = i_current_q_remainder;
+    end
+    channel_phase_write = 1'b0;
+    channel_data_select = 4'b0000;
+    unique case (1'b1)
+      i_state[$clog2(WAIT_WORD)], i_state[$clog2(STREAM)], i_state[$clog2(ZERO_STREAM)]: begin
+        channel_data_select = 4'b0001;
+        channel_phase_write =
+            !(i_state[$clog2(WAIT_WORD)] && i_cache_rsp_valid && i_cache_rsp_error) &&
+            i_wr_valid && i_wr_ready &&
+            ((o_chunk_reaches_end && !i_row_last_q) ||
+             (!o_chunk_reaches_end && i_col_idx < i_active_cols_q &&
+              p_tile_count_w'(o_chunk_count) < active_remaining));
+      end
+      i_state[$clog2(Q_DECODE)]: begin
+        channel_data_select = 4'b0010;
+        channel_phase_write = i_q0 == 32'd0 || i_group_shape_o_valid ||
+            (i_c.group_c == 16'd3 && i_q0 < 32'd27);
+      end
+      i_state[$clog2(Q_WAIT)]: begin
+        channel_data_select = 4'b0100;
+        channel_phase_write = i_decode_index == i_q0;
+      end
+      default: ;
+    endcase
+    if (channel_commit_context) channel_data_select = 4'b1000;
+  end
+  assign channel_data_candidate[0] = channel_stream_value;
+  assign channel_data_candidate[1] = channel_decode_value;
+  assign channel_data_candidate[2] = 16'(i_decode_inner);
+  assign channel_data_candidate[3] = 16'(committing_tile.channel);
+  onehot_mux #(.p_choices(4), .p_width(16)) u_channel_data (
+    .i_select(channel_data_select), .i_data(channel_data_candidate), .o_data(channel_selected_value)
+  );
+  always_comb begin
+    channel_write_enable = 1'b1;
+    channel_store_value = channel_value;
+    // 未知输入按逐条件更新值保存，已知输入采用独立的写入资格。
+    case (^{i_state, i_cache_rsp_valid, i_cache_rsp_error, i_wr_valid, i_wr_ready,
+            o_chunk_reaches_end, i_row_last_q, i_col_idx, i_active_cols_q, o_chunk_count,
+            active_remaining, o_group_end_o_equal, i_q0, i_group_shape_o_valid, i_c.group_c,
+            i_current_q_remainder, i_decode_index, i_decode_inner, i_channel_accept_fire,
+            committing_tile.channel, o_ch_q, i_ch0, o_group_range_channel[2], next_channel,
+            o_incoming_context, i_tile_admission_ready})
+      1'b0, 1'b1: begin
+        channel_write_enable = i_channel_accept_fire || channel_phase_write;
+        channel_store_value = channel_selected_value;
+      end
+      default: ;
+    endcase
+  end
   always_ff @(posedge i_clk or negedge i_rst_n) begin
     if (!i_rst_n) begin
       o_ch_q <= 16'd0;
-    end else begin
-      o_ch_q <= channel_value;
+    end else if (channel_write_enable) begin
+      o_ch_q <= channel_store_value;
     end
   end
 
@@ -936,11 +1267,30 @@ module conv_im2col_stream #(
   assign address_update_select[3] = address_stream_write && address_column_advance &&
     !o_group_end_o_equal;
   assign address_update_select[4] = i_state[$clog2(ADDRESS_CHANNEL)];
-  assign address_update_value = ({32{address_update_select[0]}} & committing_tile.address) |
-    ({32{address_update_select[1]}} & i_next_row_addr) |
-    ({32{address_update_select[2]}} & i_next_tap_addr) |
-    ({32{address_update_select[3]}} & next_byte_addr) |
-    ({32{address_update_select[4]}} & i_channel_addr);
+  if (!p_register_descriptor) begin : g_early_address_data
+    logic [31:0] selected_address;
+    // 运行阶段提前选择地址，传输接收条件控制寄存器使能。
+    always_comb begin
+      selected_address = next_byte_addr;
+      if (active_select_commit) begin
+        selected_address = committing_tile.address;
+      end else if (i_state[$clog2(ADDRESS_CHANNEL)]) begin
+        selected_address = i_channel_addr;
+      end else if (o_chunk_reaches_end) begin
+        selected_address = i_next_row_addr;
+      end else if (o_group_end_o_equal && i_coordinate_address_valid) begin
+        selected_address = i_next_tap_addr;
+      end
+    end
+    // 按位传递保留四态仿真的未知值传播。
+    assign address_update_value = selected_address & 32'hffff_ffff;
+  end else begin : g_qualified_address_data
+    assign address_update_value = ({32{address_update_select[0]}} & committing_tile.address) |
+      ({32{address_update_select[1]}} & i_next_row_addr) |
+      ({32{address_update_select[2]}} & i_next_tap_addr) |
+      ({32{address_update_select[3]}} & next_byte_addr) |
+      ({32{address_update_select[4]}} & i_channel_addr);
+  end
   always_ff @(posedge i_clk or negedge i_rst_n) begin
     if (!i_rst_n) o_addr <= 32'd0;
     else if (|address_update_select) o_addr <= address_update_value;
@@ -963,7 +1313,7 @@ module conv_im2col_stream #(
             {1'b0, source_low[source]} < (p_word_shift+1)'(p_cache_read_bytes-byte_index);
       end
       // 地址写入资格保持独立；发生保存时，运行状态直接选择对应字内范围。
-      assign next_available[byte_index] = i_tile_commit ? source_available[byte_index][0] :
+      assign next_available[byte_index] = active_select_commit ? source_available[byte_index][0] :
           i_state[$clog2(ADDRESS_CHANNEL)] ? source_available[byte_index][4] :
           o_chunk_reaches_end ? source_available[byte_index][1] :
           (o_group_end_o_equal && i_coordinate_address_valid) ? source_available[byte_index][2] :
@@ -997,7 +1347,10 @@ module conv_im2col_stream #(
 
   // 有效列数量与逐通道范围在同一边沿更新，运行期直接读取范围寄存器。
   // 数据选择使用任务阶段；传输和行末资格只控制寄存器使能。
-  assign active_select_commit = i_tile_commit;
+  assign active_select_commit = p_register_descriptor ? i_tile_commit :
+      i_state[$clog2(IDLE)] ||
+      ((i_state[$clog2(WAIT_WORD)] || i_state[$clog2(STREAM)] ||
+        i_state[$clog2(ZERO_STREAM)]) && i_wr_last);
   assign active_data_select[0] = active_select_commit;
   assign active_data_select[1] = !active_select_commit && o_chunk_reaches_end;
   assign active_data_select[2] = !active_select_commit && !o_chunk_reaches_end;
@@ -1025,11 +1378,33 @@ module conv_im2col_stream #(
         logic [p_lanes:0] active_allowed, remaining_allowed;
         // 各种传输长度提前计算范围，末通道选择只参与最后归并。
         for (genvar step = 0; step <= p_lanes; step++) begin : g_length
-          logic [p_tile_count_w-1:0] active_count, remaining_count;
-          assign active_count = active_remaining - p_tile_count_w'(step);
-          assign remaining_count = col_remaining - p_tile_count_w'(step);
-          assign active_allowed[step] = p_tile_count_w'(lane) < active_count;
-          assign remaining_allowed[step] = p_tile_count_w'(lane) < remaining_count;
+          localparam logic [p_tile_count_w-1:0] p_step = p_tile_count_w'(step);
+          localparam logic [p_tile_count_w-1:0] p_lane = p_tile_count_w'(lane);
+          localparam logic [p_tile_count_w:0] p_boundary = {1'b0, p_step} + {1'b0, p_lane};
+          logic active_before_step, remaining_before_step;
+          logic active_after_boundary, remaining_after_boundary;
+          if (p_step == '0) begin : g_zero_step
+            assign active_before_step = 1'b0;
+            assign remaining_before_step = 1'b0;
+          end else begin : g_positive_step
+            assign active_before_step = active_remaining < p_step;
+            assign remaining_before_step = col_remaining < p_step;
+          end
+          if (&p_boundary[p_tile_count_w-1:0]) begin : g_last_boundary
+            assign active_after_boundary = 1'b0;
+            assign remaining_after_boundary = 1'b0;
+          end else begin : g_lower_boundary
+            assign active_after_boundary = active_remaining > p_boundary[p_tile_count_w-1:0];
+            assign remaining_after_boundary = col_remaining > p_boundary[p_tile_count_w-1:0];
+          end
+          // 模减法后的范围直接表示为两个常量边界之间的区间。
+          if (p_boundary[p_tile_count_w]) begin : g_wrapped_boundary
+            assign active_allowed[step] = active_before_step && active_after_boundary;
+            assign remaining_allowed[step] = remaining_before_step && remaining_after_boundary;
+          end else begin : g_ordered_boundary
+            assign active_allowed[step] = active_before_step || active_after_boundary;
+            assign remaining_allowed[step] = remaining_before_step || remaining_after_boundary;
+          end
         end
         assign candidate_allowed[source] = |(o_chunk_selected & active_allowed);
         assign column_allowed[source] = |(o_chunk_selected & remaining_allowed);
@@ -1065,6 +1440,7 @@ module conv_im2col_stream #(
     stream_static_state = FETCH;
     stream_request_selected = 1'b0;
     stream_row_selected = 1'b0;
+    stream_tap_selected = 1'b0;
     if (o_chunk_reaches_end) begin
       if (i_row_last_q) stream_static_state = IDLE;
       else if (i_row_base_valid && !i_geometry_tile) begin
@@ -1079,6 +1455,11 @@ module conv_im2col_stream #(
       if (i_coordinate_address_valid) begin
         if (i_next_tap_padding) stream_static_state = ZERO_STREAM;
         else if (i_next_word_o_equal && !i_pad_q) stream_static_state = STREAM;
+        else begin
+          // 换核位置与字边界共用请求接收状态，输出握手同时保存下一地址。
+          stream_tap_selected = o_request_tap_context;
+          stream_request_selected = o_request_tap_context;
+        end
       end else stream_static_state = ADDRESS;
     end else if (i_pad_q) begin
       stream_static_state = ZERO_STREAM;
