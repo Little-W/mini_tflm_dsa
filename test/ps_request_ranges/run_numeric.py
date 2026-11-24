@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]/'test'))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source_group as read_rtl_source
 
 
 def digest(path):

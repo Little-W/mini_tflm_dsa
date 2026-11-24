@@ -1,0 +1,168 @@
+{
+  "format_version": 1,
+  "remote_base": "7142f8ee41342454d9e27cae078c8e35a584685c",
+  "references": {
+    "e29735a7": [
+      "rtl/npu/conv/conv_im2col_frontend.sv",
+      "rtl/npu/conv/conv_im2col_stream.sv",
+      "rtl/npu/dma/cache/conv_windowed_cache.sv"
+    ],
+    "56d098ed": [
+      "rtl/npu/conv/conv_im2col_descriptor.sv",
+      "rtl/npu/conv/conv_im2col_stream.sv",
+      "rtl/npu/dma/cache/conv_cache_metadata_way.sv",
+      "rtl/npu/dma/cache/conv_windowed_cache.sv"
+    ],
+    "795c8b14": [
+      "rtl/npu/dma/cache/conv_windowed_cache.sv"
+    ],
+    "4885effb": [
+      "rtl/npu/dma/cache/conv_windowed_cache.sv",
+      "rtl/npu/dma/cache/conv_cache_rank_table.sv"
+    ],
+    "a0a6b08b": [
+      "rtl/npu/dma/cache/conv_windowed_cache.sv"
+    ],
+    "f1910d02": [
+      "rtl/npu/conv/conv_im2col_frontend.sv",
+      "rtl/npu/conv/conv_im2col_geometry.sv",
+      "rtl/npu/conv/conv_im2col_stream.sv",
+      "rtl/npu/dma/cache/conv_cache_metadata_way.sv",
+      "rtl/npu/dma/cache/conv_windowed_cache.sv"
+    ],
+    "419e8c87": [
+      "rtl/npu/conv/conv_im2col_descriptor.sv",
+      "rtl/npu/conv/conv_im2col_frontend.sv"
+    ],
+    "b56925d9": [
+      "rtl/npu/conv/conv_im2col_stream.sv"
+    ],
+    "b65eedec": [
+      "rtl/npu/conv/conv_channel_range_compare.sv"
+    ],
+    "95fcc049": [
+      "rtl/common/regfile.v",
+      "rtl/npu/conv/conv_im2col_descriptor.sv",
+      "rtl/npu/dma/conv_window_queue.sv"
+    ],
+    "2b411de1": [
+      "rtl/npu/conv/conv_im2col_descriptor.sv",
+      "rtl/npu/conv/conv_im2col_frontend.sv",
+      "rtl/npu/conv/conv_im2col_stream.sv"
+    ],
+    "07d365d1": [
+      "rtl/npu/conv/conv_im2col_frontend.sv"
+    ],
+    "f37504340fa7c68c1a2e5e4df5aee50eaad157e3": [
+      "rtl/common/regfile.v",
+      "rtl/npu/dma/conv_window_queue.sv"
+    ],
+    "b777b8fe": [
+      "rtl/npu/conv/conv_im2col_frontend.sv"
+    ],
+    "7558d169": [
+      "rtl/npu/conv/conv_im2col_frontend.sv"
+    ],
+    "795c8b1481d55d1c0e81e3a1cc0ae40b18a2e6ca": [
+      "rtl/npu/conv/conv_im2col_descriptor.sv",
+      "rtl/npu/conv/conv_im2col_stream.sv"
+    ],
+    "6bebc8db7f11527ea32ca1aad0c2c15fa1795d38": [
+      "rtl/common/add_equal.sv",
+      "rtl/npu/conv/conv_im2col_descriptor.sv",
+      "rtl/npu/conv/conv_im2col_geometry.sv"
+    ],
+    "ca8f9d6b": [
+      "rtl/npu/dma/cache/conv_cache_metadata_way.sv",
+      "rtl/npu/dma/cache/conv_windowed_cache.sv"
+    ],
+    "ab9bc6f1": [
+      "rtl/npu/conv/conv_im2col_frontend.sv"
+    ],
+    "95fa2d92": [
+      "include/conv_im2col_prepared_tile.svh",
+      "rtl/common/add_equal.sv",
+      "rtl/common/onehot_check.sv",
+      "rtl/common/onehot_mux.sv",
+      "rtl/common/parallel_prefix_add.sv",
+      "rtl/common/unsigned_compare.sv",
+      "rtl/npu/conv/conv_coordinate_range.sv",
+      "rtl/npu/conv/conv_coordinate_step.sv",
+      "rtl/npu/conv/conv_im2col_descriptor.sv",
+      "rtl/npu/conv/conv_im2col_frontend_pkg.sv",
+      "rtl/npu/conv/conv_im2col_geometry.sv",
+      "rtl/npu/conv/conv_im2col_pkg.sv"
+    ],
+    "78fac2c7": [
+      "rtl/npu/conv/conv_axi_read_guard.sv"
+    ],
+    "dc164a48": [
+      "rtl/npu/conv/conv_im2col_descriptor.sv"
+    ],
+    "14bccefc": [
+      "rtl/npu/conv/conv_im2col_frontend.sv"
+    ],
+    "dce91886": [
+      "include/conv_im2col_prepared_tile.svh",
+      "rtl/common/add_equal.sv",
+      "rtl/common/onehot_check.sv",
+      "rtl/common/onehot_mux.sv",
+      "rtl/common/parallel_prefix_add.sv",
+      "rtl/common/unsigned_compare.sv",
+      "rtl/npu/conv/conv_coordinate_range.sv",
+      "rtl/npu/conv/conv_coordinate_step.sv",
+      "rtl/npu/conv/conv_im2col_descriptor.sv",
+      "rtl/npu/conv/conv_im2col_frontend_pkg.sv",
+      "rtl/npu/conv/conv_im2col_geometry.sv",
+      "rtl/npu/conv/conv_im2col_pkg.sv"
+    ],
+    "60b42480": [
+      "include/conv_im2col_prepared_tile.svh",
+      "rtl/common/add_equal.sv",
+      "rtl/common/onehot_check.sv",
+      "rtl/common/onehot_mux.sv",
+      "rtl/common/parallel_prefix_add.sv",
+      "rtl/common/unsigned_compare.sv",
+      "rtl/npu/conv/conv_coordinate_range.sv",
+      "rtl/npu/conv/conv_coordinate_step.sv",
+      "rtl/npu/conv/conv_im2col_descriptor.sv",
+      "rtl/npu/conv/conv_im2col_frontend_pkg.sv",
+      "rtl/npu/conv/conv_im2col_geometry.sv",
+      "rtl/npu/conv/conv_im2col_pkg.sv"
+    ],
+    "400de955": [
+      "rtl/npu/conv/conv_im2col_frontend.sv"
+    ],
+    "51e176ff": [
+      "include/conv_im2col_prepared_tile.svh",
+      "rtl/common/add_equal.sv",
+      "rtl/common/onehot_check.sv",
+      "rtl/common/onehot_mux.sv",
+      "rtl/common/parallel_prefix_add.sv",
+      "rtl/common/unsigned_compare.sv",
+      "rtl/npu/conv/conv_coordinate_range.sv",
+      "rtl/npu/conv/conv_coordinate_step.sv",
+      "rtl/npu/conv/conv_im2col_descriptor.sv",
+      "rtl/npu/conv/conv_im2col_frontend_pkg.sv",
+      "rtl/npu/conv/conv_im2col_geometry.sv",
+      "rtl/npu/conv/conv_im2col_pkg.sv"
+    ],
+    "e179181e": [
+      "include/conv_im2col_prepared_tile.svh",
+      "rtl/common/add_equal.sv",
+      "rtl/common/onehot_check.sv",
+      "rtl/common/onehot_mux.sv",
+      "rtl/common/parallel_prefix_add.sv",
+      "rtl/common/unsigned_compare.sv",
+      "rtl/npu/conv/conv_coordinate_range.sv",
+      "rtl/npu/conv/conv_coordinate_step.sv",
+      "rtl/npu/conv/conv_im2col_descriptor.sv",
+      "rtl/npu/conv/conv_im2col_frontend_pkg.sv",
+      "rtl/npu/conv/conv_im2col_geometry.sv",
+      "rtl/npu/conv/conv_im2col_pkg.sv"
+    ],
+    "90278273": [
+      "rtl/npu/conv/conv_im2col_stream.sv"
+    ]
+  }
+}

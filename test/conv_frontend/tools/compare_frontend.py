@@ -166,7 +166,7 @@ def reviewed_warnings(log, register_descriptor=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference-ref', default='f5b7573')
+    parser.add_argument('--reference-ref', default='7142f8ee41342454d9e27cae078c8e35a584685c')
     parser.add_argument('--reference-source-root', type=Path,
                         help='包含固定参考 RTL 的独立源码目录')
     parser.add_argument('--candidate-source-root', type=Path, default=ROOT,

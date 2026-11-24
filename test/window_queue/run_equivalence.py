@@ -15,6 +15,8 @@ from run_formal import PROPERTIES
 
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "test"))
+from reference_sources import read_reference_file
 TOP = "conv_window_queue"
 SOURCES = ("rtl/common/regfile.v", "rtl/npu/dma/conv_window_queue.sv")
 
@@ -57,7 +59,7 @@ def main() -> None:
         snapshots[side] = out / side
         hashes[side] = {}
         for name in SOURCES:
-            data = (subprocess.check_output(["git", "show", args.reference_ref + ":" + name], cwd=root)
+            data = (read_reference_file(root, args.reference_ref, name)
                     if side == "reference" else (root / name).read_bytes())
             hashes[side][name] = hashlib.sha256(data).hexdigest()
             path = snapshots[side] / name

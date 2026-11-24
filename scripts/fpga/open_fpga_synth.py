@@ -67,6 +67,25 @@ CASES = {
     },
 }
 DEFAULT_CASES = tuple(CASES)
+NATIVE_COMBINATIONAL_HELPERS = {
+    'rtl/common/add_equal.sv': ('add_equal_bit', 'add_equal_reduce'),
+    'rtl/common/onehot_mux.sv': ('onehot_mux', 'onehot_mux_group'),
+    'rtl/common/parallel_unsigned_compare.sv': (
+        'parallel_unsigned_compare', 'parallel_unsigned_compare_leaf',
+        'parallel_unsigned_compare_merge'),
+    'rtl/npu/conv/conv_channel_range_compare.sv': (
+        'conv_channel_range_compare', 'conv_channel_outside_interval',
+        'conv_channel_wrap_threshold'),
+    'rtl/npu/conv/conv_im2col_stream.sv': (
+        'conv_im2col_sample_sum_group', 'conv_im2col_sample_sum_carry',
+        'conv_im2col_sample_sum_select', 'conv_im2col_sample_sum',
+        'conv_im2col_formatter_reduce', 'conv_im2col_formatter_mux'),
+}
+NATIVE_HELPER_FRAGMENTS = {'rtl/npu/conv/conv_im2col_stream.sv'}
+NATIVE_TERMINAL_FUNCTION_SHA256 = {
+    'combine': 'bbf2e7b872d159da8079ca33c2c39b9ada0b7c66c79cda70cce0bbc08107615e',
+    'choose': '705e19fbe986f5a58a9f0e73e505ec51a70b8e591e6b7fd2033bd07336c8c84b',
+}
 _packages = ['rtl/npu/conv/conv_im2col_pkg.sv', 'rtl/npu/conv/vector_engine_pkg.sv']
 _common_sources = [str(path.relative_to(ROOT)) for path in sorted((ROOT / 'rtl/common').rglob('*'))
                    if path.suffix in ('.v', '.sv')]
@@ -239,21 +258,184 @@ def worker(script):
     yosys.run_pass('script ' + shlex.quote(str(script)))
 
 
-def process_tree_rss(pid):
+def native_helper_module_fragments(source, names):
+    """Copy complete selected module bodies and their attached attributes."""
+    def mask(match):
+        return ''.join('\n' if char == '\n' else ' ' for char in match.group())
+
+    code = re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"', mask, source, flags=re.S)
+    tokens = list(re.finditer(r'\b(module|endmodule)\b', code))
+    spans, opened = {}, None
+    for token in tokens:
+        if token.group() == 'module':
+            if opened is not None:
+                raise ValueError('Nested or unterminated module in native helper source')
+            declaration = re.match(r'module\s+(?:automatic\s+|static\s+)?([A-Za-z_]\w*)\b',
+                                   code[token.start():])
+            if declaration is None:
+                raise ValueError('Unsupported native helper module declaration')
+            opened = (declaration.group(1), token.start())
+        else:
+            if opened is None:
+                raise ValueError('Unmatched endmodule in native helper source')
+            name, start = opened
+            if name in spans:
+                raise ValueError('Duplicate native helper module: ' + name)
+            while True:
+                before = code[:start].rstrip()
+                if not before.endswith('*)'):
+                    break
+                attribute_start = before.rfind('(*', 0, len(before) - 2)
+                if attribute_start < 0:
+                    raise ValueError('Unmatched native helper module attribute')
+                start = attribute_start
+            stop = token.end()
+            label = re.match(r'\s*:\s*([A-Za-z_]\w*)\b', code[stop:])
+            if label:
+                if label.group(1) != name:
+                    raise ValueError('Native helper endmodule label differs from its module name')
+                stop += label.end()
+            spans[name] = (start, stop)
+            opened = None
+    if opened is not None:
+        raise ValueError('Unterminated native helper module: ' + opened[0])
+    fragments, records = [], {}
+    for name in names:
+        if name not in spans:
+            raise ValueError('Missing native helper module: ' + name)
+        start, stop = spans[name]
+        if re.search(r'`|::|\b(?:import|export)\b', code[start:stop]):
+            raise ValueError('Native helper fragment requires external language context: ' + name)
+        fragment = source[start:stop]
+        fragments.append(fragment)
+        records[name] = {
+            'character_start': start, 'character_stop': stop,
+            'line_start': source.count('\n', 0, start) + 1,
+            'line_end': source.count('\n', 0, stop) + 1,
+            'sha256': hashlib.sha256(fragment.encode()).hexdigest(),
+        }
+    return '`default_nettype none\n' + '\n\n'.join(fragments) + '\n`default_nettype wire\n', records
+
+
+def native_terminal_function_assignments(source):
+    """Express terminal function returns using the native frontend syntax."""
+    replacements = []
+
+    def convert(match):
+        function = match.group()
+        if not re.search(r'\breturn\b', function):
+            return function
+        header = re.match(r'function\b[^;]*?\b([A-Za-z_]\w*)\s*\(', function)
+        final = re.search(r'\breturn\s+([A-Za-z_]\w*)\s*;\s*endfunction\b', function)
+        if header is None or final is None or len(re.findall(r'\breturn\b', function)) != 1:
+            raise ValueError('Native helper function requires a single terminal identifier return')
+        original_sha = hashlib.sha256(function.encode()).hexdigest()
+        if NATIVE_TERMINAL_FUNCTION_SHA256.get(header.group(1)) != original_sha:
+            raise ValueError('Native helper function text differs from its verified syntax conversion')
+        original = function[final.start():function.index(';', final.start()) + 1]
+        assignment = header.group(1) + ' = ' + final.group(1) + ';'
+        converted = function[:final.start()] + assignment + function[final.start() + len(original):]
+        replacements.append({'function': header.group(1), 'source_statement': original,
+                             'native_statement': assignment, 'source_function_sha256': original_sha,
+                             'native_function_sha256': hashlib.sha256(converted.encode()).hexdigest()})
+        return converted
+
+    converted = re.sub(r'\bfunction\b.*?\bendfunction\b', convert, source, flags=re.S)
+    return converted, replacements
+
+
+def native_helper_frontend(source_names, options, top, folder):
+    """Import helper interfaces with Slang and derive their full native definitions."""
+    declarations = {path: set(re.findall(r'^\s*module\s+(?:automatic\s+|static\s+)?([A-Za-z_]\w*)\b',
+                                        (ROOT / path).read_text(), re.MULTILINE))
+                    for path in NATIVE_COMBINATIONAL_HELPERS if path in source_names}
+    selected = {path: tuple(name for name in NATIVE_COMBINATIONAL_HELPERS[path] if name in names)
+                for path, names in declarations.items()}
+    selected = {path: names for path, names in selected.items() if names}
+    if not selected:
+        raise ValueError('No supported combinational helper source is present')
+    native_options = ['-I', str(ROOT / 'include'), '-I', str(ROOT / 'rtl/npu/ps_compact')]
+    index = 0
+    while index < len(options):
+        item = options[index]
+        if item in ('-D', '-I'):
+            if index + 1 == len(options):
+                raise ValueError('Missing argument after ' + item)
+            native_options += options[index:index + 2]
+            index += 2
+        elif item.startswith(('-D', '-I')):
+            native_options.append(item)
+            index += 1
+        elif item.startswith('-G'):
+            index += 1
+        else:
+            raise ValueError('Unsupported option for native helper import: ' + item)
+    names = [name for group in selected.values() for name in group]
+    if top in names or any(top in declarations[path] for path in selected if path not in NATIVE_HELPER_FRAGMENTS):
+        raise ValueError('Native helper import requires a containing top module')
+    native_sources, source_manifest = [], {}
+    for path, module_names in selected.items():
+        source_manifest[path] = {'sha256': digest(ROOT / path), 'modules': list(module_names)}
+        if path in NATIVE_HELPER_FRAGMENTS:
+            fragment, records = native_helper_module_fragments((ROOT / path).read_text(), module_names)
+            fragment, assignments = native_terminal_function_assignments(fragment)
+            generated = folder / ('native_' + Path(path).name)
+            generated.write_text(fragment)
+            native_sources.append(str(generated))
+            source_manifest[path]['extracted_modules'] = records
+            source_manifest[path]['native_input'] = {'path': str(generated), 'sha256': digest(generated)}
+            source_manifest[path]['terminal_function_assignments'] = assignments
+        else:
+            native_sources.append(str(ROOT / path))
+    interface_options = ' '.join('--blackboxed-module ' + name for name in names)
+    command = 'read_verilog -overwrite -sv ' + ' '.join(
+        shlex.quote(item) for item in native_options + native_sources) + '\n'
+    for name in names:
+        command += f'select -assert-mod-count 1 ={name}\n'
+        command += f'select -assert-none ={name} =A:blackbox %i\n'
+        command += f'select -assert-none ={name} =A:whitebox %i\n'
+    command += 'select -clear\n'
+    manifest = {
+        'mode': 'slang_interfaces_then_native_parameter_definitions',
+        'sources': source_manifest,
+        'read_verilog_options': native_options,
+        'read_verilog_commands': command,
+    }
+    if 'rtl/common/parallel_unsigned_compare.sv' in selected:
+        manifest['post_hierarchy_commands'] = 'proc\n'
+    additional_templates = {path: sorted(declarations[path] - set(names))
+                            for path, names in selected.items()
+                            if path not in NATIVE_HELPER_FRAGMENTS and declarations[path] - set(names)}
+    if additional_templates:
+        manifest['additional_native_templates'] = additional_templates
+    return interface_options, command, manifest
+
+
+def process_tree_rss(pid, *, proc_root=Path('/proc')):
     """Measure resident bytes of a synthesis worker and its current descendants."""
-    total = 0
-    pending = [pid]
+    parents = collections.defaultdict(list)
+    resident = {}
+    for entry in proc_root.iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            status = (entry / 'status').read_text()
+        except (FileNotFoundError, ProcessLookupError, PermissionError):
+            continue
+        parent = re.search(r'^PPid:\s+(\d+)\s*$', status, re.MULTILINE)
+        rss = re.search(r'^VmRSS:\s+(\d+)\s+kB$', status, re.MULTILINE)
+        current = int(entry.name)
+        if parent:
+            parents[int(parent.group(1))].append(current)
+        resident[current] = int(rss.group(1)) * 1024 if rss else 0
+    total, pending, seen = 0, [int(pid)], set()
     while pending:
         current = pending.pop()
-        try:
-            status = Path(f'/proc/{current}/status').read_text()
-            match = re.search(r'^VmRSS:\s+(\d+)\s+kB$', status, re.MULTILINE)
-            if match:
-                total += int(match.group(1)) * 1024
-            children = Path(f'/proc/{current}/task/{current}/children').read_text().split()
-            pending.extend(map(int, children))
-        except (FileNotFoundError, ProcessLookupError, PermissionError):
-            pass
+        if current in seen:
+            continue
+        seen.add(current)
+        total += resident.get(current, 0)
+        pending.extend(parents.get(current, ()))
     return total
 
 
@@ -279,7 +461,8 @@ def run_stage(script, log_path, env, command=None):
 def import_elaboration(source, folder, manifest, script):
     """Reuse an elaborated design only when every source and production input agrees."""
     source_manifest = json.loads((source / 'manifest.json').read_text())
-    comparable = lambda value: {key: item for key, item in value.items() if key != 'wide_alu_mapping'}
+    comparable = lambda value: {key: item for key, item in value.items()
+                               if key not in ('wide_alu_mapping', 'abc9_batch_mapping')}
     if comparable(source_manifest) != comparable(manifest):
         raise RuntimeError('Imported elaboration has different sources, configuration, or primitive models')
     source_stages = json.loads((source / 'stages.json').read_text())
@@ -293,6 +476,9 @@ def import_elaboration(source, folder, manifest, script):
         raise RuntimeError('Imported elaboration changed while it was copied')
     if (source / 'elaboration_structure.txt').exists():
         shutil.copyfile(source / 'elaboration_structure.txt', folder / 'elaboration_structure.txt')
+    for filename in ('rtl_hierarchy_report.json', 'elaboration_structure.json'):
+        if (source / filename).exists():
+            shutil.copyfile(source / filename, folder / filename)
     log_path = folder / '01_elaborate.log'
     log_path.write_text('Reused validated elaboration from ' + str(source) + '\n')
     return {'elapsed_seconds': 0.0, 'peak_process_tree_rss_bytes': 0,
@@ -304,7 +490,8 @@ def import_elaboration(source, folder, manifest, script):
 def import_pre_alu(source, folder, manifest, script):
     """输入摘要与综合步骤相同时复用算术映射之前的网表。"""
     source_manifest = json.loads((source / 'manifest.json').read_text())
-    comparable = lambda value: {key: item for key, item in value.items() if key != 'wide_alu_mapping'}
+    comparable = lambda value: {key: item for key, item in value.items()
+                               if key not in ('wide_alu_mapping', 'abc9_batch_mapping')}
     if comparable(source_manifest) != comparable(manifest):
         raise RuntimeError('Imported arithmetic checkpoint has different inputs')
     source_stage = json.loads((source / 'stages.json').read_text())['02a_pre_alu']
@@ -343,6 +530,17 @@ def main():
     parser.add_argument('--worker', type=Path, help=argparse.SUPPRESS)
     parser.add_argument('--lock-file', type=Path, help='Serialize synthesis jobs using this advisory lock')
     parser.add_argument('--resume', action='store_true', help='Reuse completed stages with identical inputs and scripts')
+    parser.add_argument('--abc9-batch-size', type=int,
+                        help='Map this many complete modules per fresh ABC9 worker and retain the complete design')
+    parser.add_argument('--abc9-keep-checkpoints', action='store_true',
+                        help='Keep every compressed full-design ABC9 checkpoint instead of only the latest')
+    parser.add_argument('--native-combinational-helpers', action='store_true',
+                        help='Reuse native parameter definitions for supported pure combinational helpers')
+    parser.add_argument('--preserve-rtl-module', action='append', default=[], metavar='MODULE',
+                        help='Preserve an active original RTL module during synthesis, then flatten the complete mapped graph; repeat for multiple modules')
+    parser.add_argument('--reuse-rtl-module-definition', action='append', default=[],
+                        choices=('ws_systolic_cell',), metavar='MODULE',
+                        help='Reuse strictly identical resolved definitions of a retained source component while preserving every physical instance')
     parser.add_argument('--through', choices=('elaborate', 'pre_lut', 'mapped'), default='mapped',
                         help='Stop after saving the requested synthesis checkpoint')
     parser.add_argument('--wide-alu-dsp-budget', type=int,
@@ -361,6 +559,18 @@ def main():
     if args.worker:
         worker(args.worker)
         return
+    if args.abc9_batch_size is not None and args.abc9_batch_size < 1:
+        parser.error('--abc9-batch-size must be positive')
+    if args.abc9_keep_checkpoints and args.abc9_batch_size is None:
+        parser.error('--abc9-keep-checkpoints requires --abc9-batch-size')
+    if any(not re.fullmatch(r'[A-Za-z_][A-Za-z_0-9]*', name) for name in args.preserve_rtl_module):
+        parser.error('--preserve-rtl-module requires an exact source module identifier')
+    args.preserve_rtl_module = sorted(set(args.preserve_rtl_module))
+    args.reuse_rtl_module_definition = sorted(set(args.reuse_rtl_module_definition))
+    if not set(args.reuse_rtl_module_definition) <= set(args.preserve_rtl_module):
+        parser.error('--reuse-rtl-module-definition requires the same --preserve-rtl-module')
+    if args.preserve_rtl_module and args.wide_alu_dsp_budget is not None:
+        parser.error('--preserve-rtl-module cannot be combined with the flattened wide-ALU mapper')
     if args.require_register_path_limit and args.through != 'mapped':
         parser.error('--require-register-path-limit requires a complete mapped design')
     if args.reuse_pre_alu_from and (args.reuse_elaboration_from or args.wide_alu_dsp_budget is None):
@@ -409,8 +619,11 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     result = {'tool': yosys.yosys_maybe_version(), 'family': 'xc7', 'part': 'xc7a200tfbg484-3',
               'clock_period_ns': 1000.0 / 150.0, 'cases': {},
-              'method': 'synth_xilinx -noiopad -noclkbuf -flatten; mapped combinational cell graph',
+              'method': 'synth_xilinx -noiopad -noclkbuf; preserve requested combinational hierarchy during mapping, then flatten the complete mapped cell graph',
               'timing': 'Clock period is the requested implementation constraint. Structural cell depth does not supply device or routing delay. metrics.json records connected register paths and primitive register settings.'}
+    if args.preserve_rtl_module:
+        result['method'] = ('synth_xilinx -noiopad -noclkbuf; preserve selected original RTL components '
+                            'and requested combinational hierarchy during mapping, then flatten the complete mapped cell graph')
     env = os.environ.copy()
     env['PATH'] = str(Path(pyosys.__file__).parent) + os.pathsep + env.get('PATH', '')
     for name in args.cases:
@@ -433,6 +646,12 @@ def main():
         sources = ' '.join(shlex.quote(str(ROOT / x)) for x in case['sources'])
         primitive_options, primitive_manifest = primitive_models(
             folder, case['sources'], Path(pyosys.__file__).parent / 'share/xilinx')
+        helper_commands, helper_manifest = '', None
+        frontend_options = primitive_options
+        if args.native_combinational_helpers:
+            helper_options, helper_commands, helper_manifest = native_helper_frontend(
+                case['sources'], case['options'], case['top'], folder)
+            frontend_options = ' '.join(item for item in (primitive_options, helper_options) if item)
         top = case['top']
         structure_commands = production_structure_commands(case, folder) if build_configuration else ''
         start = time.monotonic()
@@ -440,12 +659,15 @@ def main():
         pre_lut = folder / 'pre_lut.il'
         synth_command = f'synth_xilinx -top {top} -family xc7 -noiopad -noclkbuf -flatten'
         stage_commands = {
-            '01_elaborate': f'read_slang --top {top} -I {shlex.quote(str(ROOT / "include"))} '
+            '01_elaborate': f'read_slang --best-effort-hierarchy --top {top} -I {shlex.quote(str(ROOT / "include"))} '
                             f'-I {shlex.quote(str(ROOT / "rtl/npu/ps_compact"))} '
-                            f'{primitive_options} {opts} {sources}\n'
+                            f'{frontend_options} {opts} {sources}\n'
+                            f'{helper_commands}'
                             'read_verilog -lib -specify -overwrite +/xilinx/cells_sim.v\n'
                             'read_verilog -lib -overwrite +/xilinx/cells_xtra.v\n'
                             f'hierarchy -check -top {top}\n'
+                            f'{helper_manifest.get("post_hierarchy_commands", "") if helper_manifest else ""}'
+                            'flatten -noscopeinfo\n'
                             f'{structure_commands}'
                             f'write_rtlil {shlex.quote(str(elaborated))}\n',
             '02_pre_lut': f'read_rtlil {shlex.quote(str(elaborated))}\n'
@@ -455,6 +677,8 @@ def main():
                           'read_verilog -lib -specify -overwrite +/xilinx/cells_sim.v\n'
                           'read_verilog -lib -overwrite +/xilinx/cells_xtra.v\n'
                           f'{synth_command} -run map_luts:\n'
+                          'setattr -mod -unset keep_hierarchy\n'
+                          'setattr -unset keep_hierarchy\nflatten -noscopeinfo\nopt_clean\n'
                           'check -assert\nstat -tech xilinx\n'
                           f'write_json {shlex.quote(str(mapped))}\n'
                           'clkbufmap -buf BUFG O:I\n'
@@ -464,6 +688,38 @@ def main():
         }
         stage_outputs = {'01_elaborate': elaborated, '02_pre_lut': pre_lut, '03_map_lut': mapped}
         external_commands = {}
+        hierarchy_configuration = None
+        hierarchy_report = folder / 'rtl_hierarchy_report.json'
+        if args.preserve_rtl_module:
+            if top in args.preserve_rtl_module:
+                parser.error('--preserve-rtl-module must name a component below the top module')
+            hierarchy_worker = Path(__file__).resolve().parent / 'preserve_rtl_hierarchy.py'
+            frontend = folder / '01_frontend.ys'
+            frontend.write_text(stage_commands['01_elaborate'].split('flatten -noscopeinfo\n', 1)[0])
+            specification = folder / 'rtl_hierarchy_specification.json'
+            specification.write_text(json.dumps({
+                'top': top, 'modules': args.preserve_rtl_module,
+                'frontend_script': str(frontend), 'frontend_script_sha256': digest(frontend),
+                'allowed_primitives': primitive_manifest['primitives'],
+                'production_configuration': bool(build_configuration),
+                'structure_report': str(folder / 'elaboration_structure.json'),
+                'report': str(hierarchy_report), 'output': str(elaborated),
+                'reuse_definitions': args.reuse_rtl_module_definition,
+            }, indent=2) + '\n')
+            command = [sys.executable, str(hierarchy_worker), '--specification', str(specification)]
+            stage_commands['01_elaborate'] = json.dumps(command, indent=2) + '\n'
+            external_commands['01_elaborate'] = command
+            hierarchy_configuration = {
+                'modules': args.preserve_rtl_module, 'worker_sha256': digest(hierarchy_worker),
+                'frontend_script_sha256': digest(frontend),
+                'method': 'Retain active original RTL definitions; verify every expanded leaf pin and state connection; flatten the complete design after mapping',
+            }
+            if args.reuse_rtl_module_definition:
+                hierarchy_configuration['definition_reuse'] = {
+                    'modules': args.reuse_rtl_module_definition,
+                    'worker_sha256': digest(hierarchy_worker.with_name('reuse_rtl_definitions.py')),
+                    'method': 'Compare every resolved parameter, hardware attribute, leaf pin, and state connection under explicit private-name bijections; preserve all physical instances',
+                }
         wide_alu_configuration = None
         if args.wide_alu_dsp_budget is not None:
             helper_directory = Path(__file__).resolve().parent
@@ -515,6 +771,21 @@ def main():
                     'techmap_sha256': digest(packed_mapping),
                 }
         stages = {}
+        batch_configuration = None
+        if args.abc9_batch_size is not None:
+            mapper = Path(__file__).resolve().parent / 'map_abc9_batches.py'
+            command = [sys.executable, str(mapper), '--input', str(pre_lut), '--top', top,
+                       '--out', str(folder / 'abc9_batches'), '--mapped-json', str(mapped),
+                       '--mapped-verilog', str(mapped_verilog), '--batch-size', str(args.abc9_batch_size)]
+            if args.resume:
+                command.append('--resume')
+            if args.abc9_keep_checkpoints:
+                command.append('--keep-checkpoints')
+            external_commands['03_map_lut'] = command
+            stage_commands['03_map_lut'] = json.dumps(command, indent=2) + '\n'
+            batch_configuration = {'batch_size': args.abc9_batch_size,
+                                   'mapper_sha256': digest(mapper),
+                                   'keep_checkpoints': args.abc9_keep_checkpoints}
         manifest = {'top': top, 'configuration': case['configuration'],
                     'parameters': case.get('parameters', {}), 'sources_sha256': source_hash,
                     'options': case['options'],
@@ -523,10 +794,18 @@ def main():
                     'part': result['part'], 'clock_period_ns': result['clock_period_ns']}
         if wide_alu_configuration:
             manifest['wide_alu_mapping'] = wide_alu_configuration
+        if batch_configuration:
+            manifest['abc9_batch_mapping'] = batch_configuration
+        if helper_manifest:
+            manifest['combinational_helper_frontend'] = helper_manifest
+        if hierarchy_configuration:
+            manifest['preserved_rtl_hierarchy'] = hierarchy_configuration
         previous_stages = {}
         if args.resume and (folder / 'manifest.json').exists():
             previous_manifest = json.loads((folder / 'manifest.json').read_text())
-            if previous_manifest != manifest:
+            front_end_inputs = lambda value: {key: item for key, item in value.items()
+                                              if key != 'abc9_batch_mapping'}
+            if front_end_inputs(previous_manifest) != front_end_inputs(manifest):
                 raise RuntimeError(f'Resume inputs differ from the saved manifest: {name}')
             if (folder / 'stages.json').exists():
                 previous_stages = json.loads((folder / 'stages.json').read_text())
@@ -548,6 +827,9 @@ def main():
             if stage == '03_map_lut':
                 reusable = (reusable and mapped_verilog.exists() and
                             previous.get('mapped_verilog_sha256') == digest(mapped_verilog))
+            if stage == '01_elaborate' and hierarchy_configuration:
+                reusable = (reusable and hierarchy_report.exists() and
+                            previous.get('rtl_hierarchy_report_sha256') == digest(hierarchy_report))
             if reusable:
                 stages[stage] = previous
             else:
@@ -565,6 +847,12 @@ def main():
                     stages[stage]['automatic_name_counter_sha256'] = digest(output.with_suffix('.autoidx.il'))
                 if stage == '03_map_lut':
                     stages[stage]['mapped_verilog_sha256'] = digest(mapped_verilog)
+                if stage == '01_elaborate' and hierarchy_configuration:
+                    audit = json.loads(hierarchy_report.read_text())
+                    if (audit.get('passed') is not True or audit['output_sha256'] != digest(output)
+                            or audit['requested_modules'] != args.preserve_rtl_module):
+                        raise RuntimeError('The retained RTL hierarchy audit does not match the elaborated circuit')
+                    stages[stage]['rtl_hierarchy_report_sha256'] = digest(hierarchy_report)
             (folder / 'stages.json').write_text(json.dumps(stages, indent=2) + '\n')
             print(name, stage, json.dumps(stages[stage]), flush=True)
         if source_hash != {f: digest(ROOT / f) for f in source_hash}:
@@ -574,7 +862,7 @@ def main():
         if args.through != 'mapped':
             continue
         design = json.loads(mapped.read_text())
-        for cell_name, origin_name in register_origins(pre_lut).items():
+        for cell_name, origin_name in register_origins(pre_lut, top=top).items():
             if cell_name in design['modules'][top]['cells']:
                 design['modules'][top]['cells'][cell_name].setdefault('attributes', {})['fpga_register_origin'] = origin_name
         counts = collections.Counter(c['type'] for c in design['modules'][top]['cells'].values())
@@ -607,6 +895,11 @@ def main():
         }
         if wide_alu_configuration:
             result['cases'][name]['wide_alu_mapping'] = json.loads(mapping_report.read_text())
+        if helper_manifest:
+            result['cases'][name]['combinational_helper_frontend'] = helper_manifest
+        if hierarchy_configuration:
+            result['cases'][name]['preserved_rtl_hierarchy'] = dict(
+                hierarchy_configuration, report_sha256=digest(hierarchy_report))
         (out / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')
         print(name, json.dumps({k: result['cases'][name][k] for k in
               ('lut_cells', 'flip_flops', 'ramb36', 'ramb18', 'dsp', 'longest_combinational_path_cells')}), flush=True)

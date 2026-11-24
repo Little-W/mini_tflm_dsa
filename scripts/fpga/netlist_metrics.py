@@ -106,23 +106,84 @@ def net_names(module):
             for bit, names in aliases.items()}
 
 
-def register_origins(path):
-    """Read register Q names from a saved RTLIL file, including compressed-name comments."""
-    origins = {}
-    current = None
+def register_origins(path, top=None):
+    """Expand saved register Q names through the complete retained RTL hierarchy."""
+    modules, pending_attributes = {}, {}
+    module = current = None
+
+    def identifiers(line):
+        fields = line.split('# ', 1)[0].split()
+        comments = iter(part.strip() for part in line.split('# ')[1:])
+        return [next(comments) if re.fullmatch(r'\$(?:pub|priv)@[0-9]+', field) else field
+                for field in fields]
+
+    def true_attribute(value):
+        return bool(re.fullmatch(r"(?:[0-9]+')?0*1", value))
+
     with (gzip.open(path, 'rt') if path.suffix == '.gz' else path.open()) as source:
         for line in source:
-            if line.startswith('  cell '):
-                fields = line.split()
-                kind = fields[1].lstrip('\\')
+            if line.startswith('attribute '):
+                fields = line.split(maxsplit=2)
+                pending_attributes[fields[1].lstrip('\\')] = fields[2].strip()
+            elif line.startswith('module '):
+                name = identifiers(line)[1].lstrip('\\')
+                module = {'origins': {}, 'children': [], 'attributes': pending_attributes}
+                modules[name] = module
+                pending_attributes = {}
+            elif line.startswith('  cell ') and module is not None:
+                _, kind, name = identifiers(line)
+                kind = kind.lstrip('\\')
                 current = None
                 if FF_PATTERN.fullmatch(kind):
-                    current = line.split('# ', 1)[1].strip() if '# ' in line else fields[2].lstrip('\\')
-            elif current and line.startswith('    connect \\Q '):
-                connection = line.split('# ', 1)[1] if '# ' in line else line.strip().removeprefix('connect ')
-                origins[current] = connection.strip().removeprefix('\\Q ').lstrip('\\')
+                    current = name
+                elif not kind.startswith('$_'):
+                    module['children'].append((name, kind))
+            elif current and line.startswith('    connect '):
+                connection = (line.split('# ', 1)[1] if '# ' in line
+                              else line.strip().removeprefix('connect '))
+                if connection.startswith('\\Q '):
+                    module['origins'][current] = connection.strip().removeprefix('\\Q ')
             elif line.startswith('  end'):
                 current = None
+            elif line.strip() == 'end':
+                module = None
+    active = {name: value for name, value in modules.items()
+              if not any(true_attribute(value['attributes'].get(key, '0')) for key in ('blackbox', 'whitebox'))}
+    if top is None:
+        tops = [name for name, value in active.items() if true_attribute(value['attributes'].get('top', '0'))]
+        if not tops:
+            children = {kind for value in active.values() for _, kind in value['children']}
+            tops = [name for name in active if name not in children]
+        if len(tops) != 1:
+            raise ValueError('A unique top module is required to expand register origins')
+        top = tops[0]
+    if top not in active:
+        raise ValueError('Register-origin top module is missing: ' + top)
+    origins = {}
+
+    def flattened_name(instances, name):
+        if not instances:
+            return name.lstrip('\\')
+        if name.startswith('$'):
+            suffix = name.removeprefix('$flatten')
+            return '$flatten' + '.'.join(instances) + '.' + suffix
+        return '.'.join(part.lstrip('\\') for part in (*instances, name))
+
+    def walk(name, instances, visiting):
+        if name in visiting:
+            raise ValueError('Recursive module hierarchy in register-origin input')
+        value = active[name]
+        prefix = '.'.join(part.lstrip('\\') for part in instances)
+        for cell, signal in value['origins'].items():
+            if prefix:
+                signal = re.sub(r'\\[^\s{}]+|\$[^\s{}]+',
+                                lambda match: prefix + '.' + match[0].lstrip('\\'), signal)
+            origins[flattened_name(instances, cell)] = signal.lstrip('\\')
+        for cell, kind in value['children']:
+            if kind in active:
+                walk(kind, (*instances, cell), visiting | {name})
+
+    walk(top, (), set())
     return origins
 
 
@@ -210,7 +271,7 @@ def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_fil
         if FF_PATTERN.fullmatch(kind):
             for bit in ports.get('Q', []):
                 root(bit, name, cell, 'Q')
-            for port in ('D', 'CE', 'R', 'S'):
+            for port in ('D', 'CE', 'R', 'S', 'CLR', 'PRE'):
                 for bit in ports.get(port, []):
                     sink(bit, name, cell, port, 'data' if port == 'D' else 'control')
         elif kind.startswith('RAMB'):
@@ -355,7 +416,7 @@ def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_fil
             for port in outputs:
                 selected = [(p, [(index, bit)]) for p, index, bit in lut_output_dependencies(cell, port)]
                 arcs(name, cell, port, selected)
-        elif kind in ('INV', 'MUXF7', 'MUXF8', 'MUXF9'):
+        elif kind in ('INV', 'MUXF7', 'MUXF8', 'MUXF9', 'IBUF', 'OBUF'):
             for port in outputs:
                 arcs(name, cell, port, inputs)
         elif kind in RAM_LUT_SITES or kind in SRL_TYPES:
@@ -382,7 +443,7 @@ def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_fil
             for port in ('CE', 'CE0', 'CE1', 'S0', 'S1'):
                 for bit in ports.get(port, []):
                     sink(bit, name, cell, port, 'clock_enable')
-        elif kind in ('IBUF', 'OBUF', 'BUFG', 'BUFH', 'VCC', 'GND'):
+        elif kind in ('BUFG', 'BUFH', 'VCC', 'GND'):
             pass
         else:
             unknown[kind] += 1

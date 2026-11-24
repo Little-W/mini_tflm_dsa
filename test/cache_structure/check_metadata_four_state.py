@@ -95,6 +95,9 @@ def main() -> None:
   end
   if(1) begin:g_direct_tag_compare
     wire [WAYS-1:0][31:LB] lookup_tag_raw;
+    wire [WAYS-1:0] lookup_valid_next;
+    wire [WAYS-1:0][2:0][31:LB] lookup_candidate_tags;
+    wire [WAYS-1:0][2:0] lookup_candidate_valid_next;
   end
 '''
         results = []

@@ -1,0 +1,38 @@
+{
+  "report_connected": {
+    "top": "ps_shared_connected",
+    "sources": [
+      "test/ps_request_capacity/connected_top.sv",
+      "rtl/npu/ps_compact/ps_frame_store.sv",
+      "rtl/npu/buffers/ia_ps_channel_ram.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "--allow-use-before-declare",
+      "-GBANK_BYTES=8192",
+      "-GPOOL_BYTES=49152"
+    ],
+    "configuration": "256 rows, 16 frames; PS store, task selection and fixed-channel shared RAM"
+  },
+  "perf_connected": {
+    "top": "ps_shared_connected",
+    "sources": [
+      "test/ps_request_capacity/connected_top.sv",
+      "rtl/npu/ps_compact/ps_frame_store.sv",
+      "rtl/npu/buffers/ia_ps_channel_ram.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "--allow-use-before-declare",
+      "-GBANK_BYTES=4096",
+      "-GPOOL_BYTES=32768"
+    ],
+    "configuration": "256 rows, 16 frames; PS store, task selection and fixed-channel shared RAM"
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "guard_32": {
+    "top": "conv_axi_read_guard",
+    "sources": [
+      "rtl/npu/conv/conv_axi_read_guard.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GADDR_W=32",
+      "-GDATA_W=32",
+      "-GSPLIT_GEMM_4K=1",
+      "-GREAD_OUTSTANDING=4"
+    ],
+    "parameters": {
+      "ADDR_W": 32,
+      "DATA_W": 32,
+      "SPLIT_GEMM_4K": 1,
+      "READ_OUTSTANDING": 4
+    },
+    "configuration": "Complete DMA module with production synthesis conditions"
+  },
+  "linear_32": {
+    "top": "axi_linear_block_dma",
+    "sources": [
+      "rtl/npu/dma/axi_linear_block_dma.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GSIZE=64",
+      "-GBUS_WIDTH=32",
+      "-GCACHE_BLOCKS=64",
+      "-GREAD_OUTSTANDING=4",
+      "-GWRITE_OUTSTANDING=4",
+      "-GRD_CONTEXT_DEPTH=4",
+      "-GDMA_MAX_BYTES=1024"
+    ],
+    "parameters": {
+      "SIZE": 64,
+      "BUS_WIDTH": 32,
+      "CACHE_BLOCKS": 64,
+      "READ_OUTSTANDING": 4,
+      "WRITE_OUTSTANDING": 4,
+      "RD_CONTEXT_DEPTH": 4,
+      "DMA_MAX_BYTES": 1024
+    },
+    "configuration": "Complete DMA module with production synthesis conditions"
+  },
+  "guard_64": {
+    "top": "conv_axi_read_guard",
+    "sources": [
+      "rtl/npu/conv/conv_axi_read_guard.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GADDR_W=32",
+      "-GDATA_W=64",
+      "-GSPLIT_GEMM_4K=1",
+      "-GREAD_OUTSTANDING=4"
+    ],
+    "parameters": {
+      "ADDR_W": 32,
+      "DATA_W": 64,
+      "SPLIT_GEMM_4K": 1,
+      "READ_OUTSTANDING": 4
+    },
+    "configuration": "Complete DMA module with production synthesis conditions"
+  },
+  "linear_64": {
+    "top": "axi_linear_block_dma",
+    "sources": [
+      "rtl/npu/dma/axi_linear_block_dma.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GSIZE=64",
+      "-GBUS_WIDTH=64",
+      "-GCACHE_BLOCKS=64",
+      "-GREAD_OUTSTANDING=4",
+      "-GWRITE_OUTSTANDING=4",
+      "-GRD_CONTEXT_DEPTH=4",
+      "-GDMA_MAX_BYTES=2048"
+    ],
+    "parameters": {
+      "SIZE": 64,
+      "BUS_WIDTH": 64,
+      "CACHE_BLOCKS": 64,
+      "READ_OUTSTANDING": 4,
+      "WRITE_OUTSTANDING": 4,
+      "RD_CONTEXT_DEPTH": 4,
+      "DMA_MAX_BYTES": 2048
+    },
+    "configuration": "Complete DMA module with production synthesis conditions"
+  }
+}

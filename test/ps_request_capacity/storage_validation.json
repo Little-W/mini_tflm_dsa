@@ -1,0 +1,719 @@
+{
+  "passed": true,
+  "reference": "7142f8ee41342454d9e27cae078c8e35a584685c",
+  "source_sha256": {
+    "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
+    "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
+    "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+    "rtl/npu/ps_compact/ps_frame_store.sv": "fee958cb002b282b20ff860fa19ea1fa9dcf7da351f8827a3af395a57ad00a95",
+    "rtl/npu/ps_compact/ps_raw_address.sv": "f2793dde76b79a15845fe4eb40a5c3429dd6f52f37146770e85d2af461346f1c",
+    "scripts/capacity/elaboration.py": "6d17de046463f91cac3fc534f423a9d49d1076e8f531b1ba5b66e412e5f08d7c",
+    "scripts/capacity/model.py": "1ef53ddb15ff1179d6cf27428f8a5883befe014c8953a77928012c37ad74ed87",
+    "test/ps_request_capacity/check_storage.py": "0b982a79bd57761c9063f898e152ebbf16b85bf5fd148bfcc93d4ca7bc574bbf"
+  },
+  "scope": "Verilator 完整展开 ps_frame_store 及子模块，逐项核对寄存器分类与逻辑状态总量",
+  "profiles": [
+    {
+      "passed": true,
+      "profile": {
+        "name": "small_shared",
+        "cache": 4,
+        "frames": 16,
+        "pool": 10240,
+        "bank_bytes": 2048,
+        "bank_count": 6,
+        "shared": true,
+        "compact": false
+      },
+      "parameters": {
+        "MAX_FRAME_ROWS": 64,
+        "FRAME_COUNT": 16,
+        "POOL_BYTES": 10240,
+        "BANK_BYTES": 2048,
+        "EXTERNAL_RAM": 1,
+        "p_fixed_ps_channels": 1
+      },
+      "expected_register_arrays_bits": {
+        "ps_capacity_limits": 192,
+        "ps_request_context": 53,
+        "ps_completion_flags": 6
+      },
+      "logical_state_delta_bits": 167,
+      "versions": {
+        "current": {
+          "total_bits": 5616,
+          "buffer_arrays_bits": {
+            "ps_decoded_fifo": 4096,
+            "ps_frame_valid": 16,
+            "ps_frame_lengths": 112
+          },
+          "register_arrays_bits": {
+            "ps_completion_flags": 6,
+            "ps_capacity_limits": 192,
+            "ps_request_context": 53
+          },
+          "sequential_declarations": [
+            {
+              "path": "npu_axil_top.u_store.commit_complete_q",
+              "module": "ps_frame_store",
+              "name": "commit_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.commit_next_complete_q",
+              "module": "ps_frame_store",
+              "name": "commit_next_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_available_rows_q",
+              "module": "ps_frame_store",
+              "name": "frame_available_rows_q",
+              "bits": 192,
+              "buffer_category": null,
+              "register_array_category": "ps_capacity_limits"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_empty_q",
+              "module": "ps_frame_store",
+              "name": "frame_empty_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_single_row_q",
+              "module": "ps_frame_store",
+              "name": "frame_single_row_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.read_remaining_q",
+              "module": "ps_frame_store",
+              "name": "read_remaining_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.replay_complete_q",
+              "module": "ps_frame_store",
+              "name": "replay_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.request_fits_q",
+              "module": "ps_frame_store",
+              "name": "request_fits_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            },
+            {
+              "path": "npu_axil_top.u_store.request_q",
+              "module": "ps_frame_store",
+              "name": "request_q",
+              "bits": 52,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            }
+          ],
+          "tree_sha256": "0b594b5c2084a4df418867888d536e2aad5de96f0fab85a6419e164654eb4e36"
+        },
+        "reference": {
+          "total_bits": 5449,
+          "buffer_arrays_bits": {
+            "ps_decoded_fifo": 4096,
+            "ps_frame_valid": 16,
+            "ps_frame_lengths": 112
+          },
+          "register_arrays_bits": {
+            "ps_request_context": 84
+          },
+          "sequential_declarations": [
+            {
+              "path": "npu_axil_top.u_store.request_q",
+              "module": "ps_frame_store",
+              "name": "request_q",
+              "bits": 84,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            }
+          ],
+          "tree_sha256": "4b6ffeba658a410615300bb49e38b660e13309618b84597f23ddc42544cd35a0"
+        }
+      }
+    },
+    {
+      "passed": true,
+      "profile": {
+        "name": "report_shared",
+        "cache": 4,
+        "frames": 16,
+        "pool": 49152,
+        "bank_bytes": 8192,
+        "bank_count": 7,
+        "shared": true,
+        "compact": false
+      },
+      "parameters": {
+        "MAX_FRAME_ROWS": 256,
+        "FRAME_COUNT": 16,
+        "POOL_BYTES": 49152,
+        "BANK_BYTES": 8192,
+        "EXTERNAL_RAM": 1,
+        "p_fixed_ps_channels": 1
+      },
+      "expected_register_arrays_bits": {
+        "ps_capacity_limits": 224,
+        "ps_request_context": 55,
+        "ps_completion_flags": 6
+      },
+      "logical_state_delta_bits": 199,
+      "versions": {
+        "current": {
+          "total_bits": 5700,
+          "buffer_arrays_bits": {
+            "ps_decoded_fifo": 4096,
+            "ps_frame_valid": 16,
+            "ps_frame_lengths": 144
+          },
+          "register_arrays_bits": {
+            "ps_completion_flags": 6,
+            "ps_capacity_limits": 224,
+            "ps_request_context": 55
+          },
+          "sequential_declarations": [
+            {
+              "path": "npu_axil_top.u_store.commit_complete_q",
+              "module": "ps_frame_store",
+              "name": "commit_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.commit_next_complete_q",
+              "module": "ps_frame_store",
+              "name": "commit_next_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_available_rows_q",
+              "module": "ps_frame_store",
+              "name": "frame_available_rows_q",
+              "bits": 224,
+              "buffer_category": null,
+              "register_array_category": "ps_capacity_limits"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_empty_q",
+              "module": "ps_frame_store",
+              "name": "frame_empty_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_single_row_q",
+              "module": "ps_frame_store",
+              "name": "frame_single_row_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.read_remaining_q",
+              "module": "ps_frame_store",
+              "name": "read_remaining_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.replay_complete_q",
+              "module": "ps_frame_store",
+              "name": "replay_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.request_fits_q",
+              "module": "ps_frame_store",
+              "name": "request_fits_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            },
+            {
+              "path": "npu_axil_top.u_store.request_q",
+              "module": "ps_frame_store",
+              "name": "request_q",
+              "bits": 54,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            }
+          ],
+          "tree_sha256": "c07518c2408c8749d93935b95963fdc1cbfe2071c8e4740df4a20f59281e7b1d"
+        },
+        "reference": {
+          "total_bits": 5501,
+          "buffer_arrays_bits": {
+            "ps_decoded_fifo": 4096,
+            "ps_frame_valid": 16,
+            "ps_frame_lengths": 144
+          },
+          "register_arrays_bits": {
+            "ps_request_context": 86
+          },
+          "sequential_declarations": [
+            {
+              "path": "npu_axil_top.u_store.request_q",
+              "module": "ps_frame_store",
+              "name": "request_q",
+              "bits": 86,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            }
+          ],
+          "tree_sha256": "7fa1e18a67e4f3ac219dff4542cd47b6a9e88ece0b6147103edb9af27a826f36"
+        }
+      }
+    },
+    {
+      "passed": true,
+      "profile": {
+        "name": "performance_shared",
+        "cache": 4,
+        "frames": 16,
+        "pool": 32768,
+        "bank_bytes": 4096,
+        "bank_count": 9,
+        "shared": true,
+        "compact": false
+      },
+      "parameters": {
+        "MAX_FRAME_ROWS": 256,
+        "FRAME_COUNT": 16,
+        "POOL_BYTES": 32768,
+        "BANK_BYTES": 4096,
+        "EXTERNAL_RAM": 1,
+        "p_fixed_ps_channels": 1
+      },
+      "expected_register_arrays_bits": {
+        "ps_capacity_limits": 224,
+        "ps_request_context": 55,
+        "ps_completion_flags": 6
+      },
+      "logical_state_delta_bits": 199,
+      "versions": {
+        "current": {
+          "total_bits": 5697,
+          "buffer_arrays_bits": {
+            "ps_decoded_fifo": 4096,
+            "ps_frame_valid": 16,
+            "ps_frame_lengths": 144
+          },
+          "register_arrays_bits": {
+            "ps_completion_flags": 6,
+            "ps_capacity_limits": 224,
+            "ps_request_context": 55
+          },
+          "sequential_declarations": [
+            {
+              "path": "npu_axil_top.u_store.commit_complete_q",
+              "module": "ps_frame_store",
+              "name": "commit_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.commit_next_complete_q",
+              "module": "ps_frame_store",
+              "name": "commit_next_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_available_rows_q",
+              "module": "ps_frame_store",
+              "name": "frame_available_rows_q",
+              "bits": 224,
+              "buffer_category": null,
+              "register_array_category": "ps_capacity_limits"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_empty_q",
+              "module": "ps_frame_store",
+              "name": "frame_empty_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_single_row_q",
+              "module": "ps_frame_store",
+              "name": "frame_single_row_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.read_remaining_q",
+              "module": "ps_frame_store",
+              "name": "read_remaining_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.replay_complete_q",
+              "module": "ps_frame_store",
+              "name": "replay_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.request_fits_q",
+              "module": "ps_frame_store",
+              "name": "request_fits_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            },
+            {
+              "path": "npu_axil_top.u_store.request_q",
+              "module": "ps_frame_store",
+              "name": "request_q",
+              "bits": 54,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            }
+          ],
+          "tree_sha256": "6f4b9f1f26ae96a24c510e75d0869551abf41981bed29ae460072993c703e34f"
+        },
+        "reference": {
+          "total_bits": 5498,
+          "buffer_arrays_bits": {
+            "ps_decoded_fifo": 4096,
+            "ps_frame_valid": 16,
+            "ps_frame_lengths": 144
+          },
+          "register_arrays_bits": {
+            "ps_request_context": 86
+          },
+          "sequential_declarations": [
+            {
+              "path": "npu_axil_top.u_store.request_q",
+              "module": "ps_frame_store",
+              "name": "request_q",
+              "bits": 86,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            }
+          ],
+          "tree_sha256": "ec7a8bd6135a8a0997e315b514f139ee19bb39b778553597a571515b9b075b0e"
+        }
+      }
+    },
+    {
+      "passed": true,
+      "profile": {
+        "name": "compact_shared",
+        "cache": 4,
+        "frames": 16,
+        "pool": 65536,
+        "bank_bytes": 8192,
+        "bank_count": 9,
+        "shared": true,
+        "compact": true
+      },
+      "parameters": {
+        "MAX_FRAME_ROWS": 1024,
+        "FRAME_COUNT": 16,
+        "POOL_BYTES": 65536,
+        "BANK_BYTES": 8192,
+        "EXTERNAL_RAM": 1,
+        "p_fixed_ps_channels": 1
+      },
+      "expected_register_arrays_bits": {
+        "ps_capacity_limits": 256,
+        "ps_request_context": 57,
+        "ps_completion_flags": 6
+      },
+      "logical_state_delta_bits": 231,
+      "versions": {
+        "current": {
+          "total_bits": 5778,
+          "buffer_arrays_bits": {
+            "ps_decoded_fifo": 4096,
+            "ps_frame_valid": 16,
+            "ps_frame_lengths": 176
+          },
+          "register_arrays_bits": {
+            "ps_capacity_limits": 256,
+            "ps_completion_flags": 6,
+            "ps_request_context": 57
+          },
+          "sequential_declarations": [
+            {
+              "path": "npu_axil_top.u_store.commit_complete_q",
+              "module": "ps_frame_store",
+              "name": "commit_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.commit_next_complete_q",
+              "module": "ps_frame_store",
+              "name": "commit_next_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_available_rows_q",
+              "module": "ps_frame_store",
+              "name": "frame_available_rows_q",
+              "bits": 256,
+              "buffer_category": null,
+              "register_array_category": "ps_capacity_limits"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_empty_q",
+              "module": "ps_frame_store",
+              "name": "frame_empty_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_single_row_q",
+              "module": "ps_frame_store",
+              "name": "frame_single_row_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.read_remaining_q",
+              "module": "ps_frame_store",
+              "name": "read_remaining_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.replay_complete_q",
+              "module": "ps_frame_store",
+              "name": "replay_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.request_fits_q",
+              "module": "ps_frame_store",
+              "name": "request_fits_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            },
+            {
+              "path": "npu_axil_top.u_store.request_q",
+              "module": "ps_frame_store",
+              "name": "request_q",
+              "bits": 56,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            }
+          ],
+          "tree_sha256": "96ee78cfd8ba4912cfdc5306d728df0c0ad68bf3fba2230868be53ff31914b2b"
+        },
+        "reference": {
+          "total_bits": 5547,
+          "buffer_arrays_bits": {
+            "ps_decoded_fifo": 4096,
+            "ps_frame_valid": 16,
+            "ps_frame_lengths": 176
+          },
+          "register_arrays_bits": {
+            "ps_request_context": 88
+          },
+          "sequential_declarations": [
+            {
+              "path": "npu_axil_top.u_store.request_q",
+              "module": "ps_frame_store",
+              "name": "request_q",
+              "bits": 88,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            }
+          ],
+          "tree_sha256": "67a2b284b156436b3f5e45d6118b6efbab5e56ef66b7f69126d721287c9d3369"
+        }
+      }
+    },
+    {
+      "passed": true,
+      "profile": {
+        "name": "private",
+        "cache": 2,
+        "frames": 3,
+        "pool": 4096,
+        "bank_bytes": 2048,
+        "bank_count": null,
+        "shared": false,
+        "compact": false
+      },
+      "parameters": {
+        "MAX_FRAME_ROWS": 16,
+        "FRAME_COUNT": 3,
+        "POOL_BYTES": 4096,
+        "BANK_BYTES": 2048,
+        "EXTERNAL_RAM": 0,
+        "p_fixed_ps_channels": 0
+      },
+      "expected_register_arrays_bits": {
+        "ps_capacity_limits": 27,
+        "ps_request_context": 46,
+        "ps_completion_flags": 6
+      },
+      "logical_state_delta_bits": 2,
+      "versions": {
+        "current": {
+          "total_bits": 38590,
+          "buffer_arrays_bits": {
+            "ps_decoded_fifo": 4096,
+            "ps_payload": 32768,
+            "ps_frame_valid": 3,
+            "ps_frame_lengths": 15
+          },
+          "register_arrays_bits": {
+            "ps_completion_flags": 6,
+            "ps_request_context": 46,
+            "ps_capacity_limits": 27
+          },
+          "sequential_declarations": [
+            {
+              "path": "npu_axil_top.u_store.commit_complete_q",
+              "module": "ps_frame_store",
+              "name": "commit_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.commit_next_complete_q",
+              "module": "ps_frame_store",
+              "name": "commit_next_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_available_rows_q",
+              "module": "ps_frame_store",
+              "name": "frame_available_rows_q",
+              "bits": 27,
+              "buffer_category": null,
+              "register_array_category": "ps_capacity_limits"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_empty_q",
+              "module": "ps_frame_store",
+              "name": "frame_empty_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.frame_single_row_q",
+              "module": "ps_frame_store",
+              "name": "frame_single_row_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.read_remaining_q",
+              "module": "ps_frame_store",
+              "name": "read_remaining_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.replay_complete_q",
+              "module": "ps_frame_store",
+              "name": "replay_complete_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_completion_flags"
+            },
+            {
+              "path": "npu_axil_top.u_store.request_fits_q",
+              "module": "ps_frame_store",
+              "name": "request_fits_q",
+              "bits": 1,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            },
+            {
+              "path": "npu_axil_top.u_store.request_q",
+              "module": "ps_frame_store",
+              "name": "request_q",
+              "bits": 45,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            }
+          ],
+          "tree_sha256": "02f5a326226062cd6726c4ef2215c90217ac91f3b11a5ca7631213c5ae46747f"
+        },
+        "reference": {
+          "total_bits": 38588,
+          "buffer_arrays_bits": {
+            "ps_decoded_fifo": 4096,
+            "ps_payload": 32768,
+            "ps_frame_valid": 3,
+            "ps_frame_lengths": 15
+          },
+          "register_arrays_bits": {
+            "ps_request_context": 77
+          },
+          "sequential_declarations": [
+            {
+              "path": "npu_axil_top.u_store.request_q",
+              "module": "ps_frame_store",
+              "name": "request_q",
+              "bits": 77,
+              "buffer_category": null,
+              "register_array_category": "ps_request_context"
+            }
+          ],
+          "tree_sha256": "0a2310938afbc2b842c08e7146a579ea2c7dd2cb31aefaddfb7d52fdf75fa78c"
+        }
+      }
+    }
+  ],
+  "model_tests": {
+    "passed": true,
+    "tests": 18,
+    "log_sha256": "238f3647f1471ec0a8c0171aea368fd25553c726abc274ecdf53a54f4760f414"
+  }
+}

@@ -68,8 +68,14 @@ def main():
         reviewed = {'UNUSEDSIGNAL', 'UNUSEDPARAM', 'BLKSEQ', 'PROCASSINIT', 'SYNCASYNCNET'}
         if depth == 1:
             reviewed.add('CMPCONST')
+        # 忙状态端口可悬空，RAM 样式字符串按参数宽度补齐。
+        allowed_named = (
+            r"%Warning-PINCONNECTEMPTY: .*conv_windowed_cache\.sv:.*empty reference: 'busy'$",
+            r"%Warning-WIDTHEXPAND: .*regfile\.v:.*VAR 'p_ram_style' expects 128 bits .* generates 40 bits\.$",
+        )
         unexpected = [line for line in warnings
-                      if line.split(':', 1)[0].removeprefix('%Warning-') not in reviewed]
+                      if line.split(':', 1)[0].removeprefix('%Warning-') not in reviewed
+                      and not any(re.fullmatch(pattern, line) for pattern in allowed_named)]
         if unexpected:
             raise RuntimeError(f'Unreviewed diagnostics: {unexpected}')
         binary = out / 'obj/Vtb_cache_pipeline'

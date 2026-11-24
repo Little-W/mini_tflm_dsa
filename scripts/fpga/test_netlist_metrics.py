@@ -36,6 +36,36 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual(path['startpoint']['cell'], 'first')
         self.assertEqual(path['endpoint']['cell'], 'last')
 
+    def test_data_io_buffers_preserve_connected_paths(self):
+        cells = {'first': flop(1, '0'),
+                 'input_buffer': cell('IBUF', {'I': [1]}, {'O': [2]})}
+        for index in range(13):
+            cells[f'logic_{index}'] = cell('LUT1', {'I0': [index + 2]}, {'O': [index + 3]})
+        cells['output_buffer'] = cell('OBUF', {'I': [15]}, {'O': [16]})
+        cells['last'] = flop(17, 16)
+        result = self.measure(cells)
+        self.assertEqual(result['paths']['longest_register_path_cells'], 15)
+        self.assertTrue(result['paths']['graph_complete'])
+        self.assertFalse(result['register_path_requirement']['met'])
+        path = result['paths']['register_to_register_paths'][0]
+        self.assertEqual(path['path'][0]['type'], 'IBUF')
+        self.assertEqual(path['path'][-1]['type'], 'OBUF')
+
+    def test_asynchronous_flip_flop_controls_are_endpoints(self):
+        for kind, control in (('FDCE', 'CLR'), ('FDPE', 'PRE')):
+            with self.subTest(kind=kind):
+                cells = {'first': flop(1, '0')}
+                for index in range(13):
+                    cells[f'logic_{index}'] = cell('LUT1', {'I0': [index + 1]}, {'O': [index + 2]})
+                cells['last'] = cell(kind, {'D': ['0'], 'C': [100], 'CE': ['1'], control: [14]}, {'Q': [15]})
+                result = self.measure(cells)
+                path = result['paths']['register_to_register_paths'][0]
+                self.assertEqual(path['combinational_cells'], 13)
+                self.assertEqual(path['endpoint']['port'], control)
+                self.assertEqual(path['endpoint']['category'], 'control')
+                self.assertTrue(result['paths']['graph_complete'])
+                self.assertFalse(result['register_path_requirement']['met'])
+
     def test_root_filter_preserves_combination_edges_and_endpoints(self):
         module = {'cells': {'first': flop(1, '0'), 'selected': flop(2, '0'),
                            'a': cell('LUT1', {'I0': [1]}, {'O': [3]}),

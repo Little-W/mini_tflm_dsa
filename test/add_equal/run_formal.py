@@ -19,14 +19,19 @@ MITER = """module add_equal_proof #(
 );
     logic [p_width-1:0] reference_sum;
     logic unused_reference_carry;
-    logic candidate_equal;
+    logic candidate_equal, preserved_equal;
     add_equal #(.p_width(p_width)) u_default (
         .i_a(i_a), .i_b(i_b), .i_target(i_target),
         .i_carry_in(i_carry_in), .o_equal(candidate_equal)
     );
+    add_equal #(.p_width(p_width), .p_preserve_bits(1'b1)) u_preserved (
+        .i_a(i_a), .i_b(i_b), .i_target(i_target),
+        .i_carry_in(i_carry_in), .o_equal(preserved_equal)
+    );
     assign {unused_reference_carry, reference_sum} =
         {1'b0, i_a} + {1'b0, i_b} + {{p_width{1'b0}}, i_carry_in};
-    assign o_equivalent = (candidate_equal == (reference_sum == i_target));
+    assign o_equivalent = (candidate_equal == (reference_sum == i_target)) &&
+        (preserved_equal == candidate_equal);
 endmodule
 """
 

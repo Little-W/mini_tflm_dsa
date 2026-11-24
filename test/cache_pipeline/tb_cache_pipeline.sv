@@ -5,16 +5,22 @@ module tb_cache_pipeline #(
     parameter int CACHE_SETS=8,
     parameter int CACHE_WAYS=2,
     parameter int LINE_BYTES=16,
+    parameter bit CHECK_EXTENDED_SETS=0,
     parameter int HIT_LATENCY=(DEMAND_DEPTH>1 ? 2 : 1)
 );
     localparam int READ_BYTES=READ_WIDTH/8;
     localparam int READ_SHIFT=$clog2(READ_BYTES);
+    localparam int SET_STRIDE_BYTES=CACHE_SETS*LINE_BYTES;
+    localparam int TRACK_BYTES=CHECK_EXTENDED_SETS ? 4096+16*SET_STRIDE_BYTES : 4096;
     logic clk=0;
     always #5 clk=~clk;
     logic rst_n=0,cfg_valid=0,cfg_ready,cfg_bypass=0;
     logic cfg_windowed=1,cfg_prefetch_enable=0;
     logic [31:0] cfg_base=32'h1003,cfg_bytes=2042;
     logic req_valid=0,req_ready,rsp_valid,rsp_ready=0,rsp_error;
+    logic rsp_success,rsp_failure;
+    logic preview_valid=0,preview_index_valid=0;
+    logic [31:0] preview_addr=0,preview_index=0;
     logic [31:0] req_addr=0,stat_hits,stat_misses,stat_read_bytes;
     logic [READ_WIDTH-1:0] rsp_data;
     logic req_geometry=0,req_event_first=0,hint_valid=0,hint_pending;
@@ -44,6 +50,8 @@ module tb_cache_pipeline #(
     bit stalled_response=0;
     logic [READ_WIDTH:0] stalled_value=0;
     int warm_accept_interval=0,warm_return_interval=0;
+    bit check_highest_set=0;
+    int highest_indexed=0,highest_physical=0,highest_fills=0,highest_clears=0,clear_cycles=0;
 
     conv_read_cache #(.SETS(CACHE_SETS),.WAYS(CACHE_WAYS),.LINE_BYTES(LINE_BYTES),
         .CACHE_POLICY(3),.DEMAND_DEPTH(DEMAND_DEPTH),.BUS_WIDTH(BUS_WIDTH),.READ_WIDTH(READ_WIDTH)) dut(
@@ -63,7 +71,7 @@ module tb_cache_pipeline #(
     assign stat_prefetch_late=dut.tb_observer.stat_prefetch_late;
 
     assign rresp=fail_reads ? 2'b10 : mem_rresp;
-    axi_counted_memory #(.BUS_WIDTH(BUS_WIDTH),.TRACK_BASE(32'h1000),.TRACK_BYTES(4096)) mem(
+    axi_counted_memory #(.BUS_WIDTH(BUS_WIDTH),.TRACK_BASE(32'h1000),.TRACK_BYTES(TRACK_BYTES)) mem(
         .clk,.rst_n,.allocation_base(cfg_base),.allocation_bytes(cfg_bytes),.epoch,.block_ar,
         .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,
         .rresp(mem_rresp),.rlast,.read_bytes,.ar_count,.active(mem_active));
@@ -117,6 +125,22 @@ module tb_cache_pipeline #(
             $fatal(1,"request and response queue ownership");
     end
 
+    // 在缓存实际使用的集合端口上记录最高编号集合的请求、写入与清除。
+    always @(posedge clk) if(rst_n && CHECK_EXTENDED_SETS) begin
+        if(dut.g_window.u_window.clearing) begin
+            clear_cycles++;
+            if(32'(dut.g_window.u_window.clear_set)==32'(CACHE_SETS-1)) highest_clears++;
+        end
+        if(check_highest_set && req_valid && req_ready) begin
+            if(32'(dut.g_window.u_window.incoming_request.set_index)!=32'(CACHE_SETS-1))
+                $fatal(1,"request did not select the highest cache set");
+            if(req_window_index_valid) highest_indexed++;
+            else highest_physical++;
+        end
+        if(check_highest_set && dut.g_window.u_window.ram_wen &&
+           32'(dut.g_window.u_window.fill_set)==32'(CACHE_SETS-1)) highest_fills++;
+    end
+
     task automatic reset_cache;
         @(negedge clk);rst_n=0;req_valid=0;prefetch_valid=0;cfg_valid=0;rsp_ready=0;
         block_ar=0;fail_reads=0;req_expect_error=0;
@@ -136,11 +160,19 @@ module tb_cache_pipeline #(
         while(!req_ready) @(negedge clk);
     endtask
 
+    // 非窗口地址采用异或集合索引，标签变化时同步选择对应的低位行号。
+    function automatic logic [31:0] physical_set_address(input int tag_index,input int set_index);
+        logic [31:0] tag_value,line_index;
+        tag_value=32'(4096/SET_STRIDE_BYTES+1+tag_index);
+        line_index=tag_value*32'(CACHE_SETS)+(32'(set_index)^(tag_value&32'(CACHE_SETS-1)));
+        return line_index*32'(LINE_BYTES)+32'd4;
+    endfunction
+
     function automatic logic [31:0] stream_address(input int index,input int mode);
         case(mode)
             0:return 32'h1004;
             1:return 32'h1100+32'(4*(index%16));
-            2:return 32'h1014+32'(LINE_BYTES*((index*5)%13));
+            2:return 32'h1014+32'((CHECK_EXTENDED_SETS ? SET_STRIDE_BYTES : LINE_BYTES)*((index*5)%13));
             3:case(index%4)
                 0:return 32'h1002;
                 1:return 32'h1004;
@@ -150,6 +182,8 @@ module tb_cache_pipeline #(
             4:return 32'h1204;
             5:return 32'h1304;
             6:return 32'h1404+32'(LINE_BYTES*index);
+            8:return physical_set_address(0,CACHE_SETS-1);
+            9:return physical_set_address(index%(CACHE_WAYS+1),CACHE_SETS-1);
             default:return index%2!=0 ? 32'h17fc : 32'h1003;
         endcase
     endfunction
@@ -192,6 +226,49 @@ module tb_cache_pipeline #(
                  name,accepted,completed-cancelled,cancelled,peak,stat_hits,stat_misses,
                  dut.g_window.u_window.tb_observer.stat_lookup_hits,dut.g_window.u_window.tb_observer.stat_lookup_misses,
                  read_bytes,ar_count);
+    endtask
+
+    task automatic verify_extended_sets;
+        longint unsigned bytes_before;
+        int clear_before,cycles_before;
+        cfg_bytes=32'(TRACK_BYTES-3);
+        configure(15);req_window_index_valid=1;req_window_index=32'(CACHE_SETS-1);
+        check_highest_set=1;
+        stream(1,8);drain();bytes_before=read_bytes;
+        stream(8,8);drain();
+        if(read_bytes!=bytes_before) $fatal(1,"highest-set resident reads generated AXI traffic");
+        report("highest_set_indexed_reuse");
+
+        configure(16);bytes_before=read_bytes;
+        stream(CACHE_WAYS+1,9);drain();
+        if(read_bytes-bytes_before!=(64'(CACHE_WAYS)+64'd1)*64'(LINE_BYTES))
+            $fatal(1,"highest-set physical conflict did not fill every distinct line");
+        bytes_before=read_bytes;
+        stream(4*(CACHE_WAYS+1),9);drain();
+        if(read_bytes==bytes_before) $fatal(1,"highest-set physical conflicts did not replace a line");
+        report("highest_set_physical_conflicts");
+
+        stream(1,8);drain();bytes_before=read_bytes;
+        stream(4,8);drain();
+        if(read_bytes!=bytes_before) $fatal(1,"highest-set preparation did not retain the line");
+        clear_before=highest_clears;cycles_before=clear_cycles;
+        configure(17);req_window_index_valid=1;req_window_index=32'(CACHE_SETS-1);
+        if(highest_clears!=clear_before+1 || clear_cycles-cycles_before!=CACHE_SETS)
+            $fatal(1,"cache configuration did not clear every set exactly once");
+        bytes_before=read_bytes;
+        stream(1,8);drain();
+        if(read_bytes-bytes_before!=64'(LINE_BYTES))
+            $fatal(1,"highest-set access did not refill after configuration");
+        bytes_before=read_bytes;
+        stream(4,8);drain();
+        if(read_bytes!=bytes_before) $fatal(1,"highest-set refill did not become resident");
+        report("highest_set_clear_and_reuse");
+        if(highest_indexed==0 || highest_physical==0 || highest_fills==0)
+            $fatal(1,"highest-set indexed, physical and fill coverage incomplete");
+        $display("CACHE_SET_COVERAGE highest=%0d indexed=%0d physical=%0d fills=%0d clears=%0d clear_cycles=%0d stride=%0d",
+                 CACHE_SETS-1,highest_indexed,highest_physical,highest_fills,highest_clears,
+                 clear_cycles-cycles_before,SET_STRIDE_BYTES);
+        check_highest_set=0;cfg_bytes=2042;configure(18);
     endtask
 
     initial begin
@@ -238,10 +315,12 @@ module tb_cache_pipeline #(
         if(read_bytes!=old_bytes) $fatal(1,"blocked hit stream generated AXI reads");
         report("blocked_responses");
 
+        if(CHECK_EXTENDED_SETS) cfg_bytes=32'(TRACK_BYTES-3);
         configure(2);req_window_index_valid=1;
         stream(48,2,1);drain();
         report("conflicting_lines");
 
+        cfg_bytes=2042;
         configure(3);stream(12,3,1);drain();
         report("ordered_range_errors");
 
@@ -323,6 +402,8 @@ module tb_cache_pipeline #(
         @(negedge clk);hint_valid=0;
         if(hint_pending) $fatal(1,"geometry hint completion");
         block_ar=0;drain();report("geometry_hint_order");
+
+        if(CHECK_EXTENDED_SETS) verify_extended_sets();
 
         if(pending!=0 || accepted!=completed || peak!=DEMAND_DEPTH)
             $fatal(1,"final request accounting");

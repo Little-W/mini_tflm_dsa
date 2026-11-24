@@ -26,7 +26,9 @@ def main():
     path=args.source_root/'rtl/npu/conv/conv_im2col_frontend.sv';text=path.read_text();sha=hashlib.sha256(path.read_bytes()).hexdigest()
     geometry_path,geometry=read_module(args.source_root,'geometry')
     geometry_sha=hashlib.sha256(geometry_path.read_bytes()).hexdigest()
-    update=extract(geometry,'  assign history_delta_full =','  always_ff @(posedge clk or negedge rst_n) begin\n    if (!rst_n) p_wrap_target_q')
+    delta_instance=re.search(r'^  parallel_prefix_add\s*#\([^;]+\)\s*u_history_delta\s*\(',geometry,re.M)
+    if delta_instance is None:raise ValueError('Missing history difference arithmetic')
+    update=geometry[delta_instance.start():geometry.index('  always_ff @(posedge clk or negedge rst_n) begin\n    if (!rst_n) p_wrap_target_q',delta_instance.start())]
     compares=extract(geometry,'  assign p_sum_wrap_i_a =','  always_comb begin\n    history_result.valid =')
     assert re.findall(r'\blast_p\s*<=\s*([^;]+);',text)==['0','p0','p0']
     assert re.findall(r'\bp0\s*<=\s*([^;]+);',text)==['0','committing_tile.position']
@@ -41,7 +43,7 @@ def main():
  logic[31:0]p0,last_p,last_p_limit;
  logic last_p_valid,last_p_overflow_q;
  logic[32:0]p_history_delta_q,history_delta_full,reference_limit_sum,reference_delta;
- logic history_limit_carry,unused_history_carry_equal;
+ logic history_limit_carry,unused_history_carry_equal,unused_history_delta_carry;
  logic[15:0]history_carry_i_a,history_carry_i_b;
  logic history_range_valid;
  logic[16:0]history_limit_i_a,history_limit_i_b;
@@ -78,9 +80,14 @@ def main():
    (p_sum_wrap_o_equal==(reference_sum==p_wrap_target_q))&&
    (p_sum_last_o_equal==(reference_sum==last_output_col_q));
 endmodule
-''')
-    ys.write_text('read_slang --top proof -DSYNTHESIS=1 -DXILINX_FPGA=1 '+shlex.join([str(sv),str(args.source_root/'rtl/common/add_equal.sv'),str(args.source_root/'rtl/common/unsigned_compare.sv')])+
-                  '\nprep -top proof -flatten\nasync2sync\nopt\ncheck -assert\n'
+'''+('(* keep_hierarchy = "yes" *)\n'+re.search(r'\bmodule\s+conv_history_wrap_select\b.*?\bendmodule',geometry,re.S)[0]
+       if 'module conv_history_wrap_select' in geometry else ''))
+    dependencies=[args.source_root/'rtl/common'/name for name in
+                  ('add_equal.sv','unsigned_compare.sv','parallel_unsigned_compare.sv','parallel_prefix_add.sv')]
+    dependency_sha256={str(item):hashlib.sha256(item.read_bytes()).hexdigest() for item in dependencies}
+    ys.write_text('read_slang --top proof -DSYNTHESIS=1 -DXILINX_FPGA=1 '+shlex.join(map(str,[sv,*dependencies]))+
+                  '\nsetattr -mod -unset keep_hierarchy\nsetattr -unset keep_hierarchy\n'
+                  'prep -top proof -flatten\nasync2sync\nopt\ncheck -assert\n'
                   'sat -seq 2 -set-at 1 rst_n 0 -prove-skip 1 -prove equivalent 1 -verify\n'
                   'sat -seq 1 -tempinduct-inductonly -maxsteps 1 -prove equivalent 1 -verify\n')
     with log.open('w')as stream:
@@ -89,7 +96,9 @@ endmodule
     if result.returncode or 'Induction step proven: SUCCESS!'not in log.read_text():raise RuntimeError(str(log))
     assert sha==hashlib.sha256(path.read_bytes()).hexdigest()
     assert geometry_sha==hashlib.sha256(geometry_path.read_bytes()).hexdigest()
+    assert dependency_sha256=={str(item):hashlib.sha256(item.read_bytes()).hexdigest() for item in dependencies}
     report={'passed':True,'source_sha256':sha,'geometry_sha256':geometry_sha,'reset_steps':2,'unbounded_induction_steps':1,
+            'dependency_sha256':dependency_sha256,
             'position_and_width_constraints':[],'formal_domain':'all binary input and state values',
             'event_scope':'Configuration, valid or invalid descriptor commit, and history storage are mutually exclusive.',
             'event_relationship_proof':'check_frontend_event_domains.py','position_update_sites':2,'history_update_sites':3,

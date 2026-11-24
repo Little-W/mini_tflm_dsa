@@ -1,0 +1,425 @@
+{
+  "passed": true,
+  "reference_revision": "99d40d34",
+  "logical_added_state_bits": 2,
+  "rtl_source_sha256": {
+    "rtl/npu/dma/cache/conv_windowed_cache.sv": "7c8a19198fb7e3b2d8786e7a73e27f9f111b20d5a8faf249abbedcc9d555b604",
+    "rtl/npu/dma/cache/conv_cache_metadata_way.sv": "d0222fbcbed02ca9e8b1330628e909330532aa261e917462afae37483053617d"
+  },
+  "full_cache_equivalence": {
+    "external_inputs_constrained": false,
+    "scope": "全部公开输出、对应状态和实际存储内容",
+    "profiles": [
+      {
+        "name": "direct",
+        "configuration": "fpga",
+        "parameters": {
+          "SETS": 8,
+          "WAYS": 2,
+          "LINE_BYTES": 16,
+          "BUS_WIDTH": 32,
+          "READ_WIDTH": 32,
+          "DEMAND_DEPTH": 1
+        },
+        "passed": true,
+        "equivalent_bits": 9402,
+        "canonical_names": {
+          "reference": {
+            "cells": 486,
+            "netnames": 1042,
+            "unused_aliases": 15,
+            "state_bits": 7672
+          },
+          "current": {
+            "cells": 542,
+            "netnames": 1074,
+            "unused_aliases": 40,
+            "state_bits": 7672
+          }
+        },
+        "log_sha256": "d7abd93b5685fbdeec8361f9a02689172f606136f33923e01f44d3b33d7353aa"
+      },
+      {
+        "name": "production_direct",
+        "configuration": "fpga",
+        "parameters": {
+          "SETS": 16,
+          "WAYS": 2,
+          "LINE_BYTES": 128,
+          "BUS_WIDTH": 64,
+          "READ_WIDTH": 128,
+          "DEMAND_DEPTH": 1,
+          "p_defer_retire_shift": 1
+        },
+        "passed": true,
+        "equivalent_bits": 43064,
+        "canonical_names": {
+          "reference": {
+            "cells": 1014,
+            "netnames": 1730,
+            "unused_aliases": 17,
+            "state_bits": 40975
+          },
+          "current": {
+            "cells": 1134,
+            "netnames": 1826,
+            "unused_aliases": 42,
+            "state_bits": 40975
+          }
+        },
+        "log_sha256": "b35f6f60ea0fa28d167e469e7cad6fa92f1ef0710fd01a87da7ca254c96e8a12"
+      }
+    ]
+  },
+  "numeric_comparison": {
+    "totals": {
+      "tests": 65,
+      "accepted": 1257,
+      "completed": 1246,
+      "cancelled": 11
+    },
+    "warm_accept_interval": 1,
+    "warm_return_interval": 1,
+    "profiles": [
+      {
+        "bus_width": 32,
+        "read_width": 32,
+        "depth": 1,
+        "ways": 2,
+        "cache_sets": 8,
+        "line_bytes": 16,
+        "defer_retire_shift": false,
+        "result": "CACHE_PIPELINE_PASS tests=13 accepted=243 completed=242 cancelled=1 peak_outstanding=1 warm_accept_interval=1 warm_return_interval=1 demand_depth=1 ways=2",
+        "prefetch_queue": "PREFETCH_QUEUE_PASS peak=8 swaps=17 simultaneous_push_pop=1"
+      },
+      {
+        "bus_width": 32,
+        "read_width": 32,
+        "depth": 4,
+        "ways": 2,
+        "cache_sets": 8,
+        "line_bytes": 16,
+        "defer_retire_shift": false,
+        "result": "CACHE_PIPELINE_PASS tests=13 accepted=264 completed=260 cancelled=4 peak_outstanding=4 warm_accept_interval=1 warm_return_interval=1 demand_depth=4 ways=2",
+        "prefetch_queue": "PREFETCH_QUEUE_PASS peak=8 swaps=17 simultaneous_push_pop=1"
+      },
+      {
+        "bus_width": 64,
+        "read_width": 32,
+        "depth": 1,
+        "ways": 2,
+        "cache_sets": 8,
+        "line_bytes": 16,
+        "defer_retire_shift": false,
+        "result": "CACHE_PIPELINE_PASS tests=13 accepted=243 completed=242 cancelled=1 peak_outstanding=1 warm_accept_interval=1 warm_return_interval=1 demand_depth=1 ways=2",
+        "prefetch_queue": "PREFETCH_QUEUE_PASS peak=8 swaps=17 simultaneous_push_pop=1"
+      },
+      {
+        "bus_width": 64,
+        "read_width": 32,
+        "depth": 4,
+        "ways": 2,
+        "cache_sets": 8,
+        "line_bytes": 16,
+        "defer_retire_shift": false,
+        "result": "CACHE_PIPELINE_PASS tests=13 accepted=264 completed=260 cancelled=4 peak_outstanding=4 warm_accept_interval=1 warm_return_interval=1 demand_depth=4 ways=2",
+        "prefetch_queue": "PREFETCH_QUEUE_PASS peak=8 swaps=17 simultaneous_push_pop=1"
+      },
+      {
+        "bus_width": 64,
+        "read_width": 128,
+        "depth": 1,
+        "ways": 2,
+        "cache_sets": 16,
+        "line_bytes": 128,
+        "defer_retire_shift": true,
+        "result": "CACHE_PIPELINE_PASS tests=13 accepted=243 completed=242 cancelled=1 peak_outstanding=1 warm_accept_interval=1 warm_return_interval=1 demand_depth=1 ways=2",
+        "prefetch_queue": "PREFETCH_QUEUE_PASS peak=8 swaps=11 simultaneous_push_pop=2"
+      }
+    ]
+  },
+  "tag_stage": {
+    "passed": true,
+    "source_sha256": "7c8a19198fb7e3b2d8786e7a73e27f9f111b20d5a8faf249abbedcc9d555b604",
+    "proof_sha256": "18ae7efb187263746de56792958eda510a66356d5714d719e616f008a2531258",
+    "formal": [
+      {
+        "ways": 1,
+        "line_bytes": 8,
+        "passed": true
+      },
+      {
+        "ways": 1,
+        "line_bytes": 16,
+        "passed": true
+      },
+      {
+        "ways": 1,
+        "line_bytes": 32,
+        "passed": true
+      },
+      {
+        "ways": 1,
+        "line_bytes": 64,
+        "passed": true
+      },
+      {
+        "ways": 1,
+        "line_bytes": 128,
+        "passed": true
+      },
+      {
+        "ways": 1,
+        "line_bytes": 256,
+        "passed": true
+      },
+      {
+        "ways": 2,
+        "line_bytes": 8,
+        "passed": true
+      },
+      {
+        "ways": 2,
+        "line_bytes": 16,
+        "passed": true
+      },
+      {
+        "ways": 2,
+        "line_bytes": 32,
+        "passed": true
+      },
+      {
+        "ways": 2,
+        "line_bytes": 64,
+        "passed": true
+      },
+      {
+        "ways": 2,
+        "line_bytes": 128,
+        "passed": true
+      },
+      {
+        "ways": 2,
+        "line_bytes": 256,
+        "passed": true
+      }
+    ],
+    "input_constraints": [
+      "rst_n=0 at the first sampled edge",
+      "req_fire=0 at the first sampled edge"
+    ],
+    "four_state_samples": 20000
+  },
+  "return_state": {
+    "passed": true,
+    "formal": [
+      {
+        "sets": 2,
+        "ways": 1,
+        "line_bytes": 16,
+        "passed": true,
+        "log_sha256": "043e337d77df15005934efa74f34f98c29776844ded9634fd79834dc59fac09d"
+      },
+      {
+        "sets": 8,
+        "ways": 2,
+        "line_bytes": 16,
+        "passed": true,
+        "log_sha256": "09f23e3edd0f3de5206522fc5c40553b1a59840f12ff960aa2cd18f740401cc4"
+      },
+      {
+        "sets": 16,
+        "ways": 2,
+        "line_bytes": 128,
+        "passed": true,
+        "log_sha256": "ab4d7c3733e69d1c49edfd05fb9b64ddb353eb29b3f81ea96c38715612f08627"
+      },
+      {
+        "sets": 32,
+        "ways": 2,
+        "line_bytes": 256,
+        "passed": true,
+        "log_sha256": "02a53c25d32091f3974161676af73b07d98290ded946c8b0ef2f14d0fb34e58b"
+      }
+    ],
+    "four_state": {
+      "checks": 20022,
+      "known_bits": 39004,
+      "unknown_bits": 1040,
+      "hits": 23310
+    },
+    "source_sha256": "7c8a19198fb7e3b2d8786e7a73e27f9f111b20d5a8faf249abbedcc9d555b604",
+    "proof_sha256": "1a2b53cce93094bd6b69c7d9af105f8e5811375582d3b30a7e61a4414b6b7b3d",
+    "test_sha256": "e06073ba0928df314d586a98d973b7c69e26f373bf8c97ce1cd103c7cc116cba",
+    "assumptions": "第一个采样边沿复位；后续配置、请求、填充和元数据输入不受限制"
+  },
+  "address_ranges": {
+    "source_sha256": "7c8a19198fb7e3b2d8786e7a73e27f9f111b20d5a8faf249abbedcc9d555b604",
+    "input_bits": 257,
+    "input_constraints": [],
+    "runs": [
+      {
+        "line_bytes": 16,
+        "read_width": 32,
+        "xilinx_fpga": false,
+        "passed": true,
+        "log_sha256": "b795276e64b6236f79f0d9e1b2dd9ed289f5c530bee3f217eda4b13655604395"
+      },
+      {
+        "line_bytes": 16,
+        "read_width": 32,
+        "xilinx_fpga": true,
+        "passed": true,
+        "log_sha256": "4ebd34ea1b41f7f9f7b14cd72d6c0ebaaed13efef30058196e24dbf0451031b6"
+      },
+      {
+        "line_bytes": 16,
+        "read_width": 64,
+        "xilinx_fpga": false,
+        "passed": true,
+        "log_sha256": "70d842a4c0d04703226daa699ac7c86e4c04bb378e9d415318826ddaa0ed4537"
+      },
+      {
+        "line_bytes": 16,
+        "read_width": 64,
+        "xilinx_fpga": true,
+        "passed": true,
+        "log_sha256": "ab640f9c582cd8184082717a77c6b8a9abd978f9a8a037f8d1ffdbccbfde0739"
+      },
+      {
+        "line_bytes": 16,
+        "read_width": 128,
+        "xilinx_fpga": false,
+        "passed": true,
+        "log_sha256": "d697c88efbca5318035b30995e4018e38d4e9d9a59dc429f88859f9db9d964e6"
+      },
+      {
+        "line_bytes": 16,
+        "read_width": 128,
+        "xilinx_fpga": true,
+        "passed": true,
+        "log_sha256": "262341e76c8b598573bf2acbcd35d2c7704d71c1a060c2b8e6cdf04c9b612a58"
+      },
+      {
+        "line_bytes": 128,
+        "read_width": 32,
+        "xilinx_fpga": false,
+        "passed": true,
+        "log_sha256": "541097e978f725e922d2041386545cd5b91b6c9cce86bf8e6fb982eaf42d8c60"
+      },
+      {
+        "line_bytes": 128,
+        "read_width": 32,
+        "xilinx_fpga": true,
+        "passed": true,
+        "log_sha256": "c24497e6343841e9405ecb45729c44f88eee712c0392b922a4529908c0a60aeb"
+      },
+      {
+        "line_bytes": 128,
+        "read_width": 64,
+        "xilinx_fpga": false,
+        "passed": true,
+        "log_sha256": "63a11ef435c6dcd902c99b06f5adb8500e0faf6db951d5ebd68df991b7b2247b"
+      },
+      {
+        "line_bytes": 128,
+        "read_width": 64,
+        "xilinx_fpga": true,
+        "passed": true,
+        "log_sha256": "3c4e2d20c46ee74194a9950ab1359c12a79dfa17876dc2486aa2478bb46eb5c8"
+      },
+      {
+        "line_bytes": 128,
+        "read_width": 128,
+        "xilinx_fpga": false,
+        "passed": true,
+        "log_sha256": "a8ebf7cf77f5d0653bf33dd89db5447f4d0fa80a3b68b2ddfa32b62db922d6e2"
+      },
+      {
+        "line_bytes": 128,
+        "read_width": 128,
+        "xilinx_fpga": true,
+        "passed": true,
+        "log_sha256": "3a14e480d77836c1d4338bd76c476d1f9a93ca7b62142a35e41a595d7697d156"
+      }
+    ],
+    "four_state": {
+      "checks": 20000,
+      "unknown_results": 6462
+    },
+    "passed": true
+  },
+  "metadata_four_state": {
+    "strict_four_state_equivalence": true,
+    "profiles": [
+      {
+        "sets": 2,
+        "ways": 1,
+        "line_bytes": 16,
+        "demand_depth": 1,
+        "input_bits": 265,
+        "output_bits": 219,
+        "passed": true,
+        "checks": 12010,
+        "known_bits": 2569031,
+        "unknown_bits": 61159,
+        "log_sha256": "46e25531ec81bf88909fb531ae2749e11103a8dd23c7c4a4e1a7896551195366"
+      },
+      {
+        "sets": 8,
+        "ways": 2,
+        "line_bytes": 16,
+        "demand_depth": 1,
+        "input_bits": 299,
+        "output_bits": 438,
+        "passed": true,
+        "checks": 12050,
+        "known_bits": 5051590,
+        "unknown_bits": 226310,
+        "log_sha256": "9408223e395f7ce93fd94bf7b75351feb33a4b91266547c22a18b01bfb2e61d4"
+      },
+      {
+        "sets": 8,
+        "ways": 1,
+        "line_bytes": 16,
+        "demand_depth": 4,
+        "input_bits": 302,
+        "output_bits": 191,
+        "passed": true,
+        "checks": 12034,
+        "known_bits": 2204828,
+        "unknown_bits": 93666,
+        "log_sha256": "fffcf20f4da644c910de84c5d851b5adfd38833d395faf9db92389284a10a24c"
+      },
+      {
+        "sets": 16,
+        "ways": 2,
+        "line_bytes": 128,
+        "demand_depth": 2,
+        "input_bits": 314,
+        "output_bits": 346,
+        "passed": true,
+        "checks": 12098,
+        "known_bits": 3968208,
+        "unknown_bits": 217700,
+        "log_sha256": "331e556a3dbc93a7e9b72f1557705d9b8ff8ef56edc900306958163c4b73affd"
+      }
+    ]
+  },
+  "summary_sha256": {
+    "tag_stage": "99b1032d100765b39916bffe458911cff48659673a1d6d9117e79866f35025b3",
+    "return_state": "e7462287f0e442f37db61358f3812427f314c6d49fc9cabf495310e08587d8be",
+    "address_ranges": "e6fcc079ac7e8c0744e58c72eee2857bfbd41e28216a75514892e9bf80ceb43f",
+    "metadata": "261d1a0fce1583c3b5fd9cd920d42875723a3b63ee0998552d0610b3d597dec5",
+    "full_equivalence": "a9d97f7ad80da03cad9586f9cbed4da6cc31c94b841ac7b471f6f7902b7947e8",
+    "numeric_general": "b956b2ce25999ddc535157e216da20e149513400734da9dded72ed3206f5de8f",
+    "numeric_production": "f0b6a54cd297e1c10f3bd400a67aebacf2890b41a15826bc3a30edf1aacbaa39"
+  },
+  "test_sha256": {
+    "test/cache_storage/check_tag_stage.py": "e0510e11e8862b14dff12af833229db323d5c963771adfc6ce70ce0a1cde82c0",
+    "test/cache_storage/check_return_state.py": "e06073ba0928df314d586a98d973b7c69e26f373bf8c97ce1cd103c7cc116cba",
+    "test/cache_storage/check_address_ranges.py": "1fc398406f3ee7c79ee14d8ac0125741d9bed1c3b0e06f558373f50ac8e6306e",
+    "test/cache_structure/run_formal.py": "02b3f44c1b03f9e9b19772517e335ddd0d175d51167bc5db2bc6b65dc6aadca3",
+    "test/cache_structure/check_metadata_four_state.py": "baec69ae37f9df446759ad6f2481526da5666f490145573a3004cafa4dd2c5bb"
+  }
+}

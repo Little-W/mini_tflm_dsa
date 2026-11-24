@@ -5,6 +5,8 @@ from source_sections import read_module
 import argparse
 import hashlib
 import json
+import re
+import shlex
 import subprocess
 import sys
 
@@ -73,7 +75,9 @@ ACTIVE
      reference_active==prepared_active_columns);
 endmodule
 '''.replace('ACTIVE', active)
-(OUT / 'metadata.sv').write_text(metadata)
+descriptor_match=re.search(r'\bmodule\s+conv_descriptor_match\b.*?\bendmodule',SOURCE.read_text(),re.S)
+if descriptor_match is None:raise ValueError('Missing descriptor comparison module')
+(OUT / 'metadata.sv').write_text(descriptor_match[0]+'\n'+metadata)
 cases = []
 def run(name, code):
     script = OUT / (name + '.ys')
@@ -88,11 +92,13 @@ def run(name, code):
                   'log_sha256':hashlib.sha256(log.read_bytes()).hexdigest()})
 for width in (32,33,35):
     run('arithmetic_'+str(width),
-        f'read_slang --top comparison -GW={width} {ROOT}/rtl/common/parallel_prefix_add.sv {OUT}/arithmetic.sv\n'
+        f'read_slang --top comparison -GW={width} {args.source_root}/rtl/common/parallel_prefix_add.sv {OUT}/arithmetic.sv\n'
         'prep -top comparison -flatten\nsat -verify -prove equivalent 1\n')
 for width in (1,3,5,8,16,31):
     run('metadata_'+str(width),
-        f'read_slang --top comparison -GTILE_COUNT_W={width} {ROOT}/rtl/common/add_equal.sv {OUT}/metadata.sv\n'
+        f'read_slang --top comparison -DSYNTHESIS=1 -GTILE_COUNT_W={width} '+shlex.join(map(str,
+            [args.source_root/'rtl/common/add_equal.sv',args.source_root/'rtl/common/increment_equal.sv',OUT/'metadata.sv']))+
+        '\nsetattr -mod -unset keep_hierarchy\nsetattr -unset keep_hierarchy\n'
         'prep -top comparison -flatten\nsat -seq 6 -set-init-zero -verify -prove equivalent 1\n')
 summary={'passed':True,'source_sha256':hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
          'cases':cases}

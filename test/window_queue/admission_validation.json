@@ -1,0 +1,154 @@
+{
+  "passed": true,
+  "equivalence": {
+    "passed": true,
+    "reference_ref": "95fcc049",
+    "source_sha256": {
+      "reference": {
+        "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+        "rtl/npu/dma/conv_window_queue.sv": "7f7988f03ddbfec35f8c026449d0868703e1954e8d7a9f4e3e44b6050438daed"
+      },
+      "current": {
+        "rtl/common/regfile.v": "a4939af06f147d8b9f0e0546a2ebb0e953765c8765dd846cba3820c87dd184af",
+        "rtl/npu/dma/conv_window_queue.sv": "9a9ef960dc8a52545ec9be3b76ef50203dc65c216a89fc856ed52dc5d552406f"
+      }
+    },
+    "input_constraints": [
+      "rst_n=0 at the first sampled edge for independent invariant proofs"
+    ],
+    "equivalence_state_constraints": [
+      "count<=DEPTH",
+      "active_count<=p_frontend_outstanding"
+    ],
+    "state_constraints_proven_independently": true,
+    "descriptor_data_qualification": "frontend_valid",
+    "compared_outputs": "all public controls and responses; valid frontend p0, q0, and cols",
+    "unmatched_internal_ports": [
+      "frontend_p0",
+      "frontend_q0",
+      "frontend_cols",
+      "descriptor_o_rd_data",
+      "g_descriptor[0].u_value.o_rd_data",
+      "g_descriptor[1].u_value.o_rd_data",
+      "g_descriptor[2].u_value.o_rd_data"
+    ],
+    "cases": [
+      {
+        "depth": 2,
+        "lanes": 4,
+        "outstanding": 1,
+        "passed": true,
+        "equivalent_bits": 502,
+        "log_sha256": "0d91bf92da30dc86a7adb9dedd4fdcc5ab81e3216ef2ddd4b71eb2575e2fdee6"
+      },
+      {
+        "depth": 2,
+        "lanes": 4,
+        "outstanding": 2,
+        "passed": true,
+        "equivalent_bits": 505,
+        "log_sha256": "579308f03d74e1b511c43d2da95cac0f00f7f930a919e09e52aca128c8bf7bb3"
+      },
+      {
+        "depth": 3,
+        "lanes": 16,
+        "outstanding": 1,
+        "passed": true,
+        "equivalent_bits": 810,
+        "log_sha256": "6e3f0b04e5355e6076ef0db8fc66656d04dd845f850720deba4ffd632dfaf21c"
+      },
+      {
+        "depth": 3,
+        "lanes": 16,
+        "outstanding": 2,
+        "passed": true,
+        "equivalent_bits": 814,
+        "log_sha256": "2dfdf565c3448c53f57540241713c238e84fefa9cba961f89d627c42bc193afa"
+      },
+      {
+        "depth": 4,
+        "lanes": 16,
+        "outstanding": 1,
+        "passed": true,
+        "equivalent_bits": 911,
+        "log_sha256": "b6cf7de2862013de7d36cec1bd9af9da1747cf4e52f0b7b65e620e50e1a455fb"
+      },
+      {
+        "depth": 4,
+        "lanes": 16,
+        "outstanding": 2,
+        "passed": true,
+        "equivalent_bits": 915,
+        "log_sha256": "20863fd6719ab007cb85205fd4435846717dd1d0d31eaca56b2d29274508035d"
+      },
+      {
+        "depth": 7,
+        "lanes": 16,
+        "outstanding": 1,
+        "passed": true,
+        "equivalent_bits": 1213,
+        "log_sha256": "a22058bfaa80e8e2fd7fdddae06021d5ee11edef43ed78895da3cf1741324354"
+      },
+      {
+        "depth": 7,
+        "lanes": 16,
+        "outstanding": 2,
+        "passed": true,
+        "equivalent_bits": 1218,
+        "log_sha256": "7fc29e8259908d8b95efd6ed1c1b70825b3a3e6c1a5ef69629b995d1e5b2d2ae"
+      },
+      {
+        "depth": 4,
+        "lanes": 8,
+        "outstanding": 3,
+        "passed": true,
+        "equivalent_bits": 781,
+        "log_sha256": "c377f1e751360f44e7d576f0b7a1e50de927d3fbd18825ce7d65dec53fd8232c"
+      },
+      {
+        "depth": 4,
+        "lanes": 16,
+        "outstanding": 3,
+        "passed": true,
+        "equivalent_bits": 917,
+        "log_sha256": "99dc05962d73c0ac137d0fae915362fa6e351f5804e212c8b8efe7f09bb68802"
+      }
+    ]
+  },
+  "four_state": {
+    "passed": true,
+    "reference_ref": "95fcc049",
+    "source_sha256": "9a9ef960dc8a52545ec9be3b76ef50203dc65c216a89fc856ed52dc5d552406f",
+    "cases": [
+      {
+        "depth": 2,
+        "outstanding": 1,
+        "checks": 65536,
+        "passed": true,
+        "log_sha256": "8e73a9fc13271aba704761fa0cde5d394d2a2ffaf13ddc497e3d5d390aa6506e"
+      },
+      {
+        "depth": 3,
+        "outstanding": 2,
+        "checks": 65536,
+        "passed": true,
+        "log_sha256": "57a6e8550eac2bbb219c49fd724104a2f5b37dc6dfcd7d58e2d6b80998aeab57"
+      },
+      {
+        "depth": 4,
+        "outstanding": 3,
+        "checks": 65536,
+        "passed": true,
+        "log_sha256": "76194b9fe14b472723ecebbbd03f82f1b9f1bde3dab5206e67cf8c49dd61bec7"
+      },
+      {
+        "depth": 7,
+        "outstanding": 4,
+        "checks": 65536,
+        "passed": true,
+        "log_sha256": "6bb6cd01f6a1d1d2edcd0b6ce385e9d550469d8dcfec1579586cf43ce1710817"
+      }
+    ],
+    "sources_unchanged": true
+  }
+}

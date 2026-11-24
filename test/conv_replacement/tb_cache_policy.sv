@@ -22,6 +22,8 @@ module tb_cache_policy;
     assign rresp=fail_reads ? 2'b10 : mem_rresp;
 
     conv_read_cache #(.SETS(2),.WAYS(2),.LINE_BYTES(16),.CACHE_POLICY(2)) dut(.cfg_windowed(1'b0),.cfg_prefetch_enable(1'b0),
+        .preview_valid(1'b0),.preview_addr(32'd0),.preview_index_valid(1'b0),.preview_index(32'd0),
+        .rsp_success(),.rsp_failure(),
         .req_window_index_valid(1'b0),.req_window_index(0),.req_window_epoch(0),
         .req_window_retire(32'hffffffff),.req_window_progress(0),.prefetch_valid(1'b0),
         .prefetch_addr(0),.prefetch_next_fragment(1'b0),.prefetch_window_index_valid(1'b0),.prefetch_window_index(0),

@@ -117,8 +117,13 @@ module tb_ps_channel_store #(
         commands++;step();
     endtask
     task automatic pressure(input int id,input int stride);
+        int wait_cycles;
         frame_request=1;frame_id=4'(id);frame_rows=1;frame_reserve_rows=32'(stride);frame_init=1;frame_final=0;
-        #2;
+        #2;wait_cycles=0;
+        while(!frame_pressure[0])begin
+            if(frame_ready[0])$fatal(1,"Out-of-capacity frame was admitted");
+            step();wait_cycles++;if(wait_cycles>10)$fatal(1,"Capacity pressure timeout");
+        end
         repeat(3)begin
             if(frame_ready[0] || !frame_pressure[0])$fatal(1,"Capacity pressure mismatch");
             step();pressure_checks++;

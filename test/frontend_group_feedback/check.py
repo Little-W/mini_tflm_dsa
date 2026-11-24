@@ -28,9 +28,9 @@ def unit(source: str, lanes: int) -> str:
     last = source.index('      end else begin : g_direct_range', first)
     body = source[first:last].replace('c.group_c', 'group_c').replace('group_range_next[source]', 'actual').replace('group_range_next[0]', 'initial_range')
     qualifier_start = body.index('        for (genvar lane = 0; lane < LANES; lane++) begin : g_transfer_lane')
-    qualifier_end = body.index('        assign remaining =', qualifier_start)
-    body = (body[:qualifier_start] + body[qualifier_end:]).replace(
-        'transfer_selected[step] &&', 'chunk_selected[step] &&')
+    qualifier_end = body.index('        borrow_select_subtract #', qualifier_start) if '        borrow_select_subtract #' in body else body.index('        assign remaining =', qualifier_start)
+    body = (body[:qualifier_start] + body[qualifier_end:]).replace('        logic [LANES:0] transfer_selected;\n', '').replace(
+        'transfer_selected', 'chunk_selected')
     return f'''module comparison #(
   parameter int LANES={lanes},
   parameter int p_saved_group_lanes=LANES<=4 ? 4 : (1 << $clog2(LANES)),
@@ -68,9 +68,114 @@ endmodule
 '''
 
 
+def direct_range_unit(source: str, lanes: int) -> str:
+    first = source.index('  if (LANES <= 16) begin : g_short_group_lane\n')
+    first = source.index('\n', first) + 1
+    last = source.index('    // 配置及译码来源', first)
+    configured = source[first:last].replace('cfg.group_c', 'group_c')
+    first = source.index('      end else begin : g_direct_range\n', last)
+    first = source.index('\n', first) + 1
+    last = source.index('\n      end\n    end\n', first)
+    direct = source[first:last].replace('c.group_c', 'group_c').replace(
+        'group_range_channel[source]', 'ch_q').replace('group_range_next[source]', 'actual')
+    return f'''module comparison #(
+parameter int LANES={lanes},p_saved_group_lanes=LANES<=4?4:(1 << $clog2(LANES))
+)(
+input logic[15:0] group_c,ch_q,
+output logic equivalent
+);
+logic[p_saved_group_lanes:0] group_range_cfg,actual,expected;
+logic[16:0] expected_remaining;
+assign expected_remaining={{1'b0,group_c}}-{{1'b0,ch_q}};
+{configured}
+{direct}
+for(genvar lane=0;lane<=p_saved_group_lanes;lane++)begin:g_expected
+ assign expected[lane]=17'(lane)<expected_remaining;
+end
+assign equivalent=group_range_cfg==expected && actual==expected;
+endmodule
+'''
+
+
+def column_range_unit(source: str, lanes: int, size: int) -> str:
+    first = source.index('  for (genvar lane = 0; lane <= LANES; lane++) begin : g_active_lane_update')
+    first = source.index('        for (genvar step = 0; step <= LANES; step++) begin : g_length', first)
+    last = source.index('        assign candidate_allowed[source]', first)
+    body = source[first:last]
+    return f'''module comparison #(
+parameter int SIZE={size},LANES={lanes},TILE_COUNT_W=$clog2(SIZE+1)
+)(
+input logic[TILE_COUNT_W-1:0] active_remaining,col_remaining,
+output logic equivalent
+);
+logic[LANES:0] lane_equivalent;
+for(genvar lane=0;lane<=LANES;lane++)begin:g_lane
+ logic[LANES:0] active_allowed,remaining_allowed,expected_active,expected_remaining;
+{body}
+ for(genvar step=0;step<=LANES;step++)begin:g_expected
+  logic[TILE_COUNT_W-1:0] active_count,remaining_count;
+  assign active_count=active_remaining-TILE_COUNT_W'(step);
+  assign remaining_count=col_remaining-TILE_COUNT_W'(step);
+  assign expected_active[step]=TILE_COUNT_W'(lane)<active_count;
+  assign expected_remaining[step]=TILE_COUNT_W'(lane)<remaining_count;
+ end
+ assign lane_equivalent[lane]=active_allowed==expected_active && remaining_allowed==expected_remaining;
+end
+assign equivalent=&lane_equivalent;
+endmodule
+'''
+
+
+def channel_step_unit(source: str, lanes: int) -> str:
+    first = source.index('  if (LANES <= 16 && CHUNK_COUNT_W < 16) begin : g_channel_step')
+    last = source.index('  assign {unused_channel_position_carry, next_channel}', first)
+    body = source[first:last]
+    return f'''module comparison #(
+parameter int LANES={lanes},CHUNK_COUNT_W=$clog2(LANES+1)
+)(
+input logic[15:0] ch_q,
+input logic[CHUNK_COUNT_W-1:0] chunk_count,
+output logic equivalent
+);
+logic[LANES:0] chunk_selected;
+logic[16:0] channel_position_sum,expected_sum;
+for(genvar step=0;step<=LANES;step++)begin:g_select
+ assign chunk_selected[step]=chunk_count==CHUNK_COUNT_W'(step);
+end
+{body}
+assign expected_sum={{1'b0,ch_q}}+17'(chunk_count);
+assign equivalent=int'(chunk_count)>LANES || channel_position_sum==expected_sum;
+endmodule
+'''
+
+
+def tile_group_unit(source: str, size: int) -> str:
+    first = source.index('  for (genvar source = 0; source < 2; source++) begin : g_tile_group_range')
+    last = source.index('  assign incoming_tap_wrap =', first)
+    body = source[first:last].replace('c.group_c', 'group_c')
+    return f'''module comparison #(
+parameter int SIZE={size},TILE_COUNT_W=$clog2(SIZE+1),RW=TILE_COUNT_W
+)(
+input logic[15:0] group_c,ch0_q,window_next_ch,
+input logic[RW-1:0] tile_cols,
+output logic equivalent
+);
+logic[16:0] window_group_remaining_q,initial_group_remaining,columns;
+logic[1:0] incoming_tile_group_fits,expected;
+assign window_group_remaining_q={{1'b0,group_c}}-{{1'b0,window_next_ch}};
+assign initial_group_remaining={{1'b0,group_c}}-{{1'b0,ch0_q}};
+assign columns=tile_cols=='0?17'(SIZE):17'(tile_cols);
+{body}
+assign expected[0]={{1'b0,window_next_ch}}+columns<={{1'b0,group_c}};
+assign expected[1]={{1'b0,ch0_q}}+columns<={{1'b0,group_c}};
+assign equivalent=incoming_tile_group_fits==expected;
+endmodule
+'''
+
+
 def guard_unit(source: str, lanes: int, contiguous: bool, narrow_lanes: int) -> str:
     first = source.index('        for (genvar lane = 0; lane < LANES; lane++) begin : g_transfer_lane')
-    last = source.index('        assign remaining =', first)
+    last = source.index('        borrow_select_subtract #', first) if '        borrow_select_subtract #' in source[first:] else source.index('        assign remaining =', first)
     transfer = source[first:last]
     first = source.index('  assign chunk_selected[0]')
     following = ('  logic incoming_request', '  if (CHUNK_COUNT_W + 1 < 32)')
@@ -123,7 +228,7 @@ input logic [LANES:0] active_lane_allowed_q,column_lane_allowed_q,
 input logic narrow_output,word_output_q,past_active_q,input_s16,
 output logic actual_end,expected_end,equivalent
 );
-logic [LANES-1:0] chunk_end_s8,chunk_end_s16,chunk_padding_end_s8,chunk_padding_end_s16;
+logic [LANES-1:0] chunk_end_s8,chunk_end_s16,chunk_static_end;
 logic [LANES-1:0] expected_s8,expected_s16,chunk_end_lane;
 logic chunk_reaches_end;
 assign chunk_end_lane='0;
@@ -218,6 +323,15 @@ def main() -> None:
     source_path, source = read_module(root, 'stream')
     rows = []
     cases = [(f'lanes_{lanes}', lanes, unit(source, lanes)) for lanes in range(1, 17)]
+    cases += [(f'direct_range_lanes_{lanes}', lanes, direct_range_unit(source, lanes))
+              for lanes in (1, 4, 8, 16)]
+    cases += [(f'column_range_size_{size}_lanes_{lanes}', lanes, column_range_unit(source, lanes, size))
+              for size in (1, 2, 3, 4, 8, 16, 32, 64, 256)
+              for lanes in (1, 4, 8, 16)]
+    cases += [(f'channel_step_lanes_{lanes}', lanes, channel_step_unit(source, lanes))
+              for lanes in range(1,17)]
+    cases += [(f'tile_group_size_{size}', 0, tile_group_unit(source,size))
+              for size in (1,2,3,4,7,8,16,31,32,256)]
     cases += [(f'guard_lanes_{lanes}_narrow_{narrow_lanes}_contiguous_{int(contiguous)}', lanes,
                guard_unit(source, lanes, contiguous, narrow_lanes))
               for lanes in range(1, 17) for narrow_lanes in sorted({min(4,lanes), min(8,lanes)})
@@ -227,7 +341,12 @@ def main() -> None:
     for name, lanes, text in cases:
         rtl, script, log = [out / (name + ext) for ext in ('.sv', '.ys', '.log')]
         rtl.write_text(text)
-        script.write_text(f'read_slang --top comparison {shlex.quote(str(rtl))}\n'
+        script.write_text(f'read_slang --top comparison '
+                          f'{shlex.quote(str(root / "rtl/common/add_equal.sv"))} '
+                          f'{shlex.quote(str(root / "rtl/common/borrow_select_subtract.sv"))} '
+                          f'{shlex.quote(str(root / "rtl/common/increment_equal.sv"))} '
+                          f'{shlex.quote(str(root / "rtl/npu/conv/conv_channel_range_compare.sv"))} '
+                          f'{shlex.quote(str(rtl))}\n'
                           'prep -top comparison -flatten\n'
                           'sat -verify -prove equivalent 1 -show-inputs -show-outputs\n')
         with log.open('w') as stream:
@@ -242,9 +361,13 @@ def main() -> None:
         print('FRONTEND_GROUP_FEEDBACK_PASS', name, flush=True)
     (out / 'summary.json').write_text(json.dumps({
         'passed': True,
-        'scope': 'All 16-bit group and channel values; transfer count from zero through LANES',
+        'scope': 'All 16-bit group and channel values; transfer count from zero through LANES; '
+                 'all active and column counts for the tested tile widths',
         'channel_arithmetic': '16-bit wrapping increment followed by a 17-bit wrapping subtraction',
-        'source_sha256': digest(source_path), 'cases': rows,
+        'source_sha256': digest(source_path),
+        'range_compare_sha256': digest(root / 'rtl/npu/conv/conv_channel_range_compare.sv'),
+        'arithmetic_helper_sha256': {name: digest(root / 'rtl/common' / name)
+                                    for name in ('add_equal.sv', 'borrow_select_subtract.sv', 'increment_equal.sv')}, 'cases': rows,
         'row_four_state': four_state(source, out),
     }, indent=2) + '\n')
 

@@ -49,6 +49,7 @@ def context_monitor():
   integer audit_live_count=0, audit_prefetch_count=0, audit_forward_count=0;
   integer audit_forward_hits=0, audit_stall_count=0, audit_saved_word_hits=0;
   integer audit_first_cycle_accepts=0, audit_idle_input_changes=0;
+  integer audit_preview_fallback_checks=0;
   logic audit_previous_offer=0;
   logic [63:0] audit_previous_descriptor=0;
 
@@ -82,6 +83,14 @@ def context_monitor():
         32'(DUT.rows_q), 32'(DUT.cols_q), DUT.request_addr_q,
         DUT.request_index_q, DUT.request_epoch_q, DUT.request_index_valid_q};
     if (rst_n) begin
+      // 当前快照尚不可消费时，生产前端等待响应，保持下一请求无效。
+      if (DUT.u_cache.g_window.u_window.preview_active &&
+          DUT.u_cache.g_window.u_window.accepted_request &&
+          !DUT.u_cache.g_window.u_window.req_fire) begin
+        audit_preview_fallback_checks++;
+        assert(!DUT.cache_req_valid)
+          else $fatal(1,"Next request offered while the prepared request enters the cache queue");
+      end
       if (DUT.cache_req_valid && DUT.cache_req_ready) begin
         audit_request_captures++;
         if (DUT.incoming_context) audit_incoming_captures++;
@@ -134,6 +143,7 @@ def context_monitor():
       audit_stall_count, audit_saved_word_hits);
   final $display("CONTINUOUS_ADMISSION first_cycle=%0d idle_changes=%0d",
       audit_first_cycle_accepts,audit_idle_input_changes);
+  final $display("CONTINUOUS_PREVIEW fallback_checks=%0d",audit_preview_fallback_checks);
 '''.replace("DUT.", "g_direct.dut.")
 
 
@@ -143,6 +153,8 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--verilator", default=shutil.which("verilator") or "verilator")
     parser.add_argument("--lanes", type=int, choices=(8, 16), nargs="+", default=[8, 16])
+    parser.add_argument("--cache-sets", type=int, choices=tuple(1 << n for n in range(1, 9)),
+                        help="Override cache sets; defaults are 16 for 8 lanes and 64 for 16 lanes")
     parser.add_argument("--windows", type=int, choices=(0, 1), nargs="+", default=[1])
     parser.add_argument("--jobs", type=int, default=2)
     parser.add_argument("--changing-idle-inputs", action="store_true",
@@ -215,7 +227,7 @@ def main():
     source_hashes = fingerprints(inputs)
     rows = []
     for lanes in dict.fromkeys(args.lanes):
-        sets = 16 if lanes == 8 else 64
+        sets = args.cache_sets if args.cache_sets is not None else (16 if lanes == 8 else 64)
         for window in dict.fromkeys(args.windows):
             case = out / f"lanes{lanes}_window{window}"
             case.mkdir(exist_ok=True)
@@ -252,7 +264,8 @@ def main():
                 r"prefetch=(\d+) forward=(\d+) forward_hits=(\d+) stalls=(\d+) saved_word_hits=(\d+)",
                 result)
             admission = re.search(r"CONTINUOUS_ADMISSION first_cycle=(\d+) idle_changes=(\d+)", result)
-            if numerical is None or continuous_result is None or context is None or admission is None:
+            preview = re.search(r"CONTINUOUS_PREVIEW fallback_checks=(\d+)", result)
+            if any(value is None for value in (numerical, continuous_result, context, admission, preview)):
                 raise RuntimeError(f"Incomplete numerical or context checks: {case / 'run.log'}")
             if int(numerical[1]) != expected_jobs:
                 raise RuntimeError("The simulator did not complete every numerical job")
@@ -268,10 +281,12 @@ def main():
                     "response_forward_hits")):
                 raise RuntimeError("Window request and response forwarding checks were not exercised")
             rows.append({"passed": True, "lanes": lanes, "cache_sets": sets, "line_bytes": 128,
+                         "cache_ways": 2, "cache_bytes": sets * 2 * 128,
                          "windowed_prefetch": bool(window), "jobs": int(numerical[1]),
                          "cycles": int(numerical[2]), "request_metadata_bits": 147,
                          "prefetch_context_bits": 407, **counts,
                          "first_cycle_accepts": int(admission[1]), "idle_input_changes": int(admission[2]),
+                         "preview_fallback_checks": int(preview[1]),
                          **dict(zip(("blocked_offers", "concurrent_offers", "finish_captures",
                                      "commit_captures", "descriptor_capacity"),
                                     map(int, continuous_result.groups()))),

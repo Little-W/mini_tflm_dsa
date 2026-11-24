@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""比较缓存职责拆分和预测器流水数组整理前后的完整状态及输出。"""
+"""逐周期比较缓存和预测器的完整状态、存储内容及公开输出。"""
 from __future__ import annotations
 
 import argparse
@@ -27,6 +27,8 @@ PROFILES = {
                    'READ_WIDTH': 64, 'DEMAND_DEPTH': 2, 'p_defer_retire_shift': 1},
     'production_read128': {'SETS': 16, 'WAYS': 2, 'LINE_BYTES': 128, 'BUS_WIDTH': 64,
                            'READ_WIDTH': 128, 'DEMAND_DEPTH': 2, 'p_defer_retire_shift': 1},
+    'production_direct': {'SETS': 16, 'WAYS': 2, 'LINE_BYTES': 128, 'BUS_WIDTH': 64,
+                          'READ_WIDTH': 128, 'DEMAND_DEPTH': 1, 'p_defer_retire_shift': 1},
 }
 ARRAYS = {
     **{f'tap_s{i}': (f'tap_pipe[{i}]', 5) for i in range(2)},
@@ -39,6 +41,19 @@ ARRAYS = {
 
 def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def response_qualification_reference(source: str) -> str:
+    """为缓存参考接口补充成功、错误响应的规范布尔表达式。"""
+    if re.search(r'output\s+logic\s+rsp_success\b', source):
+        return source
+    port = re.search(r'output\s+logic\s+rsp_error\s*,', source)
+    if port is None:
+        raise ValueError('缓存参考接口缺少 rsp_error 输出')
+    source = source[:port.end()] + '\n  output logic rsp_success, rsp_failure,' + source[port.end():]
+    return source.replace('endmodule',
+        '  assign rsp_success = rsp_valid && !rsp_error;\n'
+        '  assign rsp_failure = rsp_valid && rsp_error;\nendmodule', 1)
 
 
 def worker(script: Path, log: Path) -> str:
@@ -57,11 +72,24 @@ def canonicalize(path: Path, top: str) -> dict:
     design = json.loads(path.read_text())
     module = design['modules'][top]
     counts = {}
+    public_ports = set(module['ports'])
+    unused_aliases = 0
+    metadata_input_aliases = 0
     for section in ('cells', 'netnames'):
         values = {}
         changed = 0
         for name, value in module[section].items():
+            # 未使用的内部别名可以被综合删除；公开输出和实际存储状态继续完整比较。
+            if section == 'netnames' and name not in public_ports and any(
+                    bit in ('x', 'z') for bit in value['bits'] if isinstance(bit, str)):
+                unused_aliases += 1
+                continue
             target = re.sub(r'(g_metadata_way\[\d+\]\.)u_metadata\.', r'\1', name)
+            # 逐路命中资格允许在调用端合并；实际写入控制、存储状态和公开输出仍完整比较。
+            if section == 'netnames' and re.fullmatch(
+                    r'g_metadata_way\[\d+\]\.(i_metadata_hit|i_hit_selected)', target):
+                metadata_input_aliases += 1
+                continue
             if target in values:
                 raise ValueError(f'比较名称重复：{target}')
             values[target] = value
@@ -69,6 +97,8 @@ def canonicalize(path: Path, top: str) -> dict:
         module[section] = values
         counts[section] = changed
     path.write_text(json.dumps(design, separators=(',', ':')) + '\n')
+    counts['unused_aliases'] = unused_aliases
+    counts['metadata_input_aliases'] = metadata_input_aliases
     counts['state_bits'] = sum(len(cell['connections'].get('Q', []))
         for cell in module['cells'].values() if cell['type'].startswith(('$dff', '$adff', '$sdff')))
     return counts
@@ -95,6 +125,10 @@ def main() -> None:
     parser.add_argument('--units', nargs='+', choices=('cache', 'predictor'), default=('cache', 'predictor'))
     parser.add_argument('--cases', nargs='+', choices=tuple(PROFILES), default=tuple(PROFILES))
     parser.add_argument('--configurations', nargs='+', choices=('fpga', 'asic'), default=('fpga', 'asic'))
+    parser.add_argument('--allow-state-count-change', action='store_true',
+                        help='允许寄存器数量改变，仍证明全部对应状态和公开输出等价')
+    parser.add_argument('--preview-request', action='store_true',
+                        help='在缓存比较中启用请求预读接口')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -110,11 +144,20 @@ def main() -> None:
         names = args.cases if unit == 'cache' else ('pipeline_arrays',)
         for configuration in args.configurations:
             for name in names:
+                parameters = dict(profiles[name])
+                if unit == 'cache' and args.preview_request:
+                    parameters['p_preview_request'] = 1
                 folder = out / f'{unit}_{configuration}_{name}'
                 folder.mkdir(exist_ok=True)
                 records, paths, source_hashes = {}, {}, {}
                 for label, root in roots.items():
                     main_source = root / relative
+                    original_source = main_source
+                    if unit == 'cache' and label == 'reference' and re.search(
+                            r'output\s+logic\s+rsp_success\b', (roots['current']/CACHE).read_text()):
+                        text = response_qualification_reference(main_source.read_text())
+                        main_source = folder / 'reference_cache.sv'
+                        main_source.write_text(text)
                     if unit == 'predictor' and label == 'current':
                         text = main_source.read_text()
                         aliases = '\n'.join(f'  (* keep *) wire [{width-1}:0] {old} = {new};'
@@ -123,11 +166,12 @@ def main() -> None:
                         main_source.write_text(text.replace('endmodule', aliases + '\nendmodule'))
                     files = with_dependencies([main_source], root)
                     source_hashes[label] = {str(path): digest(path) for path in files}
+                    source_hashes[label][str(original_source)] = digest(original_source)
                     model = folder / (label + '.json')
                     paths[label] = model
                     options = ['-DSYNTHESIS=1', '-DXILINX_FPGA=1' if configuration == 'fpga'
                                else '-DASIC_SYNTHESIS=1']
-                    options += [f'-G{key}={value}' for key, value in profiles[name].items()]
+                    options += [f'-G{key}={value}' for key, value in parameters.items()]
                     script = folder / (label + '_prepare.ys')
                     script.write_text(f'read_slang --top {top} ' +
                         shlex.join(options + list(map(str, files))) +
@@ -135,7 +179,8 @@ def main() -> None:
                         f'write_json {shlex.quote(str(model))}\n')
                     worker(script, folder / (label + '_prepare.log'))
                     records[label] = canonicalize(model, top)
-                if records['reference']['state_bits'] != records['current']['state_bits']:
+                if not args.allow_state_count_change and \
+                        records['reference']['state_bits'] != records['current']['state_bits']:
                     raise ValueError(f'寄存状态数量不同：{records}')
 
                 commands = []
@@ -153,7 +198,7 @@ def main() -> None:
                 if not match or 'Equivalence successfully proven' not in text:
                     raise RuntimeError(f'完整等价结果缺失：{log}')
                 row = {'unit': unit, 'configuration': configuration, 'name': name,
-                       'parameters': profiles[name], 'passed': True,
+                       'parameters': parameters, 'passed': True,
                        'equivalent_bits': int(match[1]), 'canonical_names': records,
                        'source_sha256': source_hashes, 'log_sha256': digest(log),
                        'models': [archive(path) for path in paths.values()]}

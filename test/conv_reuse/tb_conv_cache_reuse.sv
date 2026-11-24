@@ -19,6 +19,8 @@ module tb_conv_cache_reuse;
     logic hint_pending,prefetch_ready;
     logic [31:0] stat_prefetch_lines,stat_prefetch_used,stat_prefetch_wasted,stat_prefetch_unused,stat_prefetch_bytes,stat_prefetch_late;
     conv_read_cache #(.SETS(2),.WAYS(2),.LINE_BYTES(16),.CACHE_POLICY(0)) dut(
+        .preview_valid(1'b0),.preview_addr(32'd0),.preview_index_valid(1'b0),.preview_index(32'd0),
+        .rsp_success(),.rsp_failure(),
         .cfg_geometry(1'b0),.req_geometry(1'b0),.req_event_first(1'b0),
         .hint_valid(1'b0),.hint_next(32'hffffffff),.hint_pending,.cfg_windowed(1'b0),.cfg_prefetch_enable(1'b0),
         .req_window_index_valid(1'b0),.req_window_index(0),.req_window_epoch(0),
