@@ -324,22 +324,23 @@ module axi_dual_block_dma #(
             end
             if (accept_read) begin
                 command_im2col <= rd_im2col;
-                if (rd_im2col) begin
-                    conv_wide <= rd_wide_im2col && DATA_LANES >= WINDOW_LANES;
-                    conv_tag_q <= rd_tag;
-                    conv_active <= 1'b1;
-                    p0_q <= rd_p0; q0_q <= rd_q0; group_q <= rd_group;
-                    rows_q <= CONV_RW'(rd_rows_to_read); slot_q <= rd_slot_id;
-                    cols_q <= (rd_valid_cols > 0 && rd_valid_cols <= REG_WIDTH'(IM2COL_SIZE)) ?
-                              CONV_RW'(rd_valid_cols) : CONV_RW'(IM2COL_SIZE);
-                    if (!CONV_SUPPORTED || !job_conv || fe_error ||
-                        rd_rows_to_read == 0 || rd_rows_to_read > REG_WIDTH'(IM2COL_SIZE)) begin
-                        conv_pending <= 1'b0; conv_finished <= 1'b1;
-                        conv_command_error <= 1'b1; descriptor_error <= 1'b1;
-                    end else begin
-                        conv_pending <= 1'b1; conv_finished <= 1'b0;
-                        conv_command_error <= 1'b0;
-                    end
+            end
+            // 图像描述符由本类请求的接收条件直接更新。
+            if (accept_image) begin
+                conv_wide <= rd_wide_im2col && DATA_LANES >= WINDOW_LANES;
+                conv_tag_q <= rd_tag;
+                conv_active <= 1'b1;
+                p0_q <= rd_p0; q0_q <= rd_q0; group_q <= rd_group;
+                rows_q <= CONV_RW'(rd_rows_to_read); slot_q <= rd_slot_id;
+                cols_q <= (rd_valid_cols > 0 && rd_valid_cols <= REG_WIDTH'(IM2COL_SIZE)) ?
+                          CONV_RW'(rd_valid_cols) : CONV_RW'(IM2COL_SIZE);
+                if (!CONV_SUPPORTED || !job_conv || fe_error ||
+                    rd_rows_to_read == 0 || rd_rows_to_read > REG_WIDTH'(IM2COL_SIZE)) begin
+                    conv_pending <= 1'b0; conv_finished <= 1'b1;
+                    conv_command_error <= 1'b1; descriptor_error <= 1'b1;
+                end else begin
+                    conv_pending <= 1'b1; conv_finished <= 1'b0;
+                    conv_command_error <= 1'b0;
                 end
             end
             if (conv_pending && fe_tile_ready) conv_pending <= 1'b0;

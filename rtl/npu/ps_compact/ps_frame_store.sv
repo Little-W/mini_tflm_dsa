@@ -58,11 +58,15 @@ module ps_frame_store #(
     reg [ROTATION_BITS:0] pool_bank_count_q;
     reg [LENGTH_BITS-1:0] directory_stride_q;
     reg [FRAME_COUNT-1:0] frame_valid;
+    logic frame_empty_q;
+    logic [FRAME_COUNT-1:0] frame_valid_after_complete;
     reg [LENGTH_BITS-1:0] frame_lengths [FRAME_COUNT];
     reg command_present,command_accepted,input_ended,replay_armed,replay_active;
     logic replay_launch_q;
     reg [FRAME_ID_BITS-1:0] frame_id_q;
     reg [LENGTH_BITS-1:0] frame_rows_q,capture_count,commit_count,read_index,replay_index;
+    logic frame_single_row_q, read_remaining_q, replay_complete_q;
+    logic commit_complete_q, commit_next_complete_q;
     localparam int p_capture_width = LENGTH_BITS < 32 ? LENGTH_BITS + 1 : LENGTH_BITS;
     logic [p_capture_width-1:0] capture_end_i_a, capture_end_i_b, capture_end_i_target;
     logic capture_end_i_carry_in, capture_end_o_equal;
@@ -74,7 +78,7 @@ module ps_frame_store #(
     wire configuration_valid=cfg_pool_bank_count>=4 && cfg_pool_bank_count<=BANKS &&
         cfg_pool_bank_words>0 && cfg_pool_bank_words<=BANK_DEPTH &&
         cfg_directory_stride>0 && cfg_directory_stride<=MAX_FRAME_ROWS;
-    wire configure_start=cfg_valid && !command_present && frame_valid==0;
+    wire configure_start=cfg_valid && !command_present && frame_empty_q;
     wire clear_metadata=configure_start || configuration_pending;
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
@@ -95,7 +99,6 @@ module ps_frame_store #(
     typedef struct packed {
         logic [FRAME_ID_BITS-1:0] id;
         logic [31:0] rows;
-        logic [31:0] reserve_rows;
         logic init;
         logic final_row;
         logic legal;
@@ -103,6 +106,7 @@ module ps_frame_store #(
     } request_context_t;
     request_context_t request_q;
     logic request_pending_q, pressure_q;
+    logic request_fits_q;
     logic request_released_q;
     wire request_capture = frame_request && configuration_ready &&
         (!command_present || (command_accepted && request_released_q)) &&
@@ -154,46 +158,95 @@ module ps_frame_store #(
                 frame_valid[frame_id] && 32'(frame_lengths[frame_id]) == frame_rows);
         endcase
     end
-    logic [RAW_LINEAR_BITS-3:0] capacity_i_initial_row;
-    logic [31:0] capacity_i_frame_rows, capacity_i_reserve_rows;
-    logic [BANK_ADDR_BITS:0] capacity_i_bank_words;
-    logic [ROTATION_BITS:0] capacity_i_bank_count;
-    logic capacity_o_rows_fit;
-    logic request_fits;
+    localparam int p_pool_words_width = BANK_ADDR_BITS + ROTATION_BITS + 2;
+    localparam int p_capacity_rows_width = (RAW_LINEAR_BITS-2 > p_pool_words_width-2) ?
+        RAW_LINEAR_BITS-2 : p_pool_words_width-2;
+    logic [p_pool_words_width-1:0] configured_pool_words;
+    logic [p_capacity_rows_width-1:0] configured_pool_rows;
+    logic [p_capacity_rows_width:0] frame_available_rows_q [FRAME_COUNT];
+    logic [FRAME_COUNT-1:0] frame_capacity_match;
+    logic incoming_rows_bounded;
+    logic incoming_request_fits;
 
-    // 起始位置按四个存储字对齐，容量判断使用完整行数并保留大输入检查。
-    assign capacity_i_initial_row = initial_linear[RAW_LINEAR_BITS-1:2];
-    assign capacity_i_frame_rows = request_q.rows;
-    assign capacity_i_reserve_rows = request_q.reserve_rows;
-    assign capacity_i_bank_words = pool_bank_words_q;
-    assign capacity_i_bank_count = pool_bank_count_q;
+    assign configured_pool_words = p_pool_words_width'((BANK_ADDR_BITS+1)'(cfg_pool_bank_words)) *
+        p_pool_words_width'((ROTATION_BITS+1)'(cfg_pool_bank_count));
+    assign configured_pool_rows = p_capacity_rows_width'(configured_pool_words >> 2);
+    if (p_capacity_rows_width < 32) begin : g_capacity_rows_bounded
+        assign incoming_rows_bounded = !(|frame_rows[31:p_capacity_rows_width]) &&
+            !(|frame_reserve_rows[31:p_capacity_rows_width]);
+    end else begin : g_capacity_rows_full
+        assign incoming_rows_bounded = 1'b1;
+    end
 
-    ps_frame_store_capacity #(
-        .p_initial_row_width(RAW_LINEAR_BITS-2),
-        .p_bank_words_width(BANK_ADDR_BITS+1),
-        .p_bank_count_width(ROTATION_BITS+1)
-    ) u_capacity (
-        .i_initial_row(capacity_i_initial_row),
-        .i_frame_rows(capacity_i_frame_rows),
-        .i_reserve_rows(capacity_i_reserve_rows),
-        .i_bank_words(capacity_i_bank_words),
-        .i_bank_count(capacity_i_bank_count),
-        .o_rows_fit(capacity_o_rows_fit)
-    );
-    assign request_fits = (request_q.init && request_q.final_row) || capacity_o_rows_fit;
+    // 配置阶段保存各帧的剩余行数，请求接收周期只比较行数上限。
+    for (genvar frame = 0; frame < FRAME_COUNT; frame++) begin : g_frame_capacity
+        logic [RAW_LINEAR_BITS-3:0] configured_initial_row;
+        logic [p_capacity_rows_width:0] available_rows;
+        logic unused_capacity_carry;
+        logic [RAW_LINEAR_BITS-3:0] offset_sum [FRAME_ID_BITS+1];
+        logic [RAW_LINEAR_BITS-3:0] offset_carry [FRAME_ID_BITS+1];
+        logic unused_initial_carry;
+        // 固定帧编号展开为移位项，先压缩部分和，再完成一次进位计算。
+        assign offset_sum[0] = '0;
+        assign offset_carry[0] = '0;
+        for (genvar bit_index = 0; bit_index < FRAME_ID_BITS; bit_index++) begin : g_offset_term
+            if (((frame >> bit_index) & 1) != 0) begin : g_active
+                logic [RAW_LINEAR_BITS-3:0] shifted_stride;
+                assign shifted_stride = (RAW_LINEAR_BITS-2)'(LENGTH_BITS'(cfg_directory_stride)) << bit_index;
+                assign offset_sum[bit_index+1] = offset_sum[bit_index] ^ offset_carry[bit_index] ^ shifted_stride;
+                assign offset_carry[bit_index+1] = ((offset_sum[bit_index] & offset_carry[bit_index]) |
+                    ((offset_sum[bit_index] | offset_carry[bit_index]) & shifted_stride)) << 1;
+            end else begin : g_zero
+                assign offset_sum[bit_index+1] = offset_sum[bit_index];
+                assign offset_carry[bit_index+1] = offset_carry[bit_index];
+            end
+        end
+        parallel_prefix_add #(
+            .p_width(RAW_LINEAR_BITS-2), .p_group_width(1), .p_preserve_groups(1'b0)
+        ) u_initial_row (
+            .i_a(offset_sum[FRAME_ID_BITS]), .i_b(offset_carry[FRAME_ID_BITS]), .i_carry(1'b0),
+            .o_sum(configured_initial_row), .o_carry(unused_initial_carry)
+        );
+        parallel_prefix_add #(
+            .p_width(p_capacity_rows_width+1), .p_group_width(1), .p_preserve_groups(1'b0)
+        ) u_available_rows (
+            .i_a({1'b0, configured_pool_rows}),
+            .i_b(~(p_capacity_rows_width+1)'(configured_initial_row)), .i_carry(1'b1),
+            .o_sum(available_rows), .o_carry(unused_capacity_carry)
+        );
+        always_ff @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+                frame_available_rows_q[frame] <= (p_capacity_rows_width+1)'(
+                    (EXTERNAL_RAM == 0 ? BANK_DEPTH : 0) - frame * MAX_FRAME_ROWS);
+            end else if (configuration_pending && !configure_start) begin
+                frame_available_rows_q[frame] <= available_rows;
+            end
+        end
+        assign frame_capacity_match[frame] = incoming_rows_bounded &&
+            !frame_available_rows_q[frame][p_capacity_rows_width] &&
+            p_capacity_rows_width'(frame_rows) <= frame_available_rows_q[frame][p_capacity_rows_width-1:0] &&
+            p_capacity_rows_width'(frame_reserve_rows) <= frame_available_rows_q[frame][p_capacity_rows_width-1:0];
+    end
+    assign incoming_request_fits = (frame_init && frame_final) || frame_capacity_match[frame_id];
     wire complete_now;
+    always_comb begin
+        frame_valid_after_complete = frame_valid;
+        frame_valid_after_complete[frame_id_q] = !frame_final_q;
+    end
     wire prepare_start = frame_request && configuration_ready && request_pending_q &&
-        (!command_present || complete_now) && request_q.legal && request_fits && !capacity_fault;
+        (!command_present || complete_now) && request_q.legal && request_fits_q && !capacity_fault;
     assign frame_pressure = pressure_q && frame_request && !capacity_fault;
 
-    // 帧描述和起始位置先寄存，容量判断与地址计算分别从寄存结果开始。
+    // 帧描述、容量资格和起始地址在同一接收边沿保存。
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             request_pending_q <= 1'b0;
+            request_fits_q <= 1'b0;
             pressure_q <= 1'b0;
             request_released_q <= 1'b0;
         end else if (clear_metadata || cancel_prepared) begin
             request_pending_q <= 1'b0;
+            request_fits_q <= 1'b0;
             pressure_q <= 1'b0;
             request_released_q <= 1'b0;
         end else begin
@@ -201,7 +254,7 @@ module ps_frame_store #(
             if (request_capture) begin
                 request_q.id <= frame_id;
                 request_q.rows <= frame_rows;
-                request_q.reserve_rows <= frame_reserve_rows;
+                request_fits_q <= incoming_request_fits;
                 request_q.init <= frame_init;
                 request_q.final_row <= frame_final;
                 request_q.legal <= request_valid;
@@ -210,7 +263,7 @@ module ps_frame_store #(
                 request_pending_q <= 1'b1;
             end
             if (request_pending_q) begin
-                pressure_q <= frame_request && request_q.legal && !request_fits && !capacity_fault;
+                pressure_q <= frame_request && request_q.legal && !request_fits_q && !capacity_fault;
             end
             if (prepare_start) begin
                 request_pending_q <= 1'b0;
@@ -271,6 +324,28 @@ module ps_frame_store #(
     end
     reg [511:0] encode_commit_packet;
     wire encode_commit_valid=encoder_done && !capacity_fault;
+    wire last_commit_now = encode_commit_valid && commit_next_complete_q;
+    logic commit_following_equal;
+    add_equal #(.p_width(LENGTH_BITS)) u_commit_following (
+        .i_a(commit_count), .i_b(LENGTH_BITS'(2)), .i_target(frame_rows_q),
+        .i_carry_in(1'b0), .o_equal(commit_following_equal)
+    );
+    // 提交计数更新时保存本行和下一行的结束条件，帧交接使用保存的状态。
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            commit_complete_q <= 1'b1;
+            commit_next_complete_q <= 1'b0;
+        end else if (clear_metadata || cancel_prepared) begin
+            commit_complete_q <= frame_rows_q == LENGTH_BITS'(0);
+            commit_next_complete_q <= frame_rows_q == LENGTH_BITS'(1);
+        end else if (prepare_start) begin
+            commit_complete_q <= LENGTH_BITS'(request_q.rows) == LENGTH_BITS'(0);
+            commit_next_complete_q <= LENGTH_BITS'(request_q.rows) == LENGTH_BITS'(1);
+        end else if (encode_commit_valid) begin
+            commit_complete_q <= commit_next_complete_q;
+            commit_next_complete_q <= commit_following_equal;
+        end
+    end
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin encoder_done<=0;encode_commit_packet<=0;end
         else begin
@@ -284,15 +359,28 @@ module ps_frame_store #(
     logic [511:0] decoded_i_wr_data, replay_row_data;
     reg [FIFO_PTR_BITS:0] decoded_count,decoder_inflight;
     // 单行更新提交后才读取同一帧，避免同步 RAM 同拍读写同址。
-    wire prepare_read_conflict = last_commit_now && request_q.id == frame_id_q && frame_rows_q == LENGTH_BITS'(1);
+    wire prepare_read_conflict = last_commit_now && request_q.id == frame_id_q && frame_single_row_q;
     wire prefetch_prepare = prepare_start && !request_q.init && !prepare_read_conflict;
-    wire prefetch_fire=prefetch_prepare || (command_present && !frame_init_q && read_index<frame_rows_q &&
+    wire prefetch_fire=prefetch_prepare || (command_present && !frame_init_q && read_remaining_q &&
         32'(decoded_count)+32'(decoder_inflight)<PREFETCH_CREDITS && !capacity_fault && !clear_metadata && !cancel_prepared);
     wire [p_cursor_bits-1:0] read_issue_cursor = prefetch_prepare ? p_cursor_bits'(initial_row) : read_cursor;
+    // 首行与后续行的地址提前形成，实际读取由预取使能控制。
+    wire memory_address_prepare = request_pending_q &&
+        (!command_present || frame_init_q || replay_complete_q);
+    wire [p_cursor_bits-1:0] memory_read_cursor = memory_address_prepare ?
+        p_cursor_bits'(initial_row) : read_cursor;
     wire [ROTATION_BITS-1:0] read_issue_rotation = prefetch_prepare ? ROTATION_BITS'(initial_bank) : read_rotation;
     wire read_issue_wrap = 32'(read_issue_rotation) + 32'd4 >= 32'(pool_bank_count_q);
-    wire [p_cursor_bits-1:0] read_next_cursor = read_issue_cursor +
-        p_cursor_bits'((EXTERNAL_RAM != 0 && p_fixed_ps_channels) || read_issue_wrap);
+    logic [p_cursor_bits-1:0] read_next_cursor;
+    if (EXTERNAL_RAM != 0 && p_fixed_ps_channels) begin : g_fixed_cursor_advance
+        logic [p_cursor_bits-1:0] current_next_cursor, initial_next_cursor;
+        logic unused_current_carry, unused_initial_carry;
+        assign {unused_current_carry, current_next_cursor} = {1'b0, read_cursor} + (p_cursor_bits+1)'(1);
+        assign {unused_initial_carry, initial_next_cursor} = (p_cursor_bits+1)'(initial_row) + (p_cursor_bits+1)'(1);
+        assign read_next_cursor = prefetch_prepare ? initial_next_cursor : current_next_cursor;
+    end else begin : g_rotating_cursor_advance
+        assign read_next_cursor = read_issue_cursor + p_cursor_bits'(read_issue_wrap);
+    end
     wire [ROTATION_BITS-1:0] read_next_rotation = (EXTERNAL_RAM != 0 && p_fixed_ps_channels) ? '0 :
         ROTATION_BITS'(32'(read_issue_rotation) + 32'd4 - (read_issue_wrap ? 32'(pool_bank_count_q) : 32'd0));
     wire [BANKS-1:0] payload_ram_read_en,payload_ram_write_en;
@@ -307,7 +395,8 @@ module ps_frame_store #(
         wire [ROTATION_BITS-1:0] wb=ROTATION_BITS'(wwrap ? 32'(wsum)-32'(pool_bank_count_q) : 32'(wsum));
         assign ram_read_en[word]=prefetch_fire;
         assign ram_write_en[word]=encode_commit_valid;
-        assign ram_read_addr[word] = EXTERNAL_RAM != 0 && !p_fixed_ps_channels ?
+        assign ram_read_addr[word] = EXTERNAL_RAM != 0 && p_fixed_ps_channels ?
+            RAM_ADDR_BITS'(memory_read_cursor) : EXTERNAL_RAM != 0 ?
             RAM_ADDR_BITS'({rb,BANK_ADDR_BITS'(read_issue_cursor+rwrap)}) : RAM_ADDR_BITS'(read_issue_cursor);
         assign ram_write_addr[word] = EXTERNAL_RAM != 0 && !p_fixed_ps_channels ?
             RAM_ADDR_BITS'({wb,BANK_ADDR_BITS'(write_cursor+wwrap)}) : RAM_ADDR_BITS'(write_cursor);
@@ -360,11 +449,10 @@ module ps_frame_store #(
     assign frame_ready=frame_request && !capacity_fault &&
         ((command_present && !command_accepted && (frame_init_q || read_index!=0)) ||
          (prepare_start && (request_q.init || prefetch_prepare)));
-    wire last_commit_now = encode_commit_valid && commit_count + LENGTH_BITS'(1) == frame_rows_q;
     assign complete_now=command_present && command_accepted && input_ended && !capacity_fault &&
         !replay_armed && !replay_active && !replay_launch_q && (!encoder_done || last_commit_now) && !ram_read_valid && !decoder_done &&
-        decoded_count==0 && decoder_inflight==0 && (frame_final_q || commit_count==frame_rows_q || last_commit_now) &&
-        (frame_init_q || replay_index==frame_rows_q);
+        decoded_count==0 && decoder_inflight==0 && (frame_final_q || commit_complete_q || last_commit_now) &&
+        (frame_init_q || replay_complete_q);
     // 存储返回行直接写入队列，完成指示仍经过原有控制流水级。
     // 重放接收边沿同步读取下一行，读取结果与 replay_valid 在同一周期输出。
     // 预取最多占用深度减一行，连续读取与写入使用不同物理位置。
@@ -382,19 +470,39 @@ module ps_frame_store #(
         .i_wr_data(decoded_i_wr_data), .i_wr_mask(decoded_i_wr_mask),
         .i_rd_en(decoded_i_rd_en), .i_rd_addr(decoded_i_rd_addr), .o_rd_data(replay_row_data)
     );
+    // 行数条件与各计数器同时更新，控制端直接读取已保存的结果。
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            replay_complete_q <= 1'b1;
+            read_remaining_q <= 1'b0;
+        end else if (clear_metadata || cancel_prepared) begin
+            replay_complete_q <= frame_rows_q == LENGTH_BITS'(0);
+            read_remaining_q <= LENGTH_BITS'(0) < frame_rows_q;
+        end else if (prepare_start) begin
+            replay_complete_q <= LENGTH_BITS'(request_q.rows) == LENGTH_BITS'(0);
+            read_remaining_q <= LENGTH_BITS'(prefetch_prepare) < LENGTH_BITS'(request_q.rows);
+        end else begin
+            if (replay_active && replay_consume) begin
+                replay_complete_q <= LENGTH_BITS'(replay_index + LENGTH_BITS'(1)) == frame_rows_q;
+            end
+            if (prefetch_fire) begin
+                read_remaining_q <= LENGTH_BITS'(read_index + LENGTH_BITS'(1)) < frame_rows_q;
+            end
+        end
+    end
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
-            capacity_fault<=0;frame_complete<=0;frame_valid<=0;
+            capacity_fault<=0;frame_complete<=0;frame_valid<=0;frame_empty_q<=1;
             command_present<=0;command_accepted<=0;input_ended<=0;replay_armed<=0;replay_active<=0;
             replay_launch_q<=0;
-            frame_id_q<=0;frame_rows_q<=0;frame_init_q<=0;frame_final_q<=0;
+            frame_id_q<=0;frame_rows_q<=0;frame_single_row_q<=0;frame_init_q<=0;frame_final_q<=0;
             capture_count<=0;commit_count<=0;read_index<=0;replay_index<=0;
             read_cursor<=0;write_cursor<=0;read_rotation<=0;write_rotation<=0;
             decoded_count<=0;decoder_inflight<=0;decoded_write_pointer<=0;decoded_read_pointer<=0;replay_valid<=0;
             for(integer f=0;f<FRAME_COUNT;f++)frame_lengths[f]<=0;
         end else if(clear_metadata) begin
             capacity_fault<=configuration_pending && !configuration_valid;
-            frame_complete<=0;frame_valid<=0;command_present<=0;command_accepted<=0;input_ended<=0;
+            frame_complete<=0;frame_valid<=0;frame_empty_q<=1;command_present<=0;command_accepted<=0;input_ended<=0;
             replay_armed<=0;replay_active<=0;capture_count<=0;commit_count<=0;read_index<=0;replay_index<=0;
             replay_launch_q<=0;
             decoded_count<=0;decoder_inflight<=0;decoded_write_pointer<=0;decoded_read_pointer<=0;replay_valid<=0;
@@ -463,11 +571,13 @@ module ps_frame_store #(
             if(complete_now)begin
                 frame_complete<=1;command_present<=0;command_accepted<=0;
                 frame_valid[frame_id_q]<=!frame_final_q;frame_lengths[frame_id_q]<=frame_final_q ? 0 : frame_rows_q;
+                frame_empty_q <= frame_valid_after_complete == '0;
             end
             // 完成拍使用当前写地址，随后命令从自身计数与地址开始。
             if(prepare_start)begin
                 command_present<=1;command_accepted<=frame_accept;input_ended<=0;
                 frame_id_q<=request_q.id;frame_rows_q<=LENGTH_BITS'(request_q.rows);
+                frame_single_row_q <= LENGTH_BITS'(request_q.rows) == LENGTH_BITS'(1);
                 frame_init_q<=request_q.init;frame_final_q<=request_q.final_row;
                 replay_armed<=!request_q.init && !(frame_accept && replay_trigger);replay_active<=0;
                 // 首读与接受同拍时，同拍重放触发延迟到同步读返回后启动。

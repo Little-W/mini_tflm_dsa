@@ -259,6 +259,14 @@ def array_category(origin, name, ancestors, instance_path=""):
 
 
 def register_array_category(origin, name, ancestors=(), instance_path=""):
+    if origin == "ps_frame_store":
+        if name == "frame_available_rows_q":
+            return "ps_capacity_limits"
+        if name in ("request_q", "request_fits_q"):
+            return "ps_request_context"
+        if name in ("frame_empty_q", "frame_single_row_q", "read_remaining_q",
+                    "replay_complete_q", "commit_complete_q", "commit_next_complete_q"):
+            return "ps_completion_flags"
     if origin == "regfile" and name.rsplit(".", 1)[-1] == "mem" and \
             "vec_requant" in ancestors and ".g_ws_bank_write." in instance_path:
         return "requant_ws_parameters"

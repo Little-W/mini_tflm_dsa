@@ -217,10 +217,20 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
 def register_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None,
                          bank_bytes=SHARED_BANK_BYTES, bank_count=None, ia_compact_enable=False):
     """Register groups checked separately within complete sequential state."""
-    memory_geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
-                    bank_bytes=bank_bytes, bank_count=bank_count, ia_compact_enable=ia_compact_enable)
+    layout = memory_geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
+                             bank_bytes=bank_bytes, bank_count=bank_count, ia_compact_enable=ia_compact_enable)
     bits = {"core_row_metadata": 4 * size + 1,
             "requant_ws_parameters": size * (32 + 32 + 32 + 7)}
+    if compressed:
+        linear_width = (frames * layout["max_frame_rows"] * 4).bit_length()
+        bank_width = max(1, (layout["payload_bank_depth"] - 1).bit_length())
+        rotation_width = max(1, (layout["payload_metadata_bank_count"] - 1).bit_length())
+        frame_width = max(1, (frames - 1).bit_length())
+        capacity_width = max(linear_width - 2, bank_width + rotation_width)
+        # 各帧容量上限属于配置寄存器，独立于数据 RAM 及其元数据数组统计。
+        bits["ps_capacity_limits"] = frames * (capacity_width + 1)
+        bits["ps_request_context"] = frame_width + 32 + 3 + linear_width + 1
+        bits["ps_completion_flags"] = 6
     return bits
 
 

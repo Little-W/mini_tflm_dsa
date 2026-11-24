@@ -295,16 +295,12 @@ module axi_linear_block_dma #(
         assign rd_rsp_plain_equal_group[group] = rd_rsp_beat_cnt[p_first +: p_bits] ==
             rd_rsp_plain_last[p_first +: p_bits];
     end
-    (* keep = "true" *) logic [p_read_last_groups-1:0] rd_rsp_zero_group, rd_rsp_one_group;
-    for (genvar group = 0; group < p_read_last_groups; group++) begin : g_read_linear_equal
-        localparam int unsigned p_first = 3 * group;
-        localparam int unsigned p_bits = BEAT_CNT_W - p_first < 3 ? BEAT_CNT_W - p_first : 3;
-        assign rd_rsp_zero_group[group] = rd_rsp_beat_cnt[p_first +: p_bits] == p_bits'(0);
-        assign rd_rsp_one_group[group] = rd_rsp_beat_cnt[p_first +: p_bits] == p_bits'(group == 0);
-    end
     (* keep = "true" *) logic rd_rsp_count_zero, rd_rsp_count_one, rd_rsp_plain_equal;
-    assign rd_rsp_count_zero = &rd_rsp_zero_group;
-    assign rd_rsp_count_one = &rd_rsp_one_group;
+    (* keep = "true" *) logic rd_rsp_high_zero;
+    // 零拍与一拍共用高六位检查，低三位直接参加各自的判断。
+    assign rd_rsp_high_zero = rd_rsp_beat_cnt[BEAT_CNT_W-1:3] == '0;
+    assign rd_rsp_count_zero = rd_rsp_high_zero && rd_rsp_beat_cnt[2:0] == 3'd0;
+    assign rd_rsp_count_one = rd_rsp_high_zero && rd_rsp_beat_cnt[2:0] == 3'd1;
     assign rd_rsp_plain_equal = &rd_rsp_plain_equal_group;
     assign rd_rsp_last_without_cross = rd_head.linear_read ? rd_rsp_count_zero : rd_rsp_plain_equal;
     (* keep = "true" *) logic [p_read_last_groups-1:0] rd_rsp_cross_equal_group;
@@ -331,7 +327,10 @@ module axi_linear_block_dma #(
     // 末拍和末行条件并行准备，地址低位只选择对应的完成结果。
     assign rd_rsp_done = rd_r_hs &&
         (rd_rsp_cross ? rd_rsp_last_with_cross : rd_rsp_last_without_cross);
-    assign rd_finish_beat = rd_rsp_done && rsp_row_equal_o_equal;
+    // 接收与末行判断并行完成，末拍判断只参与最后的完成选择。
+    (* keep = "true" *) wire rd_finish_enable = rd_r_hs && rsp_row_equal_o_equal;
+    assign rd_finish_beat = rd_finish_enable &&
+        (rd_rsp_cross ? rd_rsp_last_with_cross : rd_rsp_last_without_cross);
     (* keep = "true" *) wire rd_issue_all_rows = rd_issue_active &&
         rd_follow_beats == '0 && rd_cmd_row_cnt == rd_cfg_rows;
     wire rd_issue_last_ar = rd_ar_hs && rd_issue_all_rows;
@@ -833,11 +832,17 @@ module axi_linear_block_dma #(
         {wr_data_row_addr_cur[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}}
         + (REG_WIDTH'(wr_beat_cnt) << ADDR_LSB);
     logic [REG_WIDTH-1:0] wr_segment_addr [2];
+    beat_count_t wr_segment_beat_count [2];
+    logic [1:0] wr_segment_cross;
     beat_count_t wr_remaining_last_beat [2];
     beat_count_t wr_selected_last_beat [2];
 
     assign wr_segment_addr[0] = wr_cmd_segment_addr;
     assign wr_segment_addr[1] = wr_data_segment_addr;
+    assign wr_segment_beat_count[0] = wr_cmd_beat_cnt;
+    assign wr_segment_beat_count[1] = wr_beat_cnt;
+    assign wr_segment_cross[0] = wr_cmd_row_offset != '0;
+    assign wr_segment_cross[1] = wr_row_cross;
     assign wr_remaining_last_beat[0] = wr_cfg_burst_len_ext - wr_cmd_beat_cnt +
         beat_count_t'(wr_cmd_row_offset != '0);
     assign wr_remaining_last_beat[1] = wr_cfg_burst_len_ext - wr_beat_cnt + beat_count_t'(wr_row_cross);
@@ -848,6 +853,8 @@ module axi_linear_block_dma #(
         logic remaining_zero;
         logic remaining_within_page;
         logic remaining_within_burst;
+        beat_count_t remaining_candidate [2];
+        beat_count_t selected_candidate [2];
 
         // 总线字边界上的页内地址取反，即为页内可传输的末拍编号。
         assign page_last_beat = ~wr_segment_addr[segment][11:ADDR_LSB];
@@ -857,14 +864,39 @@ module axi_linear_block_dma #(
         assign boundary_last_beat = 13'(page_last_beat) < 13'(MAX_BURST_BEATS-1) ?
             beat_count_t'(page_last_beat) : beat_count_t'(MAX_BURST_BEATS-1);
 
-        // 直接选择末拍编号，并保留零剩余拍数时九位减一的回绕结果。
-        always_comb begin
-            wr_selected_last_beat[segment] = boundary_last_beat;
-            if (remaining_zero) begin
-                wr_selected_last_beat[segment] = '1;
-            end else if (remaining_within_page && remaining_within_burst) begin
-                wr_selected_last_beat[segment] = wr_remaining_last_beat[segment];
+        // Both alignment cases finish their arithmetic and bounds checks before
+        // the byte offset selects the physical burst's final beat number.
+        for (genvar crossing = 0; crossing < 2; crossing++) begin : g_alignment
+            logic candidate_zero, candidate_within_page, candidate_within_burst;
+            assign remaining_candidate[crossing] =
+                (crossing == 0 ? wr_cfg_burst_len_ext : wr_cfg_cross_last) -
+                wr_segment_beat_count[segment];
+            assign candidate_zero = &remaining_candidate[crossing];
+            assign candidate_within_page = 13'(remaining_candidate[crossing]) <= 13'(page_last_beat);
+            assign candidate_within_burst = remaining_candidate[crossing] < beat_count_t'(MAX_BURST_BEATS);
+            always_comb begin
+                selected_candidate[crossing] = boundary_last_beat;
+                if (candidate_zero) begin
+                    selected_candidate[crossing] = '1;
+                end else if (candidate_within_page && candidate_within_burst) begin
+                    selected_candidate[crossing] = remaining_candidate[crossing];
+                end
             end
+        end
+        // The unqualified expression retains the arithmetic X/Z behavior.
+        always_comb begin
+            case (wr_segment_cross[segment])
+                1'b0: wr_selected_last_beat[segment] = selected_candidate[0];
+                1'b1: wr_selected_last_beat[segment] = selected_candidate[1];
+                default: begin
+                    wr_selected_last_beat[segment] = boundary_last_beat;
+                    if (remaining_zero) begin
+                        wr_selected_last_beat[segment] = '1;
+                    end else if (remaining_within_page && remaining_within_burst) begin
+                        wr_selected_last_beat[segment] = wr_remaining_last_beat[segment];
+                    end
+                end
+            endcase
         end
     end
     wire wr_tail_beat = wr_row_cross && wr_cross_row_end;

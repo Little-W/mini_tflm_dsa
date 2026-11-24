@@ -62,8 +62,8 @@ module conv_axi_read_guard #(
     wire direct_mode = SPLIT_GEMM_4K && !enable && state == IDLE;
     wire direct_ar = direct_mode && direct_legal && s_arvalid && m_arready;
     wire direct_last = direct_mode && m_rvalid && s_rready && m_rlast;
-    logic [BUS_BYTES-1:0] allocation_mask [4];
-    logic [3:0] allocation_has_byte;
+    (* keep = 1 *) logic [BUS_BYTES-1:0] allocation_mask [4];
+    (* keep = 1 *) logic [3:0] allocation_has_byte;
     logic allowed_word_has_byte;
     // Accepted AXI words and the internal word cursor are bus aligned.
     // Share the word-address comparisons across every byte in each range.
@@ -74,11 +74,11 @@ module conv_axi_read_guard #(
         wire after_base_word, before_end_word;
         wire at_base_word, at_end_word;
         // 各字节分组并行比较完整字地址，范围选择只组合比较结果。
-        unsigned_compare #(.p_width(p_word_width)) u_base_word (
+        (* keep_hierarchy = "yes" *) unsigned_compare #(.p_width(p_word_width)) u_base_word (
             .i_a({1'b0,base_q[allocation][31:BUS_SHIFT]}),
             .i_b(addr_q[32:BUS_SHIFT]),
             .o_less(after_base_word), .o_equal(at_base_word));
-        unsigned_compare #(.p_width(p_word_width)) u_end_word (
+        (* keep_hierarchy = "yes" *) unsigned_compare #(.p_width(p_word_width)) u_end_word (
             .i_a(addr_q[32:BUS_SHIFT]), .i_b(end_q[allocation][32:BUS_SHIFT]),
             .o_less(before_end_word), .o_equal(at_end_word));
         for (genvar byte_lane=0; byte_lane<BUS_BYTES; byte_lane++) begin : g_byte_lane
