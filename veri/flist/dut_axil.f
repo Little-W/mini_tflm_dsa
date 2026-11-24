@@ -110,6 +110,7 @@
 ../../rtl/common/increment_equal.sv
 ../../rtl/common/onehot_mux.sv
 ../../rtl/common/unsigned_compare.sv
+../../rtl/common/parallel_unsigned_compare.sv
 ../../rtl/common/onehot_check.sv
 ../../rtl/npu/writeback/vec_requant.sv
 ../../rtl/npu/writeback/requant_shift_pipeline.sv

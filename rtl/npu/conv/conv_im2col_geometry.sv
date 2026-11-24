@@ -262,6 +262,8 @@ module conv_im2col_geometry #(
   logic unused_cfg_kernel_col_carry;
   logic [4:0][31:0] movement_i_a;
   logic [4:0][31:0] movement_i_b;
+  logic [4:0][31:0] movement_step_delta, movement_wrap_delta;
+  logic [4:0] movement_wrap_select;
   logic [4:0][31:0] movement_o_sum;
   logic [15:0] stride_shape_i_value;
   logic stride_shape_o_valid;
@@ -585,19 +587,27 @@ module conv_im2col_geometry #(
   assign movement_i_b[2] = o_row_wrap ? 32'(i_row_wrap_pixels) : {16'd0, i_c.stride_w};
   assign movement_i_b[3] = o_tap_wrap ? i_tap_wrap_bytes : i_tap_step_bytes;
   assign movement_i_b[4] = o_tap_wrap ? 32'(i_tap_wrap_pixels) : {16'd0, i_c.dilation_w};
+  assign movement_step_delta = {{16'd0, i_c.dilation_w}, i_tap_step_bytes,
+      {16'd0, i_c.stride_w}, i_row_step_bytes, i_row_step_bytes};
+  assign movement_wrap_delta = {32'(i_tap_wrap_pixels), i_tap_wrap_bytes,
+      32'(i_row_wrap_pixels), i_row_wrap_bytes, i_row_wrap_bytes};
+  assign movement_wrap_select = {{2{o_tap_wrap}}, {3{o_row_wrap}}};
   for (genvar source = 0; source < 5; source++) begin : g_movement_sum
-    logic [31:0] movement_sum;
-    logic unused_movement_carry;
-    // 行边界与卷积核边界共用固定配置步长，分组前缀并行提供完整进位。
-    parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_sum (
-      .i_a(movement_i_a[source]), .i_b(movement_i_b[source]), .i_carry(1'b0),
-      .o_sum(movement_sum), .o_carry(unused_movement_carry)
+    logic [31:0] step_sum, wrap_sum, movement_sum;
+    // 两种固定步长分别完成地址运算，行末和核末条件只选择完整结果。
+    conv_geometry_movement_add u_step (
+      .i_base(movement_i_a[source]), .i_delta(movement_step_delta[source]), .o_sum(step_sum)
     );
+    conv_geometry_movement_add u_wrap (
+      .i_base(movement_i_a[source]), .i_delta(movement_wrap_delta[source]), .o_sum(wrap_sum)
+    );
+    assign movement_sum = movement_wrap_select[source] ? wrap_sum : step_sum;
 `ifdef SYNTHESIS
     assign movement_o_sum[source] = movement_sum;
 `else
     always_comb begin
-      case (^{movement_i_a[source], movement_i_b[source]})
+      case (^{movement_i_a[source], movement_step_delta[source], movement_wrap_delta[source],
+              movement_wrap_select[source]})
         1'b0, 1'b1: movement_o_sum[source] = movement_sum;
         default: movement_o_sum[source] = movement_i_a[source] + movement_i_b[source];
       endcase
@@ -952,11 +962,13 @@ module conv_im2col_geometry #(
 
   // 已保存的位置差与历史列数直接组成行尾等式，逐位比较和坐标求和并行。
   assign p_sum_wrap_i_a = i_last_x;
+  logic history_last_after, history_wrap_after, history_wrap_selected;
+  logic unused_history_last_equal, unused_history_wrap_equal;
   assign p_sum_wrap_i_b = p_history_delta_q[15:0];
   assign unused_p_sum_wrap_carry = 1'b0;
   assign p_sum_wrap_i_target = p_wrap_target_q;
   assign p_sum_wrap_i_carry_in = 1'b0;
-  add_equal #(.p_width(16)) u_p_sum_wrap (
+  (* keep_hierarchy = "yes" *) add_equal #(.p_width(16), .p_preserve_bits(1'b1)) u_p_sum_wrap (
     .i_a(p_sum_wrap_i_a),
     .i_b(p_sum_wrap_i_b),
     .i_target(p_sum_wrap_i_target),
@@ -967,17 +979,30 @@ module conv_im2col_geometry #(
   assign p_sum_last_i_b = p_sum_wrap_i_b;
   assign p_sum_last_i_target = o_last_output_col_q;
   assign p_sum_last_i_carry_in = 1'b0;
-  add_equal #(.p_width(16)) u_p_sum_last (
+  (* keep_hierarchy = "yes" *) add_equal #(.p_width(16), .p_preserve_bits(1'b1)) u_p_sum_last (
     .i_a(p_sum_last_i_a), .i_b(p_sum_last_i_b), .i_target(p_sum_last_i_target),
     .i_carry_in(p_sum_last_i_carry_in), .o_equal(p_sum_last_o_equal)
+  );
+  // 两个边界独立比较，行末表达式只读取已经归并的一位结果。
+  parallel_unsigned_compare #(.p_width(16)) u_history_last_order (
+    .i_a(p_sum_last_i_target), .i_b(i_last_x),
+    .o_less(history_last_after), .o_equal(unused_history_last_equal)
+  );
+  parallel_unsigned_compare #(.p_width(16)) u_history_wrap_order (
+    .i_a(p_sum_wrap_i_target), .i_b(i_last_x),
+    .o_less(history_wrap_after), .o_equal(unused_history_wrap_equal)
+  );
+  conv_history_wrap_select u_history_wrap (
+    .i_width_nonzero(i_c.output_w != 16'd0), .i_sum_last_equal(p_sum_last_o_equal),
+    .i_last_after(history_last_after), .i_sum_wrap_equal(p_sum_wrap_o_equal),
+    .i_last_col_high(o_last_output_col_q[15]), .i_wrap_after(history_wrap_after),
+    .o_wrap(history_wrap_selected)
   );
   always_comb begin
     history_result.valid = history_range_valid;
     history_result.row_advance = history_column_advance;
     history_result.column = history_column_advance ? history_column_reduced : history_column_sum;
-    history_result.wrap = i_c.output_w != 16'd0 &&
-        ((p_sum_last_o_equal && i_last_x <= p_sum_last_i_target) ||
-         (p_sum_wrap_o_equal && (!o_last_output_col_q[15] || i_last_x > p_sum_wrap_i_target)));
+    history_result.wrap = history_wrap_selected;
   end
   if (p_register_descriptor) begin : g_history_prepare
     always_ff @(posedge i_clk) begin
@@ -1382,6 +1407,34 @@ module conv_im2col_geometry #(
   assign o_incoming_req_epoch = o_short_pixel_q ? 32'd0 :
     (incoming_epoch_channel << i_c.input_s16) >> $clog2(p_line_bytes);
 
+endmodule
+
+// 六个已完成的条件直接组成行末结果，保留独立的末级组合边界。
+(* keep_hierarchy = "yes" *)
+module conv_history_wrap_select (
+  input wire logic i_width_nonzero,
+  input wire logic i_sum_last_equal,
+  input wire logic i_last_after,
+  input wire logic i_sum_wrap_equal,
+  input wire logic i_last_col_high,
+  input wire logic i_wrap_after,
+  output logic o_wrap
+);
+  assign o_wrap = i_width_nonzero &&
+      ((i_sum_last_equal && !i_last_after) ||
+       (i_sum_wrap_equal && (!i_last_col_high || i_wrap_after)));
+endmodule
+
+// 每个地址候选独立保留完整进位，候选选择位不进入加法器。
+(* keep_hierarchy = "yes" *)
+module conv_geometry_movement_add (
+  input wire logic [31:0] i_base, i_delta,
+  output logic [31:0] o_sum
+);
+  logic unused_carry;
+  parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_sum (
+    .i_a(i_base), .i_b(i_delta), .i_carry(1'b0), .o_sum(o_sum), .o_carry(unused_carry)
+  );
 endmodule
 
 `default_nettype wire

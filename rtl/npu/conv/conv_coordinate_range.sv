@@ -12,16 +12,57 @@ module conv_coordinate_range #(
   input wire logic i_block_cross,
   output logic o_valid
 );
-  logic lower_equal, upper_equal;
-  logic lower_before, upper_before;
+  localparam int p_high_groups = (p_width - 16 + 2) / 3;
+  (* keep = 1 *) logic [1:0][p_high_groups-1:0] high_group_equal;
+  logic [1:0] high_equal, low_before;
+  logic valid_value;
 
-  assign lower_equal = i_base[p_width-1:16] == i_lower[p_width-1:16];
-  assign upper_equal = i_base[p_width-1:16] == i_upper[p_width-1:16];
-  assign lower_before = i_base[15:0] < i_lower[15:0];
-  assign upper_before = i_base[15:0] < i_upper[15:0];
+  for (genvar bound = 0; bound < 2; bound++) begin : g_bound
+    logic [p_width-1:0] endpoint;
+    assign endpoint = bound == 0 ? i_lower : i_upper;
+    for (genvar group_index = 0; group_index < p_high_groups; group_index++) begin : g_high
+      localparam int p_first = 16 + 3 * group_index;
+      localparam int p_bits = p_width - p_first < 3 ? p_width - p_first : 3;
+      assign high_group_equal[bound][group_index] =
+          i_base[p_first+:p_bits] == endpoint[p_first+:p_bits];
+    end
+    logic unused_low_equal;
+    parallel_unsigned_compare #(.p_width(16)) u_low (
+      .i_a(i_base[15:0]), .i_b(endpoint[15:0]),
+      .o_less(low_before[bound]), .o_equal(unused_low_equal)
+    );
+    assign high_equal[bound] = &high_group_equal[bound];
+  end
+  conv_coordinate_range_result u_result (
+    .i_lower_equal(high_equal[0]), .i_upper_equal(high_equal[1]),
+    .i_lower_before(low_before[0]), .i_upper_before(low_before[1]),
+    .i_block_cross(i_block_cross), .o_valid(valid_value)
+  );
+
+  // 未知输入保留关系比较和条件选择的四态语义。
+  always_comb begin
+    case (^{i_base, i_lower, i_upper, i_block_cross})
+      1'b0, 1'b1: o_valid = valid_value;
+      default: o_valid = i_block_cross ?
+          (((i_base[p_width-1:16] == i_lower[p_width-1:16]) && !(i_base[15:0] < i_lower[15:0])) ||
+           ((i_base[p_width-1:16] == i_upper[p_width-1:16]) && (i_base[15:0] < i_upper[15:0]))) :
+          ((i_base[p_width-1:16] == i_lower[p_width-1:16]) &&
+           !(i_base[15:0] < i_lower[15:0]) && (i_base[15:0] < i_upper[15:0]));
+    endcase
+  end
+endmodule
+
+// 高位分段和低位次序均已归并，跨分段标志只参与五输入的最终选择。
+(* keep_hierarchy = "yes" *)
+module conv_coordinate_range_result (
+  input wire logic i_lower_equal, i_upper_equal,
+  input wire logic i_lower_before, i_upper_before,
+  input wire logic i_block_cross,
+  output logic o_valid
+);
   assign o_valid = i_block_cross ?
-      ((lower_equal && !lower_before) || (upper_equal && upper_before)) :
-      (lower_equal && !lower_before && upper_before);
+      ((i_lower_equal && !i_lower_before) || (i_upper_equal && i_upper_before)) :
+      (i_lower_equal && !i_lower_before && i_upper_before);
 endmodule
 
 `default_nettype wire

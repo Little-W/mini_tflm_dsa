@@ -247,7 +247,7 @@ module conv_windowed_cache #(
   } demand_t;
   demand_t request_queue[DEMAND_DEPTH], incoming_request, work_request, lookup_read_request;
   demand_t preview_request, lookup_input_request, processing_request;
-  logic lookup_input_valid, preview_selected_q, preview_active;
+  logic lookup_input_valid, preview_selected_q, preview_active, preview_source_select;
   logic preview_below_base, preview_below_end;
   logic unused_preview_base_equal, unused_preview_end_equal;
   logic [1:0][31:0] retire_decode_input, retire_decode_output;
@@ -383,11 +383,14 @@ module conv_windowed_cache #(
         windowed_q && preview_index_valid, preview_index);
     preview_request.in_range = !preview_below_base && preview_below_end;
   end
-  assign lookup_input_request = p_preview_request && preview_valid ? preview_request : incoming_request;
-  assign lookup_input_valid = req_valid || (p_preview_request && preview_valid);
+  // 正式请求等待进入队列时准备其自身地址，空闲或直接处理时准备下一候选。
+  assign preview_source_select = p_preview_request && DEMAND_DEPTH == 1 &&
+      (!req_valid || (preview_active && req_fire));
+  assign lookup_input_request = preview_source_select ? preview_request : incoming_request;
+  assign lookup_input_valid = req_valid || (p_preview_request && DEMAND_DEPTH == 1);
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) preview_selected_q <= 1'b0;
-    else preview_selected_q <= p_preview_request && preview_valid && fg_state != FG_MISS &&
+    else preview_selected_q <= preview_valid && preview_source_select && fg_state != FG_MISS &&
         (request_count == 0 || (req_fire && request_count == DQ_CW'(1)));
   end
   // 空闲请求名额可直接消费前一边沿准备的快照，正式请求仍完整握手。
