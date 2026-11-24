@@ -53,7 +53,7 @@ def main():
                               'request_tail', 'forward_condition', 'prepared_available', 'busy_count'],
                   runs=[])
     for depth in (2, 3, 4, 7, 8):
-        for outstanding in (1, 2):
+        for outstanding in range(1, min(depth, 3) + 1):
             script = out / f'd{depth}_p{outstanding}.ys'
             log = script.with_suffix('.log')
             script.write_text(f'read_slang --top conv_window_queue -GDEPTH={depth} '

@@ -15,9 +15,9 @@ module conv_im2col_frontend #(
   parameter int CACHE_POLICY=3,
   parameter bit REGISTER_CACHE_REQUEST=1'b1,
   // 描述符准备、请求保存和响应队列分别选择寄存边界。
-  parameter bit REGISTER_DESCRIPTOR=1'b1,
+  parameter bit REGISTER_DESCRIPTOR=1'b0,
   parameter bit REGISTER_ROW_ADDRESS=REGISTER_DESCRIPTOR,
-  parameter int CACHE_RESPONSE_DEPTH=2,
+  parameter int CACHE_RESPONSE_DEPTH=1,
   parameter int CW=$clog2(SIZE),
   parameter int RW=$clog2(SIZE+1)
 ) (
@@ -825,15 +825,15 @@ module conv_im2col_frontend #(
     .i_shared_channel_product(shared_channel_product)
   );
   always_comb begin
-    request_y=!REGISTER_CACHE_REQUEST && incoming_context ? incoming_iy : next_row_request ? next_row_iy : iy;
-    request_output_y=!REGISTER_CACHE_REQUEST && incoming_context ?
+    request_y=incoming_context ? incoming_iy : next_row_request ? next_row_iy : iy;
+    request_output_y=incoming_context ?
       (incoming_next_position_fast ? {16'd0, window_next_y} :
        incoming_next_tile_fast ? (row_wrap ? oy+32'd1 : oy) : p_fast_y) :
       next_row_request && row_wrap ? oy+32'd1 : oy;
     req_index_valid=window_index_valid_q;
-    req_index=!REGISTER_CACHE_REQUEST && incoming_context ? incoming_req_index : next_row_request ?
+    req_index=incoming_context ? incoming_req_index : next_row_request ?
       (short_pixel_q ? next_row_pixel>>window_index_shift_q : next_row_pixel) : current_req_index;
-    req_epoch=!REGISTER_CACHE_REQUEST && incoming_context ? incoming_req_epoch : next_row_request ?
+    req_epoch=incoming_context ? incoming_req_epoch : next_row_request ?
       (short_pixel_q ? 32'd0 : (epoch_o_sum[1]<<c.input_s16)>>$clog2(LINE_BYTES)) :
       stream_next_request ? (short_pixel_q ? 32'd0 :
         (epoch_o_sum[3]<<c.input_s16)>>$clog2(LINE_BYTES)) : current_req_epoch;
@@ -974,8 +974,8 @@ module conv_im2col_frontend #(
   always_ff @(posedge clk) begin
     if (!request_pending || cache_port_ready) begin
       request_addr_q <= cache_req_addr;
-      request_geometry_q <= geometry_tile;
-      request_event_first_q <= geometry_tile && cache_req_addr[3:0]==0;
+      request_geometry_q <= incoming_context ? committing_tile.geometry : geometry_tile;
+      request_event_first_q <= (incoming_context ? committing_tile.geometry : geometry_tile) && cache_req_addr[3:0]==0;
       request_index_valid_q <= req_index_valid;
       request_index_q <= req_index;
       request_epoch_q <= req_epoch;
@@ -1150,7 +1150,6 @@ module conv_im2col_frontend #(
             if (REGISTER_DESCRIPTOR) {word_output_q, state} <= {state_uses_word(DESCRIPTOR_CHECK), DESCRIPTOR_CHECK};
             else if (committing_tile.padding) {word_output_q, state} <= {state_uses_word(ZERO_STREAM), ZERO_STREAM};
             else if (committing_tile.word_hit) {word_output_q, state} <= {state_uses_word(STREAM), STREAM};
-            else if (REGISTER_CACHE_REQUEST || REGISTER_DESCRIPTOR) {word_output_q, state} <= {state_uses_word(FETCH), FETCH};
             else {word_output_q, state} <= {state_uses_word(cache_req_ready ? WAIT_WORD : FETCH), cache_req_ready ? WAIT_WORD : FETCH};
           end else if (REGISTER_DESCRIPTOR)
             {word_output_q, state} <= {state_uses_word(P_HISTORY), P_HISTORY};

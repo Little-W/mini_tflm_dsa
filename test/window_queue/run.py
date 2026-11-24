@@ -15,15 +15,20 @@ def main():
     parser.add_argument("--jobs", type=int, default=2)
     parser.add_argument("--source-root", type=Path, default=ROOT)
     parser.add_argument("--out", type=Path, default=ROOT / "build/window_queue")
+    parser.add_argument("--case", nargs=3, type=int, action="append",
+                        metavar=("DEPTH", "LANES", "OUTSTANDING"))
     args = parser.parse_args()
     out = args.out.resolve()
     sources = [args.source_root.resolve() / "rtl/common/regfile.v", args.source_root.resolve() / "rtl/npu/dma/conv_window_queue.sv",
                Path(__file__).with_name("main.cpp")]
     hashes = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}
     cases = []
-    for depth, lanes, outstanding in ((depth, lanes, outstanding)
+    configurations = args.case or [*((depth, lanes, outstanding)
             for depth, lanes in ((2, 4), (3, 16), (4, 16), (7, 16))
-            for outstanding in (1, 2)):
+            for outstanding in (1, 2)), (3, 8, 3), (4, 8, 3), (4, 16, 3)]
+    for depth, lanes, outstanding in configurations:
+        if depth < 2 or lanes < 1 or not 1 <= outstanding <= depth:
+            raise ValueError("队列深度、通道数或在途容量无效")
         folder = out / f"depth{depth}_lanes{lanes}_outstanding{outstanding}"
         folder.mkdir(parents=True, exist_ok=True)
         command = [args.verilator, "--cc", "--exe", "--build", "--timing", "--assert", "-DNPU_SIM_ASSERT", "-Wno-fatal",

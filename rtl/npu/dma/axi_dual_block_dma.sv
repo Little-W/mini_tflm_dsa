@@ -491,7 +491,7 @@ module axi_dual_block_dma #(
             .LINE_BYTES(CONV_LINE_BYTES), .CACHE_POLICY(CONV_CACHE_POLICY),
             .REGISTER_DESCRIPTOR(1'b0),
             .REGISTER_ROW_ADDRESS(1'b0),
-            .REGISTER_CACHE_REQUEST(1'b0),
+            .REGISTER_CACHE_REQUEST(1'b1),
             .CACHE_RESPONSE_DEPTH(1)
         ) u_frontend (
             .clk, .rst_n, .cfg_valid(cfg_fire && conv_enable), .cfg_ready(fe_cfg_ready),

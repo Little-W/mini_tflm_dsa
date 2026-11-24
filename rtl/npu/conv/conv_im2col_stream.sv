@@ -450,7 +450,7 @@ module conv_im2col_stream #(
       i_row_base_valid && !i_geometry_tile && !i_next_row_padding && !next_row_word_hit;
   assign o_stream_next_request = i_wr_valid && i_wr_ready && stream_request_eligible;
   // 字命中标志与当前地址同时保存，请求有效条件只读取一位状态。
-  assign o_current_word_hit = (p_register_cache_request || p_register_descriptor) ? addr_word_hit_q :
+  assign o_current_word_hit = p_register_descriptor ? addr_word_hit_q :
     i_word_valid && i_word_addr == {o_addr[31:p_word_shift], {p_word_shift{1'b0}}};
   assign next_tap_saved_hit = i_state[$clog2(WAIT_WORD)] ? i_next_word_o_equal :
     i_word_valid && i_word_addr == {i_next_tap_addr[31:p_word_shift], {p_word_shift{1'b0}}};
@@ -468,7 +468,7 @@ module conv_im2col_stream #(
       i_word_valid && i_word_addr[p_word_shift-1:0] == '0 && i_incoming_advanced_word_match[0]) :
     (i_descriptor_response_forward ? i_incoming_live_word_o_equal :
       (i_word_valid && i_word_addr[p_word_shift-1:0] == '0 && i_incoming_word_o_equal));
-  assign incoming_request=!p_register_cache_request && !p_register_descriptor && i_tile_valid && i_tile_ready && i_incoming_fast && !i_incoming_padding &&
+  assign incoming_request=!p_register_descriptor && i_tile_valid && i_tile_ready && i_incoming_fast && !i_incoming_padding &&
     !o_incoming_word_hit && i_tile_rows!=0 && 32'(i_tile_rows)<=p_size && 32'(i_tile_cols)<=p_size &&
     i_tile_q_before_end && i_tile_rows_in_range;
   assign o_cache_req_valid = incoming_request ||
@@ -476,7 +476,7 @@ module conv_im2col_stream #(
                            o_stream_next_request || o_next_row_request;
   assign o_incoming_context=!p_register_descriptor && i_tile_valid && i_incoming_fast &&
     (i_state[$clog2(IDLE)] || ((i_state[$clog2(WAIT_WORD)] || i_state[$clog2(STREAM)] || i_state[$clog2(ZERO_STREAM)]) && i_wr_last));
-  assign o_cache_req_addr=!p_register_cache_request && o_incoming_context ? i_incoming_addr : o_next_row_request ? i_next_row_addr :
+  assign o_cache_req_addr=o_incoming_context ? i_incoming_addr : o_next_row_request ? i_next_row_addr :
       stream_context ? stream_request_addr : o_addr;
   assign o_cache_rsp_ready = i_state[$clog2(WAIT_WORD)] && (i_wr_ready || i_cache_rsp_error);
   assign o_cache_config_valid = i_cache_cfg_pending && !i_pred_cfg_pending && !i_pred_cfg_busy;

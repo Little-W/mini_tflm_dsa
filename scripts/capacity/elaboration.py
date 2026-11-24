@@ -588,7 +588,8 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
         frontend_parameters["p_cache_read_width"] == 8 * hardware_config(values)["WINDOW_LANES"]
     architecture = architecture and \
         all(frontend_parameters[key] == 0 for key in (
-            "REGISTER_DESCRIPTOR", "REGISTER_ROW_ADDRESS", "REGISTER_CACHE_REQUEST")) and \
+            "REGISTER_DESCRIPTOR", "REGISTER_ROW_ADDRESS")) and \
+        frontend_parameters["REGISTER_CACHE_REQUEST"] == 1 and \
         frontend_parameters["CACHE_RESPONSE_DEPTH"] == 1
     layout = model.memory_geometry(values["IA_CACHE_BLOCKS"], values["PS_FRAME_COUNT"],
                                    values["PS_POOL_BYTES"], values["SIZE"], bool(values["PCR_ENGINE"]),

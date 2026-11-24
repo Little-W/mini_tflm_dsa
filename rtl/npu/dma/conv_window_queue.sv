@@ -51,9 +51,9 @@ module conv_window_queue #(
   (* keep = 1 *) logic descriptor_available, descriptor_multiple;
   logic descriptor_prepared, descriptor_read_available;
   logic [PTR_W-1:0] descriptor_read_index;
-  logic descriptor_forward,descriptor_forward_valid;
+  logic descriptor_forward;
   (* keep = 1 *) logic descriptor_current_cols_valid, descriptor_next_cols_valid;
-  logic [2:0][31:0] descriptor_forward_data;
+  logic [2:0][31:0] descriptor_prepared_data;
   function automatic logic [PTR_W-1:0] increment(input logic [PTR_W-1:0] value);
     return value==PTR_W'(DEPTH-1) ? '0 : value+1'b1;
   endfunction
@@ -93,14 +93,15 @@ module conv_window_queue #(
     else if (launch || (retire && !active)) present <= increment(present);
   end
   assign descriptor_available = count > COUNT_W'(active_count);
-  assign descriptor_multiple = count > (COUNT_W'(active_count) + COUNT_W'(1));
+  assign descriptor_multiple = {1'b0, count} >
+    ((COUNT_W+1)'(active_count) + (COUNT_W+1)'(1));
   // 准备项始终占用队列位置，显式非空条件使空闲配置与前端发送保持互斥。
   assign frontend_valid=enable && !configure && !failed && !frontend_error && busy &&
     (active_count < p_active_width'(p_frontend_outstanding) || active_retire) && descriptor_prepared;
   assign frontend_rsp_ready=active && rsp_ready;
   assign launch=frontend_valid && frontend_ready;
   // 发送当前准备项的同时读取下一项，连续单拍窗口可以逐周期接收。
-  // 同周期接收的新条目直接保存到返回寄存器，存储器继续保持先读后写语义。
+  // 同周期接收的新条目与存储读数在准备寄存器之前选择。
   assign descriptor_read_index=launch ? increment(present) : present;
   // 两个数量比较独立完成，启动事件只决定是否消耗唯一的待发送项。
   assign descriptor_read_available = descriptor_multiple || (!launch && descriptor_available);
@@ -109,19 +110,20 @@ module conv_window_queue #(
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       descriptor_prepared<=1'b0;
-      descriptor_forward_valid<=1'b0;
     end else if (configure) begin
       descriptor_prepared<=1'b0;
-      descriptor_forward_valid<=1'b0;
     end else begin
       descriptor_prepared <= descriptor_read_available || accept;
-      descriptor_forward_valid<=descriptor_forward;
     end
   end
   always_ff @(posedge clk) begin
-    if (descriptor_forward) descriptor_forward_data<=descriptor_i_wr_data;
+    if (descriptor_forward) descriptor_prepared_data <= descriptor_i_wr_data;
+    else if (descriptor_read_available) begin
+      for (int field_index = 0; field_index < 3; field_index++)
+        descriptor_prepared_data[field_index] <= descriptor_o_rd_data[field_index][0];
+    end
   end
-  // 三个描述符字段共用接收和读取事件，同步读端口保存当前准备项。
+  // 小容量描述符存储异步读取，统一的准备寄存器直接驱动前端字段。
   assign descriptor_i_wr_en = rst_n && accept;
   assign descriptor_i_wr_addr = tail;
   assign descriptor_i_wr_data[0] = req_p0;
@@ -133,7 +135,7 @@ module conv_window_queue #(
   for (genvar field_index = 0; field_index < 3; field_index++) begin : g_descriptor
     regfile #(
       .p_data_width(32), .p_depth(DEPTH), .p_addr_width(PTR_W),
-      .p_write_unit(32), .p_read_ports(1), .p_sync_read(1'b1), .p_ram_style("block")
+      .p_write_unit(32), .p_read_ports(1), .p_sync_read(1'b0), .p_ram_style("distributed")
     ) u_value (
       .clk(clk), .i_wr_en(descriptor_i_wr_en), .i_wr_addr(descriptor_i_wr_addr),
       .i_wr_data(descriptor_i_wr_data[field_index]), .i_wr_mask(descriptor_i_wr_mask),
@@ -141,9 +143,9 @@ module conv_window_queue #(
       .o_rd_data(descriptor_o_rd_data[field_index])
     );
   end
-  assign frontend_p0 = descriptor_forward_valid ? descriptor_forward_data[0] : descriptor_o_rd_data[0][0];
-  assign frontend_q0 = descriptor_forward_valid ? descriptor_forward_data[1] : descriptor_o_rd_data[1][0];
-  assign frontend_cols = descriptor_forward_valid ? descriptor_forward_data[2] : descriptor_o_rd_data[2][0];
+  assign frontend_p0 = descriptor_prepared_data[0];
+  assign frontend_q0 = descriptor_prepared_data[1];
+  assign frontend_cols = descriptor_prepared_data[2];
   // 当前项与下一项的列资格并行读取，晚到发送事件只选择一位结果。
   assign descriptor_current_cols_valid = cols_valid[present];
   assign descriptor_next_cols_valid = cols_valid[increment(present)];
