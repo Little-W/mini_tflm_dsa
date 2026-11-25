@@ -1,0 +1,39 @@
+{
+  "output_default": {
+    "top": "npu_output_pipeline",
+    "sources": [
+      "rtl/npu/writeback/requant_pkg.sv",
+      "rtl/npu/top/npu_output_pipeline.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1"
+    ],
+    "configuration": "完整输出模块：16位分块计数、IA与量化复用32、偏置索引9位/行数10位、计算通道2、输出银行32/4"
+  },
+  "output_production": {
+    "top": "npu_output_pipeline",
+    "sources": [
+      "rtl/npu/writeback/requant_pkg.sv",
+      "rtl/npu/top/npu_output_pipeline.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-Gp_bus_width=64",
+      "-Gp_dim_count_width=29",
+      "-Gp_ia_reuse_num_max=16",
+      "-Gp_requant_max_ia_reuse=16",
+      "-Gp_is_bias_row_w=8",
+      "-Gp_is_bias_valid_w=9",
+      "-Gp_requant_compute_lanes=2",
+      "-Gp_oa_fifo_banks=32",
+      "-Gp_oa_s16_fifo_banks=4"
+    ],
+    "configuration": "当前 SoC 输出模块：29位分块计数、IA与量化复用16、偏置索引8位/行数9位、计算通道2、输出银行32/4"
+  }
+}

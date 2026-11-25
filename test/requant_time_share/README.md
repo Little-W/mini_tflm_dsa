@@ -12,13 +12,17 @@
 
 组预留覆盖已接收、等待计算和等待输出的全部行。`o_group_ready` 在本组输出完成后恢复。参数尚未就绪时缓存保留输入，参数装载完成并经过同步读取边沿后开始计算。初始化和复位同时清空组状态及算术有效位。
 
-生产参数 `VLEN=16`、`p_compute_lanes=2`、`MAX_IA_REUSE=32` 对应 512 行缓存，每行保存 `16×32+1=513` 位，共 262,656 位。WS/IS 参数的逻辑容量保持不变。
+当前 SoC 配置 使用 `VLEN=16`、`p_compute_lanes=2`、`MAX_IA_REUSE=16` 和 `p_parameter_output=0`，对应 256 行缓存，每行保存 `16×32+1=513` 位，共 131,328 位。扩展容量配置采用 `MAX_IA_REUSE=32`，对应 512 行和 262,656 位缓存。两种配置均保留各自的 WS/IS 参数逻辑容量。
 
 ## 运行检查
 
 ```bash
 python test/requant_time_share/run.py \
-  --out build/requant_time_share --vlen 16 --lanes 2 --reuse 32 --bus 64
+  --out build/requant_time_share_soc --vlen 16 --lanes 2 --reuse 16 --bus 64 \
+  --parameter-output 0 --xilinx
+python test/requant_time_share/run.py \
+  --out build/requant_time_share_extended --vlen 16 --lanes 2 --reuse 32 --bus 64 \
+  --parameter-output 0 --xilinx
 python test/requant_time_share/run.py \
   --out build/requant_parallel_groups --vlen 16 --lanes 16 --reuse 16 --bus 64
 python test/requant_time_share/run_formal.py --out build/requant_group_capacity
@@ -31,9 +35,10 @@ python test/vector_shared_quant/run.py --out build/vector_shared_quant
 
 | 配置 | 周期 | INT8/INT16 元素 | 分组 | DMA 命令 |
 |---|---:|---:|---:|---:|
+| 16 元素，2 个算术通道，256 行，BUS64 | 49,737 | 345,920 | 168 | 464 |
 | 16 元素，2 个算术通道，512 行，BUS64 | 75,534 | 542,528 | 170 | 608 |
 | 4 元素，2 个算术通道，16 行，BUS64 | 7,279 | 15,912 | 182 | 377 |
 
-生产配置还覆盖 7 次清空、6 次复位及 12 个完整容量组。DW 与矩阵共享端口测试检查 240 个任务、7,680 个向量和 122,880 个输出元素，逐个核对归属、标签、数值和七级延迟。
+512 行配置还覆盖 7 次清空、6 次复位及 12 个完整容量组。DW 与矩阵共享端口测试检查 240 个任务、7,680 个向量和 122,880 个输出元素，逐个核对归属、标签、数值和七级延迟。
 
 `prepare_measurement.py` 保存当前完整依赖并生成 1、2、4、16 个算术通道的独立综合配置。资源与组合级数由对应配置的实际映射结果报告。

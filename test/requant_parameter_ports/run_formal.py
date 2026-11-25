@@ -15,9 +15,9 @@ from requant_test_utils import controller_module
 
 ROOT = Path(__file__).resolve().parents[2]
 RTL = Path('rtl/npu/writeback/vec_requant.sv')
-PROFILES = ['4:32:1:1:1', '8:64:2:4:1', '16:64:2:32:1',
+PROFILES = ['4:32:1:1:1', '8:64:2:4:1', '16:64:2:16:1', '16:64:2:32:1',
             '16:64:4:4:1', '16:64:16:2:1', '16:64:2:2:0',
-            '8:64:1:4:1', '16:128:2:4:1']
+            '8:64:1:4:1', '16:128:2:4:1', '16:64:2:16:1:0', '16:64:2:32:1:0']
 
 
 def digest(path):
@@ -56,6 +56,35 @@ def memory_interfaces(module):
                         'port_widths': {port: len(bits) for port, bits in connections.items()}}
         del module['cells'][name]
     return models
+
+
+def state_correspondence(module):
+    """以公开端口和实际寄存器建立对应，组合函数保留完整比较范围。"""
+    retained = set(module['ports'])
+    state = {}
+    sequential = {'$ff', '$dff', '$dffe', '$adff', '$adffe', '$sdff', '$sdffe',
+                  '$sdffce', '$aldff', '$aldffe'}
+    for cell_name, cell in module['cells'].items():
+        if 'Q' not in cell['connections']:
+            continue
+        if cell['type'] not in sequential:
+            raise RuntimeError('需要明确检查保存状态的单元类型：' + cell['type'])
+        bits = cell['connections']['Q']
+        names = [name for name, net in module['netnames'].items()
+                 if net['bits'] == bits and not name.startswith('$')]
+        if not names:
+            raise RuntimeError('缺少实际寄存器的完整名称：' + cell_name)
+        name = min(names, key=lambda item: (item.count('.'), len(item), item))
+        if name in state:
+            raise RuntimeError('多个寄存器使用同一个状态名称：' + name)
+        retained.add(name)
+        state[name] = len(bits)
+    # 初始化属性参与时序语义；包含初始化信息的连线始终保留。
+    retained.update(name for name, net in module['netnames'].items()
+                    if 'init' in net.get('attributes', {}))
+    module['netnames'] = {name: net for name, net in module['netnames'].items()
+                          if name in retained}
+    return state
 
 
 def control_wrapper(source):
@@ -110,7 +139,10 @@ def control_wrapper(source):
     end
 endmodule
 '''
-    return header+body+outputs
+    # 同一源码文件中的完整组合辅助模块随控制器一起编译。
+    helpers = [text for text in re.findall(r"^module\s+\w+\b.*?^endmodule", source, re.M | re.S)
+               if text != full]
+    return header+body+outputs+'\n'+'\n\n'.join(helpers)
 
 
 def main():
@@ -118,7 +150,7 @@ def main():
     parser.add_argument('--source-root', type=Path, default=ROOT)
     parser.add_argument('--reference-root', type=Path, required=True)
     parser.add_argument('--profiles', nargs='+', default=PROFILES,
-                        help='VLEN:BUS_WIDTH:compute_lanes:reuse:per_channel')
+                        help='VLEN:BUS_WIDTH:compute_lanes:reuse:per_channel[:parameter_output]')
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
     out = args.out.resolve()
@@ -139,24 +171,34 @@ def main():
               'memory_read_data_constrained': False, 'source_sha256': hashes,
               'comparison': '参数控制状态、DMA 接口、全部 WS 存储内容与 IS 存储完整驱动端口', 'profiles': []}
     for profile in args.profiles:
-        vlen, bus, lanes, reuse, per_channel = map(int, profile.split(':'))
+        values = list(map(int, profile.split(':')))
+        if len(values) == 5:
+            values.append(1)
+        if len(values) != 6 or values[5] not in (0, 1):
+            raise ValueError('配置需要五个参数，以及可选的参数观察接口开关')
+        vlen, bus, lanes, reuse, per_channel, parameter_output = values
         folder = out / profile.replace(':', '_')
         folder.mkdir(exist_ok=True)
         flags = (f'-D SYNTHESIS=1 -D XILINX_FPGA=1 -GVLEN={vlen} -GBUS_WIDTH={bus} '
                  f'-Gp_compute_lanes={lanes} -GMAX_IA_REUSE={reuse} '
-                 f'-Gp_input_rows={vlen*reuse} -GENABLE_S16=1 -GENABLE_PER_CHANNEL={per_channel}')
-        models = {}
+                 f'-Gp_input_rows={vlen*reuse} -GENABLE_S16=1 -GENABLE_PER_CHANNEL={per_channel} '
+                 f'-Gp_parameter_output={parameter_output}')
+        models, states = {}, {}
         for label in snapshots:
             raw = folder / (label + '_raw.json')
             execute(folder, label + '_elaborate', [
                 f'read_slang --top quant_parameter_control {flags} ' + shlex.join(map(str, snapshots[label])),
+                'setattr -mod -unset keep_hierarchy', 'setattr -unset keep_hierarchy',
                 'prep -top quant_parameter_control -flatten', 'opt_clean', 'write_json ' + shlex.quote(str(raw))])
             design = json.loads(raw.read_text())
             module = design['modules']['quant_parameter_control']
             models[label] = memory_interfaces(module)
+            states[label] = state_correspondence(module)
             (folder / (label + '.json')).write_text(json.dumps({'modules': {label: module}}) + '\n')
         if models['reference'] != models['current']:
             raise RuntimeError('两份存储模型的参数或端口宽度不一致')
+        if states['reference'] != states['current']:
+            raise RuntimeError('两份控制器的实际寄存状态名称或位宽不一致')
         log = execute(folder, 'equivalence', [
             'read_json ' + shlex.quote(str(folder / 'reference.json')),
             'memory_map', 'opt_clean', 'design -stash reference',
@@ -172,8 +214,11 @@ def main():
         if match is None or int(match[2]):
             raise RuntimeError('参数控制与存储等价证明未完成')
         row = {'vlen': vlen, 'bus_width': bus, 'compute_lanes': lanes, 'reuse': reuse,
-               'per_channel': per_channel, 'passed': True, 'equivalent_bits': int(match[1]),
+               'per_channel': per_channel, 'parameter_output': parameter_output,
+               'passed': True, 'equivalent_bits': int(match[1]),
                'memories': len(models['current']),
+               'registers': len(states['current']), 'register_state_bits': sum(states['current'].values()),
+               'register_state_widths': states['current'],
                'memory_parameters_sha256': hashlib.sha256(json.dumps(models['current'], sort_keys=True).encode()).hexdigest(),
                'log_sha256': digest(log)}
         report['profiles'].append(row)

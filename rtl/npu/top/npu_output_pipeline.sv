@@ -217,6 +217,19 @@ module npu_output_pipeline #(
         if (p_bias_high_groups == 0) begin : g_bias_no_high_bits
             assign is_bias_high_group_zero = '1;
         end
+`ifdef SYNTHESIS
+        logic is_bias_target_zero;
+        // 完整掩码函数独立完成减一和零判断，尾部选择读取最终结果。
+        npu_output_bias_mask #(.p_width(p_bias_count_bits)) u_bias_target_mask (
+            .i_target(is_bias_group_rows_target_ext[p_bias_count_bits-1:0]),
+            .o_mask(is_bias_target_mask_ext[p_bias_count_bits-1:0]),
+            .o_zero(is_bias_target_zero)
+        );
+        if (p_reg_width > p_bias_count_bits) begin : g_bias_mask_high
+            assign is_bias_target_mask_ext[p_reg_width-1:p_bias_count_bits] =
+                {(p_reg_width-p_bias_count_bits){is_bias_target_zero}};
+        end
+`else
         for (genvar bit_idx = 0; bit_idx < p_bias_count_bits; bit_idx++) begin : g_bias_mask_low
             if (bit_idx == 0) begin : g_first
                 assign is_bias_target_mask_ext[bit_idx] = ~is_bias_group_rows_target_ext[bit_idx];
@@ -236,6 +249,7 @@ module npu_output_pipeline #(
             assign is_bias_target_mask_ext[p_reg_width-1:p_bias_count_bits] =
                 {(p_reg_width-p_bias_count_bits){is_bias_group_rows_target_ext == p_reg_width'(0)}};
         end
+`endif
         assign is_bias_low_difference =
             {1'b0, is_bias_exec_m_ext[p_bias_count_bits-1:0]} -
             {1'b0, is_bias_group_rows_target_ext[p_bias_count_bits-1:0]};
@@ -277,14 +291,48 @@ module npu_output_pipeline #(
               ? i_is_bias_group_rows_target
               : is_bias_tail_rows_raw[p_is_bias_valid_w-1:0];
         // 尾组直接清除所选低位，整组末尾使用独立的借位选择计算。
+`ifdef SYNTHESIS
+    // 低位完成组内计算，高位预先求减一值；尾组借位只参与最终选择。
+    assign is_bias_last_group_base_calc[p_bias_count_bits-1:0] = is_bias_rows_fit ? '0 :
+        (is_bias_tail_rows_raw == '0) ? is_bias_full_group_base[p_bias_count_bits-1:0] :
+        (is_bias_exec_m_ext[p_bias_count_bits-1:0] &
+         ~p_bias_count_bits'(p_is_bias_valid_w'(is_bias_target_mask_ext)));
+    if (p_reg_width > p_bias_count_bits) begin : g_bias_last_high
+        localparam int unsigned p_high_width = p_reg_width-p_bias_count_bits;
+        logic [p_high_width-1:0] decremented;
+        logic unused_high_zero;
+        logic decrement_selected;
+        npu_output_bias_mask #(.p_width(p_high_width)) u_decrement (
+            .i_target(is_bias_exec_m_ext[p_reg_width-1:p_bias_count_bits]),
+            .o_mask(decremented), .o_zero(unused_high_zero)
+        );
+        assign decrement_selected = (is_bias_tail_rows_raw == '0) &&
+            is_bias_low_difference[p_bias_count_bits];
+        assign is_bias_last_group_base_calc[p_reg_width-1:p_bias_count_bits] =
+            is_bias_rows_fit ? '0 : decrement_selected ? decremented :
+            is_bias_exec_m_ext[p_reg_width-1:p_bias_count_bits];
+    end
+`else
     assign is_bias_last_group_base_calc = is_bias_rows_fit ? p_reg_width'(0) :
           (is_bias_tail_rows_raw == p_reg_width'(0)) ? is_bias_full_group_base :
           (is_bias_exec_m_ext & ~p_reg_width'(p_is_bias_valid_w'(is_bias_target_mask_ext)));
+`endif
     assign is_bias_first_rows_valid = (i_exec_m == '0) ? p_is_bias_valid_w'(1) :
           !is_bias_rows_fit
               ? i_is_bias_group_rows_target
               : i_exec_m[p_is_bias_valid_w-1:0];
-        assign is_bias_advance_sum = is_bias_group_base + p_reg_width'(is_bias_rows_valid);
+        logic unused_bias_advance_carry;
+`ifdef SYNTHESIS
+        // 分组进位并行计算下一组基址，范围比较直接使用完整结果。
+        parallel_prefix_add #(.p_width(p_reg_width), .p_group_width(4),
+            .p_preserve_groups(1'b1)) u_bias_advance (
+            .i_a(is_bias_group_base), .i_b(p_reg_width'(is_bias_rows_valid)), .i_carry(1'b0),
+            .o_sum(is_bias_advance_sum), .o_carry(unused_bias_advance_carry)
+        );
+`else
+        assign {unused_bias_advance_carry, is_bias_advance_sum} =
+            {1'b0, is_bias_group_base} + (p_reg_width+1)'(is_bias_rows_valid);
+`endif
         assign is_bias_group_base_plus = is_bias_advance_sum;
         // 当前组和候选下一组并行比较，回绕只选择已经完成的范围判断。
         unsigned_compare #(.p_width(p_reg_width)) u_bias_current_bound (
@@ -567,6 +615,19 @@ module npu_output_pipeline #(
             .oa_calc_over     (o_oa_calc_over)
         );
 
+endmodule
+
+// 完整定宽减一和零判断共用输入，输出保留模减法的回绕结果。
+(* keep_hierarchy = "yes" *)
+module npu_output_bias_mask #(
+    parameter int unsigned p_width = 10
+) (
+    input wire logic [p_width-1:0] i_target,
+    output logic [p_width-1:0] o_mask,
+    output logic o_zero
+);
+    assign o_mask = i_target - p_width'(1);
+    assign o_zero = i_target == '0;
 endmodule
 
 `default_nettype wire

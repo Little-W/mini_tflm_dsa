@@ -301,6 +301,9 @@ module npu_task_configuration #(
     logic [63:0] rhs_allocation_bytes;
     logic [31:0] rhs_extent_m;
     logic [31:0] rhs_extent_n;
+    logic [47:0] rhs_product_upper;
+    logic [63:0] rhs_product_diagonal_next;
+    logic [32:0] rhs_product_cross_next;
     logic [32:0] rhs_product_cross;
     logic [63:0] rhs_product_diagonal;
     logic [31:0] rhs_product_hh;
@@ -324,6 +327,21 @@ module npu_task_configuration #(
     assign o_conv_range_base[2] = i_use_per_channel ? 32'(i_q_mult_pt) : 32'd0;
     assign o_conv_range_base[3] = i_use_per_channel ? 32'(i_q_shift_pt) : 32'd0;
     // 各段算术保留原有宽度，准备相位只选择对应的完整结果。
+    // 四个部分积在同一使能边沿归并，低半字保留独立来源。
+    assign rhs_product_upper = {rhs_product_hh, rhs_product_ll[31:16]} +
+        {16'd0, rhs_product_lh} + {16'd0, rhs_product_hl};
+    always_comb begin
+        rhs_product_diagonal_next = {rhs_product_hh, rhs_product_ll};
+        rhs_product_cross_next = {1'b0, rhs_product_lh} + {1'b0, rhs_product_hl};
+        // 未知部分积使用分段算术，保存各位的四态传播。
+        case (^{rhs_product_hh, rhs_product_ll, rhs_product_lh, rhs_product_hl})
+            1'b0, 1'b1: begin
+                rhs_product_diagonal_next = {rhs_product_upper, rhs_product_ll[15:0]};
+                rhs_product_cross_next = '0;
+            end
+            default: ;
+        endcase
+    end
     assign rhs_product_high_sum = rhs_product_diagonal[63:40] +
         24'(rhs_product_cross[32:24]);
     assign rhs_product_high_merged = rhs_product_high_q + 24'(rhs_product_middle_q[24]);
@@ -442,8 +460,8 @@ assign cfg_ps_w_s0 = o_cfg_w_reuse_q[0] < cfg_ps_col_tiles_s0 ?
                 conv_output_area <= i_conv_cfg_q.output_h * i_conv_cfg_q.output_w;
             end
             if (o_cfg_valid_q[1]) begin
-                rhs_product_diagonal <= {rhs_product_hh, rhs_product_ll};
-                rhs_product_cross <= {1'b0, rhs_product_lh} + {1'b0, rhs_product_hl};
+                rhs_product_diagonal <= rhs_product_diagonal_next;
+                rhs_product_cross <= rhs_product_cross_next;
                 conv_input_low <= conv_input_area[15:0] * i_conv_cfg_q.input_c;
                 conv_input_high <= conv_input_area[31:16] * i_conv_cfg_q.input_c;
                 conv_kernel_low <= conv_kernel_area[15:0] * i_conv_cfg_q.group_c;

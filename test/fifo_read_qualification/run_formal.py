@@ -15,7 +15,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/writeback/vec_s8_to_fifo.sv")
 sys.path.insert(0, str(ROOT / "test"))
-from rtl_reference import read_rtl_source, read_current_source as read_rtl_text
+from rtl_reference import read_rtl_source_group as read_rtl_source, read_current_source as read_rtl_text
 
 
 def digest(path: Path) -> str:
@@ -76,6 +76,7 @@ def main() -> None:
     common = [ROOT / "rtl/common/regfile.v", ROOT / "rtl/common/parallel_prefix_add.sv"]
     hashes = {str(p): digest(p) for p in [source_path, *common]}
     report = dict(reference=args.reference, source_sha256=hashes,
+                  expanded_source_sha256=hashlib.sha256(current.encode()).hexdigest(),
                   reference_sha256=hashlib.sha256(reference.encode()).hexdigest(),
                   functional_inputs_constrained=False, initial_reset_cycle=1,
                   subsequent_reset_unconstrained=True, data_ram_inputs_constrained=False,
@@ -127,7 +128,8 @@ def main() -> None:
                     induction_steps=int(match[-1]), passed=True, log_sha256=digest(log))
         report["runs"].append(item)
         print(json.dumps(item), flush=True)
-    if hashes != {str(p): digest(p) for p in [source_path, *common]}:
+    if (hashes != {str(p): digest(p) for p in [source_path, *common]} or
+            current != read_rtl_text(source_path)):
         raise RuntimeError("验证期间源码发生变化")
     if not report["runs"]:
         raise ValueError("指定的参数组合不存在")

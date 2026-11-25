@@ -158,14 +158,16 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
     source_path = args.source_root.resolve() / SOURCE
     source = read_rtl_text(source_path)
+    helper = args.source_root.resolve() / 'rtl/common/parallel_prefix_add.sv'
     product, row = source_models(source)
     models = out / 'models.sv'
     models.write_text(product + '\n' + row)
     commands = []
     for top, parameter in (('product', 'BANK_COUNT_WIDTH'), ('row_compare', 'COUNT_WIDTH')):
         for width in range(1, 33):
-            commands += ['design -reset', f'read_verilog -sv {models}',
-                         f'chparam -set {parameter} {width} {top}', f'prep -top {top}',
+            commands += ['design -reset',
+                         f'read_slang -D SYNTHESIS=1 --top {top} -G{parameter}={width} {models} {helper}',
+                         f'prep -top {top} -flatten',
                          'opt -full', 'sat -prove equivalent 1 -verify -show-inputs']
     script = out / 'binary.ys'
     script.write_text('\n'.join(commands) + '\n')
@@ -174,7 +176,9 @@ def main() -> None:
                         '--worker', str(script)], stdout=stream, stderr=subprocess.STDOUT,
                        check=True, timeout=args.timeout)
     print('BINARY_PASS product_widths=1..32 row_widths=1..32 all_inputs=true', flush=True)
-    report = {'passed': True, 'source_sha256': digest(source_path), 'runner_sha256': digest(Path(__file__)),
+    report = {'passed': True, 'source_sha256': digest(source_path),
+              'expanded_source_sha256': hashlib.sha256(source.encode()).hexdigest(),
+              'arithmetic_helper_sha256': digest(helper), 'runner_sha256': digest(Path(__file__)),
               'binary_all_input_widths': list(range(1, 33)), 'binary_proofs': 64,
               'generated_models_sha256': digest(models), 'binary_log_sha256': digest(out / 'binary.log'),
               'four_state': []}
@@ -186,7 +190,7 @@ def main() -> None:
         executable = out / (name + '.vvp')
         with (out / (name + '_build.log')).open('w') as stream:
             subprocess.run(['iverilog', '-g2012', '-s', 'tb', '-o', str(executable),
-                            str(models), str(bench)], stdout=stream, stderr=subprocess.STDOUT,
+                            str(models), str(helper), str(bench)], stdout=stream, stderr=subprocess.STDOUT,
                            check=True, timeout=args.timeout)
         log = out / (name + '.log')
         with log.open('w') as stream:

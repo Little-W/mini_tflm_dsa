@@ -3,7 +3,8 @@ module requant_time_share_tb #(
     parameter int p_bus_width=64,
     parameter int p_vlen=16,
     parameter int p_lanes=4,
-    parameter int p_reuse=32
+    parameter int p_reuse=32,
+    parameter bit p_parameter_output=1'b1
 ) (
     input logic clk, rst_n, init_cfg,
     input logic cfg_per_channel, cfg_is, cfg_s16,
@@ -25,7 +26,7 @@ module requant_time_share_tb #(
     for(genvar variant=0;variant<2;variant++)begin:g_variant
         vec_requant #(.BUS_WIDTH(p_bus_width),.VLEN(p_vlen),.MAX_IA_REUSE(p_reuse),
             .ENABLE_S16(1'b1),.p_compute_lanes(variant==0 ? p_vlen : p_lanes),
-            .p_input_rows(p_vlen*p_reuse)) u_quant (
+            .p_input_rows(p_vlen*p_reuse),.p_parameter_output(p_parameter_output)) u_quant (
             .clk(clk),.rst_n(rst_n),.init_cfg(init_cfg),
             .cfg_per_channel(cfg_per_channel),.cfg_dataflow_mode(cfg_is),.cfg_s16(cfg_s16),
             .activation_min_in(cfg_min),.activation_max_in(cfg_max),.dst_offset_in(cfg_offset),

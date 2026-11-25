@@ -264,13 +264,19 @@ module vec_requant #(
   tile_idx_t   next_tile_row_cur;
   tile_idx_t   next_tile_col_cur;
   logic        final_tile_cur;
-  logic        next_same_quant_group_cur;
+  (* keep = 1 *) logic next_same_quant_group_cur;
   logic        cur_last_row_tile;
   logic        cur_last_col_tile;
-  logic        cur_last_row_in_group;
+  (* keep = 1 *) logic cur_last_row_in_group;
   logic        step_row_in_group;
   logic        step_col_in_group;
   logic        step_next_group;
+
+  // 行结束与复用组结束共同计算，保留完整比较的组合边界。
+  requant_group_last #(.p_tile_width(TILE_CNT_W)) u_group_last (
+      .i_row(tile_row), .i_last_row(last_row_tile), .i_mask(ia_reuse_mask_tile_r),
+      .o_last_tile(cur_last_row_tile), .o_last_group(cur_last_row_in_group)
+  );
 
   assign reuse_group_base_row = tile_row & ~ia_reuse_mask_tile_r;
   assign row_offset_in_group = tile_row & ia_reuse_mask_tile_r;
@@ -278,9 +284,9 @@ module vec_requant #(
   assign reuse_group_capacity = ia_reuse_num_r << VLEN_SHIFT;
   assign group_rows_subtrahend = ~reuse_group_row_start;
   // 各四位分组独立求差，组间并行产生借位，保留完整三十二位行数。
-  parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_group_rows_difference (
-      .i_a(k_r), .i_b(group_rows_subtrahend), .i_carry(1'b1),
-      .o_sum(group_rows_difference), .o_carry(unused_group_rows_carry)
+  requant_group_difference u_group_rows_difference (
+      .i_rows(k_r), .i_inverse_start(group_rows_subtrahend),
+      .o_difference(group_rows_difference), .o_carry(unused_group_rows_carry)
   );
   // 容量比较与差值并行计算，三十三位末端覆盖起点与容量相加的溢出。
   assign group_rows_start_ext = {1'b0, reuse_group_row_start};
@@ -290,7 +296,8 @@ module vec_requant #(
   assign group_rows_carry_bits = (group_rows_start_ext & group_rows_capacity_ext) |
       ((group_rows_start_ext | group_rows_capacity_ext) & group_rows_limit_inv);
   assign {unused_group_rows_high_carry, group_rows_shifted_carry} = {group_rows_carry_bits, 1'b0};
-  parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1)) u_group_rows_limit (
+  parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1),
+      .p_dsp_split_width(17)) u_group_rows_limit (
       .i_a(group_rows_sum_bits), .i_b(group_rows_shifted_carry), .i_carry(1'b0),
       .o_sum(unused_group_rows_limit_sum), .o_carry(group_rows_capacity_exceeds)
   );
@@ -337,10 +344,7 @@ module vec_requant #(
 
     tile_row_inc = tile_row + tile_idx_t'(1);
     tile_col_inc = tile_col + tile_idx_t'(1);
-    cur_last_row_tile = (tile_row == last_row_tile);
     cur_last_col_tile = (tile_col == last_col_tile);
-    cur_last_row_in_group = cur_last_row_tile ||
-                            (row_offset_in_group == ia_reuse_mask_tile_r);
     step_row_in_group = !cur_last_row_in_group;
     step_col_in_group = cur_last_row_in_group && !cur_last_col_tile;
     step_next_group   = cur_last_row_in_group && cur_last_col_tile && !cur_last_row_tile;
@@ -385,7 +389,8 @@ module vec_requant #(
   logic [32:0] remaining_words_inverse;
   logic unused_remaining_words_carry;
   assign remaining_words_inverse = ~{1'b0, load_offset};
-  parallel_prefix_add #(.p_width(33), .p_preserve_groups(1'b1)) u_remaining_words (
+  parallel_prefix_add #(.p_width(33), .p_preserve_groups(1'b1),
+      .p_dsp_split_width(17)) u_remaining_words (
       .i_a({1'b0, quant_need_load_r}), .i_b(remaining_words_inverse), .i_carry(1'b1),
       .o_sum(remaining_words), .o_carry(unused_remaining_words_carry)
   );
@@ -480,7 +485,15 @@ module vec_requant #(
   assign dma_byte_offset = dma_element_offset * BYTES_PER_WORD;
   assign dma_multiplier_address = mul_base_r + dma_byte_offset;
   assign dma_shift_address = sh_base_r + dma_byte_offset;
-  assign load_next_offset = load_offset + REG_WIDTH'(beats_expect);
+`ifdef SYNTHESIS
+  // 完整偏移加法独立形成结果，输入增量先保持原有类型转换。
+  requant_load_advance u_load_next_offset (
+      .i_offset(load_offset), .i_increment(32'(REG_WIDTH'(beats_expect))),
+      .o_offset(load_next_offset)
+  );
+`else
+  assign load_next_offset = load_offset + 32'(REG_WIDTH'(beats_expect));
+`endif
   assign dma_base_addr_cur = (load_phase == PH_MUL)
                            ? REG_WIDTH'(dma_multiplier_address)
                            : REG_WIDTH'(dma_shift_address);
@@ -515,13 +528,21 @@ module vec_requant #(
   wire signed [31:0] parameter_product_multiplier[BUS_WIDTH/32];
   wire [6:0] parameter_product_amount[BUS_WIDTH/32];
   wire [QBUF_IDX_W-1:0] parameter_index [BUS_WIDTH/32];
+  logic parameter_last_word [BUS_WIDTH/32];
   for(genvar word=0;word<BUS_WIDTH/32;word++)begin:g_parameter_word
     wire signed [31:0] value=$signed(dma_raw_data[word*32+:32]);
     assign parameter_value[word]=value;
     assign parameter_product_multiplier[word]=requant_pkg::requant_prepare_multiplier(value,s16_mode);
     assign parameter_product_amount[word]=requant_pkg::requant_prepare_amount(value,s16_mode);
     assign parameter_index[word]=quant_rsp_idx+QBUF_IDX_W'(word);
+    requant_parameter_last #(
+        .p_index_width(QBUF_IDX_W), .p_banks(PARAM_BANKS), .p_word(word)
+    ) u_last_word (
+        .i_index(quant_rsp_idx), .i_limit(quant_need_load_r),
+        .o_last(parameter_last_word[word])
+    );
   end
+
   logic [QBUF_IDX_W-1:0] input_group_idx_cur;
   logic [QBUF_IDX_W-1:0] parameter_read_idx;
   logic row_consume_valid, row_consume_tile_done;
@@ -550,8 +571,7 @@ module vec_requant #(
             (32'(rd_beats_cnt)+word) < 32'(beats_expect) &&
             (int'(parameter_index[word]) % PARAM_BANKS) == bank) begin
           write_enable = 1'b1;
-          write_last = ({1'b0, 32'(parameter_index[word])} + 33'(PARAM_BANKS)) >=
-              {1'b0, quant_need_load_r};
+          write_last = parameter_last_word[word];
           write_addr = BANK_ADDR_W'(parameter_index[word] / PARAM_BANKS);
           write_value = parameter_value[word];
           write_product_multiplier = parameter_product_multiplier[word];
@@ -1329,6 +1349,114 @@ module vec_requant #(
     end
   end
 
+endmodule
+
+// 完整定宽差值独立完成进位修正，容量选择读取已经形成的结果。
+(* keep_hierarchy = "yes" *)
+module requant_group_difference (
+    input wire logic [31:0] i_rows,
+    input wire logic [31:0] i_inverse_start,
+    output logic [31:0] o_difference,
+    output logic o_carry
+);
+    parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1),
+        .p_dsp_split_width(16)) u_add (
+        .i_a(i_rows), .i_b(i_inverse_start), .i_carry(1'b1),
+        .o_sum(o_difference), .o_carry(o_carry)
+    );
+endmodule
+
+// 复用组边界采用完整行坐标与掩码，比较结果保持原四态逻辑语义。
+(* keep_hierarchy = "yes" *)
+module requant_group_last #(
+    parameter int unsigned p_tile_width = 16
+) (
+    input wire logic [p_tile_width-1:0] i_row,
+    input wire logic [p_tile_width-1:0] i_last_row,
+    input wire logic [p_tile_width-1:0] i_mask,
+    output logic o_last_tile,
+    output logic o_last_group
+);
+    assign o_last_tile = i_row == i_last_row;
+    assign o_last_group = o_last_tile || ((i_row & i_mask) == i_mask);
+endmodule
+
+// 固定零输入进位保留在完整加法内部，组合结果不增加保存周期。
+(* keep_hierarchy = "yes" *)
+module requant_load_advance (
+    input wire logic [31:0] i_offset,
+    input wire logic [31:0] i_increment,
+    output logic [31:0] o_offset
+);
+    logic unused_carry;
+    parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1),
+        .p_dsp_split_width(16)) u_add (
+        .i_a(i_offset), .i_b(i_increment), .i_carry(1'b0),
+        .o_sum(o_offset), .o_carry(unused_carry)
+    );
+endmodule
+
+// 完整末次写入比较保留索引截断、加一回绕及全部装载上限位。
+(* keep_hierarchy = "yes" *)
+module requant_parameter_last #(
+    parameter int unsigned p_index_width = 9,
+    parameter int unsigned p_banks = 2,
+    parameter int unsigned p_word = 0
+) (
+    input wire logic [p_index_width-1:0] i_index,
+    input wire logic [31:0] i_limit,
+    output logic o_last
+);
+    wire [p_index_width-1:0] word_index = i_index + p_index_width'(p_word);
+    localparam int p_last_step = (p_banks == 2 && p_word == 1) ? 3 : p_banks;
+    localparam int p_compare_index_width = p_index_width < 32 ? p_index_width : 32;
+    localparam int p_step_width = p_last_step <= 1 ? 1 : $clog2(p_last_step+1);
+    localparam int p_last_compare_width =
+        (p_compare_index_width > p_step_width ? p_compare_index_width : p_step_width) + 1;
+    logic [p_last_compare_width-1:0] parameter_index_extended, parameter_limit_inverse;
+    logic [p_last_compare_width-1:0] parameter_compare_sum, parameter_compare_carry;
+    logic [p_last_compare_width-1:0] unused_parameter_difference;
+    logic parameter_compare_reached, parameter_limit_in_range;
+    if (p_banks == 2 && p_word == 1) begin : g_next_word
+      // 加一回绕单独判断，正常写入的末次资格直接使用加一前的索引。
+      assign parameter_index_extended = p_last_compare_width'(32'(i_index));
+    end else begin : g_current_word
+      assign parameter_index_extended = p_last_compare_width'(32'(word_index));
+    end
+    // 索引和步长的静态位宽决定可达范围，上限的其余高位独立参与判断。
+    if (p_last_compare_width < 32) begin : g_limit_high
+      assign parameter_limit_in_range = !(|i_limit[31:p_last_compare_width]);
+    end else begin : g_limit_full
+      assign parameter_limit_in_range = 1'b1;
+    end
+    assign parameter_limit_inverse = ~p_last_compare_width'(i_limit);
+    // 三操作数先保存各位进位，最高进位直接表示末次写入资格。
+    assign parameter_compare_sum = parameter_index_extended ^ parameter_limit_inverse ^
+        p_last_compare_width'(p_last_step);
+    assign parameter_compare_carry = ((parameter_index_extended & parameter_limit_inverse) |
+        ((parameter_index_extended | parameter_limit_inverse) &
+        p_last_compare_width'(p_last_step))) << 1;
+    parallel_prefix_add #(
+        .p_width(p_last_compare_width), .p_group_width(4), .p_preserve_groups(1'b1)
+    ) u_parameter_reached (
+        .i_a(parameter_compare_sum), .i_b(parameter_compare_carry), .i_carry(1'b1),
+        .o_sum(unused_parameter_difference), .o_carry(parameter_compare_reached)
+    );
+    always_comb begin
+      o_last = parameter_limit_in_range && parameter_compare_reached;
+      if (p_banks == 2 && p_word == 1) begin
+        if (&i_index[p_compare_index_width-1:0])
+          o_last = i_limit <= 32'(p_banks);
+      end
+`ifndef SYNTHESIS
+      case (^{i_index, word_index, i_limit})
+        1'b0, 1'b1: begin end
+        default: o_last =
+            ({1'b0, 32'(word_index)} + 33'(p_banks)) >=
+            {1'b0, i_limit};
+      endcase
+`endif
+    end
 endmodule
 
 `default_nettype wire

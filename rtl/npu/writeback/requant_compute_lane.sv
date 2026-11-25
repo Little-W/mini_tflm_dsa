@@ -77,8 +77,16 @@ module requant_compute_lane #(
     // 34 位商、32 位偏移和舍入增量的完整和使用 35 位有符号数保存。
     // INT16 的输出零点为零；任务配置保持稳定，同一个加法加入偏移与舍入增量。
     assign offset_value = i_s16 ? 35'sd0 : {{3{i_dst_offset[31]}}, i_dst_offset};
+`ifdef SYNTHESIS
+    requant_round_add u_round_offset (
+        .i_a({shift_o_quotient[33], shift_o_quotient}), .i_b(offset_value),
+        .i_increment(shift_o_increment), .o_sum(round_value)
+    );
+    assign unused_round_carry = 1'b0;
+`else
     assign {unused_round_carry, round_value} = {1'b0, shift_o_quotient[33], shift_o_quotient} +
         {1'b0, offset_value} + 36'(shift_o_increment);
+`endif
     always_ff @(posedge clk) begin
         if (arithmetic_en) rounded_q <= round_value;
     end

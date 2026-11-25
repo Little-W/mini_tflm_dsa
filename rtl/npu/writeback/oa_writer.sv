@@ -261,6 +261,8 @@ module oa_writer #(
     logic [REG_WIDTH-1:0] init_col_addr_step;
     logic [REG_WIDTH-1:0] init_group_row_addr_step;
     logic [REG_WIDTH-1:0] init_group_step_25;
+    logic [6:0] init_group_factor;
+    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] init_group_product;
     logic [REG_WIDTH-1:0] row_offset_next, col_offset_next;
     logic [REG_WIDTH-1:0] co_next_col_offset;
     logic [2:0] init_group_shift;
@@ -298,6 +300,20 @@ module oa_writer #(
 
     // 步长与地址推进独立计算，状态机只在原有更新周期选择结果。
     assign init_group_step_25 = row_addr_step_cur * 5'd25;
+    // 复用数量先译为有限位宽系数，组步长由完整定宽乘法计算。
+    always_comb begin
+        case (cfg_ia_reuse_num)
+            count_t'(2):  init_group_factor = 7'd2;
+            count_t'(4):  init_group_factor = 7'd4;
+            count_t'(8):  init_group_factor = 7'd8;
+            count_t'(16): init_group_factor = 7'd16;
+            count_t'(25): init_group_factor = 7'd25;
+            count_t'(32): init_group_factor = 7'd32;
+            count_t'(64): init_group_factor = 7'd64;
+            default:     init_group_factor = 7'd1;
+        endcase
+    end
+    assign init_group_product = row_addr_step_cur * init_group_factor;
     assign row_group_next_sum = row_group_next_base_idx + cfg_ia_reuse_num;
     assign row_offset_next = row_offset_addr_cur + row_addr_step_cur;
     assign col_offset_next = col_offset_addr_cur + col_addr_step_cur;
@@ -306,6 +322,31 @@ module oa_writer #(
     // 末尾索引先完成饱和减一，后续行列条件只选择已经准备的索引。
     assign k_last_index = (k_last_valid == '0) ? '0 : (k_last_valid - 1'b1);
     assign m_last_index = (m_last_valid == '0) ? '0 : (m_last_valid - 1'b1);
+
+`ifdef SYNTHESIS
+    count_t tile_row_selected_step;
+    count_t tile_row_next;
+
+    assign tile_row_selected_step = (cfg_coalesce && cfg_is_mode) ?
+        cfg_ia_reuse_num : count_t'(1);
+    if (CNT_W > 16) begin : g_row_carry_select
+        logic unused_carry;
+        // 高段两种和值并行计算，低段进位只选择结果，计数器仍在原有边沿更新。
+        parallel_prefix_add #(
+            .p_width(CNT_W),
+            .p_group_width(8),
+            .p_carry_select_width(16)
+        ) u_row_add (
+            .i_a(tile_row_idx),
+            .i_b(tile_row_selected_step),
+            .i_carry(1'b0),
+            .o_sum(tile_row_next),
+            .o_carry(unused_carry)
+        );
+    end else begin : g_row_short_add
+        assign tile_row_next = tile_row_idx + tile_row_selected_step;
+    end
+`endif
 
     always_comb begin
         init_reuse_num_eff = (ia_reuse_num == '0) ? count_t'(1) : count_t'(ia_reuse_num);
@@ -316,7 +357,7 @@ module oa_writer #(
         init_group_shift = '0;
         init_group_by_25 = 1'b0;
         if (CNT_W >= 7) begin
-            // 幂次复用数量共用移位器，25倍步长保留独立的定宽加法。
+            // 移位候选保留部分未知数据的逐位传播语义。
             case (cfg_ia_reuse_num)
                 count_t'(2):  init_group_shift = 3'd1;
                 count_t'(4):  init_group_shift = 3'd2;
@@ -344,8 +385,19 @@ module oa_writer #(
             endcase
         end
 
+        if (CNT_W >= 7 && REG_WIDTH >= 7) begin
+            case (^row_addr_step_cur)
+                1'b0, 1'b1: init_group_row_addr_step = init_group_product;
+                default: begin end
+            endcase
+        end
+
+`ifdef SYNTHESIS
+        tile_row_inc = tile_row_next;
+`else
         tile_row_inc = tile_row_idx +
                        ((cfg_coalesce && cfg_is_mode) ? cfg_ia_reuse_num : count_t'(1));
+`endif
         tile_col_inc = tile_col_idx + count_t'(1);
         reuse_group_base_cur = row_group_base_idx;
         reuse_group_next_base_cur = row_group_next_base_idx;

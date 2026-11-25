@@ -41,7 +41,7 @@ def main():
     primitives = out / 'xilinx_primitives.sv'
     primitives.write_text('\n'.join(models) + '\n')
     names = ['rtl/npu/writeback/requant_pkg.sv', 'rtl/npu/writeback/requant_shift_pipeline.sv',
-             'rtl/npu/writeback/requant_compute_lane.sv', 'rtl/npu/conv/registered_multiplier_s32.sv',
+             'rtl/npu/writeback/requant_compute_lane.sv', 'rtl/npu/writeback/requant_round_add.sv', 'rtl/npu/conv/registered_multiplier_s32.sv',
              'rtl/common/parallel_prefix_add.sv']
     rtl = [ROOT / name for name in names]
     test_sources = [HERE / name for name in ('test_top.sv', 'main.cpp', 'run.py')]
@@ -61,6 +61,7 @@ def main():
             options += ['-DREQUANT_MAPPED']
         command = [args.verilator, '--cc', '--exe', '--build', '--assert', '-Wno-fatal',
                    '--top-module', 'requant_compute_lane_test', '-j', str(args.jobs),
+                   '-MAKEFLAGS', 'VK_PCH_I_FAST= VK_PCH_I_SLOW= CFG_CXXFLAGS_PCH=-E',
                    f'-Gp_delayed_parameters={delayed}',
                    '--Mdir', str(case / 'obj'), '-CFLAGS', '-std=c++20 -O2 -fsanitize=undefined -fno-sanitize-recover=all',
                    '-LDFLAGS', '-fsanitize=undefined', *options,

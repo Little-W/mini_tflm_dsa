@@ -17,10 +17,23 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def block_span(source):
-    module = source.index(controller_module(source))
-    first = source.index('  logic [31:0] lane_start_cur;', module)
-    end = source.index('  // 参数就绪拍锁存', first)
-    return first, end
+    """从通道起点声明读取到保存有效通道数的时序块之前。"""
+    controller = controller_module(source)
+    offset = source.index(controller)
+    # 注释与字符串保持原长度，结构位置可以直接用于原文切片。
+    code = re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"',
+                  lambda match: re.sub(r'[^\n]', ' ', match[0]), controller, flags=re.S)
+    first = re.search(r'\blogic\s*\[\s*31\s*:\s*0\s*\]\s*lane_start_cur\s*;', code)
+    if first is None:
+        raise ValueError('量化控制模块缺少通道起点声明')
+    assignment = re.search(r'\blane_need_q\s*<=', code[first.end():])
+    if assignment is None:
+        raise ValueError('量化控制模块缺少有效通道数保存语句')
+    before_assignment = code[first.end():first.end() + assignment.start()]
+    blocks = list(re.finditer(r'\balways(?:_ff)?\s*@', before_assignment))
+    if len(blocks) != 1:
+        raise ValueError('有效通道数保存语句需要对应一个独立时序块')
+    return offset + first.start(), offset + first.end() + blocks[0].start()
 
 
 def arithmetic(source):
@@ -33,6 +46,29 @@ def arithmetic(source):
                          cur_last_col_tile, cur_last_row_in_group, step_row_in_group,
                          step_col_in_group, step_next_group};
     '''
+
+
+def local_helpers(source, block, suffix):
+    """复制算术块实际调用的完整辅助模块，并隔离两份定义的名称。"""
+    controller = controller_module(source)
+    definitions = {}
+    for match in re.finditer(r'^module\s+(\w+)\b.*?^endmodule\b', source, re.M | re.S):
+        if match[0] != controller:
+            definitions[match[1]] = match[0]
+    required = set()
+    pending = [block]
+    while pending:
+        content = pending.pop()
+        for name, definition in definitions.items():
+            if name not in required and re.search(r'\b' + re.escape(name) + r'\b', content):
+                required.add(name)
+                pending.append(definition)
+    text = '\n'.join(definitions[name] for name in sorted(required))
+    for name in sorted(required, key=len, reverse=True):
+        pattern = r'\b' + re.escape(name) + r'\b'
+        block = re.sub(pattern, name + '_' + suffix, block)
+        text = re.sub(pattern, name + '_' + suffix, text)
+    return block, text, sorted(required)
 
 
 def header(name, reg_width, lanes):
@@ -58,6 +94,8 @@ def header(name, reg_width, lanes):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--source-root', type=Path, default=ROOT)
+    parser.add_argument('--reference-root', type=Path)
     parser.add_argument('--reference-rev', default='2297cb12')
     parser.add_argument('--worker', type=Path)
     args = parser.parse_args()
@@ -68,13 +106,21 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     relative = 'rtl/npu/writeback/vec_requant.sv'
-    candidate = (ROOT / relative).read_text()
-    helper = ROOT / 'rtl/common/parallel_prefix_add.sv'
-    reference = read_rtl_source(args.reference_rev + ':' + relative, cwd=ROOT, text=True)
+    source_root = args.source_root.resolve()
+    candidate = (source_root / relative).read_text()
+    helper = source_root / 'rtl/common/parallel_prefix_add.sv'
+    reference_path = args.reference_root.resolve() / relative if args.reference_root else None
+    reference = reference_path.read_text() if reference_path else \
+        read_rtl_source(args.reference_rev + ':' + relative, cwd=ROOT, text=True)
+    fragments = {name: local_helpers(source, arithmetic(source), name)
+                 for name, source in [('reference', reference), ('candidate', candidate)]}
     summary = {'reference_rev': args.reference_rev,
                'reference_sha256': hashlib.sha256(reference.encode()).hexdigest(),
                'source_sha256': hashlib.sha256(candidate.encode()).hexdigest(),
                'helper_sha256': hashlib.sha256(helper.read_bytes()).hexdigest(),
+               'local_helper_modules': {name: item[2] for name, item in fragments.items()},
+               'common_helper_modules': re.findall(r'^module\s+(\w+)\b', helper.read_text(), re.M),
+               'synthesis_definitions': ['SYNTHESIS=1'],
                'scope': 'Actual tail-count arithmetic, tile progression, group indices and all related public results.',
                'inputs': 'Complete dimensions, tile coordinates, reuse-group configuration and mode are unconstrained.',
                'runs': []}
@@ -85,8 +131,8 @@ def main():
         folder = out / f'width{reg_width}_lanes{lanes}'
         folder.mkdir(exist_ok=True)
         text = ''
-        for name, source in [('reference', reference), ('candidate', candidate)]:
-            text += header('tail_' + name, reg_width, lanes) + arithmetic(source) + '\nendmodule\n'
+        for name, (block, definitions, _) in fragments.items():
+            text += header('tail_' + name, reg_width, lanes) + block + '\nendmodule\n' + definitions + '\n'
         outputs = ('lane_need_cur', 'rows_need_cur', 'group_rows_need_cur', 'quant_need_cur',
                    'quant_tile_idx_cur', 'reuse_group_base_row', 'row_offset_in_group', 'progress')
         text += header('tail_compare', reg_width, lanes)
@@ -100,8 +146,10 @@ def main():
         path = folder / 'comparison.sv'
         path.write_text(text)
         script = folder / 'run.ys'
-        script.write_text('read_slang --top tail_compare ' + shlex.quote(str(path)) + ' ' + shlex.quote(str(helper)) +
-                          '\nprep -top tail_compare -flatten\nchformal -lower\nopt -full\n'
+        script.write_text('read_slang -DSYNTHESIS=1 --top tail_compare ' + shlex.quote(str(path)) + ' ' + shlex.quote(str(helper)) +
+                          '\nhierarchy -check -top tail_compare\n'
+                          'setattr -mod -unset keep_hierarchy\nsetattr -unset keep_hierarchy\n'
+                          'prep -top tail_compare -flatten\nchformal -lower\nopt -full\n'
                           'sat -set-def-inputs -prove-asserts -verify\n')
         with (folder / 'formal.log').open('w') as log:
             completed = subprocess.run([sys.executable, __file__, '--out', str(out), '--worker', str(script)],
@@ -116,9 +164,11 @@ def main():
         if not result['passed']:
             print(log[-10000:])
             raise SystemExit(1)
-    if (ROOT / relative).read_text() != candidate or \
+    if (source_root / relative).read_text() != candidate or \
             hashlib.sha256(helper.read_bytes()).hexdigest() != summary['helper_sha256']:
         raise RuntimeError('验证期间源文件发生变化')
+    if reference_path is not None and reference_path.read_text() != reference:
+        raise RuntimeError('验证期间参考源码发生变化')
     summary['passed'] = all(item['passed'] for item in summary['runs'])
     (out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
 

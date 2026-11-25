@@ -11,7 +11,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from rtl_reference import read_rtl_source_group as read_rtl_source
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -53,6 +53,8 @@ def main() -> None:
             reference_hashes[filename] = hashlib.sha256(original.encode()).hexdigest()
     command = [args.verilator, '--binary', '--timing', '--assert', '-Wno-fatal',
                '--top-module', 'tb_writeback_bus', f'-DTB_BUS_WIDTH={args.bus_width}',
+               '-CFLAGS', '-std=c++20 -O1',
+               '-MAKEFLAGS', 'CFG_CXXFLAGS_PCH_I=-include OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0',
                '--Mdir', str(args.out/'obj'), '-j', str(args.jobs), *map(str, sources), *map(str, reference_sources)]
     if args.reference:
         command.append('-DWRITEBACK_COMPARE_REFERENCE')

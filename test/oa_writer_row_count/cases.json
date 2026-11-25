@@ -1,0 +1,24 @@
+{
+  "writer": {
+    "top": "oa_writer",
+    "sources": [
+      "rtl/npu/writeback/oa_writer.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GVLEN=16",
+      "-GBUS_WIDTH=64",
+      "-GCOUNT_WIDTH=29"
+    ],
+    "parameters": {
+      "VLEN": 16,
+      "BUS_WIDTH": 64,
+      "REG_WIDTH": 32,
+      "COUNT_WIDTH": 29
+    },
+    "configuration": "完整输出写回控制器，全部公开输出"
+  }
+}

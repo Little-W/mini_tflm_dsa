@@ -115,7 +115,13 @@ module vec_s8_to_fifo_full #(
   assign co_tile_carry[2] = ((co_tile_sum[0] & co_tile_sum[1]) |
       (co_tile_sum[0] & co_tile_carry[1]) |
       (co_tile_sum[1] & co_tile_carry[1])) << 1;
-  assign co_tile_product = co_tile_sum[2] + co_tile_carry[2];
+  logic unused_tile_carry;
+  parallel_prefix_add #(
+      .p_width(BANK_COUNT_WIDTH), .p_group_width(3), .p_preserve_groups(1'b1)
+  ) u_tile_sum (
+      .i_a(co_tile_sum[2]), .i_b(co_tile_carry[2]), .i_carry(1'b0),
+      .o_sum(co_tile_product), .o_carry(unused_tile_carry)
+  );
   // 已知输入使用归并结果，含未知位的输入保留乘法的四态传播语义。
   always_comb begin
     co_tiles = BANK_COUNT_WIDTH'(coalesce_rows[4:0] * coalesce_cols[4:0]);
@@ -253,6 +259,44 @@ module vec_s8_to_fifo_full #(
   // A temporary valid gap can appear between cached IA slots.  Only the
   // explicit tile_done marker is allowed to publish a bank to the writer.
   wire finish_write_bank = in_valid && in_tile_done;
+  logic [BANK_COUNT_WIDTH-1:0] co_count_partial [5];
+  logic [BANK_COUNT_WIDTH-1:0] co_count_sum [5], co_count_carry [5];
+  logic [BANK_COUNT_WIDTH-1:0] co_count_constant;
+  logic [BANK_COUNT_WIDTH-1:0] co_count_after;
+  // 释放块数的部分积与当前数量同时归并，只在最后一级传播算术进位。
+  for (genvar term = 0; term < 5; term++) begin : g_count_partial
+    assign co_count_partial[term] = ~((BANK_COUNT_WIDTH'(coalesce_cols[4:0]) << term) &
+        {BANK_COUNT_WIDTH{coalesce_rows[term]}});
+  end
+  assign co_count_constant = BANK_COUNT_WIDTH'(5) +
+      BANK_COUNT_WIDTH'(finish_write_bank && !write_bank_blocked);
+  assign co_count_sum[0] = ready_bank_count_q ^ co_count_partial[0] ^ co_count_partial[1];
+  assign co_count_carry[0] = ((ready_bank_count_q & co_count_partial[0]) |
+      (ready_bank_count_q & co_count_partial[1]) | (co_count_partial[0] & co_count_partial[1])) << 1;
+  assign co_count_sum[1] = co_count_partial[2] ^ co_count_partial[3] ^ co_count_partial[4];
+  assign co_count_carry[1] = ((co_count_partial[2] & co_count_partial[3]) |
+      (co_count_partial[2] & co_count_partial[4]) | (co_count_partial[3] & co_count_partial[4])) << 1;
+  assign co_count_sum[2] = co_count_sum[0] ^ co_count_carry[0] ^ co_count_sum[1];
+  assign co_count_carry[2] = ((co_count_sum[0] & co_count_carry[0]) |
+      (co_count_sum[0] & co_count_sum[1]) | (co_count_carry[0] & co_count_sum[1])) << 1;
+  assign co_count_sum[3] = co_count_sum[2] ^ co_count_carry[2] ^ co_count_carry[1];
+  assign co_count_carry[3] = ((co_count_sum[2] & co_count_carry[2]) |
+      (co_count_sum[2] & co_count_carry[1]) | (co_count_carry[2] & co_count_carry[1])) << 1;
+  assign co_count_sum[4] = co_count_sum[3] ^ co_count_carry[3] ^ co_count_constant;
+  assign co_count_carry[4] = ((co_count_sum[3] & co_count_carry[3]) |
+      (co_count_sum[3] & co_count_constant) | (co_count_carry[3] & co_count_constant)) << 1;
+  always_comb begin
+    co_count_after = co_count_sum[4] + co_count_carry[4];
+`ifndef SYNTHESIS
+    case (^{ready_bank_count_q, coalesce_rows[4:0], coalesce_cols[4:0],
+        finish_write_bank, write_bank_blocked})
+      1'b0, 1'b1: begin end
+      default: co_count_after = ready_bank_count_q - co_tiles +
+          BANK_COUNT_WIDTH'(finish_write_bank && !write_bank_blocked);
+    endcase
+`endif
+  end
+
   always_ff @(posedge clk) begin
     if (!rst_n) write_bank_mask_q <= {{(BANKS-1){1'b0}}, 1'b1};
     else if (finish_write_bank && !write_bank_blocked)
@@ -569,32 +613,38 @@ module vec_s8_to_fifo_full #(
   endgenerate
 
   if (p_count_storage) begin : g_selected_write_state
-    logic [BANK_WIDTH-1:0] selected_bank [2];
+    logic [BANK_WIDTH-1:0] candidate_bank [3];
+    logic [BANKS-1:0] candidate_mask [3];
+    logic [2:0] candidate_blocked;
     logic [1:0] selected_blocked;
-    always_comb begin
-      selected_bank[0] = write_bank;
-      if (finish_write_bank && !write_bank_blocked) begin
-        selected_bank[0] = next_bank(write_bank);
-      end
-      selected_bank[1] = next_bank(selected_bank[0]);
-    end
-    // 先选定下周期的两个写入位置，再独立判断释放，合并块数无需经过银行状态归并。
-    for (genvar position = 0; position < 2; position++) begin : g_position
-      wire [BANKS-1:0] selected_mask = position == 0 ? write_bank_mask_next : next_bank_mask_next;
-      wire selected_group_release = coalesce_enable && co_finish &&
-          (((int'(selected_bank[position]) + BANKS - int'(read_bank)) % BANKS) < int'(co_tiles));
-      wire selected_stream_release = !coalesce_enable && output_ready && stream_active && data_valid &&
+    assign candidate_bank[0] = write_bank;
+    assign candidate_bank[1] = next_bank(write_bank);
+    assign candidate_bank[2] = next_bank(candidate_bank[1]);
+    assign candidate_mask[0] = write_bank_mask_q;
+    assign candidate_mask[1] = next_write_bank_mask;
+    assign candidate_mask[2] = {next_write_bank_mask[BANKS-2:0], next_write_bank_mask[BANKS-1]};
+    // 当前位置及后续两个位置并行计算阻塞状态，写入完成只选择所需的两个结果。
+    for (genvar position = 0; position < 3; position++) begin : g_candidate
+      wire candidate_group_release = coalesce_enable && co_finish &&
+          (((int'(candidate_bank[position]) + BANKS - int'(read_bank)) % BANKS) < int'(co_tiles));
+      wire candidate_stream_release = !coalesce_enable && output_ready && stream_active && data_valid &&
           (COUNT_WIDTH'(beat_idx) == last_beat_idx_cur) && read_row_count_last &&
-          read_bank == selected_bank[position];
-      wire selected_write_complete = finish_write_bank && !write_bank_blocked &&
-          write_bank == selected_bank[position];
+          read_bank == candidate_bank[position];
+      wire candidate_write_complete = finish_write_bank && !write_bank_blocked &&
+          write_bank == candidate_bank[position];
       always_comb begin
-        selected_blocked[position] = |(bank_ready & selected_mask);
-        if (selected_group_release || selected_stream_release) begin
-          selected_blocked[position] = 1'b0;
-        end else if (selected_write_complete) begin
-          selected_blocked[position] = 1'b1;
+        candidate_blocked[position] = |(bank_ready & candidate_mask[position]);
+        if (candidate_group_release || candidate_stream_release) begin
+          candidate_blocked[position] = 1'b0;
+        end else if (candidate_write_complete) begin
+          candidate_blocked[position] = 1'b1;
         end
+      end
+    end
+    always_comb begin
+      selected_blocked = candidate_blocked[1:0];
+      if (finish_write_bank && !write_bank_blocked) begin
+        selected_blocked = candidate_blocked[2:1];
       end
     end
     always_ff @(posedge clk) begin
@@ -697,8 +747,8 @@ module vec_s8_to_fifo_full #(
         end
         case ({finish_write_bank && !write_bank_blocked, co_finish})
           2'b10: ready_bank_count_q <= ready_bank_count_q + 1'b1;
-          2'b01: ready_bank_count_q <= ready_bank_count_q - co_tiles;
-          2'b11: ready_bank_count_q <= ready_bank_count_q - co_tiles + 1'b1;
+          2'b01: ready_bank_count_q <= co_count_after;
+          2'b11: ready_bank_count_q <= co_count_after;
           default: ;
         endcase
       end else if (start_stream) begin

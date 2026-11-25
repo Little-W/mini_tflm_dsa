@@ -35,7 +35,9 @@ def main():
     calculation = re.search(r"    assign offset_value =.*?(?=    always_ff)", text, re.S)
     if calculation is None or "logic signed [34:0] rounded_q, round_value, offset_value;" not in text:
         raise RuntimeError("量化算术声明与检查接口不一致")
-    hashes = {str(path): digest(path) for path in (source, Path(__file__).resolve())}
+    helper = ROOT / "rtl/common/parallel_prefix_add.sv"
+    round_adder = ROOT / "rtl/npu/writeback/requant_round_add.sv"
+    hashes = {str(path): digest(path) for path in (source, helper, round_adder, Path(__file__).resolve())}
     model = out / "width_proof.sv"
     model.write_text('''module width_proof (
     input logic signed [33:0] shift_o_quotient,
@@ -56,7 +58,9 @@ def main():
 endmodule
 ''')
     script = out / "proof.ys"
-    script.write_text("read_slang --top width_proof " + shlex.quote(str(model)) + "\n" +
+    script.write_text("read_slang -D SYNTHESIS=1 --top width_proof " +
+                      shlex.join([str(helper), str(round_adder), str(model)]) + "\n" +
+                      "setattr -mod -unset keep_hierarchy\nsetattr -unset keep_hierarchy\n" +
                       "prep -top width_proof -flatten\nopt -full\n" +
                       "sat -prove equal 1 -verify -show-inputs -show-outputs\n")
     formal_log = out / "formal.log"

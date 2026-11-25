@@ -14,7 +14,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/writeback/vec_s8_to_fifo.sv')
 sys.path.insert(0, str(ROOT / 'test'))
-from rtl_reference import read_rtl_source, read_current_source as read_rtl_text
+from rtl_reference import read_rtl_source_group as read_rtl_source, read_current_source as read_rtl_text
 
 PROFILES = ((16, 1, 64, 1), (16, 2, 32, 1), (16, 3, 64, 1),
             (16, 8, 32, 1), (16, 16, 64, 1), (16, 32, 32, 1),
