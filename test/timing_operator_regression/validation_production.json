@@ -1,0 +1,48 @@
+{
+  "passed": true,
+  "source_commit": "2247144937c2fd04039b9b005151f371d6b51f8f",
+  "case_count": 62,
+  "total_cycles": 581389,
+  "collections": {
+    "common36": {
+      "case_count": 36,
+      "total_cycles": 391103
+    },
+    "numeric26": {
+      "case_count": 26,
+      "total_cycles": 190286
+    }
+  },
+  "timing_fields": [
+    "first_ar",
+    "first_r",
+    "last_r",
+    "first_aw",
+    "first_w",
+    "last_w",
+    "last_b",
+    "done",
+    "first_read_latency",
+    "read_latency_min",
+    "read_latency_max",
+    "read_commands",
+    "write_commands",
+    "read_beats",
+    "write_beats",
+    "read_outstanding_max",
+    "write_outstanding_max",
+    "read_burst_bytes_max",
+    "write_burst_bytes_max"
+  ],
+  "input_manifest_sha256": "7c21acd79964168a77b25307d7beffb6edb882b72f8a0ae654af79da29f31b03",
+  "binary_sha256": "2c07d2b714b2e1f8161cfd72e7dc8c29323a48f39d381af71f66f7c6c846b496",
+  "production_configuration_sha256": "c253d3c953cff4aaf30caf3ea0484bed57e9f685ee4130bc4c2fadfd1ceab227",
+  "sources_unchanged_during_build": true,
+  "comparison_tests": {
+    "test_methods": 4,
+    "changed_timing_fields_checked": 19,
+    "passed": true
+  },
+  "reference_result_sha256": "e5d35e8204d0626a291aecbec95b704684025bd925543e5ee66b9e5d4a224d46",
+  "runtime_parameter_equality_checks_per_case": 65
+}

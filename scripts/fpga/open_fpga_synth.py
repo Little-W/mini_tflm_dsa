@@ -534,6 +534,8 @@ def main():
                         help='Map this many complete modules per fresh ABC9 worker and retain the complete design')
     parser.add_argument('--abc9-keep-checkpoints', action='store_true',
                         help='Keep every compressed full-design ABC9 checkpoint instead of only the latest')
+    parser.add_argument('--abc9-isolate-leaves', action='store_true',
+                        help='Map combinational leaves independently and prove every leaf equivalent before merging')
     parser.add_argument('--native-combinational-helpers', action='store_true',
                         help='Reuse native parameter definitions for supported pure combinational helpers')
     parser.add_argument('--preserve-rtl-module', action='append', default=[], metavar='MODULE',
@@ -563,6 +565,8 @@ def main():
         parser.error('--abc9-batch-size must be positive')
     if args.abc9_keep_checkpoints and args.abc9_batch_size is None:
         parser.error('--abc9-keep-checkpoints requires --abc9-batch-size')
+    if args.abc9_isolate_leaves and args.abc9_batch_size is None:
+        parser.error('--abc9-isolate-leaves requires --abc9-batch-size')
     if any(not re.fullmatch(r'[A-Za-z_][A-Za-z_0-9]*', name) for name in args.preserve_rtl_module):
         parser.error('--preserve-rtl-module requires an exact source module identifier')
     args.preserve_rtl_module = sorted(set(args.preserve_rtl_module))
@@ -781,10 +785,13 @@ def main():
                 command.append('--resume')
             if args.abc9_keep_checkpoints:
                 command.append('--keep-checkpoints')
+            if args.abc9_isolate_leaves:
+                command.append('--isolate-leaves')
             external_commands['03_map_lut'] = command
             stage_commands['03_map_lut'] = json.dumps(command, indent=2) + '\n'
             batch_configuration = {'batch_size': args.abc9_batch_size,
                                    'mapper_sha256': digest(mapper),
+                                   'isolate_leaves': args.abc9_isolate_leaves,
                                    'keep_checkpoints': args.abc9_keep_checkpoints}
         manifest = {'top': top, 'configuration': case['configuration'],
                     'parameters': case.get('parameters', {}), 'sources_sha256': source_hash,

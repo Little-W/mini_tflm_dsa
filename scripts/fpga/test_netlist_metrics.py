@@ -416,7 +416,7 @@ class MetricsTest(unittest.TestCase):
         output = ['0', '0', 2]+['0']*45
         variants = [({'OPMODE': [70]+control['OPMODE'][1:]}, {}),
                     ({'CARRYINSEL': ['1', '0', '0']}, {}), ({}, {'USE_MULT': 'MULTIPLY'}),
-                    ({}, {'USE_SIMD': 'TWO24'}), ({}, {'OPMODEREG': 1}),
+                    ({}, {'USE_SIMD': 'UNSUPPORTED'}), ({}, {'OPMODEREG': 1}),
                     ({}, {'IS_OPMODE_INVERTED': 1}), ({}, {'A_INPUT': 'CASCADE'})]
         for ports, params in variants:
             dsp = cell('DSP48E1', {**control, **ports}, {'P': output}, {**settings, **params})
@@ -426,8 +426,8 @@ class MetricsTest(unittest.TestCase):
                                        sink_filter=lambda name, _cell, _port: name == 'last')
             self.assertEqual(measured['longest_register_path_cells'], 1)
 
-    def test_four12_arithmetic_keeps_data_within_each_lane(self):
-        settings = {'USE_MULT': 'NONE', 'USE_DPORT': 'FALSE', 'USE_SIMD': 'FOUR12',
+    def check_simd_lane_dependencies(self, mode, lane_width):
+        settings = {'USE_MULT': 'NONE', 'USE_DPORT': 'FALSE', 'USE_SIMD': mode,
                     'A_INPUT': 'DIRECT', 'B_INPUT': 'DIRECT', 'OPMODEREG': 0,
                     'INMODEREG': 0, 'CARRYINSELREG': 0, 'PREG': 0, 'AREG': 0, 'BREG': 0, 'CREG': 0}
         control = {'OPMODE': list(reversed('0110011')), 'INMODE': ['0'] * 5,
@@ -447,9 +447,15 @@ class MetricsTest(unittest.TestCase):
                         module = {'cells': {'first': flop(1, '0'), 'dsp': dsp, 'last': flop(3, 2)}}
                         measured = connected_paths(module, root_filter=lambda name, _cell, _port: name == 'first',
                                                    sink_filter=lambda name, _cell, _port: name == 'last')
-                        expected = source // 12 == target // 12 and source <= target
+                        expected = source // lane_width == target // lane_width and source <= target
                         self.assertEqual(measured['longest_register_path_cells'], int(expected),
                                          (output, port, source, target))
+
+    def test_four12_arithmetic_keeps_data_within_each_lane(self):
+        self.check_simd_lane_dependencies('FOUR12', 12)
+
+    def test_two24_arithmetic_keeps_data_within_each_lane(self):
+        self.check_simd_lane_dependencies('TWO24', 24)
 
 
 if __name__ == '__main__':

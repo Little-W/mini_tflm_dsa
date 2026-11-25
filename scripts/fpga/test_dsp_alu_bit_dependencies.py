@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""使用官方 DSP48E1 模型证明纯 ALU 的高位不影响低位结果。"""
+"""使用 Yosys 器件模型证明纯 ALU 的位依赖范围及 SIMD 通道独立性。"""
 from __future__ import annotations
 
 import argparse
@@ -41,7 +41,7 @@ def main():
     input [47:0] ab, c, input carry, input [3:0] mode,
     output [47:0] p, pc
 );
-DSP48E1 #({settings},.USE_MULT("NONE"),.USE_DPORT("FALSE"),.USE_SIMD(SIMD_WIDTH==12 ? "FOUR12" : "ONE48"),
+DSP48E1 #({settings},.USE_MULT("NONE"),.USE_DPORT("FALSE"),.USE_SIMD(SIMD_WIDTH==12 ? "FOUR12" : (SIMD_WIDTH==24 ? "TWO24" : "ONE48")),
     .A_INPUT("DIRECT"),.B_INPUT("DIRECT")) u_dsp (
     .A(ab[47:18]),.B(ab[17:0]),.C(c),.D(25'd0),.ACIN(30'd0),.BCIN(18'd0),.PCIN(48'd0),
     .OPMODE(7'b0110011),.INMODE(5'd0),.CARRYINSEL(3'd0),.ALUMODE(mode),.CARRYIN(carry),
@@ -69,11 +69,12 @@ endmodule
     summary = {'passed': False, 'primitive_library_sha256': digest(library),
                'primitive_model_sha256': digest(model_file), 'test_sha256': digest(Path(__file__)),
                'analyzer_sha256': digest(HERE / 'netlist_metrics.py'),
-               'mode': {'USE_MULT': 'NONE', 'USE_SIMD': ['ONE48', 'FOUR12'], 'OPMODE': '0110011',
+               'mode': {'USE_MULT': 'NONE', 'USE_SIMD': ['ONE48', 'TWO24', 'FOUR12'], 'OPMODE': '0110011',
                         'CARRYINSEL': '000', 'INMODE': '00000'},
                'arbitrary_input_bits': 197, 'ALUMODE_constrained': False,
                'high_operand_bits_independent': True, 'runs': []}
     configurations = [(48, 0, width) for width in range(1, 49)]
+    configurations += [(24, offset, width) for offset in (0, 24) for width in range(1, 25)]
     configurations += [(12, offset, width) for offset in (0, 12, 24, 36) for width in range(1, 13)]
     for simd_width, offset, width in configurations:
         name = f'lane_{simd_width}_offset_{offset}_width_{width}'

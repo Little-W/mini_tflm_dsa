@@ -78,7 +78,7 @@ def dsp_alu_low_bit_dependencies(cell):
     # 未声明的 USE_MULT 采用原语默认乘法模式，不能按纯 ALU 处理。
     if str(settings.get('USE_MULT', 'MULTIPLY')).strip() != 'NONE':
         return False
-    if str(settings.get('USE_SIMD', 'ONE48')).strip() not in ('ONE48', 'FOUR12'):
+    if str(settings.get('USE_SIMD', 'ONE48')).strip() not in ('ONE48', 'TWO24', 'FOUR12'):
         return False
     for name in ('OPMODEREG', 'INMODEREG', 'CARRYINSELREG'):
         if parameter(cell, name, 1):
@@ -349,7 +349,8 @@ def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_fil
                 else:
                     if port != 'MULTSIGNOUT' or not mreg:
                         if low_bit_dependencies and port in ('P', 'PCOUT'):
-                            lane_width = 12 if str(cell['parameters'].get('USE_SIMD', 'ONE48')).strip() == 'FOUR12' else 48
+                            lane_width = {'ONE48': 48, 'TWO24': 24, 'FOUR12': 12}[
+                                str(cell['parameters'].get('USE_SIMD', 'ONE48')).strip()]
                             for index, bit in enumerate(ports[port]):
                                 first_bit = index // lane_width * lane_width
                                 selected = []
@@ -537,7 +538,7 @@ def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_fil
         'unclassified_cell_types': dict(sorted(unknown.items())),
         'graph_complete': not unknown and not cyclic,
         'dsp_without_output_register': dsp_bypass,
-        'path_method': 'Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis.',
+        'path_method': 'Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48, TWO24 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis.',
     }
 
 

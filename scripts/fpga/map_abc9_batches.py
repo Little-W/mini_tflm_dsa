@@ -20,6 +20,9 @@ SUFFIX = ["clean", "xilinx_srl -fixed -minlen 3",
           "xilinx_dffopt", "opt_lut_ins -tech xilinx"]
 LIBRARIES = ["read_verilog -lib -specify -overwrite +/xilinx/cells_sim.v",
              "read_verilog -lib -overwrite +/xilinx/cells_xtra.v"]
+LEAF_TYPES = {"$_NOT_", "$_AND_", "$_NAND_", "$_OR_", "$_NOR_", "$_XOR_",
+              "$_XNOR_", "$_ANDNOT_", "$_ORNOT_", "$_MUX_", "$_NMUX_",
+              "$_AOI3_", "$_OAI3_", "$_AOI4_", "$_OAI4_", "$buf"}
 
 
 def digest(path, *, compressed=False):
@@ -43,9 +46,196 @@ def interfaces(design, names):
         module = design.module(name)
         if module is None or module.get_blackbox_attribute() or module.get_bool_attribute("\\whitebox"):
             raise RuntimeError("完整设计中的模块缺失或成为不透明模块：" + name)
-        result[name] = sorted((str(wire.name), wire.width, wire.port_input, wire.port_output, wire.port_id)
+        result[name] = sorted((str(wire.name), wire.width, wire.port_input, wire.port_output,
+                              wire.port_id, wire.start_offset, wire.upto, wire.is_signed)
                               for wire in module.wires_.values() if wire.port_input or wire.port_output)
     return result
+
+
+def combinational_leaf(module):
+    """只选择没有状态、子模块、未知常量和双向端口的小型组合模块。"""
+    from pyosys import libyosys as yosys
+    if any(character.isspace() for character in str(module.name)):
+        return False
+    if module.has_processes() or module.has_memories() or module.cells_size() > 512:
+        return False
+    if any(wire.port_input and wire.port_output for wire in module.wires_.values()):
+        return False
+    signals = [signal for pair in module.connections() for signal in pair]
+    for cell in module.cells_.values():
+        if str(cell.type) not in LEAF_TYPES:
+            return False
+        signals.extend(cell.connections_.values())
+    return all(bit.wire is not None or bit.data in (yosys.State.S0, yosys.State.S1)
+               for signal in signals for bit in signal.bits())
+
+
+def select_modules(design, names):
+    from pyosys import libyosys as yosys
+    yosys.run_pass("select -clear", design)
+    yosys.run_pass("setattr -mod -unset npu_abc9_leaf_module", design)
+    for name in names:
+        design.module(name).set_bool_attribute("\\npu_abc9_leaf_module", True)
+    yosys.run_pass("select A:npu_abc9_leaf_module", design)
+    selected = [str(module.name) for module in design.selected_unboxed_whole_modules_warn()]
+    if len(selected) != len(names) or set(selected) != set(names):
+        raise RuntimeError("独立组合模块的完整选择与清单不同")
+
+
+def leaf_signature(module):
+    """按端口和布尔运算结构识别相同组合函数；所有复用结果仍逐模块证明。"""
+    from pyosys import libyosys as yosys
+    parent = {}
+
+    def bit_key(bit):
+        if bit.wire is not None:
+            return (1, str(bit.wire.name), bit.offset)
+        if bit.data == yosys.State.S0:
+            return (0, 0)
+        if bit.data == yosys.State.S1:
+            return (0, 1)
+        raise RuntimeError("组合函数签名包含未定义常量")
+
+    def root(key):
+        parent.setdefault(key, key)
+        if parent[key] != key:
+            parent[key] = root(parent[key])
+        return parent[key]
+
+    connections = list(module.connections())
+    for cell in module.cells_.values():
+        if str(cell.type) == "$buf":
+            lhs, rhs = cell.connections_["\\Y"], cell.connections_["\\A"]
+            if lhs.size() != rhs.size():
+                raise RuntimeError("组合缓冲单元的输入和输出宽度不同")
+            connections.append((lhs, rhs))
+    for lhs, rhs in connections:
+        for a, b in zip(lhs.bits(), rhs.bits()):
+            a, b = root(bit_key(a)), root(bit_key(b))
+            parent[max(a, b)] = min(a, b)
+    inputs, drivers, cache, active = {}, {}, {}, set()
+    ports = sorted((wire for wire in module.wires_.values() if wire.port_id),
+                   key=lambda wire: wire.port_id)
+    for wire in ports:
+        if wire.port_input:
+            for index in range(wire.width):
+                inputs.setdefault(root((1, str(wire.name), index)), []).append((str(wire.name), index))
+    for cell in module.cells_.values():
+        if str(cell.type) == "$buf":
+            continue
+        for bit in cell.connections_["\\Y"].bits():
+            key = root(bit_key(bit))
+            if key in drivers:
+                raise RuntimeError("组合模块包含多个驱动")
+            drivers[key] = cell
+
+    def expression(key):
+        key = root(key)
+        if key in cache:
+            return cache[key]
+        if key in active:
+            raise RuntimeError("组合模块包含组合环")
+        active.add(key)
+        if key[0] == 0:
+            value = ("constant", key[1])
+        elif key in inputs:
+            value = ("input", sorted(inputs[key]))
+        elif key in drivers:
+            cell = drivers[key]
+            arguments = [(str(port), [expression(bit_key(bit)) for bit in signal.bits()])
+                         for port, signal in cell.connections_.items() if str(port) != "\\Y"]
+            value = (str(cell.type), sorted(arguments))
+        else:
+            raise RuntimeError("组合模块包含未驱动信号")
+        active.remove(key)
+        cache[key] = hashlib.sha256(repr(value).encode()).hexdigest()
+        return cache[key]
+
+    metadata = [(str(wire.name), wire.width, wire.port_input, wire.port_output,
+                 wire.port_id, wire.start_offset, wire.upto, wire.is_signed) for wire in ports]
+    outputs = [(str(wire.name), [expression((1, str(wire.name), index))
+                                for index in range(wire.width)]) for wire in ports if wire.port_output]
+    return hashlib.sha256(repr((metadata, outputs)).encode()).hexdigest()
+
+
+def map_leaves(design, names, specification, command):
+    """在独立设计中使用相同 ABC9 命令映射叶模块，并逐模块证明全部输出等价。"""
+    from pyosys import libyosys as yosys
+    before_path = specification.with_suffix(".leaves_before.il")
+    after_path = specification.with_suffix(".leaves_after.il")
+    expected = interfaces(design, names)
+    original_attributes = {name: dict(design.module(name).attributes.items()) for name in names}
+    original_port_attributes = {
+        name: {str(wire.name): dict(wire.attributes.items())
+               for wire in design.module(name).wires_.values() if wire.port_id} for name in names}
+    representatives, signatures, copies = [], {}, {}
+    for name in names:
+        signature = leaf_signature(design.module(name))
+        if signature in signatures:
+            copies[name] = signatures[signature]
+        else:
+            representatives.append(name)
+            signatures[signature] = name
+    select_modules(design, names)
+    yosys.run_pass("write_rtlil -selected " + shlex.quote(str(before_path)), design)
+    isolated = yosys.Design()
+    run = lambda value: yosys.run_pass(value, isolated)
+    run("read_rtlil " + shlex.quote(str(before_path)))
+    for value in LIBRARIES:
+        run(value)
+    run("read_verilog -icells -lib -specify -overwrite +/xilinx/abc9_model.v")
+    select_modules(isolated, names)
+    run("check -assert")
+    select_modules(isolated, representatives)
+    run(command)
+    if copies:
+        select_modules(isolated, list(copies))
+        run("delete")
+        for name, representative in copies.items():
+            duplicate = isolated.module(representative).clone()
+            duplicate.name = name
+            isolated.add(duplicate)
+    for name in names:
+        module = isolated.module(name)
+        for key in list(module.attributes.keys()):
+            del module.attributes[key]
+        for key, value in original_attributes[name].items():
+            module.attributes[key] = value
+        for port, attributes in original_port_attributes[name].items():
+            wire = module.wire(port)
+            for key in list(wire.attributes.keys()):
+                del wire.attributes[key]
+            for key, value in attributes.items():
+                wire.attributes[key] = value
+    if interfaces(isolated, names) != expected:
+        raise RuntimeError("独立组合模块的端口发生变化")
+    select_modules(isolated, names)
+    run("write_rtlil -selected " + shlex.quote(str(after_path)))
+    del run, isolated
+
+    proof = yosys.Design()
+    prove = lambda value: yosys.run_pass(value, proof)
+    prove("read_rtlil " + shlex.quote(str(before_path)))
+    for index, name in enumerate(names):
+        prove("rename " + name + f" npu_leaf_before_{index}")
+    prove("read_rtlil " + shlex.quote(str(after_path)))
+    prove("setattr -mod -unset keep_hierarchy")
+    prove("setattr -unset keep_hierarchy")
+    for index, name in enumerate(names):
+        prove(f"miter -equiv -flatten npu_leaf_before_{index} " + name +
+              f" npu_leaf_proof_{index}")
+        prove(f"sat -set-def-inputs -prove trigger 0 -verify npu_leaf_proof_{index}")
+    del prove, proof
+
+    yosys.run_pass("select -clear", design)
+    yosys.run_pass("read_rtlil -overwrite " + shlex.quote(str(after_path)), design)
+    yosys.run_pass("setattr -mod -unset npu_abc9_leaf_module", design)
+    if interfaces(design, names) != expected:
+        raise RuntimeError("合并组合模块后端口发生变化")
+    before_path.unlink()
+    after_path.unlink()
+    print("\nABC9_LEAF_PROOFS " + str(len(names)), flush=True)
+    print("\nABC9_LEAF_FUNCTIONS " + str(len(representatives)), flush=True)
 
 
 def worker(specification):
@@ -55,6 +245,9 @@ def worker(specification):
     design = yosys.Design()
     run = lambda command: yosys.run_pass(command, design)
     run("read_rtlil " + shlex.quote(spec["input"]))
+    # 完整设计使用直接连接保存，每次恢复后检查所有模块的驱动关系。
+    run("bufnorm -conn")
+    run("check -assert")
     if spec["mode"] == "prepare":
         for command in LIBRARIES + spec["prefix"]:
             run(command)
@@ -75,19 +268,30 @@ def worker(specification):
         if before != expected:
             raise RuntimeError("设计检查点的模块端口与初始设计不一致")
         if spec["mode"] == "batch":
+            if len(spec["modules"]) != len(set(spec["modules"])) or not set(spec["modules"]) <= set(names):
+                raise RuntimeError("批次模块清单包含重复或未知模块")
+            if any(design.module(name).has_attribute("\\npu_abc9_leaf_module") for name in names):
+                raise RuntimeError("输入设计包含保留的叶模块选择属性")
+            leaf_names = [name for name in spec["modules"]
+                          if spec.get("isolate_leaves") and combinational_leaf(design.module(name))]
+            if leaf_names:
+                map_leaves(design, leaf_names, specification, spec["abc9"])
+            remaining = [name for name in spec["modules"] if name not in set(leaf_names)]
             for name in spec["modules"]:
                 if name not in names:
                     raise RuntimeError("批次包含初始设计之外的模块：" + name)
                 module = design.module(name)
                 if module.has_attribute("\\npu_abc9_batch_module"):
                     raise RuntimeError("输入设计包含保留的批次选择属性")
-                module.set_bool_attribute("\\npu_abc9_batch_module", True)
+                if name in remaining:
+                    module.set_bool_attribute("\\npu_abc9_batch_module", True)
             run("select A:npu_abc9_batch_module")
             selected = [str(module.name) for module in design.selected_unboxed_whole_modules_warn()]
-            if set(selected) != set(spec["modules"]) or len(selected) != len(spec["modules"]):
+            if set(selected) != set(remaining) or len(selected) != len(remaining):
                 raise RuntimeError("ABC9 的完整模块选择与批次清单不一致")
             print("ABC9_BATCH_MODULES " + json.dumps(selected), flush=True)
-            run(spec["abc9"])
+            if selected:
+                run(spec["abc9"])
             run("select -clear")
             run("setattr -mod -unset npu_abc9_batch_module")
             if interfaces(design, names) != expected:
@@ -110,6 +314,8 @@ def worker(specification):
         else:
             raise ValueError("未知的 ABC9 工作步骤")
     run("select -clear")
+    run("bufnorm -conn")
+    run("check -assert")
     run("write_rtlil " + shlex.quote(spec["output"]))
 
 
@@ -163,6 +369,8 @@ def main():
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--keep-checkpoints", action="store_true")
+    parser.add_argument("--isolate-leaves", action="store_true",
+                        help="独立映射无状态组合叶模块，并在合并前逐模块证明等价")
     args = parser.parse_args()
     if args.worker:
         worker(args.worker)
@@ -180,6 +388,8 @@ def main():
     env["PATH"] = str(Path(pyosys.__file__).parent) + os.pathsep + env.get("PATH", "")
     identity = {"input_sha256": digest(args.input, compressed=args.input.suffix == ".gz"),
                 "top": args.top, "batch_size": args.batch_size,
+                "isolate_leaves": args.isolate_leaves,
+                "connection_representation": "direct",
                 "tool": yosys.yosys_maybe_version(), "mapper_sha256": digest(Path(__file__)),
                 "library_sha256": {name: digest(Path(pyosys.__file__).parent / "share" / name)
                     for name in ("xilinx/cells_sim.v", "xilinx/cells_xtra.v", "xilinx/abc9_model.v",
@@ -210,6 +420,10 @@ def main():
         if len(process_ids) != 1:
             raise RuntimeError("工作进程记录不完整")
         result["worker_pid"] = int(process_ids[0])
+        result["equivalent_leaf_modules"] = sum(map(int, re.findall(
+            r"ABC9_LEAF_PROOFS (\d+)", (folder / (name + ".log")).read_text())))
+        result["mapped_leaf_functions"] = sum(map(int, re.findall(
+            r"ABC9_LEAF_FUNCTIONS (\d+)", (folder / (name + ".log")).read_text())))
         result["specification_sha256"] = digest(spec)
         return result
 
@@ -248,7 +462,7 @@ def main():
         label = f"batch_{start // args.batch_size + 1:04d}"
         result = execute(label, {"mode": "batch", "input": str(input_path),
             "output": str(output_path), "inventory": str(inventory_path),
-            "modules": selected, "abc9": profile["abc9"]})
+            "modules": selected, "abc9": profile["abc9"], "isolate_leaves": args.isolate_leaves})
         result["modules"] = selected
         commit_checkpoint(label, result, names[:start + len(selected)])
     materialize(checkpoint, input_path)

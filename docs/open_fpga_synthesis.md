@@ -217,6 +217,8 @@ DSP 选择的 JSON 检查点同时保存 `mapped_alu.autoidx.il`，记录既有�
 
 宽算术DSP选择、组合级数统计和详细路径导出使用相同的输出依赖结果。一个双输出LUT的两个函数分别建立图节点，输出仅连接到自身使用的输入。寄存器与DSP内部寄存边界继续按实际参数划分。工具清单保存依赖分析程序的SHA-256。
 
+对于 `USE_MULT=NONE`、直接 `A:B/C` 输入及固定选择控制的算术模式，`ONE48`、`TWO24` 和 `FOUR12` 分别按 48、24 和 12 位划分通道。输出位仅连接到同一通道内能够向该位传播的操作数位，控制输入继续保留。`test_dsp_alu_bit_dependencies.py` 使用 Yosys 器件模型，对三种模式的全部 144 个通道内截断位置执行无输入约束的形式证明；`ALUMODE` 与输入进位均为自由输入。器件结构说明见 AMD [UG479](https://docs.amd.com/api/khub/documents/gu4oRPFEh_Pm2uaAlfY6Kg/content)。
+
 `scripts/fpga/patches/nextpnr_lut_output_inputs.patch` 将相同原则应用到物理打包。拆分 `LUT6_2` 时，若第六输入为常量且 `INIT` 完整定义，每个输出仅保留影响自身真值表的输入连接，原始 `INIT` 保持。具有动态第六输入的余因子共享仍保留共同输入及专用A6连接。组合环检查保持启用。
 
 以下测试执行真实打包、布局、布线、物理输入排列及FASM真值表检查：
