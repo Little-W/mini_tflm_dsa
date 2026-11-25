@@ -1,0 +1,309 @@
+{
+  "comparison_revision": "83946820a57584f3ed922a3b68bcbfdf75a21635",
+  "candidate_rtl_sha256": "ba6a5d98e5c27d353a32be495793482be9d1461d3ee0be6b424a9170e06e8195",
+  "full_frontend_parameters": {
+    "SIZE": 16,
+    "SLOT_W": 5,
+    "LANES": 8,
+    "CACHE_SETS": 16,
+    "CACHE_WAYS": 2,
+    "LINE_BYTES": 128,
+    "BUS_WIDTH": 64,
+    "DMA_MAX_BYTES": 2048,
+    "CACHE_POLICY": 3,
+    "REGISTER_DESCRIPTOR": 0,
+    "REGISTER_ROW_ADDRESS": 0,
+    "REGISTER_CACHE_REQUEST": 1,
+    "CACHE_RESPONSE_DEPTH": 1
+  },
+  "formal_with_actual_request_selection": {
+    "passed": true,
+    "actual_read_source_selection": true,
+    "external_inputs_constrained": false,
+    "formal_profiles": [
+      {
+        "set_width": 1,
+        "passed": true,
+        "log_sha256": "ec93ae6964fd90213267a6dcd1dcb7a5123313f772316fdf580993993457f274"
+      },
+      {
+        "set_width": 2,
+        "passed": true,
+        "log_sha256": "80e00c1df47f8e9da019fe1ffbb9cb70185541284f28b266a19f8381869c65cd"
+      },
+      {
+        "set_width": 4,
+        "passed": true,
+        "log_sha256": "4690f17e89630a50b1ffd209843d13700c17469a2e3d51d825e14ecedb131979"
+      },
+      {
+        "set_width": 8,
+        "passed": true,
+        "log_sha256": "82ac302c0f71e6ff7d4038b533a59013a5097364dd46ea16d13a299377eedf11"
+      },
+      {
+        "set_width": 16,
+        "passed": true,
+        "log_sha256": "ed3443cf971701cdc016ab12cce05a96329038e6d38f43d270fe5d1246f6cae8"
+      }
+    ],
+    "four_state_cases": 15632,
+    "source_sha256": {
+      "/workspace/scratch/75105476d0fd/wt_snapshot_comparisons/rtl/npu/dma/cache/conv_windowed_cache.sv": "ba6a5d98e5c27d353a32be495793482be9d1461d3ee0be6b424a9170e06e8195",
+      "/workspace/scratch/75105476d0fd/wt_soc_round2/rtl/npu/dma/cache/conv_windowed_cache.sv": "75715383958eb733581f58df8b855a4c397d6675fa94c22be39580ac7e20972e",
+      "/workspace/scratch/75105476d0fd/wt_snapshot_comparisons/rtl/common/onehot_mux.sv": "e4305e87df62f6b702189f2d0c66a86f67ea50b47bc9c15addb4817a6b3c79ac",
+      "/workspace/scratch/75105476d0fd/wt_snapshot_comparisons/rtl/common/unsigned_compare.sv": "2f8a56bf2356ab9ef3bbe1691290758e110f275409a55b2ebee2025cdefb74dc",
+      "/workspace/scratch/75105476d0fd/wt_snapshot_comparisons/rtl/common/parallel_unsigned_compare.sv": "b0b732d0b4d2e94dd8b17a3727b2b2a455f382797d73149474ce15086b42e412"
+    },
+    "model_sha256": "d5dd59c0fd27c5b8bcaa460464661b98017d62a67ffe4d712871d44cd425463d",
+    "checker_sha256": "ac530b2ccddaeb9bd2aa5eb14ca4f1be32bd03190d72a6c0521e297daf4ee5b2"
+  },
+  "formal_generic_snapshot": {
+    "passed": true,
+    "actual_rtl_modules": true,
+    "external_inputs_constrained": false,
+    "reference_sha256": "75715383958eb733581f58df8b855a4c397d6675fa94c22be39580ac7e20972e",
+    "candidate_sha256": "ba6a5d98e5c27d353a32be495793482be9d1461d3ee0be6b424a9170e06e8195",
+    "common_sha256": {
+      "rtl/common/unsigned_compare.sv": "2f8a56bf2356ab9ef3bbe1691290758e110f275409a55b2ebee2025cdefb74dc",
+      "rtl/common/parallel_unsigned_compare.sv": "b0b732d0b4d2e94dd8b17a3727b2b2a455f382797d73149474ce15086b42e412"
+    },
+    "formal_profiles": [
+      {
+        "set_width": 1,
+        "passed": true,
+        "log_sha256": "e1b7bd0c322b9c5625ed7b3eee40bae0dde99e3f06425a943836f0e231d97e2f"
+      },
+      {
+        "set_width": 2,
+        "passed": true,
+        "log_sha256": "9537da22dcc43d08c206ae45b48da6c0f7f900e21bc71649bd2de5e6157d2d11"
+      },
+      {
+        "set_width": 4,
+        "passed": true,
+        "log_sha256": "3336701b62c22e263a5c4be146411b46c496ca68c0e4054a36c9fbaf290c7db8"
+      },
+      {
+        "set_width": 8,
+        "passed": true,
+        "log_sha256": "a5b9b76b1279d63dca177fe3da972094c3f1f6aa36bb2163c3a45ad4b2b56117"
+      },
+      {
+        "set_width": 16,
+        "passed": true,
+        "log_sha256": "9ea8f933d0095556adc961dcf5dcf084477605aa74f964a0188065003c1fe444"
+      }
+    ],
+    "four_state_cases": 18272,
+    "proof_sha256": "db92af040479c16a7a4d6e70e889f0ac52ca8543e0fcc9e329003e8df55ae423",
+    "four_state_log_sha256": "36331bc5ac09edb855bdcd7ac6f65dd8cba64947ddb9ce1edbdfaab2b971be00"
+  },
+  "four_state_cases_total": 33904,
+  "reference_frontend": {
+    "resources": {
+      "logic_lut_cells": 16677,
+      "distributed_ram_lut_sites_nominal": 68,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 16745,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 6241,
+      "dsp48e1": 18,
+      "ramb36e1": 1,
+      "ramb18e1": 22,
+      "carry4": 1383,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 1383,
+        "DSP48E1": 18,
+        "FDCE": 2181,
+        "FDPE": 97,
+        "FDRE": 3925,
+        "FDSE": 38,
+        "INV": 812,
+        "LUT2": 4007,
+        "LUT3": 1963,
+        "LUT4": 3125,
+        "LUT5": 4701,
+        "LUT6": 2881,
+        "MUXF7": 71,
+        "MUXF8": 18,
+        "RAM32M": 17,
+        "RAMB18E1": 22,
+        "RAMB36E1": 1
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "paths": {
+      "longest_register_path_cells": 17,
+      "endpoint_port_maximum_depth_histogram": {
+        "0": 1151,
+        "1": 1529,
+        "2": 904,
+        "3": 625,
+        "4": 479,
+        "5": 1260,
+        "6": 1214,
+        "7": 1313,
+        "8": 395,
+        "9": 514,
+        "10": 378,
+        "11": 541,
+        "12": 595,
+        "13": 323,
+        "14": 34,
+        "15": 34,
+        "16": 7,
+        "17": 2
+      },
+      "report_limits": {
+        "paths": 20,
+        "groups": 12,
+        "minimum_combinational_cells": 0
+      },
+      "graph_nodes": 38675,
+      "visited_graph_nodes": 38675,
+      "unclassified_cell_types": {},
+      "graph_complete": true,
+      "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+    },
+    "interface_paths": {
+      "mapped_sha256": "82f22e0d409786d451e788bc64000334a1ff2ea55bd726893ad2baff1e764410",
+      "boundary_registers_are_analysis_only": true,
+      "input_to_register": {
+        "longest_register_path_cells": 17,
+        "graph_nodes": 38471,
+        "visited_graph_nodes": 38471,
+        "unclassified_cell_types": {},
+        "graph_complete": true,
+        "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+      },
+      "register_to_output": {
+        "longest_register_path_cells": 12,
+        "graph_nodes": 38547,
+        "visited_graph_nodes": 38547,
+        "unclassified_cell_types": {},
+        "graph_complete": true,
+        "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+      },
+      "input_to_output": {
+        "longest_register_path_cells": 2,
+        "graph_nodes": 38423,
+        "visited_graph_nodes": 38423,
+        "unclassified_cell_types": {},
+        "graph_complete": true,
+        "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+      }
+    },
+    "metrics_sha256": "9ad79ea74590d26bdb5f9bd3be09a33df1610115d0b90a18e75d97ac2eb61971"
+  },
+  "current_frontend": {
+    "resources": {
+      "logic_lut_cells": 16672,
+      "distributed_ram_lut_sites_nominal": 68,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 16740,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 6181,
+      "dsp48e1": 18,
+      "ramb36e1": 1,
+      "ramb18e1": 22,
+      "carry4": 1384,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 1384,
+        "DSP48E1": 18,
+        "FDCE": 2181,
+        "FDPE": 97,
+        "FDRE": 3865,
+        "FDSE": 38,
+        "INV": 812,
+        "LUT1": 2,
+        "LUT2": 4039,
+        "LUT3": 1988,
+        "LUT4": 3075,
+        "LUT5": 4724,
+        "LUT6": 2844,
+        "MUXF7": 56,
+        "MUXF8": 10,
+        "RAM32M": 17,
+        "RAMB18E1": 22,
+        "RAMB36E1": 1
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "paths": {
+      "longest_register_path_cells": 17,
+      "endpoint_port_maximum_depth_histogram": {
+        "0": 1091,
+        "1": 1525,
+        "2": 905,
+        "3": 624,
+        "4": 552,
+        "5": 1259,
+        "6": 1786,
+        "7": 1067,
+        "8": 329,
+        "9": 379,
+        "10": 326,
+        "11": 386,
+        "12": 532,
+        "13": 393,
+        "14": 61,
+        "15": 22,
+        "16": 8,
+        "17": 1
+      },
+      "report_limits": {
+        "paths": 20,
+        "groups": 12,
+        "minimum_combinational_cells": 0
+      },
+      "graph_nodes": 38595,
+      "visited_graph_nodes": 38595,
+      "unclassified_cell_types": {},
+      "graph_complete": true,
+      "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+    },
+    "interface_paths": {
+      "mapped_sha256": "4fb033836ff7b1b040b2d349964c373cc409c5d2f88af9fe4c02cbfc240615cb",
+      "boundary_registers_are_analysis_only": true,
+      "input_to_register": {
+        "longest_register_path_cells": 17,
+        "graph_nodes": 38390,
+        "visited_graph_nodes": 38390,
+        "unclassified_cell_types": {},
+        "graph_complete": true,
+        "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+      },
+      "register_to_output": {
+        "longest_register_path_cells": 12,
+        "graph_nodes": 38467,
+        "visited_graph_nodes": 38467,
+        "unclassified_cell_types": {},
+        "graph_complete": true,
+        "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+      },
+      "input_to_output": {
+        "longest_register_path_cells": 2,
+        "graph_nodes": 38343,
+        "visited_graph_nodes": 38343,
+        "unclassified_cell_types": {},
+        "graph_complete": true,
+        "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+      }
+    },
+    "metrics_sha256": "2dec634804c3580bfb6ed22df7297eefb5025d3275fe60a2ef4fa1c1e83745bc"
+  },
+  "cache_control_register_depth": {
+    "reference": 15,
+    "current": 11
+  },
+  "clock_frequency_verified": false,
+  "mapping": {
+    "family": "xc7",
+    "abc9_batch_size": 64,
+    "isolate_leaves": true
+  },
+  "latency_changed": false
+}

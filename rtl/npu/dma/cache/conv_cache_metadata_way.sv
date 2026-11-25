@@ -81,7 +81,7 @@ module conv_cache_metadata_way #(
         localparam int p_source = candidate == 0 ? 0 : candidate + 1;
         wire [SI-1:0] source_set = candidate == 1 ?
             i_lookup_input_set[0] : i_lookup_candidate_set[p_source];
-        (* keep = 1 *) logic clear_matches, fill_matches;
+        logic clear_matches, fill_matches;
         logic forwarded_valid;
         assign valid_i_rd_addr[6+candidate] = source_set;
         assign clear_matches = source_set == i_clear_set;
@@ -104,7 +104,7 @@ module conv_cache_metadata_way #(
         end
       end
       if (p_parallel_preview) begin : g_preview
-        (* keep = 1 *) logic clear_matches, fill_matches;
+        logic clear_matches, fill_matches;
         logic forwarded_valid;
         assign valid_i_rd_addr[9] = i_lookup_input_set[1];
         assign clear_matches = i_lookup_input_set[1] == i_clear_set;
@@ -137,7 +137,7 @@ module conv_cache_metadata_way #(
     end else begin : g_current_lookup_valid
       assign o_lookup_source_valid = '0;
       logic lookup_valid_q;
-      (* keep = "true" *) logic [3:0] lookup_candidate_valid;
+      logic [3:0] lookup_candidate_valid;
       assign valid_i_rd_addr[0] = i_read_set[0];
       for (genvar candidate = 0; candidate < 4; candidate++) begin : g_candidate
         assign valid_i_rd_addr[6+candidate] = i_lookup_candidate_set[candidate];
@@ -185,7 +185,7 @@ module conv_cache_metadata_way #(
         assign fill_set_matches = i_lookup_saved_fill_match;
       end else begin : g_current
         localparam int p_set_groups = (SI + 2) / 3;
-        (* keep = 1 *) logic [p_set_groups-1:0] fill_set_group_matches;
+        logic [p_set_groups-1:0] fill_set_group_matches;
         // 填充组号按三位并行比较，读取有效位与替换行屏蔽在最后合并。
         for (genvar set_group = 0; set_group < p_set_groups; set_group++) begin : g_set_group
           localparam int p_low = set_group * 3;
@@ -300,14 +300,22 @@ module conv_cache_metadata_way #(
     assign metadata_i_rd_addr = i_candidate_set;
     assign metadata_i_wr_mask = 1'b1;
 
-    // 各标签端口保持原有同步周期，第一个端口的地址匹配与读取一起保存。
+    // 同步标签端口直接保存存储器读出，地址与数据在同一时钟边沿采样。
     assign o_lookup_tag_raw = tags_raw_data[0];
-    always_ff @(posedge clk) tags_o_rd_data <= tags_raw_data[4:0];
     regfile #(
       .p_data_width(p_tag_width), .p_depth(SETS), .p_addr_width(SI),
-      .p_write_unit(p_tag_width), .p_read_ports(p_tag_read_ports), .p_sync_read(1'b0),
-      .p_ram_style(DEMAND_DEPTH > 1 ? "block" : "auto")
+      .p_write_unit(p_tag_width), .p_read_ports(5), .p_sync_read(1'b1),
+      .p_ram_style("block")
     ) u_tags (
+      .clk(clk), .i_wr_en(tags_i_wr_en), .i_wr_addr(tags_i_wr_addr),
+      .i_wr_data(tags_i_wr_data), .i_wr_mask(tags_i_wr_mask),
+      .i_rd_en(tags_i_rd_en[4:0]), .i_rd_addr(tags_i_rd_addr[4:0]), .o_rd_data(tags_o_rd_data)
+    );
+    // 即时候选读取使用独立读端口，同拍写入遵循相同的存储更新顺序。
+    regfile #(
+      .p_data_width(p_tag_width), .p_depth(SETS), .p_addr_width(SI),
+      .p_write_unit(p_tag_width), .p_read_ports(p_tag_read_ports), .p_sync_read(1'b0)
+    ) u_lookup_tags (
       .clk(clk), .i_wr_en(tags_i_wr_en), .i_wr_addr(tags_i_wr_addr),
       .i_wr_data(tags_i_wr_data), .i_wr_mask(tags_i_wr_mask),
       .i_rd_en(tags_i_rd_en), .i_rd_addr(tags_i_rd_addr), .o_rd_data(tags_raw_data)
@@ -469,7 +477,6 @@ module conv_cache_metadata_way #(
 endmodule
 
 // 清除和填充的地址匹配独立完成，最终转发保留清除优先级。
-(* keep_hierarchy = "yes" *)
 module conv_cache_valid_forward (
   input wire logic i_clear_write, i_clear_match,
   input wire logic i_fill_write, i_fill_match, i_fill_valid, i_stored_valid,
@@ -480,7 +487,6 @@ module conv_cache_valid_forward (
 endmodule
 
 // 更新模式提前提供，命中事件在末级同时控制顺序值和来源标记。
-(* keep_hierarchy = "yes" *)
 module conv_cache_metadata_rank_hit (
   input wire logic i_enable, i_hit, i_selected, i_windowed, i_hint_valid,
   output logic o_update

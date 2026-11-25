@@ -49,11 +49,14 @@ module conv_window_queue #(
   logic [p_active_width-1:0] active_count;
   logic active_retire;
   logic frontend_slot_available, frontend_tail_accept;
-  (* keep = 1 *) logic descriptor_available, descriptor_multiple;
+  logic descriptor_available, descriptor_multiple;
   logic descriptor_prepared, descriptor_read_available;
+  logic descriptor_prepared_nxt;
   logic [PTR_W-1:0] descriptor_read_index;
   logic descriptor_forward;
-  (* keep = 1 *) logic descriptor_current_cols_valid, descriptor_next_cols_valid;
+  logic descriptor_current_cols_valid, descriptor_next_cols_valid;
+  logic descriptor_request_cols_valid, descriptor_cols_value, descriptor_cols_selected;
+  logic [1:0] descriptor_cols_candidates;
   logic [2:0][31:0] descriptor_prepared_data;
   function automatic logic [PTR_W-1:0] increment(input logic [PTR_W-1:0] value);
     return value==PTR_W'(DEPTH-1) ? '0 : value+1'b1;
@@ -119,13 +122,16 @@ module conv_window_queue #(
   assign descriptor_read_available = descriptor_multiple || (!launch && descriptor_available);
   // 没有未发送描述符时，读取位置就是接收位置；新接收数据直接写入准备寄存器。
   assign descriptor_forward = accept && !descriptor_read_available;
+  conv_window_prepared_flag u_prepared_flag (
+    .i_configure(configure), .i_multiple(descriptor_multiple), .i_available(descriptor_available),
+    .i_frontend_valid(frontend_valid), .i_frontend_ready(frontend_ready), .i_accept(accept),
+    .o_prepared(descriptor_prepared_nxt)
+  );
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       descriptor_prepared<=1'b0;
-    end else if (configure) begin
-      descriptor_prepared<=1'b0;
     end else begin
-      descriptor_prepared <= descriptor_read_available || accept;
+      descriptor_prepared <= descriptor_prepared_nxt;
     end
   end
   always_ff @(posedge clk) begin
@@ -161,11 +167,31 @@ module conv_window_queue #(
   // 当前项与下一项的列资格并行读取，晚到发送事件只选择一位结果。
   assign descriptor_current_cols_valid = cols_valid[present];
   assign descriptor_next_cols_valid = cols_valid[increment(present)];
-  always_ff @(posedge clk) begin
-    if (descriptor_forward) frontend_cols_valid <= req_cols>0 && req_cols<=32'(p_max_cols);
-    else if (descriptor_read_available)
-      frontend_cols_valid <= launch ? descriptor_next_cols_valid : descriptor_current_cols_valid;
+  conv_window_cols_range #(.p_max_cols(p_max_cols)) u_cols_range (
+    .i_columns(req_cols), .o_valid(descriptor_request_cols_valid)
+  );
+  conv_window_cols_candidates u_cols_candidates (
+    .i_available(descriptor_available), .i_multiple(descriptor_multiple), .i_accept(accept),
+    .i_request(descriptor_request_cols_valid), .i_current(descriptor_current_cols_valid),
+    .i_next(descriptor_next_cols_valid), .i_saved(frontend_cols_valid), .o_value(descriptor_cols_candidates)
+  );
+  conv_window_cols_select u_cols_select (
+    .i_frontend_valid(frontend_valid), .i_frontend_ready(frontend_ready),
+    .i_candidate(descriptor_cols_candidates), .o_value(descriptor_cols_selected)
+  );
+  // 发送与保持两种结果包含原有写入资格，启动事件仅选择最终保存值。
+  always_comb begin
+    descriptor_cols_value = descriptor_cols_selected;
+`ifndef SYNTHESIS
+    if ((^{descriptor_available, descriptor_multiple, frontend_valid, frontend_ready, accept}) === 1'bx) begin
+      descriptor_cols_value = frontend_cols_valid;
+      if (descriptor_forward) descriptor_cols_value = descriptor_request_cols_valid;
+      else if (descriptor_read_available)
+        descriptor_cols_value = launch ? descriptor_next_cols_valid : descriptor_current_cols_valid;
+    end
+`endif
   end
+  always_ff @(posedge clk) frontend_cols_valid <= descriptor_cols_value;
   // 加一与减一的传播条件直接取自当前计数，各结果位并行更新。
   assign count_increment = accept && !retire;
   assign count_decrement = retire && !accept;
@@ -197,7 +223,7 @@ module conv_window_queue #(
       if (accept) begin
         tags[tail]<=req_tag;
         // 列范围在请求接收时计算，与对应描述符占用同一个队列位置。
-        cols_valid[tail]<=req_cols>0 && req_cols<=32'(p_max_cols);
+        cols_valid[tail]<=descriptor_request_cols_valid;
         tail<=increment(tail);
       end
       if (retire) head<=increment(head);
@@ -222,6 +248,67 @@ module conv_window_queue #(
     if(launch) assert(count>COUNT_W'(active_count));
   end
 `endif
+endmodule
+
+// 待发送数量、接收事件和前端启动资格共同形成下一拍准备标志。
+(* keep_hierarchy = "yes" *)
+module conv_window_prepared_flag (
+  input logic i_configure, i_multiple, i_available,
+  input logic i_frontend_valid, i_frontend_ready, i_accept,
+  output logic o_prepared
+);
+  always_comb begin
+    if (i_configure) o_prepared = 1'b0;
+    else o_prepared = i_multiple || i_accept ||
+        (i_available && !(i_frontend_valid && i_frontend_ready));
+  end
+endmodule
+// 请求列数先完成完整范围比较，保存条目和直接转发共用同一结果。
+(* keep_hierarchy = "yes" *)
+module conv_window_cols_range #(
+  parameter int p_max_cols = 16
+) (
+  input logic [31:0] i_columns,
+  output logic o_valid
+);
+  localparam logic [32:0] p_limit = {1'b0, 32'(p_max_cols)};
+  localparam int unsigned p_low_width = p_limit == 0 ? 1 : $clog2(p_limit + 33'd1);
+  logic high_zero, low_valid;
+
+  // 高位归零和低位上限同时比较，保留完整三十二位无符号范围。
+  if (p_low_width < 32) begin : g_high_columns
+    assign high_zero = !(|i_columns[31:p_low_width]);
+  end else begin : g_full_columns
+    assign high_zero = 1'b1;
+  end
+  assign low_valid = (|i_columns[p_low_width-1:0]) &&
+      i_columns[p_low_width-1:0] <= p_low_width'(p_max_cols);
+  always_comb begin
+    o_valid = high_zero && low_valid;
+`ifndef SYNTHESIS
+    if ((^i_columns) === 1'bx) o_valid = i_columns > 32'd0 && i_columns <= 32'(p_max_cols);
+`endif
+  end
+endmodule
+
+// 两种启动状态分别准备列资格，原值作为没有读取和接收事件时的保持结果。
+(* keep_hierarchy = "yes" *)
+module conv_window_cols_candidates (
+  input logic i_available, i_multiple, i_accept, i_request, i_current, i_next, i_saved,
+  output logic [1:0] o_value
+);
+  assign o_value[0] = (i_multiple || i_available) ? i_current : (i_accept ? i_request : i_saved);
+  assign o_value[1] = i_multiple ? i_next : (i_accept ? i_request : i_saved);
+endmodule
+
+// 前端握手只选择已经准备的列资格，不再重新计算来源优先级。
+(* keep_hierarchy = "yes" *)
+module conv_window_cols_select (
+  input logic i_frontend_valid, i_frontend_ready,
+  input logic [1:0] i_candidate,
+  output logic o_value
+);
+  assign o_value = (i_frontend_valid && i_frontend_ready) ? i_candidate[1] : i_candidate[0];
 endmodule
 
 `default_nettype wire

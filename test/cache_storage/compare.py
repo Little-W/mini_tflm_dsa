@@ -68,8 +68,9 @@ def main():
                                 "parameter int LINE_BYTES=16,\n    parameter bit DEFER_RETIRE_SHIFT=0,")
     template = template.replace(".CACHE_POLICY(3),.DEMAND_DEPTH(DEMAND_DEPTH)",
                                 ".p_defer_retire_shift(DEFER_RETIRE_SHIFT),.CACHE_POLICY(3),.DEMAND_DEPTH(DEMAND_DEPTH)")
-    template = template.replace(".TRACK_BYTES(4096)",
-                                ".TRACK_BYTES(LINE_BYTES>16 ? 2048+64*LINE_BYTES : 4096)")
+    # 计数存储同时覆盖测试台的组地址范围和六十四个缓存行的预取访问。
+    template = template.replace(".TRACK_BYTES(TRACK_BYTES)",
+        ".TRACK_BYTES(TRACK_BYTES > 2048+64*LINE_BYTES ? TRACK_BYTES : 2048+64*LINE_BYTES)")
     template = template.replace("logic [31:0] prefetch_addr=0;",
         "logic [31:0] prefetch_addr=0,prefetch_epoch=0;\n" +
         "    int prefetch_peak=0,prefetch_swaps=0,prefetch_overlap=0;")
