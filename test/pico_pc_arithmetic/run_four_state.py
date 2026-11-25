@@ -24,7 +24,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     source = ROOT / "rtl/soc/picorv32_npu.v"
     text = read_rtl_text(source)
-    names = ("operand_addition", "operand_difference", "signed_difference",
+    names = ("operand_addition", "operand_difference",
              "return_address_sum", "next_cycle_count", "next_instruction_count")
     declarations = []
     for name in names:
@@ -33,7 +33,9 @@ def main():
         if not match:
             raise RuntimeError(f"没有找到实际算术表达式：{name}")
         declarations.append(match[0])
-    bench = r'''module tb;
+    comparison_module = re.search(r'module pico_operand_comparison\b.*?endmodule', text, re.S)[0]
+    bench = comparison_module + r'''
+module tb;
   reg [31:0] reg_op1, reg_op2, reg_pc;
   reg [63:0] count_cycle, count_instr;
   reg latched_compr, instr_sub;
@@ -56,14 +58,18 @@ def main():
     endcase
   endfunction
 ''' + "\n".join(declarations) + r'''
+  wire operand_unsigned_less, operand_signed_less;
+  pico_operand_comparison u_comparison (
+      .i_a(reg_op1), .i_b(reg_op2),
+      .o_unsigned_less(operand_unsigned_less), .o_signed_less(operand_signed_less));
   wire [31:0] selected = instr_sub ? operand_difference[31:0] : operand_addition;
   wire [31:0] expected = instr_sub ? reg_op1 - reg_op2 : reg_op1 + reg_op2;
   task automatic check;
     begin
       #1;
       if (selected !== expected ||
-          signed_difference[32] !== ($signed(reg_op1) < $signed(reg_op2)) ||
-          operand_difference[32] !== (reg_op1 < reg_op2) ||
+          operand_signed_less !== ($signed(reg_op1) < $signed(reg_op2)) ||
+          operand_unsigned_less !== (reg_op1 < reg_op2) ||
           return_address_sum !== (reg_pc + (latched_compr ? 32'd2 : 32'd4)) ||
           next_cycle_count !== (count_cycle + 64'd1) ||
           next_instruction_count !== (count_instr + 64'd1))

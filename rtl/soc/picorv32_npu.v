@@ -1225,17 +1225,23 @@ module picorv32 #(
 	reg alu_out_0, alu_out_0_q;
 	reg alu_wait, alu_wait_2;
 
-	// 加法、无符号差值和有符号比较分别准备，控制只选择已经完成的结果。
+	// 加减法和关系比较分别准备，控制只选择已经完成的结果。
 	wire [31:0] operand_addition = reg_op1 + reg_op2;
 	wire [32:0] operand_difference = {1'b0, reg_op1} - {1'b0, reg_op2};
-	wire [32:0] signed_difference =
-		{1'b0, ~reg_op1[31], reg_op1[30:0]} - {1'b0, ~reg_op2[31], reg_op2[30:0]};
 	wire [31:0] return_address_sum = reg_pc + (latched_compr ? 32'd2 : 32'd4);
 	wire [63:0] next_cycle_count = count_cycle + 64'd1;
 	wire [63:0] next_instruction_count = count_instr + 64'd1;
 	reg [31:0] alu_add_sub;
 	reg [31:0] alu_shl, alu_shr;
 	reg alu_eq, alu_ltu, alu_lts;
+	logic operand_unsigned_less, operand_signed_less;
+
+	// 比较按三位分组并行计算，有符号次序只在符号不同时选择符号位。
+	pico_operand_comparison u_operand_comparison (
+		.i_a(reg_op1), .i_b(reg_op2),
+		.o_unsigned_less(operand_unsigned_less), .o_signed_less(operand_signed_less)
+	);
+
 
 	// 取指地址选择只依赖已保存状态，地址加法在寄存器接收边沿前完成。
 	reg [31:0] selected_fetch_pc;
@@ -1254,8 +1260,22 @@ module picorv32 #(
 		endcase
 	end
 	// 顺序、直接跳转与相对分支地址保留完整 32 位模加结果。
-	wire [31:0] sequential_address_sum = selected_fetch_pc + (compressed_instr ? 32'd2 : 32'd4);
-	wire [31:0] jump_address_sum = selected_fetch_pc + decoded_imm_j;
+	logic [31:0] sequential_address_sum;
+	pico_sequential_address u_sequential_address (
+		.i_address(selected_fetch_pc), .i_compressed(compressed_instr),
+		.o_address(sequential_address_sum)
+	);
+	logic [31:0] jump_address_sum;
+	logic unused_jump_carry;
+`ifdef SYNTHESIS
+	// 两个半字同时相加，末级按低半字进位修正高半字。
+	parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_dsp_split_width(16)) u_jump_address (
+		.i_a(selected_fetch_pc), .i_b(decoded_imm_j), .i_carry(1'b0),
+		.o_sum(jump_address_sum), .o_carry(unused_jump_carry)
+	);
+`else
+	assign {unused_jump_carry, jump_address_sum} = {1'b0, selected_fetch_pc} + {1'b0, decoded_imm_j};
+`endif
 	wire [31:0] branch_address_sum = reg_pc + decoded_imm;
 	// 访存指令共用保存操作数与立即数的完整地址加法。
 	wire [31:0] memory_address_sum = reg_op1 + decoded_imm;
@@ -1264,8 +1284,8 @@ module picorv32 #(
 		always @(posedge clk) begin
 			alu_add_sub <= instr_sub ? operand_difference[31:0] : operand_addition;
 			alu_eq <= reg_op1 == reg_op2;
-			alu_lts <= signed_difference[32];
-			alu_ltu <= operand_difference[32];
+			alu_lts <= operand_signed_less;
+			alu_ltu <= operand_unsigned_less;
 			alu_shl <= reg_op1 << reg_op2[4:0];
 			alu_shr <= $signed({instr_sra || instr_srai ? reg_op1[31] : 1'b0, reg_op1}) >>> reg_op2[4:0];
 		end
@@ -1273,8 +1293,8 @@ module picorv32 #(
 		always @* begin
 			alu_add_sub = instr_sub ? operand_difference[31:0] : operand_addition;
 			alu_eq = reg_op1 == reg_op2;
-			alu_lts = signed_difference[32];
-			alu_ltu = operand_difference[32];
+			alu_lts = operand_signed_less;
+			alu_ltu = operand_unsigned_less;
 			alu_shl = reg_op1 << reg_op2[4:0];
 			alu_shr = $signed({instr_sra || instr_srai ? reg_op1[31] : 1'b0, reg_op1}) >>> reg_op2[4:0];
 		end
@@ -2198,4 +2218,92 @@ module picorv32 #(
 		end
 	end
 `endif
+endmodule
+
+// 完整操作数的关系按三层三路归并形成，保持原有四态比较语义。
+(* keep_hierarchy = "yes" *)
+module pico_operand_comparison (
+    input logic [31:0] i_a, i_b,
+    output logic o_unsigned_less, o_signed_less
+);
+    (* keep = 1 *) logic [10:0] leaf_less, leaf_equal;
+    (* keep = 1 *) logic [3:0] first_less, first_equal;
+    (* keep = 1 *) logic [1:0] second_less, second_equal;
+    logic unsigned_less, signed_less;
+    for (genvar group_index = 0; group_index < 11; group_index++) begin : g_leaf
+        localparam int p_first = group_index*3;
+        localparam int p_width = group_index == 10 ? 2 : 3;
+        assign leaf_less[group_index] = i_a[p_first+:p_width] < i_b[p_first+:p_width];
+        assign leaf_equal[group_index] = i_a[p_first+:p_width] == i_b[p_first+:p_width];
+    end
+    for (genvar group_index = 0; group_index < 4; group_index++) begin : g_first
+        localparam int p_first = group_index*3;
+        if (group_index == 3) begin : g_two
+            assign first_less[group_index] = leaf_less[10] || (leaf_equal[10] && leaf_less[9]);
+            assign first_equal[group_index] = &leaf_equal[10:9];
+        end else begin : g_three
+            assign first_less[group_index] = leaf_less[p_first+2] ||
+                (leaf_equal[p_first+2] && leaf_less[p_first+1]) ||
+                ((&leaf_equal[p_first+2:p_first+1]) && leaf_less[p_first]);
+            assign first_equal[group_index] = &leaf_equal[p_first+:3];
+        end
+    end
+    assign second_less[0] = first_less[2] || (first_equal[2] && first_less[1]) ||
+        ((&first_equal[2:1]) && first_less[0]);
+    assign second_equal[0] = &first_equal[2:0];
+    assign second_less[1] = first_less[3];
+    assign second_equal[1] = first_equal[3];
+    assign unsigned_less = second_less[1] || (second_equal[1] && second_less[0]);
+    assign signed_less = i_a[31] != i_b[31] ? i_a[31] : unsigned_less;
+    always_comb begin
+        case (^{i_a, i_b})
+            1'b0, 1'b1: begin
+                o_unsigned_less = unsigned_less;
+                o_signed_less = signed_less;
+            end
+            default: begin
+                o_unsigned_less = i_a < i_b;
+                o_signed_less = $signed(i_a) < $signed(i_b);
+            end
+        endcase
+    end
+endmodule
+
+// 顺序地址增加二或四，地址高位的传播条件按四位分组并行计算。
+(* keep_hierarchy = "yes" *)
+module pico_sequential_address (
+    input logic [31:0] i_address,
+    input logic i_compressed,
+    output logic [31:0] o_address
+);
+    (* keep = 1 *) logic [6:0] group_propagate;
+    logic [31:0] next_address;
+    logic carry_into_two;
+    assign carry_into_two = !i_compressed || i_address[1];
+    assign next_address[0] = i_address[0];
+    assign next_address[1] = i_address[1] ^ i_compressed;
+    assign next_address[2] = i_address[2] ^ carry_into_two;
+    for (genvar group_index = 0; group_index < 7; group_index++) begin : g_group
+        assign group_propagate[group_index] = &i_address[2+group_index*4+:4];
+    end
+    for (genvar bit_index = 3; bit_index < 32; bit_index++) begin : g_bit
+        localparam int p_groups = (bit_index-2)/4;
+        localparam int p_local = (bit_index-2)%4;
+        logic carry_into_bit;
+        if (p_groups == 0) begin : g_first
+            assign carry_into_bit = carry_into_two && (&i_address[bit_index-1:2]);
+        end else if (p_local == 0) begin : g_boundary
+            assign carry_into_bit = carry_into_two && (&group_propagate[p_groups-1:0]);
+        end else begin : g_partial
+            assign carry_into_bit = carry_into_two && (&group_propagate[p_groups-1:0]) &&
+                (&i_address[2+p_groups*4+:p_local]);
+        end
+        assign next_address[bit_index] = i_address[bit_index] ^ carry_into_bit;
+    end
+    always_comb begin
+        case (^{i_address, i_compressed})
+            1'b0, 1'b1: o_address = next_address;
+            default: o_address = i_address + (i_compressed ? 32'd2 : 32'd4);
+        endcase
+    end
 endmodule

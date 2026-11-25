@@ -1,0 +1,539 @@
+{
+  "passed": true,
+  "reference_commit": "d8699b87320d74538fd37d0773ff4fb609f23dc1",
+  "source_sha256": {
+    "reference": {
+      "rtl/soc/picorv32_npu.v": "3783b751a059940e17c3a2f70a6b61c659e3f4126c5748ddfa20ac42257065c2",
+      "rtl/soc/picorv32_pcpi_mul.v": "e4725e5ac67848576144c61f3c48bb824e6bdbd92d3774d5fd3750e560455a55",
+      "rtl/soc/picorv32_pcpi_div.v": "214e93ad22e557b61333dec6149c41dd630e6ce7499d93eb012b17503481e0f3",
+      "rtl/soc/picorv32_pcpi_fast_mul.v": "96e6b3f48cb3fb38367b42fd097dc8e544dd6beb7f7ecf71550fd86e244d9e74",
+      "rtl/soc/picorv32_regs.v": "14f430c48d16c4709cfc47e51f0b7761c10a9758b2ad7ea1d6489e17068bcfe3",
+      "rtl/common/unsigned_compare.sv": "2f8a56bf2356ab9ef3bbe1691290758e110f275409a55b2ebee2025cdefb74dc",
+      "rtl/common/parallel_prefix_add.sv": "0c6403c737d02c1b64e21d3cfdd515c083293f9e17b492a5d73b9448510d1520"
+    },
+    "current": {
+      "rtl/soc/picorv32_npu.v": "8cf40ccc7dc9878c8d93094ec188828b1332d13b540094675651c8977acccb17",
+      "rtl/soc/picorv32_pcpi_mul.v": "e4725e5ac67848576144c61f3c48bb824e6bdbd92d3774d5fd3750e560455a55",
+      "rtl/soc/picorv32_pcpi_div.v": "df0972a0214360d7e1379f74813fa5bcec2ef55f0dbf993a50424697ca7df71e",
+      "rtl/soc/picorv32_pcpi_fast_mul.v": "96e6b3f48cb3fb38367b42fd097dc8e544dd6beb7f7ecf71550fd86e244d9e74",
+      "rtl/soc/picorv32_regs.v": "14f430c48d16c4709cfc47e51f0b7761c10a9758b2ad7ea1d6489e17068bcfe3",
+      "rtl/common/unsigned_compare.sv": "2f8a56bf2356ab9ef3bbe1691290758e110f275409a55b2ebee2025cdefb74dc",
+      "rtl/common/parallel_prefix_add.sv": "0c6403c737d02c1b64e21d3cfdd515c083293f9e17b492a5d73b9448510d1520"
+    }
+  },
+  "test_sha256": "df1e60294ac48a381c9e1306aeeeb681dd38ea0fdca01c0e6e5f83b236b1d2d8",
+  "stages": {
+    "formal": {
+      "passed": true,
+      "profiles": [
+        {
+          "passed": true,
+          "profile": 0,
+          "parameters": {
+            "ENABLE_COUNTERS": 1,
+            "ENABLE_COUNTERS64": 0,
+            "ENABLE_REGS_16_31": 1,
+            "ENABLE_REGS_DUALPORT": 1,
+            "TWO_STAGE_SHIFT": 1,
+            "BARREL_SHIFTER": 0,
+            "COMPRESSED_ISA": 0,
+            "CATCH_MISALIGN": 1,
+            "CATCH_ILLINSN": 1,
+            "ENABLE_MUL": 1,
+            "ENABLE_FAST_MUL": 0,
+            "ENABLE_DIV": 1,
+            "ENABLE_IRQ": 0,
+            "PROGADDR_RESET": 0,
+            "STACKADDR": 262144,
+            "TWO_CYCLE_ALU": 0,
+            "TWO_CYCLE_COMPARE": 0
+          },
+          "equivalent_bits": 3216,
+          "log_sha256": "39d211640f73715cf4a277a140d310fafc9911da431152c90a0e06b140ea5be4"
+        },
+        {
+          "passed": true,
+          "profile": 1,
+          "parameters": {
+            "ENABLE_COUNTERS": 1,
+            "ENABLE_COUNTERS64": 1,
+            "ENABLE_REGS_16_31": 1,
+            "ENABLE_REGS_DUALPORT": 1,
+            "TWO_STAGE_SHIFT": 1,
+            "BARREL_SHIFTER": 0,
+            "COMPRESSED_ISA": 1,
+            "CATCH_MISALIGN": 1,
+            "CATCH_ILLINSN": 1,
+            "ENABLE_MUL": 1,
+            "ENABLE_FAST_MUL": 0,
+            "ENABLE_DIV": 1,
+            "ENABLE_IRQ": 1,
+            "PROGADDR_RESET": 0,
+            "STACKADDR": 262144,
+            "TWO_CYCLE_ALU": 0,
+            "TWO_CYCLE_COMPARE": 0
+          },
+          "equivalent_bits": 3601,
+          "log_sha256": "fbddf475227d8b6f707b2611a4974e7c6a696b1a392bde2076b38822395401a5"
+        },
+        {
+          "passed": true,
+          "profile": 2,
+          "parameters": {
+            "ENABLE_COUNTERS": 1,
+            "ENABLE_COUNTERS64": 0,
+            "ENABLE_REGS_16_31": 1,
+            "ENABLE_REGS_DUALPORT": 1,
+            "TWO_STAGE_SHIFT": 1,
+            "BARREL_SHIFTER": 0,
+            "COMPRESSED_ISA": 0,
+            "CATCH_MISALIGN": 1,
+            "CATCH_ILLINSN": 1,
+            "ENABLE_MUL": 1,
+            "ENABLE_FAST_MUL": 0,
+            "ENABLE_DIV": 1,
+            "ENABLE_IRQ": 0,
+            "PROGADDR_RESET": 0,
+            "STACKADDR": 262144,
+            "TWO_CYCLE_ALU": 1,
+            "TWO_CYCLE_COMPARE": 1
+          },
+          "equivalent_bits": 3221,
+          "log_sha256": "bdfe5308565fa2c6f024d6f9b0e7b1590de59389da647b7c7fa1bcef83904778"
+        },
+        {
+          "passed": true,
+          "profile": 3,
+          "parameters": {
+            "ENABLE_COUNTERS": 0,
+            "ENABLE_COUNTERS64": 0,
+            "ENABLE_REGS_16_31": 0,
+            "ENABLE_REGS_DUALPORT": 0,
+            "TWO_STAGE_SHIFT": 1,
+            "BARREL_SHIFTER": 0,
+            "COMPRESSED_ISA": 0,
+            "CATCH_MISALIGN": 1,
+            "CATCH_ILLINSN": 1,
+            "ENABLE_MUL": 0,
+            "ENABLE_FAST_MUL": 0,
+            "ENABLE_DIV": 0,
+            "ENABLE_IRQ": 0,
+            "PROGADDR_RESET": 0,
+            "STACKADDR": 262144,
+            "TWO_CYCLE_ALU": 0,
+            "TWO_CYCLE_COMPARE": 0
+          },
+          "equivalent_bits": 1642,
+          "log_sha256": "e01def15b41480d9105c4c004e6b36ebfe7abc9d8442962aa824552af5268ad2"
+        }
+      ],
+      "input_constraints": []
+    },
+    "execution": {
+      "passed": true,
+      "strict_four_state": true,
+      "program": {
+        "words": 1538,
+        "loops": 100,
+        "expected_sum": 5050,
+        "expected_marker": 85,
+        "subroutine_offset": 6144,
+        "sha256": "96f063a78bfd9ccfa61862a9350bf08a65e48e20313e7f457876ef08cd3bb984"
+      },
+      "profiles": [
+        {
+          "passed": true,
+          "reset_address": 0,
+          "cycles": 4898,
+          "instruction_fetches": 717,
+          "transactions": 720,
+          "checks": 4898,
+          "stability_checks": 3258,
+          "sum": 5050,
+          "marker": 85,
+          "binary_sha256": "c35b0b2a7ce502b0eae71e7190ea9a7522a29c9d2419176487303c8eee891ab6",
+          "log_sha256": "42bb17d736902699bdf004ac18126997ca3a6209c5937212a473e3d808b65ab4"
+        },
+        {
+          "passed": true,
+          "reset_address": 4294963200,
+          "cycles": 4898,
+          "instruction_fetches": 717,
+          "transactions": 720,
+          "checks": 4898,
+          "stability_checks": 3258,
+          "sum": 5050,
+          "marker": 85,
+          "binary_sha256": "3b533da6b6f3caa7e52a19cc5ca771f0c2658f649a93ce79aaf95d171db7ac29",
+          "log_sha256": "dc4e36083f868f27371301c49252222e39929167b12ee3b9ecb0e1be08258c84"
+        }
+      ],
+      "reference_modules_renamed": [
+        "parallel_prefix_add",
+        "parallel_prefix_native_sums",
+        "picorv32",
+        "picorv32_pcpi_div",
+        "picorv32_pcpi_fast_mul",
+        "picorv32_pcpi_mul",
+        "picorv32_regs",
+        "unsigned_compare"
+      ],
+      "testbench_sha256": "b18c99e6c084a422d4f05eebf22146f3b28e7b61c796566acdfb477024b3eea7"
+    },
+    "synthesis_execution": {
+      "passed": true,
+      "strict_four_state": true,
+      "program": {
+        "words": 1538,
+        "loops": 100,
+        "expected_sum": 5050,
+        "expected_marker": 85,
+        "subroutine_offset": 6144,
+        "sha256": "96f063a78bfd9ccfa61862a9350bf08a65e48e20313e7f457876ef08cd3bb984"
+      },
+      "profiles": [
+        {
+          "passed": true,
+          "reset_address": 0,
+          "cycles": 4898,
+          "instruction_fetches": 717,
+          "transactions": 720,
+          "checks": 4898,
+          "stability_checks": 3258,
+          "sum": 5050,
+          "marker": 85,
+          "binary_sha256": "9b76de39823df66516dec9c76c7fdeb5b4e3b9ec117fbdbb63684030ae03b44a",
+          "log_sha256": "42bb17d736902699bdf004ac18126997ca3a6209c5937212a473e3d808b65ab4"
+        },
+        {
+          "passed": true,
+          "reset_address": 4294963200,
+          "cycles": 4898,
+          "instruction_fetches": 717,
+          "transactions": 720,
+          "checks": 4898,
+          "stability_checks": 3258,
+          "sum": 5050,
+          "marker": 85,
+          "binary_sha256": "2762021a645fea8e0b02127c350d3469a8f967cbed26e83263fcaa9a10cd3102",
+          "log_sha256": "dc4e36083f868f27371301c49252222e39929167b12ee3b9ecb0e1be08258c84"
+        }
+      ],
+      "reference_modules_renamed": [
+        "parallel_prefix_add",
+        "parallel_prefix_native_sums",
+        "picorv32",
+        "picorv32_pcpi_div",
+        "picorv32_pcpi_fast_mul",
+        "picorv32_pcpi_mul",
+        "picorv32_regs",
+        "unsigned_compare"
+      ],
+      "testbench_sha256": "b18c99e6c084a422d4f05eebf22146f3b28e7b61c796566acdfb477024b3eea7"
+    },
+    "mapping": {
+      "reference": {
+        "resources": {
+          "logic_lut_cells": 1591,
+          "distributed_ram_lut_sites_nominal": 48,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1639,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 1001,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 154,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 154,
+            "FDRE": 985,
+            "FDSE": 16,
+            "INV": 81,
+            "LUT2": 437,
+            "LUT3": 231,
+            "LUT4": 262,
+            "LUT5": 523,
+            "LUT6": 138,
+            "RAM32M": 12
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "register_path_requirement": {
+          "maximum_combinational_cells": 10,
+          "observed_combinational_cells": 12,
+          "graph_complete": true,
+          "met": false,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "metrics_sha256": "248c8abfb1020701c749b49128463ab3bda000219a17f9abee6263ad25b1e018",
+        "port_depths": {
+          "input_to_register": 6,
+          "register_to_output": 3,
+          "input_to_output": 1
+        },
+        "branch_register_depth": 12,
+        "port_analysis_mapped_sha256": "487250c634657240391b0aea838e38b058fe4e2dd912eb64d12890d2b4fa7ff5"
+      },
+      "current": {
+        "resources": {
+          "logic_lut_cells": 1722,
+          "distributed_ram_lut_sites_nominal": 48,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1770,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 1003,
+          "dsp48e1": 1,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 120,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 120,
+            "DSP48E1": 1,
+            "FDRE": 987,
+            "FDSE": 16,
+            "INV": 81,
+            "LUT1": 3,
+            "LUT2": 456,
+            "LUT3": 252,
+            "LUT4": 274,
+            "LUT5": 565,
+            "LUT6": 172,
+            "MUXF7": 3,
+            "MUXF8": 1,
+            "RAM32M": 12
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "register_path_requirement": {
+          "maximum_combinational_cells": 10,
+          "observed_combinational_cells": 10,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "metrics_sha256": "a8acbaa941da6081b05b177a127a8e5843b996362641ae65e7660b63ac83d853",
+        "port_depths": {
+          "input_to_register": 6,
+          "register_to_output": 3,
+          "input_to_output": 1
+        },
+        "branch_register_depth": 7,
+        "port_analysis_mapped_sha256": "6e18c26b1e3c08cd204e742174f269f2c480564c4ff733112b0a875e62e337ef"
+      }
+    }
+  },
+  "four_state": {
+    "passed": true,
+    "samples": 131200,
+    "output_comparisons": 524800,
+    "source_sha256": {
+      "rtl/soc/picorv32_npu.v": "8cf40ccc7dc9878c8d93094ec188828b1332d13b540094675651c8977acccb17",
+      "rtl/soc/picorv32_pcpi_div.v": "df0972a0214360d7e1379f74813fa5bcec2ef55f0dbf993a50424697ca7df71e"
+    },
+    "bench_sha256": "244c17983a85715bfcbd944fac114f56e6250d0da48897f24b4f301d78800b73",
+    "test_sha256": "77456156490a37aef530c455f37383d266dee37a5b59c77d71605ec8a326fa59"
+  },
+  "all_arithmetic_four_state": {
+    "passed": true,
+    "strict_four_state": true,
+    "checks": 240000,
+    "source_sha256": "8cf40ccc7dc9878c8d93094ec188828b1332d13b540094675651c8977acccb17",
+    "test_sha256": "f764f9bcc5c1c6e86ec02174d08abb62321f8924d48ef10a8079ecb9a3ea1e78",
+    "testbench_sha256": "61b89c7cb3fafef561528a786d707278f76c314270c9c6ccc156f0ef3ba92f07",
+    "log_sha256": "40bb1d43323179e55f76bd6670ff1a5b90ec2128b2fe2a1a197c77815560ea4b"
+  },
+  "upstream_reference": {
+    "passed": true,
+    "upstream_commit": "ef203c2b0a3fb793280f5114941416c425c5b461",
+    "reference_sha256_verified": true,
+    "dependency_sha256": {
+      "reference": {
+        "/workspace/scratch/75105476d0fd/mini_tflm_dsa/picorv32/picorv32.v": "0836050971b3c6cdd28ac3b1e5719a67fb645161912bef1e472e63995ceb0622"
+      },
+      "current": {
+        "/workspace/scratch/75105476d0fd/wt_cpu_comparison/rtl/soc/picorv32_npu.v": "8cf40ccc7dc9878c8d93094ec188828b1332d13b540094675651c8977acccb17",
+        "/workspace/scratch/75105476d0fd/wt_cpu_comparison/rtl/common/parallel_prefix_add.sv": "0c6403c737d02c1b64e21d3cfdd515c083293f9e17b492a5d73b9448510d1520",
+        "/workspace/scratch/75105476d0fd/wt_cpu_comparison/rtl/soc/picorv32_pcpi_div.v": "df0972a0214360d7e1379f74813fa5bcec2ef55f0dbf993a50424697ca7df71e",
+        "/workspace/scratch/75105476d0fd/wt_cpu_comparison/rtl/soc/picorv32_pcpi_fast_mul.v": "96e6b3f48cb3fb38367b42fd097dc8e544dd6beb7f7ecf71550fd86e244d9e74",
+        "/workspace/scratch/75105476d0fd/wt_cpu_comparison/rtl/soc/picorv32_pcpi_mul.v": "e4725e5ac67848576144c61f3c48bb824e6bdbd92d3774d5fd3750e560455a55",
+        "/workspace/scratch/75105476d0fd/wt_cpu_comparison/rtl/common/unsigned_compare.sv": "2f8a56bf2356ab9ef3bbe1691290758e110f275409a55b2ebee2025cdefb74dc"
+      }
+    },
+    "source_sha256": {
+      "reference": "0836050971b3c6cdd28ac3b1e5719a67fb645161912bef1e472e63995ceb0622",
+      "current": "0f4d50a8534739fc4a21b7177434632b1845a28cf6e54809fff8e7c7189e3c94"
+    },
+    "source_paths": {
+      "reference": "/workspace/scratch/75105476d0fd/mini_tflm_dsa/picorv32/picorv32.v",
+      "current": "/workspace/scratch/75105476d0fd/wt_cpu_comparison/rtl/soc/picorv32_npu.v"
+    },
+    "requested_stages": [
+      "formal",
+      "execution"
+    ],
+    "stages": {
+      "formal": {
+        "passed": true,
+        "profiles": [
+          {
+            "passed": true,
+            "profile": 0,
+            "parameters": {
+              "ENABLE_COUNTERS": 1,
+              "ENABLE_COUNTERS64": 0,
+              "ENABLE_REGS_16_31": 1,
+              "ENABLE_REGS_DUALPORT": 1,
+              "TWO_STAGE_SHIFT": 1,
+              "BARREL_SHIFTER": 0,
+              "COMPRESSED_ISA": 0,
+              "CATCH_MISALIGN": 1,
+              "CATCH_ILLINSN": 1,
+              "ENABLE_MUL": 1,
+              "ENABLE_FAST_MUL": 0,
+              "ENABLE_DIV": 1,
+              "ENABLE_IRQ": 0,
+              "PROGADDR_RESET": 0,
+              "STACKADDR": 262144,
+              "TWO_CYCLE_ALU": 0,
+              "TWO_CYCLE_COMPARE": 0
+            },
+            "equivalent_bits": 2724,
+            "log_sha256": "a6ac71275750b2a435f6a3c862bd374b4275877b55f9f8b3e466ce9ad8bd3362"
+          },
+          {
+            "passed": true,
+            "profile": 1,
+            "parameters": {
+              "ENABLE_COUNTERS": 1,
+              "ENABLE_COUNTERS64": 1,
+              "ENABLE_REGS_16_31": 1,
+              "ENABLE_REGS_DUALPORT": 1,
+              "TWO_STAGE_SHIFT": 1,
+              "BARREL_SHIFTER": 0,
+              "COMPRESSED_ISA": 1,
+              "CATCH_MISALIGN": 1,
+              "CATCH_ILLINSN": 1,
+              "ENABLE_MUL": 1,
+              "ENABLE_FAST_MUL": 0,
+              "ENABLE_DIV": 1,
+              "ENABLE_IRQ": 1,
+              "PROGADDR_RESET": 0,
+              "STACKADDR": 262144,
+              "TWO_CYCLE_ALU": 0,
+              "TWO_CYCLE_COMPARE": 0
+            },
+            "equivalent_bits": 3045,
+            "log_sha256": "aabd84f57ad8b759cd7b90a3e604311978e606d95abdf9e58c7b33867ec43b44"
+          },
+          {
+            "passed": true,
+            "profile": 2,
+            "parameters": {
+              "ENABLE_COUNTERS": 1,
+              "ENABLE_COUNTERS64": 0,
+              "ENABLE_REGS_16_31": 1,
+              "ENABLE_REGS_DUALPORT": 1,
+              "TWO_STAGE_SHIFT": 1,
+              "BARREL_SHIFTER": 0,
+              "COMPRESSED_ISA": 0,
+              "CATCH_MISALIGN": 1,
+              "CATCH_ILLINSN": 1,
+              "ENABLE_MUL": 1,
+              "ENABLE_FAST_MUL": 0,
+              "ENABLE_DIV": 1,
+              "ENABLE_IRQ": 0,
+              "PROGADDR_RESET": 0,
+              "STACKADDR": 262144,
+              "TWO_CYCLE_ALU": 1,
+              "TWO_CYCLE_COMPARE": 1
+            },
+            "equivalent_bits": 2727,
+            "log_sha256": "6b8032643f8f5a34e2c1e1a42d44e5427b8a516e64c6617a33461659ef936dc1"
+          },
+          {
+            "passed": true,
+            "profile": 3,
+            "parameters": {
+              "ENABLE_COUNTERS": 0,
+              "ENABLE_COUNTERS64": 0,
+              "ENABLE_REGS_16_31": 0,
+              "ENABLE_REGS_DUALPORT": 0,
+              "TWO_STAGE_SHIFT": 1,
+              "BARREL_SHIFTER": 0,
+              "COMPRESSED_ISA": 0,
+              "CATCH_MISALIGN": 1,
+              "CATCH_ILLINSN": 1,
+              "ENABLE_MUL": 0,
+              "ENABLE_FAST_MUL": 0,
+              "ENABLE_DIV": 0,
+              "ENABLE_IRQ": 0,
+              "PROGADDR_RESET": 0,
+              "STACKADDR": 262144,
+              "TWO_CYCLE_ALU": 0,
+              "TWO_CYCLE_COMPARE": 0
+            },
+            "equivalent_bits": 1388,
+            "log_sha256": "856438cff03da20ccd0e382bebea555e42fcb33860cf2a8ca86e895bb79d7e15"
+          }
+        ],
+        "input_constraints": []
+      },
+      "execution": {
+        "passed": true,
+        "strict_four_state": true,
+        "program": {
+          "words": 1538,
+          "loops": 100,
+          "expected_sum": 5050,
+          "expected_marker": 85,
+          "subroutine_offset": 6144,
+          "sha256": "96f063a78bfd9ccfa61862a9350bf08a65e48e20313e7f457876ef08cd3bb984"
+        },
+        "profiles": [
+          {
+            "passed": true,
+            "reset_address": 0,
+            "cycles": 4898,
+            "instruction_fetches": 717,
+            "transactions": 720,
+            "checks": 4898,
+            "stability_checks": 3258,
+            "sum": 5050,
+            "marker": 85,
+            "binary_sha256": "e77e8b03b14438ca8745b49e2b5ff633beecdb35bd7625d7afa75e3b7f56564e",
+            "log_sha256": "b17376144778f616871bfa65cac0b2510b4d3c460513d496b4f2f9d87d5c4a1b"
+          },
+          {
+            "passed": true,
+            "reset_address": 4294963200,
+            "cycles": 4898,
+            "instruction_fetches": 717,
+            "transactions": 720,
+            "checks": 4898,
+            "stability_checks": 3258,
+            "sum": 5050,
+            "marker": 85,
+            "binary_sha256": "dfd6c54e1839964d5cac768f63030068a554065e291e4a69689e1087826c5241",
+            "log_sha256": "4aa0f30d8d7b4d49ed18787e77644d4a24ccf3f2aa39b5f579c318bfbafdf7ba"
+          }
+        ],
+        "reference_modules_renamed": [
+          "picorv32",
+          "picorv32_axi",
+          "picorv32_axi_adapter",
+          "picorv32_pcpi_div",
+          "picorv32_pcpi_fast_mul",
+          "picorv32_pcpi_mul",
+          "picorv32_regs",
+          "picorv32_wb"
+        ],
+        "testbench_sha256": "b18c99e6c084a422d4f05eebf22146f3b28e7b61c796566acdfb477024b3eea7"
+      }
+    },
+    "source_unchanged": true
+  }
+}

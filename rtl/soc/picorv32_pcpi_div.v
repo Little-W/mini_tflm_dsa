@@ -82,7 +82,11 @@ module picorv32_pcpi_div (
         .o_less(remainder_less), .o_equal(unused_remainder_equal)
     );
     wire [31:0] unsigned_result = (instr_div || instr_divu) ? quotient : dividend;
-    wire [31:0] negative_result = 32'd0 - unsigned_result;
+    logic [31:0] negative_result;
+    // 符号变换并行检查各位以下是否存在一，保持完整的三十二位模运算。
+    pico_result_negation u_result_negation (
+        .i_value(unsigned_result), .o_value(negative_result)
+    );
 
 	always @(posedge clk) begin
 		pcpi_ready <= 0;
@@ -135,4 +139,38 @@ module picorv32_pcpi_div (
 `endif
 		end
 	end
+endmodule
+
+// 二进制补码由当前位和低位非零条件形成，四位分组控制归并深度。
+(* keep_hierarchy = "yes" *)
+module pico_result_negation (
+    input logic [31:0] i_value,
+    output logic [31:0] o_value
+);
+    (* keep = 1 *) logic [6:0] group_nonzero;
+    logic [31:0] negated_value;
+    for (genvar group_index = 0; group_index < 7; group_index++) begin : g_group
+        assign group_nonzero[group_index] = |i_value[group_index*4+:4];
+    end
+    assign negated_value[0] = i_value[0];
+    for (genvar bit_index = 1; bit_index < 32; bit_index++) begin : g_bit
+        localparam int p_groups = bit_index/4;
+        localparam int p_local = bit_index%4;
+        logic lower_nonzero;
+        if (p_groups == 0) begin : g_first
+            assign lower_nonzero = |i_value[bit_index-1:0];
+        end else if (p_local == 0) begin : g_boundary
+            assign lower_nonzero = |group_nonzero[p_groups-1:0];
+        end else begin : g_partial
+            assign lower_nonzero = (|group_nonzero[p_groups-1:0]) ||
+                (|i_value[p_groups*4+:p_local]);
+        end
+        assign negated_value[bit_index] = i_value[bit_index] ^ lower_nonzero;
+    end
+    always_comb begin
+        case (^i_value)
+            1'b0, 1'b1: o_value = negated_value;
+            default: o_value = 32'd0 - i_value;
+        endcase
+    end
 endmodule

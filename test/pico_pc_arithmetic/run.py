@@ -8,6 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import shlex
 import shutil
 import subprocess
@@ -62,7 +63,7 @@ def formal(out: Path, sources: dict[str, Path]) -> dict:
             commands += [
                 "read_slang -D SYNTHESIS=1 -D XILINX_FPGA=1 --top picorv32 " +
                 options + " " + shlex.quote(str(source)),
-                "prep -top picorv32 -flatten", "memory_map", "async2sync", "opt_clean",
+                "setattr -mod -unset keep_hierarchy", "prep -top picorv32 -flatten", "memory_map", "async2sync", "opt_clean",
                 f"rename picorv32 {label}", f"design -stash {label}",
             ]
         commands += [
@@ -241,15 +242,22 @@ def main() -> None:
     inputs = out / "inputs"
     (inputs / "include").mkdir(parents=True)
     sources = {}
+    dependency_hashes = {}
+    dependency_reader = runpy.run_path(str(ROOT / "scripts/rtl/source_files.py"))
     for label, source in originals.items():
         destination = inputs / label / "picorv32.v"
         destination.parent.mkdir()
-        shutil.copyfile(source, destination)
+        dependencies = dependency_reader["with_dependencies"]([source], ROOT)
+        contents = {str(path): path.read_bytes() for path in dependencies}
+        destination.write_bytes(b"\n".join(contents.values()))
+        dependency_hashes[label] = {
+            path: hashlib.sha256(data).hexdigest() for path, data in contents.items()}
         sources[label] = destination
     testbench = inputs / "tb_execution.sv"
     shutil.copyfile(Path(__file__).with_name("tb_execution.sv"), testbench)
     report = {"passed": False, "upstream_commit": UPSTREAM_COMMIT,
               "reference_sha256_verified": True,
+              "dependency_sha256": dependency_hashes,
               "source_sha256": {label: digest(path) for label, path in sources.items()},
               "source_paths": {label: str(path) for label, path in originals.items()},
               "requested_stages": args.stages, "stages": {}}
@@ -263,8 +271,11 @@ def main() -> None:
             result = measure(out / stage, inputs, sources)
         report["stages"][stage] = result
         save_json(out / "summary.json", report)
-    report["source_unchanged"] = all(digest(path) == report["source_sha256"][label]
-                                      for label, path in originals.items())
+    report["source_unchanged"] = all(
+        digest(Path(path)) == saved
+        for hashes in dependency_hashes.values() for path, saved in hashes.items())
+    if not report["source_unchanged"]:
+        raise RuntimeError("验证期间 CPU 依赖文件发生变化")
     report["passed"] = True
     save_json(out / "summary.json", report)
     print(json.dumps({"passed": True, "summary": str(out / "summary.json")}, ensure_ascii=False))
