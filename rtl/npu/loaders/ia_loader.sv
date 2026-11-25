@@ -133,6 +133,8 @@ module ia_loader #(
     localparam int ROW_CNT_W = $clog2(SIZE + 1);
     localparam int unsigned CACHE_SLOT_W = (SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS);
     localparam int p_frame_count_width = COUNT_WIDTH > 0 ? COUNT_WIDTH : 1;
+    localparam bit p_parallel_prefetch_tail =
+        (SIZE > 1) && ((SIZE & (SIZE - 1)) == 0) && (REG_WIDTH > LOG2_SIZE);
 
     // =======================================================================
     // 状态机
@@ -181,6 +183,8 @@ module ia_loader #(
     logic [REG_WIDTH-1:0] packed_k_tiles_q;
     logic [REG_WIDTH-1:0] packed_reduction_nxt;
     logic [REG_WIDTH-1:0] packed_k_tiles_nxt;
+    logic [REG_WIDTH:0] packed_tiles_parallel_sum;
+    logic packed_tiles_round_up;
     logic unused_packed_tiles_carry;
     logic [REG_WIDTH-1:0] p0_base_q, q0_base_q;
     logic [REG_WIDTH-1:0] next_cols;
@@ -240,9 +244,25 @@ module ia_loader #(
     // 取整在配置接收前完成，控制器随后只计算字节步长与复用组步长。
     assign packed_reduction_nxt = (cfg_global_reduction != '0) ? cfg_global_reduction :
         ((state == IDLE) ? n : cfg_n);
-    assign {unused_packed_tiles_carry, packed_k_tiles_nxt} =
-        {1'b0, (packed_reduction_nxt >> LOG2_SIZE)} +
-        {1'b0, REG_WIDTH'((packed_reduction_nxt & REG_WIDTH'(SIZE - 1)) != '0)};
+    // 余数决定最低组进位，各组并行形成分块数并在配置边沿保存。
+    assign packed_tiles_round_up = (packed_reduction_nxt & REG_WIDTH'(SIZE - 1)) != '0;
+    parallel_prefix_add #(
+        .p_width(REG_WIDTH), .p_group_width(8), .p_preserve_groups(1'b1)
+    ) u_packed_tiles (
+        .i_a(packed_reduction_nxt >> LOG2_SIZE), .i_b('0), .i_carry(packed_tiles_round_up),
+        .o_sum(packed_tiles_parallel_sum[REG_WIDTH-1:0]),
+        .o_carry(packed_tiles_parallel_sum[REG_WIDTH])
+    );
+    always_comb begin
+        case (^packed_reduction_nxt)
+            1'b0, 1'b1:
+                {unused_packed_tiles_carry, packed_k_tiles_nxt} = packed_tiles_parallel_sum;
+            // 未知输入保留完整定宽加法的四态传播。
+            default: {unused_packed_tiles_carry, packed_k_tiles_nxt} =
+                {1'b0, (packed_reduction_nxt >> LOG2_SIZE)} +
+                {1'b0, REG_WIDTH'((packed_reduction_nxt & REG_WIDTH'(SIZE - 1)) != '0)};
+        endcase
+    end
 
     // 配置接收时先求出下一列分块的有效宽度，供后续预取描述符生成使用。
     // 减法保留 REG_WIDTH 位模运算；二的幂尺寸只保存尾部所需的有效低位。
@@ -254,13 +274,38 @@ module ia_loader #(
     assign next_cols_sum = cfg_global_reduction ^ next_cols_inverse ^ next_cols_constant;
     assign next_cols_carry = ((cfg_global_reduction & next_cols_inverse) |
         (cfg_global_reduction & next_cols_constant) | (next_cols_inverse & next_cols_constant)) << 1;
-    parallel_prefix_add #(.p_width(REG_WIDTH), .p_preserve_groups(1'b1)) u_next_cols (
+    parallel_prefix_add #(
+        .p_width(REG_WIDTH), .p_preserve_groups(!p_parallel_prefetch_tail)
+    ) u_next_cols (
         .i_a(next_cols_sum), .i_b(next_cols_carry), .i_carry(1'b0),
         .o_sum(next_remaining_cols), .o_carry(unused_next_cols_carry)
     );
-    if ((SIZE > 1) && ((SIZE & (SIZE - 1)) == 0) && (REG_WIDTH > LOG2_SIZE)) begin : g_prefetch_tail
-        assign next_cols_comb = (|next_remaining_cols[REG_WIDTH-1:LOG2_SIZE]) ?
-            REG_WIDTH'(SIZE) : REG_WIDTH'(next_remaining_cols[LOG2_SIZE-1:0]);
+    if (p_parallel_prefetch_tail) begin : g_prefetch_tail
+        localparam int p_high_width = REG_WIDTH - LOG2_SIZE;
+        logic [LOG2_SIZE-1:0] low_difference;
+        logic low_borrow;
+        logic high_is_zero;
+
+        // 尾部宽度只需要低位差及高位是否为零，完整高位减法改为并行等式。
+        // 低位借位和固定分块减一共同参与高位的定宽模加比较。
+        assign low_difference = cfg_global_reduction[LOG2_SIZE-1:0] -
+            cfg_q0_base[LOG2_SIZE-1:0];
+        assign low_borrow = cfg_global_reduction[LOG2_SIZE-1:0] < cfg_q0_base[LOG2_SIZE-1:0];
+        add_equal #(.p_width(p_high_width), .p_preserve_bits(1'b1)) u_high_zero (
+            .i_a(cfg_q0_base[REG_WIDTH-1:LOG2_SIZE]), .i_b(p_high_width'(1)),
+            .i_target(cfg_global_reduction[REG_WIDTH-1:LOG2_SIZE]),
+            .i_carry_in(low_borrow), .o_equal(high_is_zero)
+        );
+        // 已知配置使用并行结果，未知配置保留完整模减表达式的四态传播。
+        always_comb begin
+            next_cols_comb = (|next_remaining_cols[REG_WIDTH-1:LOG2_SIZE]) ?
+                REG_WIDTH'(SIZE) : REG_WIDTH'(next_remaining_cols[LOG2_SIZE-1:0]);
+            case (^{cfg_global_reduction, cfg_q0_base})
+                1'b0, 1'b1: next_cols_comb = high_is_zero ?
+                    REG_WIDTH'(low_difference) : REG_WIDTH'(SIZE);
+                default: ;
+            endcase
+        end
     end else begin : g_prefetch_general_tail
         assign next_cols_comb = (next_remaining_cols >= REG_WIDTH'(SIZE)) ?
             REG_WIDTH'(SIZE) : next_remaining_cols;
@@ -527,7 +572,6 @@ module ia_loader #(
     logic [CACHE_SLOT_W-1:0] demand_slot_base_next, demand_slot_mask_next;
      logic [REG_WIDTH-1:0] demand_p0_nxt, demand_q0_nxt;
      logic [REG_WIDTH-1:0] request_p0_absolute, request_q0_absolute;
-    logic unused_demand_p0_carry, unused_demand_q0_carry;
     logic [REG_WIDTH-1:0] request_group, request_rows, request_cols;
     logic [7:0] request_burst_len_m1;
     logic [CACHE_SLOT_W-1:0] request_slot;
@@ -576,10 +620,14 @@ module ia_loader #(
 
     // 在控制器保存分块请求的同一边沿保存绝对坐标，供后续命中判断与 DMA 使用。
     // 配置同拍更新时使用新基址，保持配置切换和未使能周期的坐标值一致。
-    assign {unused_demand_p0_carry, demand_p0_nxt} = {1'b0, request_p0} +
-        {1'b0, (init_cfg ? cfg_p0_base : p0_base_q)};
-    assign {unused_demand_q0_carry, demand_q0_nxt} = {1'b0, request_q0} +
-        {1'b0, (init_cfg ? cfg_q0_base : q0_base_q)};
+    ia_address_add #(.p_width(REG_WIDTH)) u_demand_p0 (
+        .i_base(request_p0), .i_step(init_cfg ? cfg_p0_base : p0_base_q),
+        .o_address(demand_p0_nxt)
+    );
+    ia_address_add #(.p_width(REG_WIDTH)) u_demand_q0 (
+        .i_base(request_q0), .i_step(init_cfg ? cfg_q0_base : q0_base_q),
+        .o_address(demand_q0_nxt)
+    );
 
     // 物理槽号与控制器的分块槽号共用接收边沿，配置同拍更新时使用新映射。
     always_comb begin
@@ -610,8 +658,12 @@ module ia_loader #(
 
     // 完整槽号模加独立完成，后续掩码与查询比较共用同一结果。
     assign request_slot_sum = request_slot + cache_slot_base_q;
-    assign request_p0_absolute = request_p0 + p0_base_q;
-    assign request_q0_absolute = request_q0 + q0_base_q;
+    ia_address_add #(.p_width(REG_WIDTH)) u_request_p0 (
+        .i_base(request_p0), .i_step(p0_base_q), .o_address(request_p0_absolute)
+    );
+    ia_address_add #(.p_width(REG_WIDTH)) u_request_q0 (
+        .i_base(request_q0), .i_step(q0_base_q), .o_address(request_q0_absolute)
+    );
 
     always_comb begin
         demand_descriptor.base_addr = tl_base_addr;
@@ -666,7 +718,7 @@ module ia_loader #(
         assign request_q0_equal_o_equal = request_q0_matches;
         logic request_rows_match;
         logic request_slot_match;
-        logic request_filter_ready;
+        (* keep = 1 *) logic request_filter_ready;
 
         // 行数与槽位先完成比较，坐标等式在末级合并。
         assign request_rows_match = request_rows_matches;
@@ -685,22 +737,32 @@ module ia_loader #(
     localparam int p_tag_compare_parts = (p_tag_compare_groups + 5) / 6;
     (* keep = 1 *) logic [p_tag_compare_groups-1:0] request_tag_group_equal;
     (* keep = 1 *) logic [p_tag_compare_parts-1:0] request_tag_part_equal;
+    (* keep = 1 *) logic [p_tag_compare_groups-1:0] prefetch_query_group_equal, prefetch_tag_group_equal;
+    (* keep = 1 *) logic [p_tag_compare_parts-1:0] prefetch_query_part_equal, prefetch_tag_part_equal;
+    logic [CACHE_TAG_W-1:0] prefetch_query_tag;
+    assign prefetch_query_tag = descriptor_tag(prefetch_descriptor);
     // 每组比较三对标记位，再分两级归并比较结果。
     for (genvar group_index = 0; group_index < p_tag_compare_groups; group_index++) begin : g_tag_group
         localparam int p_first = group_index * 3;
         localparam int p_width = CACHE_TAG_W - p_first < 3 ? CACHE_TAG_W - p_first : 3;
         assign request_tag_group_equal[group_index] =
             request_tag_q[p_first +: p_width] == request_lookup_q[p_first +: p_width];
+        assign prefetch_query_group_equal[group_index] =
+            prefetch_query_tag[p_first +: p_width] == prefetch_lookup_q[p_first +: p_width];
+        assign prefetch_tag_group_equal[group_index] =
+            prefetch_tag_q[p_first +: p_width] == prefetch_lookup_q[p_first +: p_width];
     end
     for (genvar part = 0; part < p_tag_compare_parts; part++) begin : g_tag_part
         localparam int p_first = part * 6;
         localparam int p_width = p_tag_compare_groups - p_first < 6 ? p_tag_compare_groups - p_first : 6;
         assign request_tag_part_equal[part] = &request_tag_group_equal[p_first +: p_width];
+        assign prefetch_query_part_equal[part] = &prefetch_query_group_equal[p_first +: p_width];
+        assign prefetch_tag_part_equal[part] = &prefetch_tag_group_equal[p_first +: p_width];
     end
     assign request_tag_match = &request_tag_part_equal;
     wire prefetch_lookup_ready = prefetch_lookup_valid &&
         (prefetch_lookup_slot_q == prefetch_descriptor.slot) &&
-        (prefetch_lookup_q == descriptor_tag(prefetch_descriptor));
+        (&prefetch_query_part_equal);
     logic request_cache_eligible;
     assign request_cache_eligible = preserve_cache_q &&
         cache_tags_valid[request_descriptor.slot] && request_tag_match;
@@ -738,7 +800,7 @@ module ia_loader #(
     (* keep = 1 *) wire cache_hit_event = demand_hit_allowed &&
         cache_tags_valid[request_lookup_slot_q] && request_tag_match;
     wire prefetch_cached = prefetch_lookup_ready && cache_tags_valid[prefetch_descriptor.slot] &&
-        (prefetch_tag_q == prefetch_lookup_q);
+        (&prefetch_tag_part_equal);
     wire prefetch_inflight = (fill_pending && fill_is_prefetch) || prefetch_start;
     wire prefetch_done = ext_dma_done && fill_pending && fill_is_prefetch;
     wire dma_available = !fill_pending && !ext_dma_busy && !tl_start && !prefetch_start;
@@ -749,8 +811,8 @@ module ia_loader #(
         (prefetch_done || (!prefetch_inflight && prefetch_cached && !init_cfg && !cache_flush));
 
     // 缓存资格和请求条件先独立计算，查询就绪仅进入请求与授予的末级组合。
-    logic request_without_lookup, request_with_lookup;
-    logic grant_without_lookup, grant_with_lookup;
+    (* keep = 1 *) logic request_without_lookup, request_with_lookup;
+    (* keep = 1 *) logic grant_without_lookup, grant_with_lookup;
     logic prefetch_grant_enabled;
     assign request_without_lookup = prefetch_enable_q ?
         prefetch_request :
@@ -846,6 +908,37 @@ module ia_loader #(
         .i_a(q0_base_q), .i_b(REG_WIDTH'(SIZE)), .i_carry(1'b0),
         .o_sum(next_q0), .o_carry(unused_next_q0_carry)
     );
+    logic prefetch_next_in_range;
+    if (p_parallel_prefetch_tail) begin : g_prefetch_range
+        localparam int p_high_width = REG_WIDTH - LOG2_SIZE;
+        (* keep = 1 *) logic current_high_less, next_high_equal;
+        logic unused_current_high_equal, low_less;
+
+        // 下一块增加一个高位单位；先比较当前高位和边界，再检查相邻块的低位。
+        // 当前高位小于边界同时排除地址回绕，不必串接完整加法与宽比较。
+        parallel_unsigned_compare #(
+            .p_width(p_high_width), .p_preserve_groups(1'b1)
+        ) u_high_less (
+            .i_a(q0_base_q[REG_WIDTH-1:LOG2_SIZE]),
+            .i_b(global_reduction_q[REG_WIDTH-1:LOG2_SIZE]),
+            .o_less(current_high_less), .o_equal(unused_current_high_equal)
+        );
+        add_equal #(.p_width(p_high_width), .p_preserve_bits(1'b1)) u_next_high_equal (
+            .i_a(q0_base_q[REG_WIDTH-1:LOG2_SIZE]), .i_b(p_high_width'(0)),
+            .i_target(global_reduction_q[REG_WIDTH-1:LOG2_SIZE]),
+            .i_carry_in(1'b1), .o_equal(next_high_equal)
+        );
+        assign low_less = q0_base_q[LOG2_SIZE-1:0] < global_reduction_q[LOG2_SIZE-1:0];
+        always_comb begin
+            prefetch_next_in_range = (next_q0 > q0_base_q) && (next_q0 < global_reduction_q);
+            case (^{q0_base_q, global_reduction_q})
+                1'b0, 1'b1: prefetch_next_in_range = current_high_less && (!next_high_equal || low_less);
+                default: ;
+            endcase
+        end
+    end else begin : g_prefetch_range_general
+        assign prefetch_next_in_range = (next_q0 > q0_base_q) && (next_q0 < global_reduction_q);
+    end
     wire [REG_WIDTH-1:0] next_beats =
         (((tile_packed_q ? REG_WIDTH'(SIZE) : next_cols) << cfg_use_16bits) +
          REG_WIDTH'(BYTE_PER_BEAT - 1)) >> LOG2_BYTE_PER_BEAT;
@@ -855,12 +948,18 @@ module ia_loader #(
     wire [REG_WIDTH-1:0] prefetch_next_k_bytes = REG_WIDTH'(SIZE) <<
         ((tile_packed_q ? LOG2_SIZE : 0) + (cfg_use_16bits ? 1 : 0));
 
-     logic [REG_WIDTH-1:0] prefetch_advanced_base, prefetch_first_base;
-    assign prefetch_advanced_base = prefetch_descriptor.base_addr +
-        (prefetch_descriptor.tile_packed ?
+    logic [REG_WIDTH-1:0] prefetch_advanced_base, prefetch_first_base;
+    logic [REG_WIDTH-1:0] prefetch_row_step;
+    assign prefetch_row_step = prefetch_descriptor.tile_packed ?
          (packed_prefetch_k_tiles << (2*LOG2_SIZE + (prefetch_descriptor.use16 ? 1 : 0))) :
-         (prefetch_descriptor.row_stride << LOG2_SIZE));
-    assign prefetch_first_base = cfg_lhs_base + prefetch_next_k_bytes;
+         (prefetch_descriptor.row_stride << LOG2_SIZE);
+    ia_address_add #(.p_width(REG_WIDTH)) u_prefetch_base_advance (
+        .i_base(prefetch_descriptor.base_addr), .i_step(prefetch_row_step),
+        .o_address(prefetch_advanced_base)
+    );
+    ia_address_add #(.p_width(REG_WIDTH)) u_prefetch_first_base (
+        .i_base(cfg_lhs_base), .i_step(prefetch_next_k_bytes), .o_address(prefetch_first_base)
+    );
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -881,8 +980,7 @@ module ia_loader #(
             // 启动事件先保存为准备状态，地址和描述符在下一拍统一接收。
             prefetch_prepare_pending <= cache_l1_start && prefetch_enable_q &&
                 !prefetch_pending && !prefetch_inflight && !prefetch_prepare_pending;
-            prefetch_prepare_in_range <= (next_q0 > q0_base_q) &&
-                (next_q0 < global_reduction_q);
+            prefetch_prepare_in_range <= prefetch_next_in_range;
             prefetch_start <= prefetch_issue;
             if (prefetch_issue) prefetch_dma_descriptor <= prefetch_descriptor;
             if (prefetch_advance) begin

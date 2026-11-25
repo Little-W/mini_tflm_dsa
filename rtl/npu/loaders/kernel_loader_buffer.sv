@@ -58,6 +58,7 @@ module kernel_loader_buffer #(
     logic [p_index_width-1:0] read_row [SIZE];
     logic [p_index_width:0] output_bank_ext [SIZE];
     logic [p_index_width-1:0] output_bank [SIZE];
+    logic [DATA_WIDTH-1:0] output_column_data [SIZE];
 
     logic column_i_wr_en, column_i_rd_en;
     logic [p_addr_width-1:0] column_i_wr_addr;
@@ -97,7 +98,44 @@ module kernel_loader_buffer #(
             p_index_width'(output_bank_ext[column] - (p_index_width+1)'(SIZE)) :
             p_index_width'(output_bank_ext[column]);
         assign weight_out[column] = output_lane_valid_q[column] ?
-            $signed(column_o_rd_data[output_bank[column]]) : '0;
+            $signed(output_column_data[column]) : '0;
+    end
+
+    if ((SIZE & (SIZE - 1)) == 0) begin : g_output_rotation
+        localparam int p_stages = (p_index_width + 1) / 2;
+        logic [DATA_WIDTH-1:0] rotated_data [p_stages+1][SIZE];
+        // 每级并行选择四种固定距离，复用前一级的完整通道结果。
+        for (genvar column = 0; column < SIZE; column++) begin : g_input
+            assign rotated_data[0][column] = column_o_rd_data[column];
+        end
+        for (genvar stage = 0; stage < p_stages; stage++) begin : g_stage
+            localparam int p_low_bit = (p_index_width > 2 * stage + 1) ?
+                p_index_width - 2 * stage - 2 : 0;
+            localparam int p_select_bits = (p_index_width > 2 * stage + 1) ? 2 : 1;
+            for (genvar column = 0; column < SIZE; column++) begin : g_column
+                kernel_column_select4 #(.p_width(DATA_WIDTH)) u_select (
+                    .i_select(2'(output_column_q[p_low_bit +: p_select_bits])),
+                    .i_data0(rotated_data[stage][column]),
+                    .i_data1(rotated_data[stage][(column + (1 << p_low_bit)) % SIZE]),
+                    .i_data2(rotated_data[stage][(column + (2 << p_low_bit)) % SIZE]),
+                    .i_data3(rotated_data[stage][(column + (3 << p_low_bit)) % SIZE]),
+                    .o_data(rotated_data[stage+1][column])
+                );
+            end
+        end
+        for (genvar column = 0; column < SIZE; column++) begin : g_output
+            always_comb begin
+                case (^output_column_q)
+                    1'b0, 1'b1: output_column_data[column] = rotated_data[p_stages][column];
+                    // 未知列号按照数组索引规则传播到所选数据。
+                    default: output_column_data[column] = column_o_rd_data[output_bank[column]];
+                endcase
+            end
+        end
+    end else begin : g_output_index
+        for (genvar column = 0; column < SIZE; column++) begin : g_column
+            assign output_column_data[column] = column_o_rd_data[output_bank[column]];
+        end
     end
 
     //! 2. 输入寄存与槽位管理
@@ -242,6 +280,19 @@ module kernel_loader_buffer #(
         end
     end endgenerate
 
+endmodule
+
+// 一个通道内完成四路数据选择，分组边界保存共享的中间排列。
+(* keep_hierarchy = "yes" *)
+module kernel_column_select4 #(
+    parameter int unsigned p_width = 16
+) (
+    input wire logic [1:0] i_select,
+    input wire logic [p_width-1:0] i_data0, i_data1, i_data2, i_data3,
+    output logic [p_width-1:0] o_data
+);
+    assign o_data = i_select[1] ? (i_select[0] ? i_data3 : i_data2) :
+        (i_select[0] ? i_data1 : i_data0);
 endmodule
 
 `default_nettype wire

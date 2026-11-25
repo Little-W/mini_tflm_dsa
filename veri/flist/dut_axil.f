@@ -67,6 +67,7 @@
 ../../rtl/npu/loaders/ia_ordered_coordinate_same.sv
 ../../rtl/npu/loaders/ia_loader_cache_mgr.sv
 ../../rtl/npu/loaders/ia_loader_ctrl.sv
+../../rtl/npu/loaders/ia_row_step_register.sv
 ../../rtl/npu/loaders/kernel_loader.sv
 ../../rtl/npu/loaders/kernel_request_idle.sv
 ../../rtl/npu/loaders/kernel_candidate_equal.sv

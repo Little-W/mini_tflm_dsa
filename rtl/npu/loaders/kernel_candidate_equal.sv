@@ -28,7 +28,7 @@ module kernel_candidate_equal #(
     for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_leaf
         logic [2:0] current_bits, saved_bits;
         // 三位相等结果独立保留，后续归并仅处理单比特条件。
-        logic leaf_o_equal;
+        (* keep = 1 *) logic leaf_o_equal;
 
         assign current_bits = 3'(i_current >> (3*group_index));
         assign saved_bits = 3'(i_saved >> (3*group_index));
@@ -58,7 +58,7 @@ module kernel_candidate_equal #(
                 end
                 if (p_children > 1) begin : g_merge
                     // 第一层归并限制比较范围，后续层与接收控制共同化简。
-                    logic merged_equal;
+                    (* keep = (level == 1) *) logic merged_equal;
                     assign merged_equal = &merge_i_equal;
                     assign merge_o_equal = merged_equal;
                 end else begin : g_pass

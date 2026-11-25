@@ -97,6 +97,7 @@ def main():
         original = read_rtl_source(args.reference_rev +
                                             ":rtl/npu/loaders/" + module + ".sv", cwd=ROOT, text=True)
         original = re.sub(r"\bia_loader_ctrl\b", "ia_loader_ctrl_reference", original)
+        original = re.sub(r"\bia_row_step_register\b", "ia_row_step_register_reference", original)
         original = re.sub(r"\bia_loader_cache_mgr\b", "ia_loader_cache_mgr_reference", original)
         original = re.sub(r"\bia_loader\b", "ia_loader_reference", original)
         for helper in ("ia_ordered_coordinate_equal", "ia_ordered_coordinate_same"):

@@ -33,7 +33,7 @@ module ia_ordered_coordinate_equal #(
     //! -------------------
 
     // 相邻两位的进位一致性并行计算，公共比较器保留每位实际计算结果。
-    add_equal #(.p_width(p_high_width)) u_high_equal (
+    add_equal #(.p_width(p_high_width), .p_preserve_bits(1'b1)) u_high_equal (
         .i_a(i_a[p_width-1:p_low_width]), .i_b(i_b[p_width-1:p_low_width]),
         .i_target(i_target), .i_carry_in(carry_in), .o_equal(o_equal)
     );

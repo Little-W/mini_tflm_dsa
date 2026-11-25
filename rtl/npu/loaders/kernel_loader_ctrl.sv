@@ -132,6 +132,18 @@ module kernel_loader_ctrl #(
   logic [REG_WIDTH-1:0] group_step_25_sum, group_step_25_carry;
   logic [REG_WIDTH-1:0] group_step_25_fast, group_step_25;
   logic unused_group_step_25_carry;
+  logic [REG_WIDTH-1:0] group_step_i_step, group_step_o_product;
+  count_t group_step_i_reuse;
+  logic [REG_WIDTH-1:0] group_step_product;
+
+  // 完整分组步长独立计算，配置边沿与初始化状态的更新规则保持不变。
+  assign group_step_i_step = col_addr_step;
+  assign group_step_i_reuse = w_reuse_total;
+  assign group_step_product = group_step_o_product;
+  kernel_group_step #(.p_width(REG_WIDTH), .p_count_width(CNT_W)) u_group_step (
+      .i_step(group_step_i_step), .i_reuse(group_step_i_reuse),
+      .o_product(group_step_o_product)
+  );
 
   // 二十五倍步长先压缩三个移位项，最后进行一次完整模宽求和。
   assign group_step_25_sum = (col_addr_step << 4) ^ (col_addr_step << 3) ^ col_addr_step;
@@ -348,6 +360,13 @@ module kernel_loader_ctrl #(
       count_t'(1024): group_addr_step_next = col_addr_step << 10;
       default:          group_addr_step_next = col_addr_step;
     endcase
+    if (CNT_W >= 11 && REG_WIDTH >= 11) begin
+      // 已知输入使用统一乘积，未知位继续按各移位候选传播。
+      case (^col_addr_step)
+        1'b0, 1'b1: group_addr_step_next = group_step_product;
+        default: begin end
+      endcase
+    end
 
     last_col_in_group = (current_group_width == '0) ||
         (!column_increment_wrap && (column_value_covers_limit || column_next_equals_limit));
@@ -658,6 +677,37 @@ module kernel_loader_ctrl #(
   assign sent_count_covers_loads = (sends_wrap != loads_wrap) ? sends_wrap :
       (remaining_sends <= remaining_loads);
 
+endmodule
+
+
+// 规格化系数与定宽乘积构成完整组合函数，综合工具推断乘法资源。
+(* keep_hierarchy = "yes" *)
+module kernel_group_step #(
+    parameter int unsigned p_width = 32,
+    parameter int unsigned p_count_width = 29
+) (
+    input wire logic [p_width-1:0] i_step,
+    input wire logic [p_count_width-1:0] i_reuse,
+    (* use_dsp = "yes" *) output logic [p_width-1:0] o_product
+);
+    logic [10:0] factor;
+    always_comb begin
+        case (i_reuse)
+            p_count_width'(2): factor = 11'd2;
+            p_count_width'(4): factor = 11'd4;
+            p_count_width'(8): factor = 11'd8;
+            p_count_width'(16): factor = 11'd16;
+            p_count_width'(25): factor = 11'd25;
+            p_count_width'(32): factor = 11'd32;
+            p_count_width'(64): factor = 11'd64;
+            p_count_width'(128): factor = 11'd128;
+            p_count_width'(256): factor = 11'd256;
+            p_count_width'(512): factor = 11'd512;
+            p_count_width'(1024): factor = 11'd1024;
+            default: factor = 11'd1;
+        endcase
+    end
+    assign o_product = i_step * factor;
 endmodule
 
 `default_nettype wire

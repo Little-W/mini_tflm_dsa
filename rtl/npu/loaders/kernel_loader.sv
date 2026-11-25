@@ -187,10 +187,29 @@ module kernel_loader #(
   assign position_i_b[1] = q0_base_q;
   // 块坐标与配置偏移独立求和，最终描述符选择完整结果。
   for (genvar dimension = 0; dimension < 2; dimension++) begin : g_descriptor_position
-    parallel_prefix_add #(.p_width(REG_WIDTH)) u_position (
-        .i_a(position_i_a[dimension]), .i_b(position_i_b[dimension]), .i_carry(1'b0),
-        .o_sum(position_fast[dimension]), .o_carry(unused_position_carry[dimension])
-    );
+    if (dimension == 0 && p_count_width + p_size_shift < REG_WIDTH) begin : g_truncated_column
+      kernel_column_position #(.p_width(REG_WIDTH), .p_count_width(p_count_width),
+          .p_shift(p_size_shift)) u_column (
+          .i_group(ctrl_o_column_group_base), .i_offset(ctrl_o_column_group_offset),
+          .i_base(p0_base_q), .o_position(position_fast[dimension])
+      );
+      assign unused_position_carry[dimension] = 1'b0;
+    end else if (dimension == 0) begin : g_complete_column
+      logic [REG_WIDTH-1:0] column_sum, column_carry;
+      // 列分组、组内偏移和配置坐标共用同一组压缩结果。
+      assign column_sum = ctrl_o_column_group_base ^ ctrl_o_column_group_offset ^ p0_base_q;
+      assign column_carry = ((ctrl_o_column_group_base & ctrl_o_column_group_offset) |
+          (ctrl_o_column_group_base & p0_base_q) | (ctrl_o_column_group_offset & p0_base_q)) << 1;
+      parallel_prefix_add #(.p_width(REG_WIDTH), .p_group_width(4), .p_preserve_groups(1'b1)) u_position (
+          .i_a(column_sum), .i_b(column_carry), .i_carry(1'b0),
+          .o_sum(position_fast[dimension]), .o_carry(unused_position_carry[dimension])
+      );
+    end else begin : g_full_position
+      parallel_prefix_add #(.p_width(REG_WIDTH)) u_position (
+          .i_a(position_i_a[dimension]), .i_b(position_i_b[dimension]), .i_carry(1'b0),
+          .o_sum(position_fast[dimension]), .o_carry(unused_position_carry[dimension])
+      );
+    end
     always_comb begin
       case (^{position_i_a[dimension], position_i_b[dimension]})
         1'b0, 1'b1: position_sum[dimension] = position_fast[dimension];
@@ -302,10 +321,43 @@ module kernel_loader #(
   assign address_equal_i_c = ctrl_o_address_column_offset;
   assign address_equal_i_target = comparison_descriptor.base_addr;
 
-  add3_equal #(.p_width(REG_WIDTH)) u_column_equal (
-      .i_a(column_equal_i_a), .i_b(column_equal_i_b), .i_c(column_equal_i_c),
-      .i_target(column_equal_i_target), .o_equal(column_equal_o_equal)
-  );
+  if (p_count_width + p_size_shift < REG_WIDTH) begin : g_truncated_column_equal
+    localparam int unsigned p_low_width = p_count_width + p_size_shift;
+    localparam int unsigned p_high_width = REG_WIDTH - p_low_width;
+    logic low_equal, high_equal, high_increment_equal, low_carry, unused_low_equal;
+    logic legacy_equal, fast_equal;
+    add3_equal #(.p_width(p_low_width)) u_low_equal (
+        .i_a(ctrl_o_column_group_base[p_low_width-1:0]),
+        .i_b(ctrl_o_column_group_offset[p_low_width-1:0]),
+        .i_c(p0_base_q[p_low_width-1:0]),
+        .i_target(column_equal_i_target[p_low_width-1:0]), .o_equal(low_equal)
+    );
+    unsigned_compare #(.p_width(p_low_width)) u_low_carry (
+        .i_a(column_equal_i_target[p_low_width-1:0]), .i_b(p0_base_q[p_low_width-1:0]),
+        .o_less(low_carry), .o_equal(unused_low_equal)
+    );
+    assign high_equal = p0_base_q[REG_WIDTH-1:p_low_width] == column_equal_i_target[REG_WIDTH-1:p_low_width];
+    add_equal #(.p_width(p_high_width)) u_high_increment_equal (
+        .i_a(p0_base_q[REG_WIDTH-1:p_low_width]), .i_b(p_high_width'(1)), .i_carry_in(1'b0),
+        .i_target(column_equal_i_target[REG_WIDTH-1:p_low_width]), .o_equal(high_increment_equal)
+    );
+    assign fast_equal = low_equal && (low_carry ? high_increment_equal : high_equal);
+    add3_equal #(.p_width(REG_WIDTH)) u_legacy_equal (
+        .i_a(column_equal_i_a), .i_b(column_equal_i_b), .i_c(column_equal_i_c),
+        .i_target(column_equal_i_target), .o_equal(legacy_equal)
+    );
+    always_comb begin
+      case (^{column_equal_i_a, column_equal_i_b, column_equal_i_c, column_equal_i_target})
+        1'b0, 1'b1: column_equal_o_equal = fast_equal;
+        default: column_equal_o_equal = legacy_equal;
+      endcase
+    end
+  end else begin : g_complete_column_equal
+    add3_equal #(.p_width(REG_WIDTH)) u_column_equal (
+        .i_a(column_equal_i_a), .i_b(column_equal_i_b), .i_c(column_equal_i_c),
+        .i_target(column_equal_i_target), .o_equal(column_equal_o_equal)
+    );
+  end
   add_equal #(.p_width(REG_WIDTH)) u_row_equal (
       .i_a(row_equal_i_a), .i_b(row_equal_i_b), .i_target(row_equal_i_target),
       .i_carry_in(row_equal_i_carry_in), .o_equal(row_equal_o_equal)
@@ -690,13 +742,14 @@ module kernel_loader #(
     .repeat_dbg            ()
   );
 
-	  logic signed [DATA_WIDTH-1:0] row_acc [SIZE];
-	  logic signed [DATA_WIDTH-1:0] row_acc_n [SIZE];
-	  logic signed [DATA_WIDTH-1:0] row_emit_n [SIZE];
-	  logic beat_valid;
-	  logic last_ext_beat;
-	  logic [REG_WIDTH-1:0] ext_dma_valid_cols_r[2];
-	  logic [REG_WIDTH-1:0] ext_dma_logical_cols_r[2];
+  logic signed [DATA_WIDTH-1:0] row_acc [SIZE];
+  logic signed [DATA_WIDTH-1:0] row_acc_data [SIZE];
+  logic row_finish_q;
+  logic signed [DATA_WIDTH-1:0] row_emit_n [SIZE];
+  logic beat_valid;
+  logic last_ext_beat;
+  logic [REG_WIDTH-1:0] ext_dma_valid_cols_r[2];
+  logic [REG_WIDTH-1:0] ext_dma_logical_cols_r[2];
 
       // The buffer registers each assembled row before writing its RAM.
       // Completion uses the same register stage as the final row.
@@ -725,10 +778,9 @@ module kernel_loader #(
     localparam int p_lane_bits = $clog2(DMA_LANES);
     logic signed [DATA_WIDTH-1:0] rotated_data [DMA_LANES];
     logic rotated_valid [DMA_LANES];
-    logic row_clear, row_finish;
+    logic row_clear;
     // 相隔一个总线通道组的列使用同一输入数据，只计算一组循环选择结果。
     assign row_clear = cache_flush || (managed_mode && transfer_discard);
-    assign row_finish = last_ext_beat;
     for (genvar lane = 0; lane < DMA_LANES; lane++) begin : g_rotate
       logic [p_lane_bits-1:0] source_lane;
       assign source_lane = p_lane_bits'(lane) - p_lane_bits'(ext_dma_wr_col_base);
@@ -759,18 +811,15 @@ module kernel_loader #(
       assign row_emit_n[column] = column_update ?
         (column_logical ? rotated_data[column % DMA_LANES] : '0) :
         (row_clear ? '0 : row_acc[column]);
-      assign row_acc_n[column] = row_finish ? '0 : row_emit_n[column];
     end
   end else begin : g_general_rows
     // 通道数为其他整数时，逐项更新对应列并保留相同的覆盖顺序。
     always_comb begin
       for (int c = 0; c < SIZE; c++) begin
-        row_acc_n[c] = row_acc[c];
         row_emit_n[c] = row_acc[c];
       end
       if (cache_flush || (managed_mode && transfer_discard)) begin
         for (int c = 0; c < SIZE; c++) begin
-          row_acc_n[c] = '0;
           row_emit_n[c] = '0;
         end
       end
@@ -780,44 +829,43 @@ module kernel_loader #(
           col = int'(ext_dma_wr_col_base) + i;
           if (ext_dma_wr_valid[i] && col < SIZE && REG_WIDTH'(col) < ext_dma_valid_cols_r[ext_dma_wr_slot]) begin
             row_emit_n[col] = REG_WIDTH'(col) < ext_dma_logical_cols_r[ext_dma_wr_slot] ? ext_dma_wr_data[i] : '0;
-            if (!last_ext_beat) begin
-              row_acc_n[col] = REG_WIDTH'(col) < ext_dma_logical_cols_r[ext_dma_wr_slot] ? ext_dma_wr_data[i] : '0;
-            end
-          end
-        end
-        if (last_ext_beat) begin
-          for (int c = 0; c < SIZE; c++) begin
-            row_acc_n[c] = '0;
           end
         end
       end
     end
   end
 
-	  always_ff @(posedge clk or negedge rst_n) begin
-	        if (!rst_n) begin
-	          dma_busy <= 1'b0;
-              for(int bank=0;bank<2;bank++)begin
-                ext_dma_valid_cols_r[bank] <= REG_WIDTH'(SIZE);
-                ext_dma_logical_cols_r[bank] <= REG_WIDTH'(SIZE);
-              end
-	          for (int c = 0; c < SIZE; c++) begin
-	            row_acc[c] <= '0;
-	          end
-	        end else begin
-	          dma_busy <= ext_dma_busy;
-	          if (dma_start) begin
-                // The image block is returned as a complete SIZE-column row,
-                // including explicit zero reduction-tail elements. Commit it
-                // once at SIZE, rather than re-emitting after each padded beat.
-	            ext_dma_valid_cols_r[buf_load_slot] <= (port_descriptor.im2col || port_descriptor.tile_packed) ? REG_WIDTH'(SIZE) : port_descriptor.cols;
-	            ext_dma_logical_cols_r[buf_load_slot] <= port_descriptor.im2col ? REG_WIDTH'(SIZE) : port_descriptor.cols;
-	          end
-	          for (int c = 0; c < SIZE; c++) begin
-	            row_acc[c] <= row_acc_n[c];
-	          end
-	        end
-	  end
+  // 完整行与结束标志同拍保存，零反馈与下一周期的列更新共同选择。
+  for (genvar column = 0; column < SIZE; column++) begin : g_row_feedback
+    assign row_acc[column] = row_finish_q ? '0 : row_acc_data[column];
+  end
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      dma_busy <= 1'b0;
+      row_finish_q <= 1'b0;
+      for (int bank = 0; bank < 2; bank++) begin
+        ext_dma_valid_cols_r[bank] <= REG_WIDTH'(SIZE);
+        ext_dma_logical_cols_r[bank] <= REG_WIDTH'(SIZE);
+      end
+      for (int column = 0; column < SIZE; column++) begin
+        row_acc_data[column] <= '0;
+      end
+    end else begin
+      dma_busy <= ext_dma_busy;
+      row_finish_q <= last_ext_beat;
+      if (dma_start) begin
+        // 图像块保留完整行长度，归约尾部由零元素填充。
+        ext_dma_valid_cols_r[buf_load_slot] <=
+            (port_descriptor.im2col || port_descriptor.tile_packed) ? REG_WIDTH'(SIZE) : port_descriptor.cols;
+        ext_dma_logical_cols_r[buf_load_slot] <=
+            port_descriptor.im2col ? REG_WIDTH'(SIZE) : port_descriptor.cols;
+      end
+      for (int column = 0; column < SIZE; column++) begin
+        row_acc_data[column] <= row_emit_n[column];
+      end
+    end
+  end
 
   kernel_loader_buffer #(
     .DATA_WIDTH (DATA_WIDTH),
@@ -888,4 +936,40 @@ module kernel_loader #(
 
 endmodule
 
+`default_nettype wire
+
+`default_nettype none
+// 列号的模加法与配置坐标共同压缩，高位补偿独立的截断进位。
+module kernel_column_position #(
+    parameter int unsigned p_width = 32,
+    parameter int unsigned p_count_width = 16,
+    parameter int unsigned p_shift = 4
+) (
+    input wire logic [p_width-1:0] i_group, i_offset, i_base,
+    output logic [p_width-1:0] o_position
+);
+    localparam int unsigned p_high_width = p_width - p_count_width - p_shift;
+    logic [p_count_width:0] a_ext, b_ext, c_ext;
+    logic [p_count_width:0] compressed_sum, compressed_carry, total_sum;
+    logic [p_count_width-1:0] unused_column_sum;
+    logic group_carry;
+    logic high_carry;
+    logic [p_high_width-1:0] high_value, high_increment;
+    assign a_ext = {1'b0, i_group[p_shift+:p_count_width]};
+    assign b_ext = {1'b0, i_offset[p_shift+:p_count_width]};
+    assign c_ext = {1'b0, i_base[p_shift+:p_count_width]};
+    assign compressed_sum = a_ext ^ b_ext ^ c_ext;
+    assign compressed_carry = ((a_ext & b_ext) | (a_ext & c_ext) | (b_ext & c_ext)) << 1;
+    assign total_sum = compressed_sum + compressed_carry;
+    assign {group_carry, unused_column_sum} = a_ext + b_ext;
+    // 完整三项和的进位去除列号模宽溢出，得到配置坐标需要的进位。
+    assign high_carry = total_sum[p_count_width] ^ group_carry;
+    assign high_value = i_base[p_width-1 -: p_high_width];
+    assign high_increment = high_value + p_high_width'(1);
+    assign o_position[p_width-1 -: p_high_width] = high_carry ? high_increment : high_value;
+    assign o_position[p_shift+:p_count_width] = total_sum[p_count_width-1:0];
+    if (p_shift > 0) begin : g_low_bits
+      assign o_position[p_shift-1:0] = i_base[p_shift-1:0];
+    end
+endmodule
 `default_nettype wire

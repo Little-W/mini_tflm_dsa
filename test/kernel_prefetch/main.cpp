@@ -440,6 +440,7 @@ int main(int argc,char **argv) {
                 "Overlapping kernel descriptors were not exercised");
         require(check.dma_starts==check.dma_completions,"A DMA transaction did not finish");
         require(check.flush_drain_cycles>0 && check.delayed_prediction_cases==2,"Flush or delayed prediction coverage is incomplete");
+        check.dut.final();
         std::cout<<"{\"passed\":true,\"cycles\":"<<check.cycles<<",\"dma_starts\":"<<check.dma_starts
             <<",\"dma_completions\":"<<check.dma_completions<<",\"prefetch_starts\":"<<check.prefetch_starts
             <<",\"prefetch_captures\":"<<check.captures<<",\"cache_hits\":"<<check.hits<<",\"cache_discards\":"<<check.discards

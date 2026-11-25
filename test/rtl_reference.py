@@ -20,6 +20,7 @@ SOURCE_GROUPS = {
                           'conv_windowed_cache.sv', 'conv_cache_metadata_way.sv',
                           'conv_cache_rank_table.sv'),
     'ia_loader.sv': ('ia_loader.sv', 'ia_ordered_coordinate_equal.sv', 'ia_ordered_coordinate_same.sv'),
+    'ia_loader_ctrl.sv': ('ia_loader_ctrl.sv', 'ia_row_step_register.sv'),
     'kernel_loader.sv': ('kernel_loader.sv', 'kernel_request_idle.sv',
                          'kernel_candidate_equal.sv', 'kernel_burst_encode.sv'),
     'kernel_loader_ctrl.sv': ('kernel_loader_ctrl.sv', 'kernel_count_increment.sv',

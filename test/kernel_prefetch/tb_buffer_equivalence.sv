@@ -2,7 +2,8 @@
 module tb_kernel_buffer_equivalence #(
     parameter int SIZE = 16,
     parameter int DATA_WIDTH = 16,
-    parameter int RANDOM_CYCLES = 100000
+    parameter int RANDOM_CYCLES = 100000,
+    parameter bit FOUR_STATE = 1'b0
 );
     localparam int INDEX_WIDTH = $clog2(SIZE);
     logic clk = 1'b0;
@@ -15,7 +16,9 @@ module tb_kernel_buffer_equivalence #(
     logic weight_data_valid, weight_sending_done, store_weight_req;
     logic ref_load_slot_id, ref_load_ready, ref_load_commit, ref_load_commit_slot, ref_discard_ready;
     logic ref_weight_data_valid, ref_weight_sending_done, ref_store_weight_req;
-    logic signed [DATA_WIDTH-1:0] weight_out [SIZE], ref_weight_out [SIZE];
+    wire signed [DATA_WIDTH-1:0] weight_out [SIZE], ref_weight_out [SIZE];
+    logic [INDEX_WIDTH-1:0] forced_column;
+    integer known_weight_samples = 0;
     bit response_active [2];
     int response_row [2], response_rows [2], completion_delay [2];
     int cycles, loaded, sends, discards, flushes, resets, overlap;
@@ -69,6 +72,8 @@ module tb_kernel_buffer_equivalence #(
             $fatal(1, "Control mismatch cycle=%0d size=%0d", cycles, SIZE);
         end
         for (int column = 0; column < SIZE; column++) begin
+            if (FOUR_STATE && !$isunknown(weight_out[column]) && weight_out[column] != 0)
+                known_weight_samples++;
             if (weight_out[column] !== ref_weight_out[column]) begin
                 $fatal(1, "Weight mismatch cycle=%0d lane=%0d actual=%0d expected=%0d",
                     cycles, column, weight_out[column], ref_weight_out[column]);
@@ -118,7 +123,11 @@ module tb_kernel_buffer_equivalence #(
                         row_valid = 1;
                         row_slot = 1'(slot);
                         row_idx = INDEX_WIDTH'(response_row[slot]);
-                        for (int column = 0; column < SIZE; column++) row_data[column] = DATA_WIDTH'($urandom());
+                        for (int column = 0; column < SIZE; column++) begin
+                            row_data[column] = DATA_WIDTH'($urandom());
+                            if (FOUR_STATE && iteration % 11 == 0) row_data[column][iteration % DATA_WIDTH] = 1'bx;
+                            if (FOUR_STATE && iteration % 13 == 0) row_data[column][iteration % DATA_WIDTH] = 1'bz;
+                        end
                         response_row[slot]++;
                     end
                     if (response_row[slot] == response_rows[slot]) begin
@@ -143,6 +152,46 @@ module tb_kernel_buffer_equivalence #(
                 end
             end
             tick();
+        end
+        if (FOUR_STATE) begin
+            for (int sample = 0; sample < 20000; sample++) begin
+                rst_n = (sample % 257 != 0);
+                cache_flush = (sample % 137 == 0);
+                discard_head = $urandom_range(0,3)==0;
+                load_start = $urandom;
+                row_valid = $urandom;
+                row_slot = $urandom;
+                row_idx = INDEX_WIDTH'($urandom);
+                load_done = $urandom;
+                done_slot = $urandom;
+                send_start = $urandom;
+                for (int column = 0; column < SIZE; column++) begin
+                    row_data[column] = DATA_WIDTH'($urandom);
+                    if (sample % 7 == 0) row_data[column][sample % DATA_WIDTH] = 1'bx;
+                    if (sample % 11 == 0) row_data[column][sample % DATA_WIDTH] = 1'bz;
+                end
+                case (sample % 41)
+                    0: row_valid = 1'bx;
+                    1: load_start = 1'bz;
+                    2: row_idx[sample % INDEX_WIDTH] = 1'bx;
+                    3: row_idx[sample % INDEX_WIDTH] = 1'bz;
+                    4: load_done = 1'bx;
+                    5: send_start = 1'bz;
+                    6: rst_n = 1'bx;
+                    7: cache_flush = 1'bz;
+                    default: ;
+                endcase
+                forced_column = INDEX_WIDTH'($urandom);
+                if (sample % 3 == 0) forced_column[sample % INDEX_WIDTH] = 1'bx;
+                if (sample % 5 == 0) forced_column[sample % INDEX_WIDTH] = 1'bz;
+                if (sample == 10000) begin
+                    force dut.output_column_q = forced_column;
+                    force reference.output_column_q = forced_column;
+                end
+                tick();
+            end
+            if (known_weight_samples < 10000) $fatal(1, "Insufficient known weight data");
+            $display("KERNEL_BUFFER_FOUR_STATE_PASS known_weight_samples=%0d", known_weight_samples);
         end
         if (sends < 100 || discards < 10 || overlap < 100 || flushes < 10 || resets < 10)
             $fatal(1, "Insufficient scenario coverage");

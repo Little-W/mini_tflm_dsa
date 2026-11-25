@@ -82,6 +82,7 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_loaders_root ia_ordered_coordinate_same.sv] \
         [file join $npu_loaders_root ia_loader_cache_mgr.sv] \
         [file join $npu_loaders_root ia_loader_ctrl.sv] \
+        [file join $npu_loaders_root ia_row_step_register.sv] \
         [file join $npu_loaders_root kernel_loader.sv] \
         [file join $npu_loaders_root kernel_loader_buffer.sv] \
         [file join $npu_loaders_root kernel_loader_ctrl.sv] \

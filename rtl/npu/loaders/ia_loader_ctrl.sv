@@ -168,18 +168,11 @@ module ia_loader_ctrl #(
   (* fsm_encoding = "sequential" *) state_t state;
   state_t state_nxt;
 
-  always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) state <= S_IDLE;
-    else        state <= state_nxt;
-  end
-
   // =====================================================================
   // IA 行步长按幂次复用数量或 25 倍生成，其他配置保留单组步长。
   // =====================================================================
   logic [REG_WIDTH-1:0] tile_row_step_b;
   logic [REG_WIDTH-1:0] l2_group_row_step_b;
-  logic [REG_WIDTH-1:0] tile_row_step_b_comb;
-  logic [REG_WIDTH-1:0] l2_group_row_step_b_comb;
 
   logic [REG_WIDTH-1:0] packed_k_tiles;
 
@@ -196,58 +189,27 @@ module ia_loader_ctrl #(
         {1'b0, REG_WIDTH'((packed_reduction & REG_WIDTH'(SIZE - 1)) != '0)};
   end
 
-  assign tile_row_step_b_comb = cfg_tile_packed ?
-      (packed_k_tiles << (2*LOG2_SIZE + (cfg_use_16bits ? 1 : 0))) :
-      (cfg_lhs_row_stride_b << LOG2_SIZE);
+  logic row_steps_i_enable, row_steps_i_tile_packed, row_steps_i_use_16bits;
+  logic [REG_WIDTH-1:0] row_steps_i_reuse_num, row_steps_i_row_stride, row_steps_i_packed_tiles;
+  logic [REG_WIDTH-1:0] row_steps_o_tile_step, row_steps_o_group_step;
 
-  if (REG_WIDTH >= 7) begin : g_encoded_row_step
-    logic [2:0] reuse_shift;
+  assign row_steps_i_enable = (state == S_IDLE) && init_start;
+  assign row_steps_i_tile_packed = cfg_tile_packed;
+  assign row_steps_i_use_16bits = cfg_use_16bits;
+  assign row_steps_i_reuse_num = cfg_ia_reuse_num;
+  assign row_steps_i_row_stride = cfg_lhs_row_stride_b;
+  assign row_steps_i_packed_tiles = packed_k_tiles;
+  assign tile_row_step_b = row_steps_o_tile_step;
+  assign l2_group_row_step_b = row_steps_o_group_step;
 
-    // 幂次复用数量编码为移位量，所有数据位共享同一个移位网络。
-    always_comb begin
-      case (cfg_ia_reuse_num)
-        REG_WIDTH'(2): reuse_shift = 3'd1;
-        REG_WIDTH'(4): reuse_shift = 3'd2;
-        REG_WIDTH'(8): reuse_shift = 3'd3;
-        REG_WIDTH'(16): reuse_shift = 3'd4;
-        REG_WIDTH'(32): reuse_shift = 3'd5;
-        REG_WIDTH'(64): reuse_shift = 3'd6;
-        default: reuse_shift = 3'd0;
-      endcase
-    end
-    always_comb begin
-      l2_group_row_step_b_comb = tile_row_step_b_comb << reuse_shift;
-      if (cfg_ia_reuse_num == REG_WIDTH'(25)) begin
-        l2_group_row_step_b_comb = (tile_row_step_b_comb << 4) +
-                                   (tile_row_step_b_comb << 3) + tile_row_step_b_comb;
-      end
-    end
-  end else begin : g_narrow_row_step
-    always_comb begin
-      unique case (cfg_ia_reuse_num)
-        REG_WIDTH'(1):  l2_group_row_step_b_comb = tile_row_step_b_comb;
-        REG_WIDTH'(2):  l2_group_row_step_b_comb = tile_row_step_b_comb << 1;
-        REG_WIDTH'(4):  l2_group_row_step_b_comb = tile_row_step_b_comb << 2;
-        REG_WIDTH'(8):  l2_group_row_step_b_comb = tile_row_step_b_comb << 3;
-        REG_WIDTH'(16): l2_group_row_step_b_comb = tile_row_step_b_comb << 4;
-        REG_WIDTH'(25): l2_group_row_step_b_comb =
-            (tile_row_step_b_comb << 4) + (tile_row_step_b_comb << 3) + tile_row_step_b_comb;
-        REG_WIDTH'(32): l2_group_row_step_b_comb = tile_row_step_b_comb << 5;
-        REG_WIDTH'(64): l2_group_row_step_b_comb = tile_row_step_b_comb << 6;
-        default: l2_group_row_step_b_comb = tile_row_step_b_comb;
-      endcase
-    end
-  end
-
-  always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      tile_row_step_b     <= '0;
-      l2_group_row_step_b <= '0;
-    end else if (state == S_IDLE && init_start) begin
-      tile_row_step_b     <= tile_row_step_b_comb;
-      l2_group_row_step_b <= l2_group_row_step_b_comb;
-    end
-  end
+  // 两组步长共用配置输入，在独立算术模块内保持原有接收边沿。
+  ia_row_step_register #(.p_width(REG_WIDTH), .p_size(SIZE)) u_row_steps (
+    .clk(clk), .rst_n(rst_n),
+    .i_enable(row_steps_i_enable), .i_tile_packed(row_steps_i_tile_packed),
+    .i_use_16bits(row_steps_i_use_16bits), .i_reuse_num(row_steps_i_reuse_num),
+    .i_row_stride(row_steps_i_row_stride), .i_packed_tiles(row_steps_i_packed_tiles),
+    .o_tile_step(row_steps_o_tile_step), .o_group_step(row_steps_o_group_step)
+  );
 
   // =====================================================================
   // Cache Block 状态表
@@ -338,15 +300,51 @@ module ia_loader_ctrl #(
   logic [LOAD_CNT_W-1:0] r_cur_cnt;
   logic [W_CNT_W-1:0] w_cnt_narrow;
   logic [W_CNT_W-1:0] w_cur_narrow;
+  logic ia_iter_last_current;
   assign ia_idx_cnt = ia_idx[LOAD_CNT_W-1:0];
   assign r_cur_cnt = r_cur[LOAD_CNT_W-1:0];
   assign w_cnt_narrow = w_cnt[W_CNT_W-1:0];
   assign w_cur_narrow = w_cur[W_CNT_W-1:0];
   add_equal #(.p_width(LOAD_CNT_W)) u_ia_iteration_end (
     .i_a(ia_idx_cnt), .i_b(LOAD_CNT_W'(0)), .i_target(r_cur_cnt),
-    .i_carry_in(1'b1), .o_equal(ia_iter_last_narrow)
+    .i_carry_in(1'b1), .o_equal(ia_iter_last_current)
   );
-  assign w_iter_last_narrow = ((w_cnt_narrow + W_CNT_W'(1)) == w_cur_narrow);
+  if (CNT_W >= LOAD_CNT_W) begin : g_parallel_iteration_end
+    (* keep = 1 *) logic regular_last, tail_last;
+    // 两个复用边界分别比较，尾组标志只在比较完成后选择单个位。
+    add_equal #(.p_width(LOAD_CNT_W), .p_preserve_bits(1'b1)) u_regular (
+      .i_a(ia_idx_cnt), .i_b(LOAD_CNT_W'(0)),
+      .i_target(LOAD_CNT_W'(count_t'(cfg_ia_reuse_num))),
+      .i_carry_in(1'b1), .o_equal(regular_last)
+    );
+    add_equal #(.p_width(LOAD_CNT_W), .p_preserve_bits(1'b1)) u_tail (
+      .i_a(ia_idx_cnt), .i_b(LOAD_CNT_W'(0)),
+      .i_target(LOAD_CNT_W'(count_t'(ia_reuse_num_act))),
+      .i_carry_in(1'b1), .o_equal(tail_last)
+    );
+    always_comb begin
+      ia_iter_last_narrow = ia_iter_last_current;
+      case (is_last_l2_group)
+        1'b0: ia_iter_last_narrow = regular_last;
+        1'b1: ia_iter_last_narrow = tail_last;
+        default: ;
+      endcase
+    end
+  end else begin : g_direct_iteration_end
+    assign ia_iter_last_narrow = ia_iter_last_current;
+  end
+  logic w_iter_last_parallel;
+  add_equal #(.p_width(W_CNT_W), .p_preserve_bits(1'b1)) u_w_iteration_end (
+    .i_a(w_cnt_narrow), .i_b(W_CNT_W'(0)), .i_target(w_cur_narrow),
+    .i_carry_in(1'b1), .o_equal(w_iter_last_parallel)
+  );
+  always_comb begin
+    w_iter_last_narrow = ((w_cnt_narrow + W_CNT_W'(1)) == w_cur_narrow);
+    case (^{w_cnt_narrow, w_cur_narrow})
+      1'b0, 1'b1: w_iter_last_narrow = w_iter_last_parallel;
+      default: ;
+    endcase
+  end
   assign ia_iter_last = ia_iter_last_narrow;
   assign w_iter_last  = w_iter_last_narrow;
 
@@ -602,7 +600,8 @@ module ia_loader_ctrl #(
   logic [REG_WIDTH-1:0] l2_row_base_advanced;
   logic unused_l2_row_carry;
   parallel_prefix_add #(
-    .p_width(REG_WIDTH), .p_group_width(4), .p_preserve_groups(1'b1)
+    .p_width(REG_WIDTH), .p_group_width(4), .p_preserve_groups(1'b1),
+    .p_carry_select_width(16)
   ) u_l2_row_advance (
     .i_a(l2_row_base), .i_b(l2_group_row_step_b), .i_carry(1'b0),
     .o_sum(l2_row_base_advanced), .o_carry(unused_l2_row_carry)
@@ -651,8 +650,15 @@ module ia_loader_ctrl #(
       (REG_WIDTH'(l2_tile_row_base) +
        (next_group_advances_l2 ? cfg_ia_reuse_num : REG_WIDTH'(0))) << LOG2_SIZE;
   assign load_row_base_advanced = load_cursor_row_base + tile_row_step_b;
-  assign computed_tile_base = load_cursor_row_base +
-                              (prefetch_active ? pf_tile_col_byte_offset : tile_col_byte_offset);
+  logic [REG_WIDTH-1:0] tile_base_i_base, tile_base_i_step, tile_base_o_address;
+  assign tile_base_i_base = load_cursor_row_base;
+  assign tile_base_i_step = prefetch_active ? pf_tile_col_byte_offset : tile_col_byte_offset;
+  assign computed_tile_base = tile_base_o_address;
+
+  // 选定列偏移后计算完整地址，部分和并行形成并保留低段进位。
+  ia_address_add #(.p_width(REG_WIDTH)) u_tile_base (
+    .i_base(tile_base_i_base), .i_step(tile_base_i_step), .o_address(tile_base_o_address)
+  );
 
   // =====================================================================
   // 加载触发逻辑
@@ -811,6 +817,36 @@ module ia_loader_ctrl #(
                      w_iter_last &&
                      ia_iter_last;
 
+  // 状态与发送资格共同接收，所有资格条件使用同一边沿的更新值。
+  always_ff @(posedge clk or negedge rst_n) begin : state_accept
+    logic send_group_ready_nxt, in_l1_output_nxt;
+    if (!rst_n) begin
+      state <= S_IDLE;
+      ia_data_valid <= 1'b0;
+    end else begin
+      send_group_ready_nxt = send_group_ready_r;
+      if (state == S_INIT) begin
+        send_group_ready_nxt = 1'b0;
+      end else if (retirement_l1) begin
+        send_group_ready_nxt = prefetch_active &&
+                               (l1_load_complete || l1_load_complete_event);
+      end else if (!prefetch_active && (l1_load_complete || l1_load_complete_event)) begin
+        send_group_ready_nxt = 1'b1;
+      end
+      in_l1_output_nxt = in_l1_output;
+      if (state == S_IDLE || state == S_INIT) begin
+        in_l1_output_nxt = 1'b0;
+      end else if (send_ia_trigger && ia_data_valid) begin
+        in_l1_output_nxt = 1'b1;
+      end else if (cache_l1_done) begin
+        in_l1_output_nxt = 1'b0;
+      end
+      state <= state_nxt;
+      ia_data_valid <= (state_nxt == S_SEND || state_nxt == S_LOAD) &&
+                        send_group_ready_nxt && !in_l1_output_nxt;
+    end
+  end
+
   always_comb begin
     state_nxt = state;
     case (state)
@@ -910,11 +946,11 @@ module ia_loader_ctrl #(
   if (p_parallel_request_match) begin : g_request_q0_match
     localparam int unsigned p_coordinate_width = REG_WIDTH - LOG2_SIZE;
     (* keep = 1 *) logic current_equal, following_equal, first_equal;
-    add_equal #(.p_width(p_coordinate_width)) u_current_equal (
+    add_equal #(.p_width(p_coordinate_width), .p_preserve_bits(1'b1)) u_current_equal (
         .i_a(p_coordinate_width'(tile_col_idx)), .i_b(request_q0_base),
         .i_target(request_q0_target), .i_carry_in(1'b0), .o_equal(current_equal)
     );
-    add_equal #(.p_width(p_coordinate_width)) u_following_equal (
+    add_equal #(.p_width(p_coordinate_width), .p_preserve_bits(1'b1)) u_following_equal (
         .i_a(p_coordinate_width'(l1_idx_next)), .i_b(request_q0_base),
         .i_target(request_q0_target), .i_carry_in(1'b0), .o_equal(following_equal)
     );
@@ -1189,14 +1225,12 @@ module ia_loader_ctrl #(
   end
 
   // =====================================================================
-  // ia_data_valid — 组合逻辑
+  // IA 发送资格
   // =====================================================================
   // 规则：L1 组的所有 R 个 slot 都已就绪 且 当前不在 L1 连续输出中。
   // 这样每个 reduction 阶段的同一组 IA 分块形态一致：要么整组连续输出，
   // 不会第一轮因只缓存到首块而 split、后一轮又变成 tall stream。
-  assign ia_data_valid = (state == S_SEND || state == S_LOAD)
-                       && send_group_ready_r
-                       && !in_l1_output;
+
 
   // in_l1_output: send_ia_trigger 接受后置位，cache_l1_done 后清零
   always_ff @(posedge clk or negedge rst_n) begin
@@ -1212,8 +1246,7 @@ module ia_loader_ctrl #(
 
   // cache_l1_start: 仅在外部 trigger 触发时发出（L1 组整体启动脉冲）
   // The cache emits complete rows for all r_cur tiles in this group.
-  assign cache_l1_start = (state == S_SEND || state == S_LOAD)
-                        && send_ia_trigger && ia_data_valid;
+  assign cache_l1_start = send_ia_trigger && ia_data_valid;
 
   // =====================================================================
   // ia_sending_done — 每个 L1 组全部输出完成时拉高一拍

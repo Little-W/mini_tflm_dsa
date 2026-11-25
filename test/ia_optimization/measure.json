@@ -1,0 +1,45 @@
+{
+  "ia_production": {
+    "top": "ia_loader",
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GDATA_WIDTH=16",
+      "-GSIZE=16",
+      "-GBUS_WIDTH=64",
+      "-GDMA_LANES=8",
+      "-GREG_WIDTH=32",
+      "-GCOUNT_WIDTH=29",
+      "-GCACHE_BLOCKS=32",
+      "-GCOMPACT_S8=1",
+      "-GORDERED_JOB=1",
+      "-GRAM_WORD_ADDR_WIDTH=12",
+      "-GPS_FRAME_COUNT=16",
+      "-Gp_dma_source_layout=1",
+      "-Gp_shared_write_stage=1",
+      "-Gp_register_dma_request=1"
+    ],
+    "sources": [
+      "rtl/npu/loaders/ia_loader.sv"
+    ],
+    "parameters": {
+      "DATA_WIDTH": 16,
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "DMA_LANES": 8,
+      "REG_WIDTH": 32,
+      "COUNT_WIDTH": 29,
+      "CACHE_BLOCKS": 32,
+      "COMPACT_S8": 1,
+      "ORDERED_JOB": 1,
+      "RAM_WORD_ADDR_WIDTH": 12,
+      "PS_FRAME_COUNT": 16,
+      "p_dma_source_layout": 1,
+      "p_shared_write_stage": 1,
+      "p_register_dma_request": 1
+    },
+    "configuration": "16 个计算通道，64 位 DMA，32 个普通存储块及 64 个紧凑槽位，29 位维度计数，共享写数据寄存级与 DMA 请求寄存级"
+  }
+}

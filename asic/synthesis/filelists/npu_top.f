@@ -101,6 +101,7 @@
 ../../rtl/npu/loaders/ia_buffer_wrapper.sv
 ../../rtl/npu/loaders/ia_loader_cache_mgr.sv
 ../../rtl/npu/loaders/ia_loader_ctrl.sv
+../../rtl/npu/loaders/ia_row_step_register.sv
 ../../rtl/npu/loaders/ia_loader.sv
 ../../rtl/npu/loaders/ia_ordered_coordinate_equal.sv
 ../../rtl/npu/loaders/ia_ordered_coordinate_same.sv

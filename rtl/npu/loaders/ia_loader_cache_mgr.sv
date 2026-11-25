@@ -115,17 +115,33 @@ module ia_loader_cache_mgr #(
     for (genvar lane = 0; lane < SIZE; lane++) begin : g_lane
       logic signed [DATA_WIDTH-1:0] data_q;
       logic [p_restore_width-1:0] restore_lhs, restore_rhs, restore_sum;
-      logic unused_restore_carry;
+      (* use_dsp = "simd" *) logic [p_restore_width-1:0] restore_native_sum;
 
       always_ff @(posedge clk) begin
         if (read_metadata_q[1].valid) data_q <= ram_rd_raw_data[lane];
       end
       assign restore_lhs = p_restore_width'($signed(data_q[7:0]));
       assign restore_rhs = p_restore_width'(read_metadata_q[p_read_stages-1].offset);
+      // 各通道的定宽加法独立描述，综合时允许共享硬件算术通道。
+      assign restore_native_sum = restore_lhs + restore_rhs;
+`ifdef SYNTHESIS
+      assign restore_sum = restore_native_sum;
+`else
+      logic [p_restore_width-1:0] restore_logic_sum;
+      logic unused_restore_carry;
       parallel_prefix_add #(.p_width(p_restore_width), .p_group_width(4)) u_restore (
         .i_a(restore_lhs), .i_b(restore_rhs), .i_carry(1'b0),
-        .o_sum(restore_sum), .o_carry(unused_restore_carry)
+        .o_sum(restore_logic_sum), .o_carry(unused_restore_carry)
       );
+      // 四态仿真保留分段进位传播，未受未知位影响的低位仍可确定。
+      always_comb begin
+        restore_sum = restore_logic_sum;
+        case (^{restore_lhs, restore_rhs})
+          1'b0, 1'b1: restore_sum = restore_native_sum;
+          default: ;
+        endcase
+      end
+`endif
       assign ram_rd_data[lane] = read_metadata_q[p_read_stages-1].compact ?
           DATA_WIDTH'($signed(restore_sum)) : data_q;
     end
@@ -195,6 +211,8 @@ module ia_loader_cache_mgr #(
       // 两个写端口共用同一拍输入，原始数据与格式每拍保存。
       // 端口写使能、地址和字节掩码共同决定本拍实际写入的内容。
       for (genvar lane = 0; lane < 16; lane++) begin : g_lane
+        (* use_dsp = "simd" *) logic [7:0] shifted_compact_byte;
+
         if (lane < DMA_LANES) begin : g_input
           assign input_data[lane*16 +: 16] = wr_data[lane];
           assign input_mask[lane] = wr_valid[lane];
@@ -206,8 +224,18 @@ module ia_loader_cache_mgr #(
         end
         assign wide_source[lane*16 +: 16] = input_mask_q[lane] ?
             input_data_q[lane*16 +: 16] : 16'd0;
-        assign compact_data[lane*8 +: 8] = row_mask[lane] ?
-            compact_row[lane*8 +: 8] : empty_byte_q;
+        // 普通与紧凑格式共用列排列结果，紧凑偏移在选定列的低字节上完成。
+        assign shifted_compact_byte = wide_row[lane*16 +: 8] + empty_byte_q;
+        always_comb begin
+          compact_data[lane*8 +: 8] = row_mask[lane] ?
+              compact_row[lane*8 +: 8] : empty_byte_q;
+          // 未知控制位使用通道偏移后排列的表达式，保留四态选择顺序。
+          case (^{column_q, input_mask_q})
+            1'b0, 1'b1: compact_data[lane*8 +: 8] = row_mask[lane] ?
+                shifted_compact_byte : empty_byte_q;
+            default: ;
+          endcase
+        end
       end
       always_ff @(posedge clk) begin
         input_data_q <= input_data;
