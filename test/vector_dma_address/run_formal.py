@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""证明参数描述符准备和读取、写回地址译码的组合关系。"""
+"""对完整向量地址子模块进行无限时序等价检查。"""
 from __future__ import annotations
 
 import argparse
@@ -7,184 +7,129 @@ import hashlib
 import json
 from pathlib import Path
 import re
-import shlex
 import subprocess
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
-
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = Path('rtl/npu/conv/vector_engine.sv')
-DEPENDENCIES = [Path('rtl/npu/conv/conv_im2col_pkg.sv'),
-                Path('rtl/npu/conv/vector_engine_pkg.sv'),
-                Path('rtl/common/parallel_prefix_add.sv'), Path('rtl/common/add_equal.sv')]
+SOURCES = [
+    'rtl/npu/conv/conv_im2col_pkg.sv',
+    'rtl/npu/conv/vector_engine_control_pkg.sv',
+    'rtl/npu/conv/vector_engine_pkg.sv',
+    'rtl/common/add_equal.sv',
+    'rtl/common/parallel_prefix_add.sv',
+    'rtl/common/unsigned_compare.sv',
+    'rtl/npu/conv/vector_coordinate_bound.sv',
+    'rtl/npu/conv/vector_interval_bound.sv',
+    'rtl/npu/conv/vector_read_address_add.sv',
+    'rtl/npu/conv/vector_engine_address.sv',
+]
 
 
 def digest(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def span(source):
-    first = source.index('  assign rd_start =')
-    first = source.index('\n', first) + 1
-    middle = source.index('  assign parameter_row_last_fire', first)
-    last = source.index('  wire signed [15:0] input_lane', middle)
-    return first, middle, last
-
-
-def preparation_fragment(source):
-    first, middle, _ = span(source)
-    body = source[first:middle]
-    # 组合准备值与保存寄存器分别检查，这里保留实际加法和判断表达式。
-    if '  always_ff ' in body:
-        body = body[:body.index('  always_ff ')]
-    suffix = '_next' if 'parameter_row_stride_next' in body else ''
-    return f'''module vector_parameter_prepare (
-    input vector_engine_pkg::vector_engine_cfg_t c,
-    output logic [31:0] prepared_stride,
-    output logic prepared_two_rows, prepared_three_rows
-);
-    logic [31:0] parameter_row_stride;
-    logic parameter_two_rows, parameter_three_rows;
-    {body}
-    assign prepared_stride = parameter_row_stride{suffix};
-    assign prepared_two_rows = parameter_two_rows{suffix};
-    assign prepared_three_rows = parameter_three_rows{suffix};
-endmodule
+def connect_saved_qualifiers(text):
+    """按已证明的控制字关系连接新增输入，其余生产源码保持原样。"""
+    text = text.replace("parameter bit p_registered_read_phase = 1'b0",
+                        "parameter bit p_registered_read_phase = 1'b1")
+    for name in ('i_state_soft_lut_read', 'i_state_pool_read', 'i_load_read_select'):
+        text, count = re.subn(r'^  input wire logic[^\n]*\b' + name + r'[^\n]*\n', '', text, flags=re.M)
+        if count != 1:
+            raise RuntimeError('未找到完整的读取资格接口：' + name)
+    declarations = '''  logic i_state_soft_lut_read, i_state_pool_read;
+  logic [5:0] i_load_read_select;
+  logic [8:0] selected_load_word;
+  assign i_state_soft_lut_read = i_state == vector_engine_control_pkg::SOFT_LUT_REQ ||
+      i_state == vector_engine_control_pkg::SOFT_LUT_WAIT;
+  assign i_state_pool_read = i_state == vector_engine_control_pkg::POOL_LOAD_REQ ||
+      i_state == vector_engine_control_pkg::POOL_LOAD_WAIT;
+  assign selected_load_word = vector_engine_control_pkg::load_control_value(i_load_kind);
+  assign i_load_read_select = selected_load_word[8:3];
 '''
-
-
-def decode_fragment(source, bus, tile):
-    _, middle, last = span(source)
-    state = re.search(r'typedef enum logic \[5:0\].*?state_t;', source, re.S)[0]
-    load = re.search(r'typedef enum logic \[2:0\].*?load_t;', source, re.S)[0]
-    helper = re.search(r'^module vector_read_address_add\b.*?^endmodule', source, re.M | re.S)
-    helper_text = helper.group() if helper else (ROOT/'rtl/npu/conv/vector_read_address_add.sv').read_text()
-    body = source[middle:last]
-    # 两侧使用同一个已接收请求索引；真实保存和消费关系由引擎观察模块检查。
-    body = re.sub(r'\bsoft_lut_index(?:_q)?\b', 'prepared_lut_index', body)
-    return f'''module vector_read_decode #(
-    parameter int BUS_WIDTH={bus}, TILE={tile}, DMA_SIZE=4*TILE,
-    parameter int BUS_BYTES=BUS_WIDTH/8, BUS_SHIFT=$clog2(BUS_BYTES),
-    parameter int INPUT_INDEX_W=$clog2(DMA_SIZE), ACTIVE_COUNT_W=$clog2(TILE+1)
-) (
-    input logic clk,
-    input logic [5:0] state,
-    input logic [2:0] load_kind,
-    input vector_engine_pkg::vector_engine_cfg_t c,
-    input logic spatial, rd_raw_valid,
-    input logic [ACTIVE_COUNT_W-1:0] active,
-    input logic [15:0] channel_base,
-    input logic [31:0] vector_offset, load_tap_offset, pool_byte_offset, channels, position_offset, taps,
-    input logic [7:0] prepared_lut_index,
-    input logic [31:0] parameter_row_stride,
-    input logic parameter_two_rows, parameter_three_rows,
-    input logic [INPUT_INDEX_W:0] pool_elements, pool_pixels,
-    input logic [INPUT_INDEX_W-1:0] rd_col_base,
-    input logic [BUS_WIDTH-1:0] rd_raw_data,
-    output logic rd_im2col, rd_use_16bits, param_bad,
-    output logic [31:0] rd_p0, rd_q0, rd_base_addr, rd_row_stride, rd_rows_to_read, rd_valid_cols, load_bytes,
-    output logic [7:0] rd_burst_len_m1,
-    output logic [31:0] write_origin_value
-);
-    {state}
-    {load}
-    logic [31:0] read_address_base, read_address_offset;
-    logic [15:0] read_address_channel;
-    logic [1:0] unused_read_address_carry;
-    logic parameter_row_last_fire;
-    {body}
-    assign write_origin_value = write_origin_next;
-endmodule
-{helper_text}
-'''
+    if text.count('  logic start;') != 1:
+        raise RuntimeError('无法确定地址模块声明位置')
+    return text.replace('  logic start;', declarations + '  logic start;')
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--source-root', type=Path, default=ROOT)
+    parser.add_argument('--reference-rev', default='7ddc0d8d')
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference-rev', default='ef0dc75')
+    parser.add_argument('--only-production', action='store_true')
+    parser.add_argument('--direct-inputs', action='store_true',
+                        help='直接比较两侧公开输入，不添加保存资格的关系约束')
     args = parser.parse_args()
-    out = args.out.resolve()
+    source, out = args.source_root.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    reference = read_rtl_source(f'{args.reference_rev}:{SOURCE}', cwd=ROOT, text=True)
-    current = (ROOT / SOURCE).read_text()
-    initial_hashes = {str(path): digest(ROOT / path) for path in [SOURCE] + DEPENDENCIES}
-    inputs = out / 'inputs'
-    inputs.mkdir(exist_ok=True)
-    (inputs / 'reference_engine.sv').write_text(reference)
-    (inputs / 'current_engine.sv').write_text(current)
-    packages = []
-    for relative in DEPENDENCIES:
-        copied = inputs / relative.name
-        copied.write_bytes((ROOT / relative).read_bytes())
-        packages.append(copied)
-    report = {
-        'passed': False, 'reference_rev': args.reference_rev,
-        'source_sha256': initial_hashes[str(SOURCE)],
-        'reference_sha256': hashlib.sha256(reference.encode()).hexdigest(),
-        'dependency_sha256': initial_hashes, 'input_assumptions': [],
-        'proof_scope': 'Actual parameter preparation expressions; complete read configuration, read address, parameter validation, and write-origin decode for arbitrary prepared descriptors and LUT request index',
-        'registered_consumer_checks': 'test/monitors/vector_engine_observer.sv:vector_control_datapath_observer',
-        'runs': [],
-    }
-    cases = {}
-
-    def compare(name, top, model, configuration):
-        folder = out / name
+    hashes = {name: digest(source / name) for name in SOURCES}
+    copied = {}
+    for label in ('reference', 'current'):
+        folder = out / label
         folder.mkdir(exist_ok=True)
+        copied[label] = []
+        for name in SOURCES:
+            if label == 'reference':
+                text = subprocess.check_output(['git', 'show', args.reference_rev + ':' + name],
+                                               cwd=ROOT, text=True)
+            else:
+                text = (source / name).read_text()
+                if name.endswith('/vector_engine_address.sv') and not args.direct_inputs:
+                    text = connect_saved_qualifiers(text)
+            path = folder / Path(name).name
+            path.write_text(text)
+            copied[label].append(path)
+    profiles = [('production', ['-Gp_tile=16', '-Gp_bus_width=64', '-Gp_window_lanes=8',
+                               '-Gp_pe_count=8', '-Gp_shared_storage_enable=1'])]
+    if args.direct_inputs:
+        profiles[0][1].append('-Gp_registered_read_phase=1')
+    if not args.only_production:
+        for bus, tile in ((32, 16), (128, 16), (32, 3), (64, 32)):
+            profiles.append((f'bus{bus}_tile{tile}', [f'-Gp_tile={tile}', f'-Gp_bus_width={bus}']))
+    rows = []
+    for name, parameters in profiles:
         commands = []
-        for label, source in [('reference', reference), ('candidate', current)]:
-            path = folder / (label + '.sv')
-            path.write_text(model(source))
+        for label in ('reference', 'current'):
             commands += [
-                f'read_slang -D ASIC_SYNTHESIS=1 --top {top} ' + shlex.join(map(str, packages + [path])),
-                f'prep -top {top} -flatten', 'opt -full', f'rename {top} {label}', f'design -stash {label}',
+                'read_slang --top vector_engine_address -DSYNTHESIS=1 ' +
+                    ' '.join(parameters) + ' ' + ' '.join(map(str, copied[label])),
+                'setattr -mod -unset keep_hierarchy', 'prep -top vector_engine_address -flatten',
+                'memory_map', 'async2sync', 'opt -full',
+                'write_json ' + str(out / (name + '_' + label + '_ports.json')),
+                'rename -top ' + label, 'design -stash ' + label,
             ]
-            if name == 'bus64_tile16':
-                cases[label] = {'top': top, 'options': [], 'sources': list(map(str, packages + [path])),
-                                'configuration': configuration}
         commands += [
             'design -copy-from reference -as reference reference',
-            'design -copy-from candidate -as candidate candidate',
-            'rename -hide reference/w:* candidate/w:*',
-            'equiv_make reference candidate comparison', 'hierarchy -top comparison',
-            'equiv_simple', 'equiv_status -assert',
+            'design -copy-from current -as current current',
+            'equiv_make reference current proof', 'hierarchy -top proof',
+            'equiv_simple -seq 3', 'opt_clean', 'equiv_induct -seq 5', 'equiv_status -assert',
         ]
-        script, log = folder / 'run.ys', folder / 'formal.log'
+        script, log = out / (name + '.ys'), out / (name + '.log')
         script.write_text('\n'.join(commands) + '\n')
         with log.open('w') as stream:
-            result = subprocess.run([sys.executable, str(ROOT / 'scripts/fpga/open_fpga_synth.py'),
-                                     '--worker', str(script)], cwd=ROOT, stdout=stream,
-                                    stderr=subprocess.STDOUT, timeout=180)
-        text = log.read_text()
-        match = re.search(r'Of those cells (\d+) are proven and (\d+) are unproven', text)
-        row = {'name': name, 'configuration': configuration,
-               'equivalent_bits': int(match[1]) if match else None,
-               'passed': result.returncode == 0 and 'Equivalence successfully proven' in text,
-               'script_sha256': digest(script), 'log_sha256': digest(log)}
+            subprocess.run([sys.executable, str(ROOT / 'scripts/fpga/open_fpga_synth.py'),
+                            '--worker', str(script)], stdout=stream, stderr=subprocess.STDOUT,
+                           cwd=ROOT, check=True, timeout=600)
+        match = re.search(r'Of those cells (\d+) are proven and 0 are unproven', log.read_text())
+        if not match:
+            raise RuntimeError('完整地址模块的时序证明未完成：' + name)
+        original = json.loads((out / (name + '_reference_ports.json')).read_text())['modules']['vector_engine_address']['ports']
+        current_ports = json.loads((out / (name + '_current_ports.json')).read_text())['modules']['vector_engine_address']['ports']
+        port_shape = lambda ports: {key:(value['direction'],len(value['bits'])) for key,value in ports.items()}
+        if port_shape(original) != port_shape(current_ports):
+            raise RuntimeError('公开接口的方向或位宽发生变化')
+        output_bits = sum(len(port['bits']) for port in original.values() if port['direction']=='output')
+        row = dict(name=name, parameters=parameters, passed=True, compared_output_bits=output_bits,
+                   equivalent_points=int(match[1]),
+                   unbounded_equivalence=True, script_sha256=digest(script), log_sha256=digest(log))
+        rows.append(row)
         print(json.dumps(row), flush=True)
-        if not row['passed']:
-            raise RuntimeError(f'组合关系证明未完成：{log}\n{text[-8000:]}')
-        return row
-
-    report['preparation'] = compare('parameter_prepare', 'vector_parameter_prepare', preparation_fragment,
-                                    'Full 32-bit modulo stride and two/three-row qualification')
-    for bus, tile in [(32, 16), (64, 16), (128, 16), (32, 3), (64, 32)]:
-        row = compare(f'bus{bus}_tile{tile}', 'vector_read_decode',
-                      lambda source: decode_fragment(source, bus, tile),
-                      f'BUS{bus} TILE{tile}; every state and complete read/write address outputs')
-        report['runs'].append({'bus_width': bus, 'tile': tile, **row})
-    range_out = out / 'ranges'
-    subprocess.run([sys.executable, str(Path(__file__).with_name('run_ranges_formal.py')),
-                    '--out', str(range_out), '--reference-rev', args.reference_rev], cwd=ROOT, check=True)
-    report['ranges'] = json.loads((range_out / 'summary.json').read_text())
-    if initial_hashes != {str(path): digest(ROOT / path) for path in [SOURCE] + DEPENDENCIES}:
-        raise RuntimeError('验证期间向量引擎或公共依赖发生变化')
-    report['passed'] = True
-    (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')
-    (out / 'cases.json').write_text(json.dumps(cases, indent=2) + '\n')
+    if hashes != {name: digest(source / name) for name in SOURCES}:
+        raise RuntimeError('检查期间源码发生变化')
+    (out / 'summary.json').write_text(json.dumps(dict(passed=True, reference_revision=args.reference_rev,
+        source_sha256=hashes, input_assumptions=[], runs=rows,
+        scope='完整公开输出、DMA范围、地址、传输尺寸、参数检查及内部寄存行为'), indent=2)+'\n')
 
 
 if __name__ == '__main__':

@@ -2,6 +2,7 @@
 `default_nettype none
 
 // 指数累加器先保存数据及舍入进位，再在下一边沿更新三十二位累计结果。
+(* keep_hierarchy = "yes" *)
 module vector_softmax_accumulator (
     input  wire logic        clk,
     input  wire logic        rst_n,

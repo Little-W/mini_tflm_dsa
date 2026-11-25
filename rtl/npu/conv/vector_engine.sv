@@ -125,7 +125,10 @@ module vector_engine #(
   logic state_vector_init;
   logic state_dw_finish;
   logic window_fetch_phase;
+  logic state_soft_lut_read;
+  logic state_pool_read;
   load_t load_kind;
+  logic [5:0] load_read_select;
   vector_engine_cfg_t c;
   logic spatial;
   logic depthwise;
@@ -141,6 +144,7 @@ module vector_engine #(
   logic vector_hadamard;
   logic [31:0] channels;
   logic [31:0] position;
+  logic position_is_last;
   logic [15:0] channel_base;
   logic [ACTIVE_COUNT_W-1:0] active;
   logic [TILE-1:0] active_lane_mask;
@@ -491,7 +495,10 @@ module vector_engine #(
     .o_state_vector_init(state_vector_init),
     .o_state_dw_finish(state_dw_finish),
     .o_window_fetch_phase(window_fetch_phase),
+    .o_state_soft_lut_read(state_soft_lut_read),
+    .o_state_pool_read(state_pool_read),
     .o_load_kind(load_kind),
+    .o_load_read_select(load_read_select),
     .o_c(c),
     .o_spatial(spatial),
     .o_depthwise(depthwise),
@@ -507,6 +514,7 @@ module vector_engine #(
     .o_vector_hadamard(vector_hadamard),
     .i_channels(channels),
     .o_position(position),
+    .o_position_is_last(position_is_last),
     .o_channel_base(channel_base),
     .o_active(active),
     .o_active_lane_mask(active_lane_mask),
@@ -652,6 +660,7 @@ module vector_engine #(
     .o_q_index(q_index)
   );
   vector_engine_address #(
+    .p_registered_read_phase(1'b1),
     .p_tile(TILE),
     .p_bus_width(BUS_WIDTH),
     .p_dma_size(DMA_SIZE),
@@ -716,7 +725,10 @@ module vector_engine #(
     .i_state_output_init(state_output_init),
     .i_state_dw_finish(state_dw_finish),
     .i_window_fetch_phase(window_fetch_phase),
+    .i_state_soft_lut_read(state_soft_lut_read),
+    .i_state_pool_read(state_pool_read),
     .i_load_kind(load_kind),
+    .i_load_read_select(load_read_select),
     .i_c(c),
     .i_spatial(spatial),
     .i_depthwise(depthwise),
@@ -1456,7 +1468,7 @@ module vector_engine #(
       if (dw_snapshot_fire) begin
         dw_snapshot_vld <= 1'b1;
         dw_snapshot_address <= write_origin_next;
-        dw_snapshot_last <= position_next==32'(position_count);
+        dw_snapshot_last <= position_is_last;
       end
       if (dw_quant_last_issue) begin
         dw_quant_input_active <= 1'b0;

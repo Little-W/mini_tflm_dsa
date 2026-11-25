@@ -26,7 +26,7 @@ module vector_reduce_alu (
   for (genvar part = 0; part < 4; part++) begin : g_compare_byte
     assign byte_equal[part] = i_lhs[part*8+:8] == i_rhs[part*8+:8];
     assign byte_less[part] = i_lhs[part*8+:8] < i_rhs[part*8+:8];
-    assign byte_greater[part] = i_lhs[part*8+:8] > i_rhs[part*8+:8];
+    assign byte_greater[part] = !(byte_less[part] || byte_equal[part]);
     if (part == 3) begin : g_highest
       assign less_terms[part] = byte_less[part];
       assign greater_terms[part] = byte_greater[part];

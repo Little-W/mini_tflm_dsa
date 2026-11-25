@@ -59,7 +59,10 @@ module vector_engine_control #(
   output logic o_state_vector_init,
   output logic o_state_dw_finish,
   output logic o_window_fetch_phase,
+  output logic o_state_soft_lut_read,
+  output logic o_state_pool_read,
   output vector_engine_control_pkg::load_t o_load_kind,
+  output logic [5:0] o_load_read_select,
   output vector_engine_pkg::vector_engine_cfg_t o_c,
   output logic o_spatial,
   output logic o_depthwise,
@@ -75,6 +78,7 @@ module vector_engine_control #(
   output logic o_vector_hadamard,
   input wire logic [31:0] i_channels,
   output logic [31:0] o_position,
+  output logic o_position_is_last,
   output logic [15:0] o_channel_base,
   output logic [p_active_count_w-1:0] o_active,
   output logic [p_tile-1:0] o_active_lane_mask,
@@ -254,7 +258,10 @@ module vector_engine_control #(
   logic state_vector_init;
   logic state_dw_finish;
   logic window_fetch_phase;
+  logic state_soft_lut_read;
+  logic state_pool_read;
   vector_engine_control_pkg::load_t load_kind;
+  logic [5:0] load_read_select;
   vector_engine_pkg::vector_engine_cfg_t c;
   logic spatial;
   logic depthwise;
@@ -270,6 +277,7 @@ module vector_engine_control #(
   logic vector_hadamard;
   logic [31:0] channels;
   logic [31:0] position;
+  logic position_has_more;
   logic [15:0] channel_base;
   logic [p_active_count_w-1:0] active;
   logic [p_tile-1:0] active_lane_mask;
@@ -449,7 +457,10 @@ module vector_engine_control #(
   assign o_state_vector_init = state_vector_init;
   assign o_state_dw_finish = state_dw_finish;
   assign o_window_fetch_phase = window_fetch_phase;
+  assign o_state_soft_lut_read = state_soft_lut_read;
+  assign o_state_pool_read = state_pool_read;
   assign o_load_kind = load_kind;
+  assign o_load_read_select = load_read_select;
   assign o_c = c;
   assign o_spatial = spatial;
   assign o_depthwise = depthwise;
@@ -621,6 +632,12 @@ module vector_engine_control #(
   logic [p_tap_count_w-1:0] pool_offset;
   logic [p_input_index_w:0] pool_row_columns;
 
+  // 完成状态在位置更新后至少间隔一个周期到达，提前保存下一位置的边界关系。
+  always_ff @(posedge clk) begin
+    position_has_more <= position_next < 32'(position_count);
+    o_position_is_last <= position_next == 32'(position_count);
+  end
+
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       read_done_q <= 1'b0;
@@ -707,7 +724,7 @@ module vector_engine_control #(
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::IDLE); c<='0; error<=0; load_kind<=vector_engine_control_pkg::LD_WEIGHT;
+      {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::IDLE); c<='0; error<=0; {load_read_select,load_kind}<=vector_engine_control_pkg::load_control_value(vector_engine_control_pkg::LD_WEIGHT);
       parameter_rows_remaining<=0;
       taps<=0; tap_last_modulo<=1'b0;weight_prefetch_q<=p_tap_count_w'(1); {active_lane_mask,active}<=active_count_value(0); channel_base<=0; position<=0;
       ox<=0;oy<=0;kx<=0;ky<=0;tap<=0;load_tap<=0;valid_taps<=0;
@@ -768,7 +785,7 @@ module vector_engine_control #(
       if (weight_row_last_fire) load_tap<=load_tap+1'b1;
       if (parameter_row_last_fire && parameter_rows_remaining!=0) begin
         parameter_rows_remaining<=parameter_rows_remaining-1'b1;
-        load_kind<=load_kind==vector_engine_control_pkg::LD_BIAS ? vector_engine_control_pkg::LD_MULT : vector_engine_control_pkg::LD_SHIFT;
+        {load_read_select,load_kind}<=vector_engine_control_pkg::load_control_value(load_kind==vector_engine_control_pkg::LD_BIAS ? vector_engine_control_pkg::LD_MULT : vector_engine_control_pkg::LD_SHIFT);
       end
 
       if (window_fetch_advance) begin
@@ -811,65 +828,65 @@ module vector_engine_control #(
       end
       case (state)
         vector_engine_control_pkg::IDLE: if (start) begin
-          c<=cfg; error<=0; {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::CHECK);
+          c<=cfg; error<=0; {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::CHECK);
           input_range_mode<=0;
         end
         vector_engine_control_pkg::CHECK: begin
           q_active<=0;q_valid<=0;
           read_bank<=0;wf_bank<=0;window_received<=0;
           param_bad_seen<=0;
-          if (config_check_ready) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::CHECK_WAIT);
+          if (config_check_ready) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::CHECK_WAIT);
         end
         vector_engine_control_pkg::CHECK_WAIT: if (config_check_done) begin
-          if (config_check_error) begin error<=2'b01;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
+          if (config_check_error) begin error<=2'b01;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
           else begin
             taps<=32'(kernel_count);tap_last_modulo<=tap_last_config;
-            weight_prefetch_q<=tap_last_config ? '0 : weight_tap_nxt;channel_base<=0;input_range_mode<=global_pool;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::CONFIGURE);
+            weight_prefetch_q<=tap_last_config ? '0 : weight_tap_nxt;channel_base<=0;input_range_mode<=global_pool;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::CONFIGURE);
           end
         end
-        vector_engine_control_pkg::CONFIGURE: if (dma_cfg_ready) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(spatial ? vector_engine_control_pkg::TILE_INIT : vector_engine_control_pkg::VECTOR_INIT);
+        vector_engine_control_pkg::CONFIGURE: if (dma_cfg_ready) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(spatial ? vector_engine_control_pkg::TILE_INIT : vector_engine_control_pkg::VECTOR_INIT);
         vector_engine_control_pkg::TILE_INIT: begin
           {active_lane_mask,active}<=active_count_value(p_active_count_w'(channel_remaining<p_tile ? channel_remaining : 32'(p_tile)));
-          position<=0;position_offset<=0;ox<=0;oy<=0;load_tap<=0;load_kind<=vector_engine_control_pkg::LD_WEIGHT;
+          position<=0;position_offset<=0;ox<=0;oy<=0;load_tap<=0;{load_read_select,load_kind}<=vector_engine_control_pkg::load_control_value(vector_engine_control_pkg::LD_WEIGHT);
           input_origin_x<=$signed({{2{(|c.image.pad_left)}}, padding_x_negative});input_origin_y<=$signed({{2{(|c.image.pad_top)}}, padding_y_negative});
           read_bank<=0;wf_bank<=0;window_received<=0;
           fetch_position<=0;fetch_tap<=0;fetch_tap_offset<=0;fetch_ox<=0;fetch_kx<=0;
           fetch_x<=$signed({{2{(|c.image.pad_left)}}, padding_x_negative});fetch_y<=$signed({{2{(|c.image.pad_top)}}, padding_y_negative});
           fetch_origin_x<=$signed({{2{(|c.image.pad_left)}}, padding_x_negative});fetch_origin_y<=$signed({{2{(|c.image.pad_top)}}, padding_y_negative});
-          {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(depthwise ? vector_engine_control_pkg::LOAD_REQ : vector_engine_control_pkg::OUTPUT_INIT);
+          {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(depthwise ? vector_engine_control_pkg::LOAD_REQ : vector_engine_control_pkg::OUTPUT_INIT);
         end
         vector_engine_control_pkg::LOAD_REQ: if (rd_granted) begin
           parameter_rows_remaining<=
               load_kind==vector_engine_control_pkg::LD_BIAS && parameter_three_rows ? 2'd2 :
               load_kind==vector_engine_control_pkg::LD_MULT && parameter_two_rows ? 2'd1 : 2'd0;
-          {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_WAIT);
+          {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_WAIT);
         end
         vector_engine_control_pkg::LOAD_WAIT: if (read_done_q) begin
           load_completion_error<=read_error_q;
-          {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_VERIFY);
+          {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_VERIFY);
         end
         vector_engine_control_pkg::LOAD_VERIFY: begin
-          if (load_completion_error || param_bad_seen) begin error<=2'b10;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
+          if (load_completion_error || param_bad_seen) begin error<=2'b10;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
           else case (load_kind)
-            vector_engine_control_pkg::LD_WEIGHT: begin load_kind<=c.bias_base==0 ? vector_engine_control_pkg::LD_MULT : vector_engine_control_pkg::LD_BIAS;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);end
-            vector_engine_control_pkg::LD_BIAS: begin load_kind<=vector_engine_control_pkg::LD_MULT;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);end
-            vector_engine_control_pkg::LD_MULT: begin load_kind<=vector_engine_control_pkg::LD_SHIFT;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);end
-            vector_engine_control_pkg::LD_SHIFT: {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::OUTPUT_INIT);
-            vector_engine_control_pkg::LD_A: if (binary_vector) begin load_kind<=vector_engine_control_pkg::LD_B;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);end
-              else begin {compute_pool_group,compute_index}<=compute_index_value(0);{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(softmax_s8 ? vector_engine_control_pkg::SOFT_START : vector_engine_control_pkg::EXECUTE);end
+            vector_engine_control_pkg::LD_WEIGHT: begin {load_read_select,load_kind}<=vector_engine_control_pkg::load_control_value(c.bias_base==0 ? vector_engine_control_pkg::LD_MULT : vector_engine_control_pkg::LD_BIAS);{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);end
+            vector_engine_control_pkg::LD_BIAS: begin {load_read_select,load_kind}<=vector_engine_control_pkg::load_control_value(vector_engine_control_pkg::LD_MULT);{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);end
+            vector_engine_control_pkg::LD_MULT: begin {load_read_select,load_kind}<=vector_engine_control_pkg::load_control_value(vector_engine_control_pkg::LD_SHIFT);{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);end
+            vector_engine_control_pkg::LD_SHIFT: {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::OUTPUT_INIT);
+            vector_engine_control_pkg::LD_A: if (binary_vector) begin {load_read_select,load_kind}<=vector_engine_control_pkg::load_control_value(vector_engine_control_pkg::LD_B);{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);end
+              else begin {compute_pool_group,compute_index}<=compute_index_value(0);{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(softmax_s8 ? vector_engine_control_pkg::SOFT_START : vector_engine_control_pkg::EXECUTE);end
             vector_engine_control_pkg::LD_B: begin
               {compute_pool_group,compute_index}<=compute_index_value(0);add_stage<=0;
-              {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(add_s8 ? vector_engine_control_pkg::ADD_MULT : vector_engine_control_pkg::EXECUTE);
+              {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(add_s8 ? vector_engine_control_pkg::ADD_MULT : vector_engine_control_pkg::EXECUTE);
             end
-            default: begin error<=2'b10;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
+            default: begin error<=2'b10;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
           endcase
         end
         vector_engine_control_pkg::OUTPUT_INIT: begin
           tap<=0;tap_last_modulo<=tap_last_zero;weight_prefetch_q<=tap_last_zero ? '0 : p_tap_count_w'(1);kx<=0;ky<=0;valid_taps<=0;{compute_pool_group,compute_index}<=compute_index_value(0);
           input_x<=input_origin_x;input_y<=input_origin_y;
           if (global_pool) begin
-            valid_taps<=taps;pool_offset<=0;pool_taps_remaining<=taps;pool_byte_offset<=0;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_LOAD_PREP);
-          end else {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(depthwise ? vector_engine_control_pkg::DW_EXECUTE : vector_engine_control_pkg::TAP_CHECK);
+            valid_taps<=taps;pool_offset<=0;pool_taps_remaining<=taps;pool_byte_offset<=0;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_LOAD_PREP);
+          end else {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(depthwise ? vector_engine_control_pkg::DW_EXECUTE : vector_engine_control_pkg::TAP_CHECK);
         end
         vector_engine_control_pkg::DW_EXECUTE: begin
           if (dw_issue_fire) begin
@@ -880,7 +897,7 @@ module vector_engine_control #(
             end
           end
           if (dw_tap_advance) begin
-            if (tap_last_modulo) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DW_FINISH);
+            if (tap_last_modulo) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DW_FINISH);
             else begin
               tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;
               input_x<=18'(next_window_x);input_y<=18'(next_window_y);
@@ -891,7 +908,7 @@ module vector_engine_control #(
         end
         vector_engine_control_pkg::DW_FINISH: if (dw_snapshot_fire) begin
           {compute_pool_group,compute_index}<=compute_index_value('0);tap<='0;tap_last_modulo<=tap_last_zero;weight_prefetch_q<=tap_last_zero ? '0 : p_tap_count_w'(1);kx<='0;ky<='0;
-          if (position_next<32'(position_count)) begin
+          if (position_has_more) begin
             position<=position_next;position_offset<=position_offset_next;
             if (ox==output_last_column) begin
               ox<=0;oy<=oy_next;
@@ -905,33 +922,33 @@ module vector_engine_control #(
               input_x<=18'($signed(coordinate_step_o_value[2]));
               input_y<=input_origin_y;
             end
-            {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DW_EXECUTE);
+            {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DW_EXECUTE);
           end else if (channel_has_more) begin
-            channel_base<=channel_next;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DRAIN_TILE);
-          end else {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DRAIN);
+            channel_base<=channel_next;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DRAIN_TILE);
+          end else {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DRAIN);
         end
         vector_engine_control_pkg::POOL_LOAD_PREP: begin
           pool_pixels<=pool_next_pixels;pool_received<=0;pool_pixel<=0;pool_input_index<=0;
           pool_elements<=pool_next_elements;
           pool_row_columns<=channels==active ? pool_next_elements : (p_input_index_w+1)'(active);
           pool_row_remaining<=channels==active ? pool_next_elements : (p_input_index_w+1)'(active);
-          {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_LOAD_REQ);
+          {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_LOAD_REQ);
         end
-        vector_engine_control_pkg::POOL_LOAD_REQ: if (rd_granted) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_LOAD_WAIT);
+        vector_engine_control_pkg::POOL_LOAD_REQ: if (rd_granted) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_LOAD_WAIT);
         vector_engine_control_pkg::POOL_LOAD_WAIT: if (read_done_q) begin
-          if (read_error_q || !pool_read_complete_saved) begin error<=2'b10;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
-          else begin {compute_pool_group,compute_index}<=compute_index_value(0);{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_LOAD_DRAIN);end
+          if (read_error_q || !pool_read_complete_saved) begin error<=2'b10;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
+          else begin {compute_pool_group,compute_index}<=compute_index_value(0);{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_LOAD_DRAIN);end
         end
-        vector_engine_control_pkg::POOL_LOAD_DRAIN: {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::EXECUTE);
+        vector_engine_control_pkg::POOL_LOAD_DRAIN: {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::EXECUTE);
         vector_engine_control_pkg::TAP_CHECK: if (dw_in_bounds) begin
             valid_taps<=valid_taps+1;{compute_pool_group,compute_index}<=compute_index_value(0);
-            {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(input_ready[read_bank] ? vector_engine_control_pkg::EXECUTE : vector_engine_control_pkg::WINDOW_WAIT);
+            {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(input_ready[read_bank] ? vector_engine_control_pkg::EXECUTE : vector_engine_control_pkg::WINDOW_WAIT);
           end
-          else {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::TAP_NEXT);
-        vector_engine_control_pkg::WINDOW_WAIT: if (input_ready[read_bank]) begin {compute_pool_group,compute_index}<=compute_index_value(0);{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::EXECUTE);end
-        vector_engine_control_pkg::EXECUTE: if (!vector_hadamard || !writeback_busy) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::EXECUTE_COMMIT);
+          else {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::TAP_NEXT);
+        vector_engine_control_pkg::WINDOW_WAIT: if (input_ready[read_bank]) begin {compute_pool_group,compute_index}<=compute_index_value(0);{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::EXECUTE);end
+        vector_engine_control_pkg::EXECUTE: if (!vector_hadamard || !writeback_busy) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::EXECUTE_COMMIT);
         vector_engine_control_pkg::EXECUTE_COMMIT: begin
-          {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::EXECUTE);
+          {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::EXECUTE);
           if (!compute_group_last_q) {compute_pool_group,compute_index}<=compute_index_value(compute_index+32'(p_pe_count));
           else if (global_pool) begin
             pool_byte_offset<=pool_byte_offset_next;
@@ -942,82 +959,82 @@ module vector_engine_control #(
             else if (pool_taps_remaining>pool_pixels) begin
               pool_offset<=pool_offset+pool_pixels;
               pool_taps_remaining<=pool_taps_remaining-p_tap_count_w'(pool_pixels);
-              {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_LOAD_PREP);
+              {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_LOAD_PREP);
             end
-            else begin quant_index<=0;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::QUANT_INIT);end
+            else begin quant_index<=0;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::QUANT_INIT);end
           end
           else if (spatial) begin
             read_bank<=(read_bank+1'b1)&input_bank_mask;{compute_pool_group,compute_index}<=compute_index_value(0);
-            if (tap_last_wide) begin quant_index<=0;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::QUANT_INIT);end
+            if (tap_last_wide) begin quant_index<=0;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::QUANT_INIT);end
             else begin
               tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;input_x<=18'(next_window_x);input_y<=18'(next_window_y);
               if (kernel_column_end) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
               if (next_window_valid_q) begin
                 valid_taps<=valid_taps+1;
-                {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(input_ready[(read_bank+1'b1)&input_bank_mask] ? vector_engine_control_pkg::EXECUTE : vector_engine_control_pkg::WINDOW_WAIT);
-              end else {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::TAP_CHECK);
+                {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(input_ready[(read_bank+1'b1)&input_bank_mask] ? vector_engine_control_pkg::EXECUTE : vector_engine_control_pkg::WINDOW_WAIT);
+              end else {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::TAP_CHECK);
             end
           end
           else if (vector_hadamard) begin
-            write_origin<=write_origin_next;write_total<=active<<2;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);
-          end else {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::VECTOR_NEXT);
+            write_origin<=write_origin_next;write_total<=active<<2;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);
+          end else {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::VECTOR_NEXT);
         end
         vector_engine_control_pkg::ADD_MULT: begin
-          add_multiply_wait<=0;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_DRAIN);
+          add_multiply_wait<=0;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_DRAIN);
         end
         vector_engine_control_pkg::ADD_DRAIN: if (add_multiply_wait) begin
-          {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_ROUND);
+          {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_ROUND);
         end else add_multiply_wait<=1;
-        vector_engine_control_pkg::ADD_ROUND: {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_ROUND_WAIT);
+        vector_engine_control_pkg::ADD_ROUND: {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_ROUND_WAIT);
         vector_engine_control_pkg::ADD_ROUND_WAIT: begin
           if (add_stage==0) begin
             add_scaled_a<=32'(rounding_result);
-            add_stage<=1;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_MULT);
+            add_stage<=1;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_MULT);
           end else if (add_stage==1) begin
-            add_rounded<=rounding_result;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_SUM);
+            add_rounded<=rounding_result;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_SUM);
           end else begin
-            add_rounded<=rounding_result;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_CLAMP);
+            add_rounded<=rounding_result;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_CLAMP);
           end
         end
         vector_engine_control_pkg::ADD_SUM: begin
-          add_stage<=2;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_MULT);
+          add_stage<=2;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_MULT);
         end
-        vector_engine_control_pkg::ADD_CLAMP: {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_STORE);
+        vector_engine_control_pkg::ADD_CLAMP: {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_STORE);
         vector_engine_control_pkg::ADD_STORE: if (!writeback_busy) begin
           if (compute_index+1<active) begin
-            {compute_pool_group,compute_index}<=compute_index_value(compute_index+1'b1);add_stage<=0;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_MULT);
+            {compute_pool_group,compute_index}<=compute_index_value(compute_index+1'b1);add_stage<=0;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::ADD_MULT);
           end else begin
-            write_origin<=write_origin_next;write_total<=active;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);
+            write_origin<=write_origin_next;write_total<=active;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);
           end
         end
-        vector_engine_control_pkg::TAP_NEXT: if (tap_last_wide) begin quant_index<=0;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::QUANT_INIT);end
+        vector_engine_control_pkg::TAP_NEXT: if (tap_last_wide) begin quant_index<=0;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::QUANT_INIT);end
           else begin
             tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;input_x<=18'(next_window_x);input_y<=18'(next_window_y);
             if (kernel_column_end) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
-            {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::TAP_CHECK);
+            {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::TAP_CHECK);
           end
         vector_engine_control_pkg::QUANT_INIT: begin
           if (!writeback_busy) begin
             if (avg_pool) begin
-              if (valid_taps==0) begin error<=2'b01;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end else {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::AVG_START);
+              if (valid_taps==0) begin error<=2'b01;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end else {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::AVG_START);
             end else begin
               {compute_pool_group,compute_index}<=compute_index_value('0);
-              {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_STORE);
+              {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_STORE);
             end
           end
         end
-        vector_engine_control_pkg::AVG_START: if (avg_power_two) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::AVG_POWER_DELAY);
-          else begin avg_negative<=serial_acc_read_data<0;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::AVG_WAIT);end
-        vector_engine_control_pkg::AVG_POWER_DELAY: {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::AVG_POWER_CLAMP);
-        vector_engine_control_pkg::AVG_POWER_CLAMP: {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::AVG_POWER_STORE);
+        vector_engine_control_pkg::AVG_START: if (avg_power_two) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::AVG_POWER_DELAY);
+          else begin avg_negative<=serial_acc_read_data<0;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::AVG_WAIT);end
+        vector_engine_control_pkg::AVG_POWER_DELAY: {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::AVG_POWER_CLAMP);
+        vector_engine_control_pkg::AVG_POWER_CLAMP: {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::AVG_POWER_STORE);
         vector_engine_control_pkg::AVG_POWER_STORE: begin
-          if (quant_index+1<active) begin quant_index<=quant_index+1;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::AVG_START);end
-          else begin write_origin<=write_origin_next;write_total<=active;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);end
+          if (quant_index+1<active) begin quant_index<=quant_index+1;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::AVG_START);end
+          else begin write_origin<=write_origin_next;write_total<=active;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);end
         end
         vector_engine_control_pkg::AVG_WAIT: if (avg_done) begin
-          if (quant_index+1<active) begin quant_index<=quant_index+1;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::QUANT_INIT);end
+          if (quant_index+1<active) begin quant_index<=quant_index+1;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::QUANT_INIT);end
           else begin write_origin<=write_origin_next;
-            write_total<=active;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);end
+            write_total<=active;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);end
         end
         vector_engine_control_pkg::POOL_STORE: begin
           if (32'(compute_index)+32'(p_pe_count) < active) begin
@@ -1025,16 +1042,16 @@ module vector_engine_control #(
           end else begin
             write_origin <= write_origin_next;
             write_total <= active;
-            {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);
+            {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);
           end
         end
         vector_engine_control_pkg::WRITE_PREP: if (writeback_ready) begin
-          if (spatial) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::OUTPUT_NEXT);
-          else if (vector_hadamard || add_s8) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::VECTOR_NEXT);
-          else {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DRAIN);
+          if (spatial) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::OUTPUT_NEXT);
+          else if (vector_hadamard || add_s8) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::VECTOR_NEXT);
+          else {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DRAIN);
         end
         vector_engine_control_pkg::OUTPUT_NEXT: begin
-          if (position_next<32'(position_count)) begin
+          if (position_has_more) begin
             position<=position_next;position_offset<=position_offset_next;
             if (ox==output_last_column) begin
               ox<=0;oy<=oy_next;input_origin_x<=$signed({{2{(|c.image.pad_left)}}, padding_x_negative});
@@ -1042,59 +1059,59 @@ module vector_engine_control #(
             end else begin
               ox<=ox_next;input_origin_x<=18'($signed(coordinate_step_o_value[2]));
             end
-            {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::OUTPUT_INIT);
+            {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::OUTPUT_INIT);
           end else if (channel_has_more) begin
-            channel_base<=channel_next;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DRAIN_TILE);
+            channel_base<=channel_next;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DRAIN_TILE);
           end
-          else {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DRAIN);
+          else {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DRAIN);
         end
         // 每个结果槽保存所属通道数，共享量化与写回可跨通道组继续完成。
         vector_engine_control_pkg::DRAIN_TILE: if (!win_busy && input_reserved==0 && !q_active &&
                        (depthwise ? !dw_group_pending : !writeback_busy && !dw_work_pending))
-          {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::TILE_INIT);
+          {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::TILE_INIT);
         vector_engine_control_pkg::DRAIN: if (!writeback_busy && !win_busy && input_reserved==0 && !q_active && !dw_work_pending && dma_cfg_ready)
-          {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DONE);
-        vector_engine_control_pkg::SOFT_START: if (soft_ready) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::SOFT_RUN);
+          {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DONE);
+        vector_engine_control_pkg::SOFT_START: if (soft_ready) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::SOFT_RUN);
         vector_engine_control_pkg::SOFT_RUN: if (soft_done) begin
-          if (soft_error!=0) begin error<=soft_error;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
-          else begin write_origin<=write_origin_next;write_total<=active;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);end
+          if (soft_error!=0) begin error<=soft_error;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
+          else begin write_origin<=write_origin_next;write_total<=active;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);end
         end else if (soft_lut_req_valid) begin
-          soft_lut_data<=0;soft_lut_index_q<=soft_lut_index;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::SOFT_LUT_REQ);
+          soft_lut_data<=0;soft_lut_index_q<=soft_lut_index;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::SOFT_LUT_REQ);
         end
-        vector_engine_control_pkg::SOFT_LUT_REQ: if (rd_granted) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::SOFT_LUT_WAIT);
-        vector_engine_control_pkg::SOFT_LUT_WAIT: if (read_done_q) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::SOFT_RUN);
+        vector_engine_control_pkg::SOFT_LUT_REQ: if (rd_granted) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::SOFT_LUT_WAIT);
+        vector_engine_control_pkg::SOFT_LUT_WAIT: if (read_done_q) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::SOFT_RUN);
         vector_engine_control_pkg::VECTOR_INIT: begin
           vector_offset<=0;{active_lane_mask,active}<=active_count_value(p_active_count_w'(c.length<p_tile ? c.length : 32'(p_tile)));
-          load_kind<=vector_engine_control_pkg::LD_A;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);
+          {load_read_select,load_kind}<=vector_engine_control_pkg::load_control_value(vector_engine_control_pkg::LD_A);{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);
         end
         vector_engine_control_pkg::VECTOR_NEXT: if (vector_has_more) begin
           vector_offset<=vector_offset_next;
           {active_lane_mask,active}<=active_count_value(vector_next_active);
-          load_kind<=vector_engine_control_pkg::LD_A;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);
-        end else if (vector_hadamard || add_s8) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DRAIN);
+          {load_read_select,load_kind}<=vector_engine_control_pkg::load_control_value(vector_engine_control_pkg::LD_A);{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);
+        end else if (vector_hadamard || add_s8) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DRAIN);
         else begin
           reduce_acc<=vector_max ? 32'sh8000_0000 : vector_min ? 32'sh7fff_ffff : 32'sd0;
-          reduce_index<=0;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::VECTOR_REDUCE);
+          reduce_index<=0;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::VECTOR_REDUCE);
         end
         vector_engine_control_pkg::VECTOR_REDUCE: begin
           reduce_acc<=reduce_next;
           if (reduce_index+1<p_tile) reduce_index<=reduce_index+1;
-          else begin write_origin<=write_origin_next;write_total<=4;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);end
+          else begin write_origin<=write_origin_next;write_total<=4;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);end
         end
         vector_engine_control_pkg::FAILED: if (input_drain_ready) begin
           q_active<=0;q_valid<=0;
-          {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DONE);
+          {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DONE);
         end
-        vector_engine_control_pkg::DONE: if (done_ready) {state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::IDLE);
-        default: begin error<=2'b10;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
+        vector_engine_control_pkg::DONE: if (done_ready) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::IDLE);
+        default: begin error<=2'b10;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
       endcase
       if ((writeback_done && writeback_error) ||
           window_response_fault) begin
-        error<=2'b10;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);
+        error<=2'b10;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);
       end
       if (p_shared_storage_enable && i_storage_error &&
           state!=vector_engine_control_pkg::IDLE && !state_failed && state!=vector_engine_control_pkg::DONE) begin
-        error<=2'b10;{state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);
+        error<=2'b10;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);
       end
     end
   end

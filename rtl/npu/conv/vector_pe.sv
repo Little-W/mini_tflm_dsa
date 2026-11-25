@@ -20,11 +20,23 @@ module vector_pe #(
   logic signed [32:0] mac_value;
   logic acc_high_equal, acc_less_than_a;
   logic signed [31:0] extremum;
+  logic result_multiply, result_zero, result_compare;
+  logic compare_select;
 
   // 乘法和求和所需的常量在寄存前选择，暂停时全部操作数共同保持。
   always_ff @(posedge clk) begin
     if (i_en) begin
       op <= i_op;
+      // 输出来源与操作数共同保存，后级数据选择直接使用寄存资格。
+      result_multiply <= 1'b0;
+      result_zero <= 1'b0;
+      result_compare <= 1'b0;
+      case (i_op)
+        3'd0, 3'd1, 3'd4: result_multiply <= 1'b1;
+        3'd2, 3'd3: result_compare <= 1'b1;
+        3'd5, 3'd6: result_zero <= 1'b1;
+        default: begin end
+      endcase
       a <= i_a;
       b <= i_op == 3'd1 ? 16'sd1 : i_b;
       if (p_accumulator_preselected) acc <= i_acc;
@@ -50,15 +62,23 @@ module vector_pe #(
   assign acc_high_equal = acc[31:16] == {16{a[15]}};
   assign acc_less_than_a = acc_high_equal ? (acc[15:0] < a[15:0]) : acc[31];
   assign extremum = (acc_less_than_a ^ op[0]) ? extended_a : acc;
-  always_comb begin
-    case (op)
-      3'd0, 3'd1, 3'd4: o_result = product_ss;
-      3'd2, 3'd3: o_result = extremum;
-      3'd5: o_result = $signed(product_uu);
-      3'd6: o_result = $signed(product_su);
-      default: o_result = acc;
-    endcase
-  end
+  assign compare_select = result_compare && (acc_less_than_a ^ op[0]);
+  generate
+    if (ENABLE_EXTENDED_MULTIPLY) begin : g_extended_result
+      always_comb begin
+        case (op)
+          3'd0, 3'd1, 3'd4: o_result = product_ss;
+          3'd2, 3'd3: o_result = extremum;
+          3'd5: o_result = $signed(product_uu);
+          3'd6: o_result = $signed(product_su);
+          default: o_result = acc;
+        endcase
+      end
+    end else begin : g_signed_result
+      assign o_result = result_multiply ? product_ss : result_zero ? 32'sd0 :
+          compare_select ? extended_a : acc;
+    end
+  endgenerate
 endmodule
 
 `default_nettype wire

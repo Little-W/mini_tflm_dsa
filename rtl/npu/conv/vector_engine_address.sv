@@ -3,6 +3,7 @@
 // 生成向量、窗口及 DMA 地址，并保存坐标边界与请求资格。
 module vector_engine_address #(
   parameter int p_tile = 16,
+  parameter bit p_registered_read_phase = 1'b0,
   parameter int p_bus_width = 32,
   parameter int p_dma_size = 4*p_tile,
   parameter int p_pe_count = (p_tile < 8) ? p_tile : 8,
@@ -71,6 +72,8 @@ module vector_engine_address #(
   input wire logic i_wr_busy,
   input wire logic i_read_done_q,
   input wire vector_engine_control_pkg::state_t i_state,
+  input wire logic i_state_soft_lut_read = 1'b0,
+  input wire logic i_state_pool_read = 1'b0,
   input wire logic i_state_failed,
   input wire logic i_state_compute_commit,
   input wire logic i_state_dw_execute,
@@ -78,6 +81,7 @@ module vector_engine_address #(
   input wire logic i_state_dw_finish,
   input wire logic i_window_fetch_phase,
   input wire vector_engine_control_pkg::load_t i_load_kind,
+  input wire logic [5:0] i_load_read_select = 6'b000000,
   input wire vector_engine_pkg::vector_engine_cfg_t i_c,
   input wire logic i_spatial,
   input wire logic i_depthwise,
@@ -625,11 +629,17 @@ module vector_engine_address #(
     assign coordinate_step_i_delta[4*coordinate_group+3] = {18'd0, c.image.stride_h};
   end
   for (genvar coordinate = 0; coordinate < 8; coordinate++) begin : g_coordinate_step
+    logic signed [18:0] coordinate_extended, increment_extended;
+    (* use_dsp = "simd" *) logic signed [18:0] coordinate_sum;
     logic signed [17:0] coordinate_next;
     // 步长非负，越界坐标只会继续增大；行切换时重新装载对应起点。
-    assign coordinate_next = vector_engine_pkg::advance_coordinate(
-        $signed(coordinate_step_i_value[coordinate][17:0]),
-        coordinate_step_i_delta[coordinate][15:0]);
+    // 完整十九位和保留符号与进位，多路相同宽度算术共同推断 SIMD 加法。
+    assign coordinate_extended = $signed({coordinate_step_i_value[coordinate][17],
+                                          coordinate_step_i_value[coordinate][17:0]});
+    assign increment_extended = $signed({3'b000, coordinate_step_i_delta[coordinate][15:0]});
+    assign coordinate_sum = coordinate_extended + increment_extended;
+    assign coordinate_next = !coordinate_sum[18] && (|coordinate_sum[17:16]) ?
+        18'sd65536 : coordinate_sum[17:0];
     assign coordinate_step_o_value[coordinate] = {{16{coordinate_next[17]}}, coordinate_next};
   end
   // 完成条件逐位检查所需进位，保留接收计数的三十二位回绕行为。
@@ -1059,46 +1069,60 @@ module vector_engine_address #(
     end
   endfunction
 
-  // 普通读取与专用读取并行计算地址，状态信号只选择已算出的结果。
+  // 已保存的读取资格选择完整地址分量，公共加法器生成读取地址。
   always_comb begin
     read_address_base = 32'd0;
     read_address_offset = 32'd0;
     read_address_channel = 16'd0;
-    case (load_kind)
-      vector_engine_control_pkg::LD_WEIGHT: begin
-        read_address_base = c.rhs_base;
-        read_address_offset = {16'd0, channel_base};
-      end
-      vector_engine_control_pkg::LD_BIAS, vector_engine_control_pkg::LD_MULT, vector_engine_control_pkg::LD_SHIFT: begin
-        case (load_kind)
-          vector_engine_control_pkg::LD_BIAS: read_address_base = c.bias_base;
-          vector_engine_control_pkg::LD_MULT: read_address_base = c.multiplier_base;
-          default: read_address_base = c.shift_base;
-        endcase
-        read_address_offset = {14'd0, channel_base, 2'b00};
-      end
-      vector_engine_control_pkg::LD_A: begin
-        read_address_base = c.input_base;
-        read_address_offset = vector_offset << c.vector_s16;
-      end
-      vector_engine_control_pkg::LD_B: begin
-        read_address_base = c.rhs_base;
-        read_address_offset = vector_offset << c.vector_s16;
-      end
-      default: begin end
-    endcase
-    case (state)
-      vector_engine_control_pkg::SOFT_LUT_REQ, vector_engine_control_pkg::SOFT_LUT_WAIT: begin
-        read_address_base = c.rhs_base;
-        read_address_offset = {22'd0, soft_lut_index_q, 2'b00};
-      end
-      vector_engine_control_pkg::POOL_LOAD_REQ, vector_engine_control_pkg::POOL_LOAD_WAIT: begin
-        read_address_base = c.input_base;
-        read_address_offset = pool_byte_offset;
-        read_address_channel = channel_base;
-      end
-      default: begin end
-    endcase
+    if (p_registered_read_phase) begin
+      read_address_base =
+          ({32{i_load_read_select[0] | i_load_read_select[5]}} & c.rhs_base) |
+          ({32{i_load_read_select[1]}} & c.bias_base) |
+          ({32{i_load_read_select[2]}} & c.multiplier_base) |
+          ({32{i_load_read_select[3]}} & c.shift_base) |
+          ({32{i_load_read_select[4]}} & c.input_base);
+      read_address_offset =
+          ({32{i_load_read_select[0]}} & {16'd0, channel_base}) |
+          ({32{|i_load_read_select[3:1]}} & {14'd0, channel_base, 2'b00}) |
+          ({32{|i_load_read_select[5:4]}} & (vector_offset << c.vector_s16));
+    end else begin
+      case (load_kind)
+        vector_engine_control_pkg::LD_WEIGHT: begin
+          read_address_base = c.rhs_base;
+          read_address_offset = {16'd0, channel_base};
+        end
+        vector_engine_control_pkg::LD_BIAS, vector_engine_control_pkg::LD_MULT, vector_engine_control_pkg::LD_SHIFT: begin
+          case (load_kind)
+            vector_engine_control_pkg::LD_BIAS: read_address_base = c.bias_base;
+            vector_engine_control_pkg::LD_MULT: read_address_base = c.multiplier_base;
+            default: read_address_base = c.shift_base;
+          endcase
+          read_address_offset = {14'd0, channel_base, 2'b00};
+        end
+        vector_engine_control_pkg::LD_A: begin
+          read_address_base = c.input_base;
+          read_address_offset = vector_offset << c.vector_s16;
+        end
+        vector_engine_control_pkg::LD_B: begin
+          read_address_base = c.rhs_base;
+          read_address_offset = vector_offset << c.vector_s16;
+        end
+        default: begin end
+      endcase
+    end
+    // 专用读取资格与状态在同一边沿保存，地址选择直接使用该资格。
+    if (p_registered_read_phase ? i_state_soft_lut_read :
+        (state == vector_engine_control_pkg::SOFT_LUT_REQ ||
+         state == vector_engine_control_pkg::SOFT_LUT_WAIT)) begin
+      read_address_base = c.rhs_base;
+      read_address_offset = {22'd0, soft_lut_index_q, 2'b00};
+    end else if (p_registered_read_phase ? i_state_pool_read :
+        (state == vector_engine_control_pkg::POOL_LOAD_REQ ||
+         state == vector_engine_control_pkg::POOL_LOAD_WAIT)) begin
+      read_address_base = c.input_base;
+      read_address_offset = pool_byte_offset;
+      read_address_channel = channel_base;
+    end
   end
   vector_read_address_add u_read_address (
     .clk(clk), .i_base(read_address_base), .i_offset(read_address_offset),
@@ -1137,10 +1161,12 @@ module vector_engine_address #(
       end
     endcase
     rd_burst_len_m1 = burst_length_from_bytes(load_bytes);
-    if (state==vector_engine_control_pkg::SOFT_LUT_REQ || state==vector_engine_control_pkg::SOFT_LUT_WAIT) begin
+    if (p_registered_read_phase ? i_state_soft_lut_read :
+        (state==vector_engine_control_pkg::SOFT_LUT_REQ || state==vector_engine_control_pkg::SOFT_LUT_WAIT)) begin
       rd_use_16bits=0;rd_valid_cols=4;rd_burst_len_m1=0;
     end
-    if (state==vector_engine_control_pkg::POOL_LOAD_REQ || state==vector_engine_control_pkg::POOL_LOAD_WAIT) begin
+    if (p_registered_read_phase ? i_state_pool_read :
+        (state==vector_engine_control_pkg::POOL_LOAD_REQ || state==vector_engine_control_pkg::POOL_LOAD_WAIT)) begin
       rd_use_16bits = 1'b0;
       if (channels==32'(active)) begin
         rd_rows_to_read=1;rd_valid_cols=32'(pool_elements);rd_row_stride=0;

@@ -32,11 +32,14 @@ def prepare_reference(reference_path, current_path, out):
     header = re.sub(r"//[^\n]*|/\*.*?\*/", " ", header, flags=re.S)
     parameter_names = re.findall(r"parameter\s+(?:int|bit)\s+(\w+)", parameters)
     ports = []
-    for match in re.finditer(
-        r"\b(input|output)\s+((?:logic|\w+::\w+)(?:\s+signed)?"
+    declarations = list(re.finditer(
+        r"\b(input|output)\s+(?:wire\s+)?((?:logic|\w+::\w+)(?:\s+signed)?"
         r"(?:\s*\[[^\]]+\])*)\s+(.+?)(?=,\s*(?:input|output)\b|\Z)",
         header.strip(), re.S
-    ):
+    ))
+    if len(declarations) != len(re.findall(r"\b(?:input|output)\b", header)):
+        raise ValueError("向量引擎端口声明包含无法读取的类型")
+    for match in declarations:
         direction, dtype, values = match.groups()
         for value in _split_values(values.strip().rstrip(",")):
             variable = re.fullmatch(r"(\w+)(\s*(?:\[[^\]]+\]\s*)*)(?:\s*=.*)?", value, re.S)

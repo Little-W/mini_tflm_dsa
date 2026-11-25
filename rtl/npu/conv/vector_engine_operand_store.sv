@@ -319,6 +319,8 @@ module vector_engine_operand_store #(
   logic [p_input_index_w-1:0] window_bank_index [p_window_lanes];
   logic signed [15:0] window_bank_data [p_window_lanes];
   logic [p_window_bank_w-1:0] window_first_bank;
+  logic [p_input_index_w-1:0] window_start_index;
+  logic [p_input_index_w-1:0] window_row_next;
   logic [p_bus_shift-1:0] pool_first_bank;
   logic bias_load_fire;
   logic [31:0] bias_word_index [p_bias_words_per_beat];
@@ -332,6 +334,9 @@ module vector_engine_operand_store #(
   logic [p_bus_width-1:0] params_i_wr_data;
   logic [p_active_count_w-1:0] params_i_active;
   logic [p_tile_index_w-1:0] params_i_rd_index;
+  logic signed [15:0] rhs_write_data [p_bus_bytes];
+  logic rhs_write_valid [p_bus_bytes];
+  logic [31:0] rhs_write_index [p_bus_bytes];
   logic accumulator_compute_fire;
   logic accumulator_init_fire;
   logic accumulator_bias_selected;
@@ -353,7 +358,27 @@ module vector_engine_operand_store #(
         end
       end
       assign rhs_lane[lane]=rhs_value;
-      assign weight_lane[lane]=weight_value;
+      if (p_shared_storage_enable && p_tile == 2*p_pe_count &&
+          (p_pe_count & (p_pe_count-1)) == 0) begin : g_shared_weight_select
+        localparam int p_group_bit = $clog2(p_pe_count);
+        logic [8*p_tile-1:0] saved_weights, returned_weights;
+        logic signed [7:0] saved_value, returned_value, selected_value;
+        assign saved_weights = (8*p_tile)'(g_shared_weights.saved_data);
+        assign returned_weights = (8*p_tile)'(i_weight_read_data);
+        // 通道组先选择两份数据中的对应字节，返回资格只选择当前通道组。
+        assign saved_value = compute_index[p_group_bit] ?
+            saved_weights[8*(p_pe_count+lane)+:8] : saved_weights[8*lane+:8];
+        assign returned_value = compute_index[p_group_bit] ?
+            returned_weights[8*(p_pe_count+lane)+:8] : returned_weights[8*lane+:8];
+        assign selected_value = g_shared_weights.return_matches ? returned_value : saved_value;
+        always_comb begin
+          weight_lane[lane] = '0;
+          if (compute_index == p_tile_index_w'(0) || compute_index == p_tile_index_w'(p_pe_count))
+            weight_lane[lane] = selected_value;
+        end
+      end else begin : g_weight_select
+        assign weight_lane[lane] = weight_value;
+      end
       assign accum_lane[lane]=accum_value;
     end
   end else begin : g_compute_lane_fallback
@@ -648,6 +673,8 @@ module vector_engine_operand_store #(
     assign window_write_index[lane]=input_response_base+p_input_index_w'(column_sum);
   end
   assign window_first_bank = p_window_bank_w'(input_response_base)+p_window_bank_w'(win_rsp_col);
+  assign window_start_index = input_response_base + p_input_index_w'(win_rsp_col);
+  assign window_row_next = (window_start_index >> p_window_bank_w) + p_input_index_w'(1);
   for (genvar bank=0;bank<p_window_lanes;bank++) begin : g_window_bank
     logic [p_window_bank_w-1:0] source_lane;
     assign source_lane =p_window_bank_w'(bank)-window_first_bank;
@@ -664,11 +691,22 @@ module vector_engine_operand_store #(
       assign window_bank_valid_next[bank]=window_write_valid[source_lane];
     end
     if (p_input_bank_storage) begin : g_registered_write
+      logic [p_input_index_w-1:0] selected_index;
+      logic [p_input_index_w-p_window_bank_w-1:0] selected_row;
+      // 固定目标银行只需要选择当前行或进位后的下一行。
+      assign selected_row = p_window_bank_w'(bank) < window_first_bank ?
+          window_row_next : window_start_index[p_input_index_w-1:p_window_bank_w];
+      always_comb begin
+        selected_index = window_write_index[source_lane];
+        case (^{window_start_index, window_first_bank})
+          1'b0, 1'b1: selected_index = {selected_row, p_window_bank_w'(bank)};
+        endcase
+      end
       always_ff @(posedge clk) begin
         if (!rst_n) window_bank_valid[bank] <= 1'b0;
         else begin
           window_bank_valid[bank] <= window_bank_valid_next[bank];
-          if (window_bank_valid_next[bank]) window_bank_index[bank] <= window_write_index[source_lane];
+          if (window_bank_valid_next[bank]) window_bank_index[bank] <= selected_index;
         end
       end
     end else begin : g_direct_write
@@ -737,7 +775,7 @@ module vector_engine_operand_store #(
   if (p_input_bank_storage) begin : g_spatial_input_data
     logic [p_window_bank_w-1:0] first_bank_saved, selected_first;
     logic signed [15:0] spatial_raw_data [p_input_banks];
-    logic signed [15:0] rotated_low [p_input_banks];
+    logic signed [15:0] rotated_half [p_input_banks];
 
     always_ff @(posedge clk) begin
       if (pool_response_fire || window_response_fire) begin
@@ -747,20 +785,19 @@ module vector_engine_operand_store #(
       end
     end
     assign selected_first = first_bank_saved;
-    // 低两位循环选择由全部银行共用，高位只交换两个半组。
-    // 两级数组索引同时保留未知选择值的四态传播。
-    for (genvar bank=0;bank<p_input_banks;bank++) begin : g_bank
-      logic signed [15:0] low_candidates [4];
+    // 先交换两个半组，再由各银行共享四路细分选择结果。
+    for (genvar bank=0;bank<p_input_banks;bank++) begin : g_half_bank
       logic signed [15:0] half_candidates [2];
-      logic signed [15:0] bank_data;
-      for (genvar step=0;step<4;step++) begin : g_low_candidate
-        assign low_candidates[step] = spatial_raw_data[(bank+p_input_banks-step)%p_input_banks];
+      assign half_candidates[0] = spatial_raw_data[bank];
+      assign half_candidates[1] = spatial_raw_data[(bank+p_input_banks-4)%p_input_banks];
+      assign rotated_half[bank] = half_candidates[selected_first[2]];
+    end
+    for (genvar bank=0;bank<p_input_banks;bank++) begin : g_selected_bank
+      logic signed [15:0] selected_candidates [4];
+      for (genvar step=0;step<4;step++) begin : g_selected_candidate
+        assign selected_candidates[step] = rotated_half[(bank+p_input_banks-step)%p_input_banks];
       end
-      assign rotated_low[bank] = low_candidates[selected_first[1:0]];
-      assign half_candidates[0] = rotated_low[bank];
-      assign half_candidates[1] = rotated_low[(bank+p_input_banks-4)%p_input_banks];
-      assign bank_data = half_candidates[selected_first[2]];
-      assign window_bank_data[bank] = bank_data;
+      assign window_bank_data[bank] = selected_candidates[selected_first[1:0]];
     end
   end
 
@@ -931,6 +968,21 @@ module vector_engine_operand_store #(
       .o_right_shift_vec(quant_req_right)
   );
 
+  // 每个 DMA 通道共享格式选择，存储项只检查各自的目标地址。
+  for (genvar bank=0;bank<p_bus_bytes;bank++) begin : g_rhs_write_bank
+    localparam int p_s16_lane = bank % (p_bus_bytes/2);
+    always_comb begin
+      rhs_write_data[bank] = rd_data[bank];
+      rhs_write_valid[bank] = rd_valid[bank];
+      rhs_write_index[bank] = 32'(rd_col_base) + 32'(bank);
+      if (c.vector_s16) begin
+        rhs_write_data[bank] = rd_data[p_s16_lane];
+        rhs_write_valid[bank] = rd_valid[p_s16_lane];
+        rhs_write_index[bank] = 32'(rd_col_base) + 32'(p_s16_lane);
+      end
+    end
+  end
+
   assign accumulator_compute_fire = (state_compute_commit && (!vector_hadamard || !writeback_busy)) ||
       (dw_commit_vld && !state_failed && !dw_snapshot_fire);
   assign accumulator_init_fire = state_output_init || state_vector_init || dw_snapshot_fire;
@@ -967,18 +1019,11 @@ module vector_engine_operand_store #(
         else if (write_enable) acc_buf[entry][7:0] <= write_value[7:0];
       end
     end
-    always_ff @(posedge clk) if (rst_n) begin
-      if (state==vector_engine_control_pkg::LOAD_WAIT && load_kind==vector_engine_control_pkg::LD_B && 32'(entry)<active) begin
-        if (c.vector_s16) begin
-          if (rd_valid[entry%(p_bus_bytes/2)] &&
-              32'(rd_col_base)+32'(entry%(p_bus_bytes/2))==32'(entry))
-            rhs_buf[entry]<=rd_data[entry%(p_bus_bytes/2)];
-        end else begin
-          if (rd_valid[entry%p_bus_bytes] &&
-              32'(rd_col_base)+32'(entry%p_bus_bytes)==32'(entry))
-            rhs_buf[entry]<=rd_data[entry%p_bus_bytes];
-        end
-      end
+    always_ff @(posedge clk) begin
+      if (rst_n && state==vector_engine_control_pkg::LOAD_WAIT &&
+          load_kind==vector_engine_control_pkg::LD_B && 32'(entry)<active &&
+          rhs_write_valid[entry%p_bus_bytes] && rhs_write_index[entry%p_bus_bytes]==32'(entry))
+        rhs_buf[entry] <= rhs_write_data[entry%p_bus_bytes];
     end
   end
 endmodule

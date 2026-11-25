@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / 'rtl/npu/conv/vector_engine.sv'
+SOURCE = ROOT / 'rtl/npu/conv/vector_engine_address.sv'
 
 
 def digest(path):
@@ -20,17 +20,20 @@ def digest(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference', default='dde5e7c9')
+    parser.add_argument('--reference', default='2247144937c2fd04039b9b005151f371d6b51f8f')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = SOURCE.read_text()
     reference = subprocess.check_output(['git', 'show',
-        args.reference + ':rtl/npu/conv/vector_engine.sv'], cwd=ROOT, text=True)
+        args.reference + ':rtl/npu/conv/vector_engine_address.sv'], cwd=ROOT, text=True)
     function = re.search(r'  function automatic logic \[7:0\] burst_length_from_bytes\b.*?endfunction',
                          current, re.S)[0]
-    expression = re.search(r'rd_burst_len_m1\s*=\s*(.*?load_bytes.*?);', reference)[1]
-    expression = re.sub(r'\bload_bytes\b', 'value', expression)
+    function = re.sub(r'\bp_bus_shift\b', 'BUS_SHIFT', function)
+    function = re.sub(r'\bp_bus_bytes\b', 'BUS_BYTES', function)
+    expression = re.search(r'burst_length_from_bytes\s*=\s*([^;]+);', reference)[1]
+    expression = re.sub(r'\bp_bus_shift\b', 'BUS_SHIFT', expression)
+    expression = re.sub(r'\bp_bus_bytes\b', 'BUS_BYTES', expression)
     shifts = (0, 1, 2, 3, 4, 5, 6, 8, 16, 24, 25, 31)
     report = {'passed': False, 'reference': args.reference, 'input_bits': 32,
               'inputs_constrained': False, 'source_sha256': digest(SOURCE), 'runs': []}

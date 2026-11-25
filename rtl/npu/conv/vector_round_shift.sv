@@ -19,8 +19,11 @@ module vector_round_shift #(
   logic signed [63:0] selected_value;
   logic [5:0] selected_amount;
   logic signed [65:0] input_shift32;
-  (* keep = 1 *) logic [4:0] discarded_groups;
-  (* keep = 1 *) logic [5:0] discarded_bytes;
+  logic signed [65:0] staged_shift, native_shift;
+  logic signed [64:0] coarse_stage [0:6];
+  logic [5:0] coarse_discarded;
+  logic [4:0] discarded_groups;
+  logic [5:0] discarded_bytes;
   logic increment;
   (* keep = 1 *) logic [7:0] byte_carry;
 
@@ -59,9 +62,28 @@ module vector_round_shift #(
   end
   assign discarded_groups[3] = selected_amount[4] && (|discarded_bytes[1:0]);
   assign discarded_groups[4] = selected_amount[5] && (|discarded_bytes[5:2]);
-  assign input_shift32[65:1] = selected_amount[5] ?
+  assign staged_shift[65:1] = selected_amount[5] ?
       {{32{input_shift16[65]}}, input_shift16[65:33]} : input_shift16[65:1];
-  assign input_shift32[0] = |discarded_groups;
+  assign staged_shift[0] = |discarded_groups;
+
+  // 先执行整字与整字节移位，再处理低位移位，分别归并各级舍弃位。
+  assign coarse_stage[0] = {selected_value, 1'b0};
+  for (genvar stage=0; stage<6; stage++) begin : g_coarse_shift
+    localparam int p_select_bit = 5-stage;
+    localparam int p_distance = 1 << p_select_bit;
+    assign coarse_stage[stage+1] = selected_amount[p_select_bit] ?
+        ($signed(coarse_stage[stage]) >>> p_distance) : coarse_stage[stage];
+    assign coarse_discarded[stage] = selected_amount[p_select_bit] &&
+        (|coarse_stage[stage][p_distance-1:0]);
+  end
+  assign native_shift = {coarse_stage[6], (|coarse_discarded)};
+  // 移位量含未知位时，各级选择仍保存完整的四态传播结果。
+  always_comb begin
+    case (^selected_amount)
+      1'b0, 1'b1: input_shift32 = native_shift;
+      default: input_shift32 = staged_shift;
+    endcase
+  end
 
   //! 2. 中间数据寄存
   //! --------------------
