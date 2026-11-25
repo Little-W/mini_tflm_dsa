@@ -72,6 +72,10 @@ module bias_loader #(
     count_t                             ctrl_current_block_idx;
     count_t                             ctrl_load_block_idx;
     count_t                             ctrl_group_blocks_needed;
+    count_t                             ctrl_o_current_block_idx_nxt;
+    count_t                             ctrl_o_group_blocks_needed_nxt;
+    count_t                             buffer_i_current_block_idx_nxt;
+    count_t                             buffer_i_group_blocks_needed_nxt;
     count_t                             ctrl_load_blocks_count;
     logic                               ctrl_active_bank;
     logic                               ctrl_switch_pending;
@@ -83,6 +87,8 @@ module bias_loader #(
 
     logic                               dma_busy;
     logic                               dma_done;
+    assign buffer_i_current_block_idx_nxt = ctrl_o_current_block_idx_nxt;
+    assign buffer_i_group_blocks_needed_nxt = ctrl_o_group_blocks_needed_nxt;
     assign load_bias_done = ctrl_load_group_done;
     logic        [       $clog2(2)-1:0] dma_wr_slot;
     logic        [$clog2(DMA_SIZE)-1:0] dma_wr_row;
@@ -132,6 +138,8 @@ module bias_loader #(
         .current_block_idx(ctrl_current_block_idx),
         .load_block_idx   (ctrl_load_block_idx),
         .group_blocks_needed(ctrl_group_blocks_needed),
+        .o_current_block_idx_nxt(ctrl_o_current_block_idx_nxt),
+        .o_group_blocks_needed_nxt(ctrl_o_group_blocks_needed_nxt),
         .load_blocks_count(ctrl_load_blocks_count),
         .active_bank      (ctrl_active_bank),
         .switch_pending   (ctrl_switch_pending)
@@ -161,7 +169,8 @@ module bias_loader #(
         .REG_WIDTH      (REG_WIDTH),
         .COUNT_WIDTH    (COUNT_WIDTH),
         .GROUP_BLOCKS_MAX(GROUP_BLOCKS_MAX),
-        .p_share_load_index(1'b1)
+        .p_share_load_index(1'b1),
+        .p_register_current_range(1'b1)
     ) u_buffer (
         .clk               (clk),
         .rst_n             (rst_n),
@@ -178,6 +187,8 @@ module bias_loader #(
         .load_done         (ctrl_load_group_done),
         .active_bank       (ctrl_active_bank),
         .current_block_idx (ctrl_current_block_idx),
+        .i_current_block_idx_nxt(buffer_i_current_block_idx_nxt),
+        .i_group_blocks_needed_nxt(buffer_i_group_blocks_needed_nxt),
         .is_mode           (is_mode),
         .group_read_start  (group_read_start),
         .group_read_idx    (group_read_idx),

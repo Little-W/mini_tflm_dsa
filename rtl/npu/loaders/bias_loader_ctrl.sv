@@ -36,6 +36,8 @@ module bias_loader_ctrl #(
     output logic [COUNT_WIDTH-1:0] current_block_idx,
     output logic [COUNT_WIDTH-1:0] load_block_idx,
     output logic [COUNT_WIDTH-1:0] group_blocks_needed,
+    output logic [COUNT_WIDTH-1:0] o_current_block_idx_nxt,
+    output logic [COUNT_WIDTH-1:0] o_group_blocks_needed_nxt,
     output logic [COUNT_WIDTH-1:0] load_blocks_count,
     output logic                 active_bank,
     output logic                 switch_pending
@@ -122,8 +124,10 @@ module bias_loader_ctrl #(
       end
     endcase
   end
+  (* keep_hierarchy = "yes" *)
   parallel_prefix_add #(
-      .p_width(p_arithmetic_width), .p_group_width(8), .p_preserve_groups(1'b1)
+      .p_width(p_arithmetic_width), .p_group_width(8), .p_preserve_groups(1'b1),
+      .p_dsp_split_width((p_arithmetic_width+1)/2)
   ) u_arithmetic (
       .i_a(arithmetic_i_a), .i_b(arithmetic_i_b), .i_carry(arithmetic_i_carry),
       .o_sum(arithmetic_o_sum), .o_carry(arithmetic_o_carry)
@@ -163,6 +167,26 @@ module bias_loader_ctrl #(
   assign load_rows_without_tail = load_rows_full - REG_WIDTH'(1);
   assign final_row_offset = load_blocks_count - count_t'(1);
   assign load_group_done = dma_done && !tail_pending;
+
+  // 控制器和驻留比较共用本边沿的分组位置，命中状态与分组寄存器同时更新。
+  always_comb begin
+    o_current_block_idx_nxt = current_block_idx;
+    o_group_blocks_needed_nxt = group_blocks_needed;
+    case (state)
+      S_INIT_MARK: o_current_block_idx_nxt = '0;
+      S_NEXT_MARK: o_current_block_idx_nxt = load_block_idx;
+      S_INIT_GROUP: begin
+        o_group_blocks_needed_nxt = (geometry_count == '0) ? '0 :
+            (current_is_last_group ? geometry_count : step_blocks);
+      end
+      S_NEXT_GROUP: begin
+        o_group_blocks_needed_nxt = (geometry_count == '0) ? '0 :
+            (current_is_last_group ? remaining_blocks : step_blocks);
+      end
+      default: begin
+      end
+    endcase
+  end
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -223,6 +247,8 @@ module bias_loader_ctrl #(
         tail_base_addr      <= '0;
         state                <= S_INIT_GEOM;
       end else begin
+        current_block_idx <= o_current_block_idx_nxt;
+        group_blocks_needed <= o_group_blocks_needed_nxt;
         case (state)
           S_IDLE: begin
             load_bias_req <= 1'b0;
@@ -249,7 +275,6 @@ module bias_loader_ctrl #(
           S_INIT_MARK: begin
             current_is_last_group <= (geometry_count == '0) ||
                                      (last_group_start_idx == '0);
-            current_block_idx     <= '0;
             load_block_idx        <= '0;
             active_bank           <= 1'b0;
             load_bank             <= 1'b0;
@@ -258,10 +283,6 @@ module bias_loader_ctrl #(
           end
 
           S_INIT_GROUP: begin
-            group_blocks_needed <= (geometry_count == '0) ? '0 :
-                                   (current_is_last_group
-                                     ? geometry_count
-                                     : step_blocks);
             load_blocks_count <= bounded_load_count;
             load_tail_offset <= bounded_load_count - count_t'(1);
             load_window_last <= geometry_count <= count_t'(GROUP_BLOCKS_MAX);
@@ -346,7 +367,6 @@ module bias_loader_ctrl #(
           end
 
           S_NEXT_MARK: begin
-            current_block_idx     <= load_block_idx;
             current_is_last_group <= (geometry_count == '0) ||
                                      (load_block_idx >= last_group_start_idx);
             remaining_blocks      <= count_t'(arithmetic_o_sum);
@@ -354,10 +374,6 @@ module bias_loader_ctrl #(
           end
 
           S_NEXT_GROUP: begin
-            group_blocks_needed <= (geometry_count == '0) ? '0 :
-                                   (current_is_last_group
-                                     ? remaining_blocks
-                                     : step_blocks);
             load_blocks_count <= bounded_load_count;
             load_tail_offset <= bounded_load_count - count_t'(1);
             load_window_last <= remaining_blocks <= count_t'(GROUP_BLOCKS_MAX);

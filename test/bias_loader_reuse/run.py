@@ -28,10 +28,13 @@ def main() -> int:
     names = ['test/bias_loader_reuse/tb_bias_loader_reuse.sv',
              'rtl/npu/loaders/bias_loader.sv', 'rtl/npu/loaders/bias_loader_ctrl.sv',
              'rtl/npu/loaders/bias_loader_buffer.sv', 'rtl/common/regfile.v',
-             'rtl/common/parallel_prefix_add.sv']
+             'rtl/common/parallel_prefix_add.sv', 'rtl/common/parallel_unsigned_compare.sv',
+             'rtl/common/add_equal.sv']
     sources = {name: digest(root / name) for name in names}
     command = [args.verilator, '--binary', '--timing', '--assert', '-Wno-fatal',
                '--top-module', 'tb_bias_loader_reuse', '-j', str(args.jobs),
+               '--output-groups', '0', '-CFLAGS', '-std=c++20 -O1',
+               '-MAKEFLAGS', 'OPT_FAST=-O1 OPT_SLOW=-O0 VK_PCH_I_FAST= VK_PCH_I_SLOW= CFG_CXXFLAGS_PCH=-E',
                '--Mdir', str(out / 'obj')] + [str(root / name) for name in names]
     if args.fpga:
         command += ['-DSYNTHESIS=1', '-DXILINX_FPGA=1']

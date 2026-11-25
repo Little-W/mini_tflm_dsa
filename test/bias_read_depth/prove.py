@@ -7,7 +7,7 @@ import re
 import shlex
 import subprocess
 import sys
-from common import ROOT, REFERENCE, BUFFER, HELPER, digest, snapshot, abstract_storage
+from common import ROOT, REFERENCE, BUFFER, HELPERS, digest, snapshot, abstract_storage
 
 PROFILES = [(4, 32, 1, 1), (8, 32, 8, 3), (16, 32, 12, 4),
             (16, 64, 29, 32), (16, 64, 32, 64), (32, 64, 32, 1)]
@@ -23,7 +23,14 @@ def main():
     models = {}
     for label in ['reference', 'current']:
         models[label] = out / f'{label}.sv'
-        models[label].write_text(abstract_storage((out / 'source' / label / BUFFER).read_text()))
+        model = abstract_storage((out / 'source' / label / BUFFER).read_text())
+        if 'i_current_block_idx_nxt' not in model:
+            # 默认缓冲区模式忽略提前输入，两侧仍比较全部原有状态和输出。
+            model = model.replace('    input  wire logic clk,',
+                "    input wire logic [COUNT_WIDTH-1:0] i_current_block_idx_nxt = '0,\n"
+                "    input wire logic [COUNT_WIDTH-1:0] i_group_blocks_needed_nxt = '0,\n"
+                '    input  wire logic clk,', 1)
+        models[label].write_text(model)
     report = {'passed': False, 'inputs': inputs, 'input_assumptions': [],
               'memory_return': 'same unconstrained 64-bit value each cycle',
               'storage_relation': 'same initial bits, identical read/write addresses, enables, data and byte masks',
@@ -35,8 +42,8 @@ def main():
         for label, source in models.items():
             commands.extend([
                 f'read_slang --top bias_loader_buffer -GSIZE={size} -GBUS_WIDTH={bus} '
-                f'-GCOUNT_WIDTH={count} -GGROUP_BLOCKS_MAX={groups} {shlex.quote(str(source))} '
-                f'{shlex.quote(str(out / "source" / label / HELPER))}',
+                f'-GCOUNT_WIDTH={count} -GGROUP_BLOCKS_MAX={groups} {shlex.quote(str(source))} ' +
+                ' '.join(shlex.quote(str(out / 'source' / label / name)) for name in HELPERS),
                 'prep -top bias_loader_buffer -flatten', 'memory_map', 'async2sync', 'opt_clean',
                 f'rename bias_loader_buffer {label}', f'design -stash {label}'])
         commands.extend([

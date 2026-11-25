@@ -7,7 +7,7 @@ import re
 import shlex
 import subprocess
 import sys
-from common import ROOT, REFERENCE, BUFFER, WRAPPER, CONTROL, HELPER, digest, snapshot, abstract_storage, abstract_wrapper
+from common import ROOT, REFERENCE, BUFFER, WRAPPER, CONTROL, HELPER, HELPERS, digest, snapshot, abstract_storage, abstract_wrapper
 
 PROFILES = [(4, 32, 1, 1), (8, 32, 8, 3), (16, 32, 12, 4),
             (16, 64, 29, 32), (16, 64, 32, 64)]
@@ -53,7 +53,7 @@ endmodule'''))
             path.write_text(transform((out / 'source' / label / name).read_text()))
             models[label].append(path)
         models[label].append(out / 'source' / label / CONTROL)
-        models[label].append(out / 'source' / label / HELPER)
+        models[label].extend(out / 'source' / label / name for name in HELPERS)
     report = {'passed': False, 'inputs': inputs, 'external_input_assumptions': [],
               'invariant': 'state == S_CMD implies current_block_idx == load_block_idx',
               'invariant_initial_reset': True,

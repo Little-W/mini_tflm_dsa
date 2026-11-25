@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import subprocess
 
-from common import ROOT, REFERENCE, BUFFER, PARAMETERS, digest, snapshot
+from common import ROOT, REFERENCE, BUFFER, HELPER, PARAMETERS, digest, snapshot
 
 
 def expression(source, name):
@@ -19,7 +19,9 @@ def model(source, label, ports):
     start = source.find('  assign load_request_idx =')
     if start < 0:
         start = source.index('  for (genvar b = 0; b < 2; b++) begin : gen_window_hit')
-    end = source.index('  assign resident_current', start)
+    boundaries = [source.find(marker, start) for marker in (
+        '  if (p_register_current_range)', '  assign resident_current')]
+    end = min(position for position in boundaries if position >= 0)
     block = source[start:end]
     declarations = ',\n'.join('    input wire ' + (f'[{width-1}:0] ' if width > 1 else '') + name
                              for name, width in ports)
@@ -127,6 +129,7 @@ def main():
 endmodule
 ''')
     executable = out / 'four_state.vvp'
+    sources.append(out / 'source' / 'current' / HELPER)
     command = ['iverilog', '-g2012', '-s', 'tb', '-o', str(executable)] + [str(p) for p in sources] + [str(tb)]
     with (out / 'build.log').open('w') as stream:
         subprocess.run(command, check=True, stdout=stream, stderr=subprocess.STDOUT)

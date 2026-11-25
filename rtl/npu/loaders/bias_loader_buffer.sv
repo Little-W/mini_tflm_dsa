@@ -13,7 +13,8 @@ module bias_loader_buffer #(
     parameter int unsigned REG_WIDTH  = 32,
     parameter int unsigned COUNT_WIDTH = REG_WIDTH,
     parameter int unsigned GROUP_BLOCKS_MAX = 1,
-    parameter bit p_share_load_index = 1'b0
+    parameter bit p_share_load_index = 1'b0,
+    parameter bit p_register_current_range = 1'b0
 ) (
     input  wire logic clk,
     input  wire logic rst_n,
@@ -32,6 +33,8 @@ module bias_loader_buffer #(
 
     input  wire logic                 active_bank,
     input  wire logic [COUNT_WIDTH-1:0] current_block_idx,
+    input  wire logic [COUNT_WIDTH-1:0] i_current_block_idx_nxt = '0,
+    input  wire logic [COUNT_WIDTH-1:0] i_group_blocks_needed_nxt = '0,
 
     input  wire logic                 is_mode,
     input  wire logic                 group_read_start,
@@ -66,6 +69,13 @@ module bias_loader_buffer #(
   logic [CNT_W:0] bank_end_q [2];
   logic [CNT_W:0] bank_end_i_a, bank_end_i_b, bank_end_o_sum;
   logic bank_end_i_carry, bank_end_o_carry;
+  logic [GROUP_ADDR_W-1:0] collision_scalar_word;
+  logic [RAM_ADDR_W-1:0] collision_scalar_first, collision_scalar_next;
+  logic [RAM_ADDR_W-1:0] collision_ws_first, collision_ws_next;
+  // 各读取分支先完成同址比较，晚到的组首资格只选择已经完成的结果。
+  (* keep = 1'b1 *) logic [3:0] collision_equal;
+  logic collision_selected;
+  logic storage_write_accepted;
   // 完整银行末端包含扩展位，分组进位计算缩短命令接收边沿的数据路径。
   assign bank_end_i_a = {1'b0, load_block_idx};
   assign bank_end_i_b = {1'b0, load_blocks_count};
@@ -212,14 +222,84 @@ module bias_loader_buffer #(
     assign current_window_hit[b] = bank_loaded[b] &&
         (current_block_idx >= bank_block_idx[b]) && window_end_valid[1][b];
   end
-  assign resident_current = current_window_hit[active_bank];
-  assign load_block_valid = |load_window_hit;
-  assign load_block_bank = !load_window_hit[0];
+  if (p_register_current_range) begin : g_registered_current
+    logic [1:0] resident_bank;
+    for (genvar b = 0; b < 2; b++) begin : g_bank
+      logic [COUNT_WIDTH-1:0] range_end_i_base, range_end_i_count;
+      logic [RANGE_WIDTH-1:0] range_end_i_end;
+      logic range_end_o_outside;
+      logic range_overflow;
+      logic bank_loaded_nxt;
+      logic resident_qualify_i_clear, resident_qualify_i_loaded;
+      logic resident_qualify_i_below_start, resident_qualify_i_above_end;
+      logic resident_qualify_o_valid;
+      logic range_start_o_less, range_start_o_equal;
+      logic [CNT_W-1:0] range_start_i_a, range_start_i_b;
+
+      // 下一分组的范围在本边沿前完成比较，存储体选择在边沿后使用当前控制状态。
+      assign range_end_i_base = i_current_block_idx_nxt;
+      assign range_end_i_count = i_group_blocks_needed_nxt;
+      assign range_end_i_end = bank_end_q[b];
+      assign range_overflow = range_end_o_outside;
+      bias_request_end_compare #(.p_count_width(COUNT_WIDTH)) u_range_end (
+          .i_base(range_end_i_base), .i_count(range_end_i_count), .i_end(range_end_i_end),
+          .o_outside(range_end_o_outside)
+      );
+      // 新装载先撤销对应存储体的有效状态；完成通知仅在没有新装载时生效。
+      assign bank_loaded_nxt = load_start ?
+          (bank_loaded[b] && load_bank != 1'(b)) :
+          (bank_loaded[b] || (load_done_q && load_bank_q == 1'(b)));
+      assign range_start_i_a = i_current_block_idx_nxt;
+      assign range_start_i_b = bank_block_idx[b];
+      (* keep_hierarchy = "yes" *)
+      parallel_unsigned_compare #(
+          .p_width(CNT_W), .p_preserve_groups(1'b1)
+      ) u_range_start (
+          .i_a(range_start_i_a), .i_b(range_start_i_b),
+          .o_less(range_start_o_less), .o_equal(range_start_o_equal)
+      );
+      // 初始化和完整范围结果在寄存器输入处共同形成驻留资格。
+      assign resident_qualify_i_clear = init_cfg;
+      assign resident_qualify_i_loaded = bank_loaded_nxt;
+      assign resident_qualify_i_below_start = range_start_o_less;
+      assign resident_qualify_i_above_end = range_overflow;
+      bias_resident_qualify u_resident_qualify (
+          .i_clear(resident_qualify_i_clear), .i_loaded(resident_qualify_i_loaded),
+          .i_below_start(resident_qualify_i_below_start),
+          .i_above_end(resident_qualify_i_above_end), .o_valid(resident_qualify_o_valid)
+      );
+      always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+          resident_bank[b] <= 1'b0;
+        end else begin
+          resident_bank[b] <= resident_qualify_o_valid;
+        end
+      end
+    end
+    assign resident_current = resident_bank[active_bank];
+    // 共用请求索引时，装载命中和当前驻留复用同一组同步范围结果。
+    assign load_block_valid = p_share_load_index ? |resident_bank : |load_window_hit;
+    assign load_block_bank = p_share_load_index ? !resident_bank[0] : !load_window_hit[0];
+  end else begin : g_combinational_current
+    assign resident_current = current_window_hit[active_bank];
+    assign load_block_valid = |load_window_hit;
+    assign load_block_bank = !load_window_hit[0];
+  end
   assign current_block_offset = BLOCK_ADDR_W'(
       current_block_idx - bank_block_idx[active_bank]);
   assign current_word_base = GROUP_ADDR_W'(current_block_offset) * GROUP_ADDR_W'(SIZE);
-  assign ws_cache_hit = ws_cache_valid && ws_cache_bank == active_bank &&
-      ws_cache_block == current_block_offset;
+  logic [BLOCK_ADDR_W-1:0] cache_match_i_a, cache_match_i_b, cache_match_i_target;
+  logic cache_match_i_carry, cache_match_o_equal;
+  // 缓存块号与存储体起点直接进行模加相等比较，命中判断独立于读取地址减法。
+  assign cache_match_i_a = ws_cache_block;
+  assign cache_match_i_b = BLOCK_ADDR_W'(bank_block_idx[active_bank]);
+  assign cache_match_i_target = BLOCK_ADDR_W'(current_block_idx);
+  assign cache_match_i_carry = 1'b0;
+  add_equal #(.p_width(BLOCK_ADDR_W), .p_preserve_bits(1'b1)) u_cache_match (
+      .i_a(cache_match_i_a), .i_b(cache_match_i_b), .i_target(cache_match_i_target),
+      .i_carry_in(cache_match_i_carry), .o_equal(cache_match_o_equal)
+  );
+  assign ws_cache_hit = ws_cache_valid && ws_cache_bank == active_bank && cache_match_o_equal;
   assign bias_valid = resident_current && (is_mode || ws_cache_hit);
 
   // 执行分组的读取上下文独立保存，后台预取不会改写当前标量读取位置。
@@ -272,12 +352,49 @@ module bias_loader_buffer #(
   assign storage_i_wr_addr = write_address;
   assign storage_i_wr_data = write_data;
   assign storage_i_wr_mask = write_enable;
-  assign storage_i_rd_en = read_enable;
+  assign collision_scalar_word = scalar_word_base + group_read_idx;
+  assign collision_scalar_first = {active_bank,
+      BANK_ADDR_W'(current_word_base / WORDS_PER_READ)};
+  assign collision_scalar_next = {scalar_bank,
+      BANK_ADDR_W'(collision_scalar_word / WORDS_PER_READ)};
+  assign collision_ws_first = {active_bank,
+      BANK_ADDR_W'(current_block_offset) * BANK_ADDR_W'(READS_PER_BLOCK)};
+  assign collision_ws_next = {ws_cache_bank,
+      BANK_ADDR_W'(ws_read_base + BANK_ADDR_W'(READ_INDEX_W'(ws_issue_count)))};
+  assign collision_equal[0] = collision_scalar_first == write_address;
+  assign collision_equal[1] = collision_scalar_next == write_address;
+  assign collision_equal[2] = collision_ws_first == write_address;
+  assign collision_equal[3] = collision_ws_next == write_address;
+  always_comb begin
+    case (^{is_mode, group_read_start, ws_read_start})
+      1'b0, 1'b1: begin
+        collision_selected = is_mode ?
+            (group_read_start ? collision_equal[0] : collision_equal[1]) :
+            (ws_read_start ? collision_equal[2] : collision_equal[3]);
+      end
+      default: collision_selected = read_address == write_address;
+    endcase
+  end
+  // 有效字节与有效地址共同确认实际写入，同址写入保持同步读输出。
+  always_comb begin
+    storage_write_accepted = 1'b0;
+    if (storage_i_wr_en) begin
+      if ({1'b0, storage_i_wr_addr} < (RAM_ADDR_W+1)'(2*(1<<BANK_ADDR_W))) begin
+        for (int byte_index = 0; byte_index < RAM_BYTES; byte_index++) begin
+          if (storage_i_wr_mask[byte_index]) storage_write_accepted = 1'b1;
+        end
+      end
+    end
+    storage_i_rd_en = read_enable;
+    if (storage_write_accepted) begin
+      if (collision_selected) storage_i_rd_en = 1'b0;
+    end
+  end
   assign storage_i_rd_addr = read_address;
   assign read_data = storage_o_rd_data;
   regfile #(
       .p_data_width(RAM_WIDTH), .p_depth(2*(1<<BANK_ADDR_W)),
-      .p_addr_width(RAM_ADDR_W), .p_write_unit(8), .p_no_change_collision(1'b1)
+      .p_addr_width(RAM_ADDR_W), .p_write_unit(8), .p_no_change_collision(1'b0)
   ) u_storage (
       .clk(clk), .i_wr_en(storage_i_wr_en), .i_wr_addr(storage_i_wr_addr),
       .i_wr_data(storage_i_wr_data), .i_wr_mask(storage_i_wr_mask),
@@ -378,6 +495,60 @@ module bias_loader_buffer #(
   end
   assign group_data_scalar = $signed(read_data[scalar_half_q*DATA_WIDTH +: DATA_WIDTH]);
 
+endmodule
+
+// 完整请求末端与存储体末端并行比较，保留扩展位和同一周期的范围结果。
+(* keep_hierarchy = "yes" *)
+module bias_request_end_compare #(
+    parameter int unsigned p_count_width = 29
+) (
+    input  logic [p_count_width-1:0] i_base,
+    input  logic [p_count_width-1:0] i_count,
+    input  logic [((p_count_width < 1) ? 1 : p_count_width):0] i_end,
+    output logic o_outside
+);
+    localparam int unsigned p_range_width = ((p_count_width < 1) ? 1 : p_count_width) + 1;
+    logic [p_range_width-1:0] range_add_i_a, range_add_i_b;
+    logic range_add_i_carry;
+    logic [p_range_width-1:0] range_add_o_sum;
+    logic range_add_o_carry;
+    logic [p_range_width-1:0] request_base, request_count, carry_bits;
+    logic unused_high_carry;
+    logic [p_range_width-1:0] unused_range_sum;
+
+    assign request_base = {1'b0, i_base};
+    assign request_count = {1'b0, i_count};
+    assign range_add_i_a = request_base ^ request_count ^ ~i_end;
+    assign carry_bits = (request_base & request_count) |
+        ((request_base | request_count) & ~i_end);
+    assign {unused_high_carry, range_add_i_b} = {carry_bits, 1'b0};
+    assign range_add_i_carry = 1'b0;
+    assign unused_range_sum = range_add_o_sum;
+    assign o_outside = range_add_o_carry;
+    parallel_prefix_add #(
+        .p_width(p_range_width), .p_group_width(8), .p_preserve_groups(1'b1)
+    ) u_range_add (
+        .i_a(range_add_i_a), .i_b(range_add_i_b), .i_carry(range_add_i_carry),
+        .o_sum(range_add_o_sum), .o_carry(range_add_o_carry)
+    );
+endmodule
+
+
+// 新配置优先清空驻留资格，其他周期使用本边沿的有效范围。
+(* keep_hierarchy = "yes" *)
+module bias_resident_qualify (
+    input  logic i_clear,
+    input  logic i_loaded,
+    input  logic i_below_start,
+    input  logic i_above_end,
+    output logic o_valid
+);
+    always_comb begin
+        o_valid = i_loaded && !i_below_start && !i_above_end;
+        if (i_clear) begin
+            o_valid = 1'b0;
+        end
+    end
 endmodule
 
 `default_nettype wire

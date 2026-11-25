@@ -288,6 +288,7 @@ typedef struct packed {
     logic [31:0] active_ps_bank_depth;
     logic signed [31:0] bias_data_hold [p_size];
     logic signed [31:0] bias_data_out [p_size];
+    logic signed [31:0] bias_capture_data [p_size];
     logic signed [31:0] bias_group_scalar;
     logic bias_group_valid;
     logic bias_last_loop;
@@ -1064,30 +1065,25 @@ typedef struct packed {
   // 脉动阵列计算核心
     assign capture_compute_bias = !o_is_mode && (i_bias_base != '0) &&
                               ia_tile_start && !(ws_final_bias ? bias_load_sleep : compute_bias_sleep);
-  always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      for (int bi = 0; bi < p_size; bi = bi + 1) begin
-        bias_data_hold[bi] <= '0;
-        compute_bias_latched[bi] <= '0;
-      end
-    end else if (init_cfg_bias) begin
-      for (int bi = 0; bi < p_size; bi = bi + 1) begin
-        bias_data_hold[bi] <= '0;
-        compute_bias_latched[bi] <= '0;
-      end
-    end else begin
-      if (bias_group_valid) begin
-        for (int bi = 0; bi < p_size; bi = bi + 1) begin
-          bias_data_hold[bi] <= bias_data_out[bi];
+    // 偏置来源和同步清零共用数据选择，两组寄存器分别保存自己的写入使能。
+    for (genvar bias_lane = 0; bias_lane < p_size; bias_lane++) begin : g_bias_capture
+        always_comb begin
+            bias_capture_data[bias_lane] = bias_group_valid ?
+                bias_data_out[bias_lane] : bias_data_hold[bias_lane];
+            if (init_cfg_bias) bias_capture_data[bias_lane] = '0;
         end
-      end
-      if (capture_compute_bias) begin
-        for (int bi = 0; bi < p_size; bi = bi + 1) begin
-          compute_bias_latched[bi] <= bias_group_valid ? bias_data_out[bi] : bias_data_hold[bi];
+        always_ff @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+                bias_data_hold[bias_lane] <= '0;
+                compute_bias_latched[bias_lane] <= '0;
+            end else begin
+                if (init_cfg_bias || bias_group_valid)
+                    bias_data_hold[bias_lane] <= bias_capture_data[bias_lane];
+                if (init_cfg_bias || capture_compute_bias)
+                    compute_bias_latched[bias_lane] <= bias_capture_data[bias_lane];
+            end
         end
-      end
     end
-  end
   genvar cb_i;
   generate
     for (cb_i = 0; cb_i < p_size; cb_i = cb_i + 1) begin : gen_compute_bias_in

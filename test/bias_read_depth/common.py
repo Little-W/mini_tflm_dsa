@@ -15,6 +15,7 @@ CONTROL = 'rtl/npu/loaders/bias_loader_ctrl.sv'
 SOURCES = [WRAPPER, CONTROL, BUFFER]
 MEMORY = 'rtl/common/regfile.v'
 HELPER = 'rtl/common/parallel_prefix_add.sv'
+HELPERS = [HELPER, 'rtl/common/parallel_unsigned_compare.sv', 'rtl/common/add_equal.sv']
 PARAMETERS = {'SIZE': 16, 'BUS_WIDTH': 64, 'DATA_WIDTH': 32, 'REG_WIDTH': 32,
               'COUNT_WIDTH': 29, 'GROUP_BLOCKS_MAX': 32}
 
@@ -26,9 +27,9 @@ def digest(path):
 def snapshot(out, reference):
     out.mkdir(parents=True, exist_ok=True)
     records = []
-    for source in SOURCES + [MEMORY, HELPER]:
+    for source in SOURCES + [MEMORY] + HELPERS:
         current = (ROOT / source).read_bytes()
-        original = (current if source in (CONTROL, HELPER) else
+        original = (current if source in [CONTROL] + HELPERS else
                     read_rtl_source(f'{reference}:{source}', cwd=ROOT))
         if source not in (BUFFER, WRAPPER):
             assert original == current, source
@@ -40,7 +41,7 @@ def snapshot(out, reference):
                         'reference_sha256': hashlib.sha256(original).hexdigest(),
                         'current_sha256': hashlib.sha256(current).hexdigest()})
     return {'reference_commit': reference, 'reference_scope': [BUFFER, WRAPPER],
-            'shared_current_sources': [CONTROL, HELPER], 'sources': records}
+            'shared_current_sources': [CONTROL] + HELPERS, 'sources': records}
 
 
 def abstract_storage(source):

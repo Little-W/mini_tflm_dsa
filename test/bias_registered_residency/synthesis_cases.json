@@ -1,0 +1,21 @@
+{
+  "bias_loader": {
+    "top": "bias_loader",
+    "options": [
+      "-D", "SYNTHESIS=1",
+      "-D", "XILINX_FPGA=1",
+      "-GSIZE=16",
+      "-GBUS_WIDTH=64",
+      "-GDATA_WIDTH=32",
+      "-GREG_WIDTH=32",
+      "-GCOUNT_WIDTH=29",
+      "-GGROUP_BLOCKS_MAX=32"
+    ],
+    "sources": [
+      "rtl/npu/loaders/bias_loader.sv",
+      "rtl/npu/loaders/bias_loader_ctrl.sv",
+      "rtl/npu/loaders/bias_loader_buffer.sv"
+    ],
+    "configuration": "完整偏置加载器，16 个通道、64 位总线、32 个分块"
+  }
+}
