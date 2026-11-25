@@ -12,7 +12,8 @@ module regfile #(
     // 使用定宽字符串兼容 Vivado 的存储类型属性。
     parameter [8*16-1:0] p_ram_style = "auto",
     // 同址写入时保持整个读输出，适用于读写分别使用独立存储区域的缓冲区。
-    parameter bit p_no_change_collision = 1'b0
+    parameter bit p_no_change_collision = 1'b0,
+    parameter bit p_asic_force_sram = 1'b0
 ) (
     input  wire logic clk,
     input  wire logic i_wr_en,
@@ -42,8 +43,8 @@ module regfile #(
     // 较深的宏每位面积更低，允许其采用较低的容量利用率。
     localparam int p_asic_min_bits_per_macro = (p_asic_macro_depth == 128) ? 1024 : 4096;
     localparam bit p_asic_eligible = p_sync_read && p_depth >= 32 &&
-        64'(p_depth) * p_asic_segment_width >=
-            64'(p_read_ports) * p_asic_macros_per_segment * p_asic_min_bits_per_macro &&
+        (p_asic_force_sram || 64'(p_depth) * p_asic_segment_width >=
+            64'(p_read_ports) * p_asic_macros_per_segment * p_asic_min_bits_per_macro) &&
         p_data_width % p_write_unit == 0;
 
 `endif

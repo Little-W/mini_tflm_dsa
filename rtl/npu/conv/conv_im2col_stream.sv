@@ -1929,8 +1929,8 @@ endmodule
 module conv_im2col_sample_offsets #(
   parameter int unsigned p_lanes = 8
 ) (
-  input logic [p_lanes-1:0][7:0] i_data,
-  input logic [8:0] i_offset,
+  input wire logic [p_lanes-1:0][7:0] i_data,
+  input wire logic [8:0] i_offset,
   (* use_dsp = "simd" *) output logic [p_lanes-1:0][8:0] o_sum
 );
   //! 3. 输出生成

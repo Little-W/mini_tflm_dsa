@@ -30,8 +30,8 @@ DEFINES = [
 ]
 MACROS = ("RAMTP128X16", "RAMTP1024X16")
 PROFILES = {
-    "820c": {"wrapper_small_depth_limit": 128, "bias_full_word_mask": False, "amount_pair_min_depth": None},
-    "current": {"wrapper_small_depth_limit": 384, "bias_full_word_mask": True, "amount_pair_min_depth": 129},
+    "820c": {"wrapper_small_depth_limit": 128, "bias_full_word_mask": False, "amount_pair_min_depth": None, "kernel_force_sram": False},
+    "current": {"wrapper_small_depth_limit": 384, "bias_full_word_mask": True, "amount_pair_min_depth": 129, "kernel_force_sram": True},
 }
 
 

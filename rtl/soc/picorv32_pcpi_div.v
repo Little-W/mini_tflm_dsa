@@ -144,7 +144,7 @@ endmodule
 // 二进制补码由当前位和低位非零条件形成，四位分组控制归并深度。
 (* keep_hierarchy = "yes" *)
 module pico_result_negation (
-    input logic [31:0] i_value,
+    input wire logic [31:0] i_value,
     output logic [31:0] o_value
 );
     (* keep = 1 *) logic [6:0] group_nonzero;

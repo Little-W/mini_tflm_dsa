@@ -502,9 +502,9 @@ endmodule
 module bias_request_end_compare #(
     parameter int unsigned p_count_width = 29
 ) (
-    input  logic [p_count_width-1:0] i_base,
-    input  logic [p_count_width-1:0] i_count,
-    input  logic [((p_count_width < 1) ? 1 : p_count_width):0] i_end,
+    input  wire logic [p_count_width-1:0] i_base,
+    input  wire logic [p_count_width-1:0] i_count,
+    input  wire logic [((p_count_width < 1) ? 1 : p_count_width):0] i_end,
     output logic o_outside
 );
     localparam int unsigned p_range_width = ((p_count_width < 1) ? 1 : p_count_width) + 1;
@@ -537,10 +537,10 @@ endmodule
 // 新配置优先清空驻留资格，其他周期使用本边沿的有效范围。
 (* keep_hierarchy = "yes" *)
 module bias_resident_qualify (
-    input  logic i_clear,
-    input  logic i_loaded,
-    input  logic i_below_start,
-    input  logic i_above_end,
+    input  wire logic i_clear,
+    input  wire logic i_loaded,
+    input  wire logic i_below_start,
+    input  wire logic i_above_end,
     output logic o_valid
 );
     always_comb begin

@@ -2096,7 +2096,7 @@ endmodule
 // 保存地址与范围端点并行比较，末级响应控制接收完整的大小关系。
 (* keep_hierarchy = "yes" *)
 module conv_cache_snapshot_range (
-  input logic [31:0] i_address, i_bound,
+  input wire logic [31:0] i_address, i_bound,
   output logic o_below
 );
   logic below_parallel, unused_equal;

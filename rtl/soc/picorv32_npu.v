@@ -2223,7 +2223,7 @@ endmodule
 // 完整操作数的关系按三层三路归并形成，保持原有四态比较语义。
 (* keep_hierarchy = "yes" *)
 module pico_operand_comparison (
-    input logic [31:0] i_a, i_b,
+    input wire logic [31:0] i_a, i_b,
     output logic o_unsigned_less, o_signed_less
 );
     (* keep = 1 *) logic [10:0] leaf_less, leaf_equal;
@@ -2272,8 +2272,8 @@ endmodule
 // 顺序地址增加二或四，地址高位的传播条件按四位分组并行计算。
 (* keep_hierarchy = "yes" *)
 module pico_sequential_address (
-    input logic [31:0] i_address,
-    input logic i_compressed,
+    input wire logic [31:0] i_address,
+    input wire logic i_compressed,
     output logic [31:0] o_address
 );
     (* keep = 1 *) logic [6:0] group_propagate;

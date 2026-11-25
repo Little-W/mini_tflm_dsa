@@ -253,8 +253,8 @@ endmodule
 // 待发送数量、接收事件和前端启动资格共同形成下一拍准备标志。
 (* keep_hierarchy = "yes" *)
 module conv_window_prepared_flag (
-  input logic i_configure, i_multiple, i_available,
-  input logic i_frontend_valid, i_frontend_ready, i_accept,
+  input wire logic i_configure, i_multiple, i_available,
+  input wire logic i_frontend_valid, i_frontend_ready, i_accept,
   output logic o_prepared
 );
   always_comb begin
@@ -268,7 +268,7 @@ endmodule
 module conv_window_cols_range #(
   parameter int p_max_cols = 16
 ) (
-  input logic [31:0] i_columns,
+  input wire logic [31:0] i_columns,
   output logic o_valid
 );
   localparam logic [32:0] p_limit = {1'b0, 32'(p_max_cols)};
@@ -294,7 +294,7 @@ endmodule
 // 两种启动状态分别准备列资格，原值作为没有读取和接收事件时的保持结果。
 (* keep_hierarchy = "yes" *)
 module conv_window_cols_candidates (
-  input logic i_available, i_multiple, i_accept, i_request, i_current, i_next, i_saved,
+  input wire logic i_available, i_multiple, i_accept, i_request, i_current, i_next, i_saved,
   output logic [1:0] o_value
 );
   assign o_value[0] = (i_multiple || i_available) ? i_current : (i_accept ? i_request : i_saved);
@@ -304,8 +304,8 @@ endmodule
 // 前端握手只选择已经准备的列资格，不再重新计算来源优先级。
 (* keep_hierarchy = "yes" *)
 module conv_window_cols_select (
-  input logic i_frontend_valid, i_frontend_ready,
-  input logic [1:0] i_candidate,
+  input wire logic i_frontend_valid, i_frontend_ready,
+  input wire logic [1:0] i_candidate,
   output logic o_value
 );
   assign o_value = (i_frontend_valid && i_frontend_ready) ? i_candidate[1] : i_candidate[0];

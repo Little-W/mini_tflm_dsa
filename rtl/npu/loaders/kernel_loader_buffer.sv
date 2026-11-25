@@ -266,7 +266,8 @@ module kernel_loader_buffer #(
                 .p_addr_width(p_addr_width),
                 .p_write_unit(DATA_WIDTH),
                 .p_sync_read(1'b1),
-                .p_ram_style("block")
+                .p_ram_style("block"),
+                .p_asic_force_sram(SIZE == 16 && DATA_WIDTH == 16)
             ) u_column (
                 .clk(clk),
                 .i_wr_en(column_i_wr_en),

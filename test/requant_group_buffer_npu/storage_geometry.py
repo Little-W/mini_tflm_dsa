@@ -4,13 +4,13 @@ from collections import Counter
 MACRO_BITS = {"RAMTP128X16": 128 * 16, "RAMTP1024X16": 1024 * 16}
 
 
-def expected_macros(width, depth, unit, masked):
+def expected_macros(width, depth, unit, masked, force_sram=False):
     """按公共 regfile 的同步单读端资源条件计算固定配置的宏数量。"""
     macro_depth = 128 if depth <= 384 else 1024
     segment_width = width if masked else unit
     per_segment = ((segment_width + 15) // 16) * ((depth + macro_depth - 1) // macro_depth)
     minimum_bits = 1024 if macro_depth == 128 else 4096
-    if depth < 32 or depth * segment_width < per_segment * minimum_bits:
+    if depth < 32 or (not force_sram and depth * segment_width < per_segment * minimum_bits):
         return {}
     segments = 1 if masked else width // unit
     return {f"RAMTP{macro_depth}X16": segments * per_segment}
@@ -26,10 +26,10 @@ def inspect_selected_storage(rows, memories, capacity, profile):
             raise RuntimeError(f"Expected exactly one {module}")
         return matches[0]["path"]
 
-    def check(name, registers, count, width, depth, unit, masked, logical_width, logical_depth):
+    def check(name, registers, count, width, depth, unit, masked, logical_width, logical_depth, force_sram=False):
         if len(registers) != count:
             raise RuntimeError(f"{name}: register-file instance count differs")
-        expected = expected_macros(width, depth, unit, masked)
+        expected = expected_macros(width, depth, unit, masked, force_sram)
         details = []
         all_macros = Counter()
         total_register_bits = 0
@@ -91,7 +91,8 @@ def inspect_selected_storage(rows, memories, capacity, profile):
     kernel = roots("kernel_loader_buffer")
     kernel_files = [row for row in rows if row["module"] == "regfile" and
                     row["path"].startswith(kernel + "/")]
-    check("kernel_columns", kernel_files, 16, 16, 48, 16, False, 16, 48)
+    check("kernel_columns", kernel_files, 16, 16, 48, 16, False, 16, 48,
+          force_sram=profile["kernel_force_sram"])
 
     bias = roots("bias_loader_buffer")
     bias_files = [row for row in rows if row["module"] == "regfile" and

@@ -6,14 +6,14 @@ module ia_row_step_register #(
     parameter int unsigned p_width = 32,
     parameter int unsigned p_size = 16
 ) (
-    input logic clk,
-    input logic rst_n,
-    input logic i_enable,
-    input logic i_tile_packed,
-    input logic i_use_16bits,
-    input logic [p_width-1:0] i_reuse_num,
-    input logic [p_width-1:0] i_row_stride,
-    input logic [p_width-1:0] i_packed_tiles,
+    input wire logic clk,
+    input wire logic rst_n,
+    input wire logic i_enable,
+    input wire logic i_tile_packed,
+    input wire logic i_use_16bits,
+    input wire logic [p_width-1:0] i_reuse_num,
+    input wire logic [p_width-1:0] i_row_stride,
+    input wire logic [p_width-1:0] i_packed_tiles,
     output logic [p_width-1:0] o_tile_step,
     output logic [p_width-1:0] o_group_step
 );

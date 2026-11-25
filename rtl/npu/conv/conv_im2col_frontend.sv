@@ -2243,9 +2243,9 @@ endmodule
 // 配置、描述符和流传输按既有优先级选择已准备的回绕字段。
 (* keep_hierarchy = "yes" *)
 module conv_im2col_wrap_update_select (
-  input logic i_configuration, i_commit, i_descriptor_check,
-  input logic i_stream_error, i_stream_accept, i_running,
-  input logic [3:0][5:0] i_candidate,
+  input wire logic i_configuration, i_commit, i_descriptor_check,
+  input wire logic i_stream_error, i_stream_accept, i_running,
+  input wire logic [3:0][5:0] i_candidate,
   output logic [2:0] o_write, o_value
 );
   always_comb begin
@@ -2265,8 +2265,8 @@ endmodule
 // 空闲与输出完成分别准备接收资格，缓存返回在外层完成末级选择。
 (* keep_hierarchy = "yes" *)
 module conv_im2col_tile_context (
-  input logic i_static_ready, i_idle, i_stream, i_zero_stream, i_wait_word,
-  input logic i_write_ready, i_row_last, i_chunk_end,
+  input wire logic i_static_ready, i_idle, i_stream, i_zero_stream, i_wait_word,
+  input wire logic i_write_ready, i_row_last, i_chunk_end,
   output logic [1:0] o_ready
 );
   logic transfer_last;
