@@ -2,7 +2,6 @@
 `default_nettype none
 
 // 相邻两位的比较只依赖本组及前一位，六个输入可独立计算。
-(* keep_hierarchy = "yes" *)
 module increment_equal_pair #(
     parameter bit p_first = 1'b0,
     parameter int unsigned p_count = 2
@@ -19,7 +18,6 @@ module increment_equal_pair #(
 endmodule
 
 // 比较加一后的定宽结果，每组独立核对两位相邻的进位关系。
-(* keep_hierarchy = "yes" *)
 module increment_equal #(
     parameter int unsigned p_width = 16
 ) (

@@ -2,7 +2,6 @@
 `default_nettype none
 
 // 三个候选位分别受选择位控制，并行归并为一个输出位。
-(* keep_hierarchy = "yes" *)
 module onehot_mux_group #(
     parameter int unsigned p_count = 3
 ) (
@@ -14,7 +13,6 @@ module onehot_mux_group #(
 endmodule
 
 // 分组计算独热选择，每组结果完成后统一归并。
-(* keep_hierarchy = "yes" *)
 module onehot_mux #(
     parameter int unsigned p_choices = 8,
     parameter int unsigned p_width = 1

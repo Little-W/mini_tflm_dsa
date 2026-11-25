@@ -1,0 +1,11 @@
+{
+  "registered_vector_add": {
+    "top": "registered_vector_add_measure",
+    "options": ["-D", "SYNTHESIS=1"],
+    "sources": [
+      "test/registered_vector_add/measure.sv",
+      "rtl/npu/compute/registered_vector_add.sv"
+    ],
+    "configuration": "16 INT32 lanes with registered inputs and outputs"
+  }
+}

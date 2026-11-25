@@ -1,0 +1,121 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "rtl/common/parallel_unsigned_compare.sv": "b0b732d0b4d2e94dd8b17a3727b2b2a455f382797d73149474ce15086b42e412",
+    "verification_script": "29f66ea5f7df603e6daab242926c9577dc0cf811c02a63907c71cbbf8e36d4fd"
+  },
+  "random_seed": 20261125,
+  "inputs_constrained": false,
+  "cases": [
+    {
+      "width": 1,
+      "preserve_groups": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 2850,
+      "four_state_output_comparisons": 5700,
+      "passed": true
+    },
+    {
+      "width": 2,
+      "preserve_groups": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 2882,
+      "four_state_output_comparisons": 5764,
+      "passed": true
+    },
+    {
+      "width": 3,
+      "preserve_groups": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 2914,
+      "four_state_output_comparisons": 5828,
+      "passed": true
+    },
+    {
+      "width": 7,
+      "preserve_groups": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3042,
+      "four_state_output_comparisons": 6084,
+      "passed": true
+    },
+    {
+      "width": 16,
+      "preserve_groups": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3330,
+      "four_state_output_comparisons": 6660,
+      "passed": true
+    },
+    {
+      "width": 27,
+      "preserve_groups": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3682,
+      "four_state_output_comparisons": 7364,
+      "passed": true
+    },
+    {
+      "width": 28,
+      "preserve_groups": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3714,
+      "four_state_output_comparisons": 7428,
+      "passed": true
+    },
+    {
+      "width": 32,
+      "preserve_groups": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3842,
+      "four_state_output_comparisons": 7684,
+      "passed": true
+    },
+    {
+      "width": 35,
+      "preserve_groups": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3938,
+      "four_state_output_comparisons": 7876,
+      "passed": true
+    },
+    {
+      "width": 64,
+      "preserve_groups": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 4866,
+      "four_state_output_comparisons": 9732,
+      "passed": true
+    }
+  ]
+}

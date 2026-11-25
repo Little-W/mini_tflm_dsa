@@ -57,7 +57,6 @@ module add_equal #(
 endmodule
 
 // 每位比较只读取相邻两位，完整归并在上层并行执行。
-(* keep_hierarchy = "yes" *)
 module add_equal_bit #(
     parameter bit p_first = 1'b0
 ) (
@@ -74,7 +73,6 @@ module add_equal_bit #(
 endmodule
 
 // 分组比较结果各自归并，宽操作数的最终检查保留平衡的组合层次。
-(* keep_hierarchy = "yes" *)
 module add_equal_reduce #(
     parameter int unsigned p_width = 6
 ) (

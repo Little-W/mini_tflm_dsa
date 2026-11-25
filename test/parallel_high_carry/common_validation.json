@@ -1,0 +1,498 @@
+{
+  "reference_commit": "777634ba768c03f59aa319fd854170dc835f9721",
+  "source_file": "rtl/common/parallel_prefix_add.sv",
+  "unit": {
+    "passed": true,
+    "reference_commit": "777634ba768c03f59aa319fd854170dc835f9721",
+    "source_sha256": {
+      "current": "ac8f2ff17a495e2ce1934d03641861178c4fa2cb4065ad02180cf4ecb670cba0",
+      "reference": "0c6403c737d02c1b64e21d3cfdd515c083293f9e17b492a5d73b9448510d1520"
+    },
+    "profiles": [
+      [
+        17,
+        16,
+        0
+      ],
+      [
+        17,
+        16,
+        1
+      ],
+      [
+        18,
+        16,
+        0
+      ],
+      [
+        18,
+        16,
+        1
+      ],
+      [
+        19,
+        16,
+        0
+      ],
+      [
+        19,
+        16,
+        1
+      ],
+      [
+        20,
+        16,
+        0
+      ],
+      [
+        20,
+        16,
+        1
+      ],
+      [
+        21,
+        16,
+        0
+      ],
+      [
+        21,
+        16,
+        1
+      ],
+      [
+        22,
+        16,
+        0
+      ],
+      [
+        22,
+        16,
+        1
+      ],
+      [
+        23,
+        16,
+        0
+      ],
+      [
+        23,
+        16,
+        1
+      ],
+      [
+        24,
+        16,
+        0
+      ],
+      [
+        24,
+        16,
+        1
+      ],
+      [
+        25,
+        16,
+        0
+      ],
+      [
+        25,
+        16,
+        1
+      ],
+      [
+        26,
+        16,
+        0
+      ],
+      [
+        26,
+        16,
+        1
+      ],
+      [
+        27,
+        16,
+        0
+      ],
+      [
+        27,
+        16,
+        1
+      ],
+      [
+        28,
+        16,
+        0
+      ],
+      [
+        28,
+        16,
+        1
+      ],
+      [
+        29,
+        16,
+        0
+      ],
+      [
+        29,
+        16,
+        1
+      ],
+      [
+        30,
+        16,
+        0
+      ],
+      [
+        30,
+        16,
+        1
+      ],
+      [
+        31,
+        16,
+        0
+      ],
+      [
+        31,
+        16,
+        1
+      ],
+      [
+        32,
+        16,
+        0
+      ],
+      [
+        32,
+        16,
+        1
+      ],
+      [
+        33,
+        16,
+        0
+      ],
+      [
+        33,
+        16,
+        1
+      ],
+      [
+        34,
+        16,
+        0
+      ],
+      [
+        34,
+        16,
+        1
+      ],
+      [
+        35,
+        16,
+        0
+      ],
+      [
+        35,
+        16,
+        1
+      ],
+      [
+        36,
+        16,
+        0
+      ],
+      [
+        36,
+        16,
+        1
+      ],
+      [
+        37,
+        16,
+        0
+      ],
+      [
+        37,
+        16,
+        1
+      ],
+      [
+        38,
+        16,
+        0
+      ],
+      [
+        38,
+        16,
+        1
+      ],
+      [
+        39,
+        16,
+        0
+      ],
+      [
+        39,
+        16,
+        1
+      ],
+      [
+        2,
+        1,
+        0
+      ],
+      [
+        2,
+        1,
+        1
+      ],
+      [
+        24,
+        1,
+        0
+      ],
+      [
+        24,
+        1,
+        1
+      ],
+      [
+        24,
+        23,
+        0
+      ],
+      [
+        24,
+        23,
+        1
+      ],
+      [
+        46,
+        23,
+        0
+      ],
+      [
+        46,
+        23,
+        1
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        1
+      ],
+      [
+        32,
+        0,
+        0
+      ],
+      [
+        32,
+        0,
+        1
+      ],
+      [
+        32,
+        32,
+        0
+      ],
+      [
+        32,
+        32,
+        1
+      ],
+      [
+        47,
+        23,
+        0
+      ],
+      [
+        47,
+        23,
+        1
+      ],
+      [
+        64,
+        32,
+        0
+      ],
+      [
+        64,
+        32,
+        1
+      ]
+    ],
+    "unconstrained_arithmetic_proof": {
+      "elapsed_seconds": 6.64,
+      "peak_process_tree_rss_bytes": 125161472,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "proof.ys",
+      "log": "proof.log"
+    },
+    "four_state": [
+      {
+        "synthesis": false,
+        "samples": 6160,
+        "complete_result_comparisons": 394240,
+        "log_sha256": "ff1b6c0f3ba2bf9d1cc299b69ee6a8b56a39733e27e661aef057990d8aff1b7d"
+      },
+      {
+        "synthesis": true,
+        "samples": 6160,
+        "complete_result_comparisons": 394240,
+        "log_sha256": "ff1b6c0f3ba2bf9d1cc299b69ee6a8b56a39733e27e661aef057990d8aff1b7d"
+      }
+    ]
+  },
+  "mapped_proof": {
+    "passed": true,
+    "unbounded_equivalence": true,
+    "compared_bits": 33,
+    "parameters": {
+      "WIDTH": 32,
+      "SPLIT": 16,
+      "CARRY": 1
+    },
+    "external_input_assumptions": [],
+    "mapped_verilog_sha256": "b9ef7bb8cef05648f1a6232e925dbd1bfc113b3f673db09d8e9b541f3ae8e0cd",
+    "source_sha256": {
+      "rtl/common/parallel_prefix_add.sv": "ac8f2ff17a495e2ce1934d03641861178c4fa2cb4065ad02180cf4ecb670cba0",
+      "measure.sv": "0c6382b546ed68a367d0133942d0f79ffc9dcfedbaa4c5313065f7b507a6fd61"
+    },
+    "model_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "proof_script_sha256": "3a8f8c56f61fcd3e34dde01f805a19edc5b0e711878f83d80ecf52ff24698ea0",
+    "proof_log_sha256": "60aaba55f6364a04b7796b63274bc5972808e76ebe6851aff9cdfd6f9c347f0b",
+    "resources": {
+      "logic_lut_cells": 27,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 27,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 97,
+      "dsp48e1": 1,
+      "ramb36e1": 0,
+      "ramb18e1": 0,
+      "carry4": 0,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "DSP48E1": 1,
+        "FDRE": 97,
+        "INV": 48,
+        "LUT2": 6,
+        "LUT3": 4,
+        "LUT4": 8,
+        "LUT5": 5,
+        "LUT6": 4
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "longest_register_path_cells": 4
+  },
+  "measurement": {
+    "reference": {
+      "source_sha256": {
+        "rtl/common/parallel_prefix_add.sv": "0c6403c737d02c1b64e21d3cfdd515c083293f9e17b492a5d73b9448510d1520",
+        "measure.sv": "1df6e0ecf0f97555b0a2a19629f3674d3a7bdd0be41bbf7eaeed688e681b9d1d"
+      },
+      "parameters": {
+        "WIDTH": 32,
+        "SPLIT": 16,
+        "CARRY": 1
+      },
+      "options": [
+        "-D",
+        "SYNTHESIS=1",
+        "-GWIDTH=32",
+        "-GSPLIT=16",
+        "-GCARRY=1"
+      ],
+      "resources": {
+        "logic_lut_cells": 28,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 28,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 97,
+        "dsp48e1": 1,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "DSP48E1": 1,
+          "FDRE": 97,
+          "INV": 48,
+          "LUT2": 8,
+          "LUT3": 6,
+          "LUT4": 7,
+          "LUT5": 7
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 4,
+      "graph_complete": true
+    },
+    "current": {
+      "source_sha256": {
+        "rtl/common/parallel_prefix_add.sv": "ac8f2ff17a495e2ce1934d03641861178c4fa2cb4065ad02180cf4ecb670cba0",
+        "measure.sv": "0c6382b546ed68a367d0133942d0f79ffc9dcfedbaa4c5313065f7b507a6fd61"
+      },
+      "parameters": {
+        "WIDTH": 32,
+        "SPLIT": 16,
+        "CARRY": 1
+      },
+      "options": [
+        "-D",
+        "SYNTHESIS=1",
+        "-GWIDTH=32",
+        "-GSPLIT=16",
+        "-GCARRY=1"
+      ],
+      "resources": {
+        "logic_lut_cells": 27,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 27,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 97,
+        "dsp48e1": 1,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "DSP48E1": 1,
+          "FDRE": 97,
+          "INV": 48,
+          "LUT2": 6,
+          "LUT3": 4,
+          "LUT4": 8,
+          "LUT5": 5,
+          "LUT6": 4
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 4,
+      "graph_complete": true
+    }
+  },
+  "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+  "script_sha256": {
+    "test/parallel_high_carry/run_unit.py": "18beea02d8492233a302f4d38c81e55da16ea237f36229e3f481e0f4e07917b8",
+    "test/parallel_high_carry/run_mapped.py": "e2b9310071ee55e69ccd7fa92cf7c31242e78fdc8c083c2a937dd5e0d694e295",
+    "test/parallel_high_carry/prepare_arithmetic.py": "054b13cb69da20672de3b422524442f093e62348e2230f17cb57eaed8e892bcc",
+    "test/parallel_high_carry/measure.sv": "0c6382b546ed68a367d0133942d0f79ffc9dcfedbaa4c5313065f7b507a6fd61",
+    "scripts/fpga/open_fpga_synth.py": "69a0b03d564390f6efdd096211990b2a57b36bd20841b668360d2f7ffd3906dc",
+    "scripts/fpga/netlist_metrics.py": "532aee9a3c615e27c2a3f47df066e348917b5122d2e30e2d1b334d8ed7028cce",
+    "scripts/fpga/lut_dependencies.py": "064560db8ee0e9466045a3e653eed2d77145ab3317f66ff482103eae03a01b88"
+  }
+}

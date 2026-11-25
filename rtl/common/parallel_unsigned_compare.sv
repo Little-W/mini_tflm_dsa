@@ -2,7 +2,6 @@
 `default_nettype none
 
 // 三位以内的输入直接形成相等关系和最高不同位的次序。
-(* keep_hierarchy = "yes" *)
 module parallel_unsigned_compare_leaf #(
     parameter int unsigned p_width = 3
 ) (
@@ -23,7 +22,6 @@ module parallel_unsigned_compare_leaf #(
 endmodule
 
 // 最高不相等的分组决定次序，每次归并最多三个分组。
-(* keep_hierarchy = "yes" *)
 module parallel_unsigned_compare_merge #(
     parameter int unsigned p_count = 3
 ) (
@@ -44,9 +42,9 @@ module parallel_unsigned_compare_merge #(
 endmodule
 
 // 输入按三位并行比较，每层归并最多三个分组，得到完整关系。
-(* keep_hierarchy = "yes" *)
 module parallel_unsigned_compare #(
-    parameter int unsigned p_width = 32
+    parameter int unsigned p_width = 32,
+    parameter bit p_preserve_groups = 1'b0
 ) (
     input wire logic [p_width-1:0] i_a, i_b,
     output logic o_less, o_equal
@@ -65,7 +63,8 @@ module parallel_unsigned_compare #(
         end
     endfunction
     localparam int unsigned p_levels = merge_levels(p_groups);
-    logic [p_levels:0][p_groups-1:0] stage_less, stage_equal;
+    // 关键路径可保留分组结果，使宽比较按既定层数归并。
+    (* keep = p_preserve_groups *) logic [p_levels:0][p_groups-1:0] stage_less, stage_equal;
     for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_leaf
         localparam int unsigned p_first = 3 * group_index;
         localparam int unsigned p_bits = p_width-p_first < 3 ? p_width-p_first : 3;

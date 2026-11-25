@@ -2,6 +2,8 @@
 `default_nettype none
 
 // 两个输入寄存阶段分别可选，全部流水阶段共用使能。
+// 完整乘法流水独立综合，部分积合并以本模块的寄存器为边界。
+(* keep_hierarchy = "yes" *)
 module registered_multiplier_s32 #(
     parameter bit p_input_register = 1'b0,
     parameter bit p_b_input_register = p_input_register
@@ -22,8 +24,7 @@ module registered_multiplier_s32 #(
     logic signed [31:0] high_product;
     logic [47:0] diagonal;
     logic [47:0] low_high_extended, high_low_extended;
-    logic [47:0] upper_sum, compressed_sum, compressed_carry;
-    logic unused_upper_add_carry;
+    logic [47:0] upper_sum;
 
     //! 1. 选择输入寄存阶段
     //! -------------------
@@ -68,20 +69,8 @@ module registered_multiplier_s32 #(
     assign diagonal = {high_product, low_product[31:16]};
     assign low_high_extended = {{15{low_high_product[32]}}, low_high_product};
     assign high_low_extended = {{15{high_low_product[32]}}, high_low_product};
-    // 三项先按位压缩为和与进位，再完成四十八位模加法。
-    assign compressed_sum = diagonal ^ low_high_extended ^ high_low_extended;
-    assign compressed_carry = ((diagonal & low_high_extended) |
-                               (diagonal & high_low_extended) |
-                               (low_high_extended & high_low_extended)) << 1;
-    parallel_prefix_add #(
-        .p_width(48), .p_group_width(4), .p_preserve_groups(1'b1)
-    ) u_upper_add (
-        .i_a(compressed_sum),
-        .i_b(compressed_carry),
-        .i_carry(1'b0),
-        .o_sum(upper_sum),
-        .o_carry(unused_upper_add_carry)
-    );
+    // 两项交叉积依次与对角项相加，综合器可将加法合并到乘法器内部。
+    assign upper_sum = diagonal + low_high_extended + high_low_extended;
 
     always_ff @(posedge clk) begin
         if (i_en) begin

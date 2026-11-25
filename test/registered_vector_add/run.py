@@ -18,9 +18,16 @@ def main():
                root / 'rtl/npu/compute/registered_vector_add.sv']
     digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
     hashes = {str(path.relative_to(root)): digest(path) for path in sources}
+    simulation_sources = []
+    for source in sources:
+        prepared = out / source.name
+        prepared.write_text(source.read_text().replace(
+            'parameter int unsigned', 'parameter integer').replace(
+            'localparam int unsigned', 'localparam integer'))
+        simulation_sources.append(prepared)
     binary = out / 'test.vvp'
     command = ['iverilog', '-g2012', '-s', 'tb_registered_vector_add',
-               '-o', str(binary), *map(str, sources)]
+               '-o', str(binary), *map(str, simulation_sources)]
     result = subprocess.run(command, capture_output=True, text=True, cwd=root)
     (out / 'compile.log').write_text(result.stdout + result.stderr)
     result.check_returncode()
