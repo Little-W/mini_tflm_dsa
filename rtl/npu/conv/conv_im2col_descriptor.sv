@@ -196,7 +196,7 @@ module conv_im2col_descriptor #(
   logic [5:0] incoming_fast_i_flags;
   logic [1:0] incoming_position_equal;
   logic incoming_q_equal;
-  (* keep = 1 *) logic [3:0] incoming_tap_match_o_equal;
+  logic [3:0] incoming_tap_match_o_equal;
   logic [31:0] incoming_tile_match_i_a;
   logic [31:0] incoming_tile_match_i_b;
   logic [31:0] incoming_tile_match_i_target;
@@ -227,19 +227,19 @@ module conv_im2col_descriptor #(
   logic descriptor_saved_word_valid_q;
   logic [31-p_word_shift:0] descriptor_word_address_q;
   logic committing_saved_word_match;
-  (* keep = p_register_descriptor *) logic prepared_live_word_match;
-  (* keep = 1 *) logic [8:0] prepared_padding_select;
+  logic prepared_live_word_match;
+  logic [8:0] prepared_padding_select;
   logic [8:0] prepared_padding_value;
-  (* keep = 1 *) logic [9:0] prepared_word_select;
+  logic [9:0] prepared_word_select;
   localparam int p_incoming_data_width = 96 + 2*p_coord_w;
   logic [9:0][p_incoming_data_width-1:0] incoming_data_candidate;
   logic [p_incoming_data_width-1:0] incoming_data_selected;
   logic [9:0][63:0] incoming_kernel_values;
   logic [63:0] incoming_kernel_selected;
-  (* keep = 1 *) logic [4:0][p_incoming_data_width-1:0] incoming_data_pair;
+  logic [4:0][p_incoming_data_width-1:0] incoming_data_pair;
   logic incoming_padding_selected;
   logic incoming_padding_reference;
-  (* keep = 1 *) logic incoming_window_context, incoming_window_match;
+  logic incoming_window_context, incoming_window_match;
   logic incoming_window_position_match, incoming_single_row;
   logic incoming_next_tile_context;
   logic [9:0][5:0] incoming_word_flags;
@@ -305,12 +305,14 @@ module conv_im2col_descriptor #(
   logic [16:0] negative_group;
   logic [2:0][32:0] target_difference;
   logic [2:0] target_difference_match;
+  logic [2:0] target_prepared_match;
+  logic [3:0] window_match_select;
   logic [6:0][p_coord_w-1:0] candidate_coordinate_sum;
   logic [6:0] candidate_coordinate_valid;
   logic incoming_kx_last;
   logic committing_kernel_last;
   logic [15:0] kernel_decode_mask;
-  (* keep = 1 *) logic [7:0] kernel_decode_column_equal;
+  logic [7:0] kernel_decode_column_equal;
   logic [32:0] next_group_sum;
   logic [32:0] skip_group_sum;
   logic unused_next_group_carry;
@@ -451,13 +453,13 @@ module conv_im2col_descriptor #(
     assign incoming_word_i_a = i_row_base_addr[31:p_word_shift];
     assign incoming_word_i_b = incoming_delta[31:p_word_shift];
     assign incoming_word_i_target = i_word_addr[31:p_word_shift];
-    (* keep_hierarchy = "yes" *) add_equal #(.p_width(32-p_word_shift)) u_incoming_word (
+    add_equal #(.p_width(32-p_word_shift)) u_incoming_word (
       .i_a(incoming_word_i_a), .i_b(incoming_word_i_b), .i_target(incoming_word_i_target),
       .i_carry_in(incoming_word_i_carry_in), .o_equal(reference_word_match[0])
     );
     // 两个来源的数据字提前完成比较，当前传输的完成条件只选择一位命中结果。
     assign incoming_live_word_i_target = i_addr[31:p_word_shift];
-    (* keep_hierarchy = "yes" *) add_equal #(.p_width(32-p_word_shift)) u_incoming_live_word (
+    add_equal #(.p_width(32-p_word_shift)) u_incoming_live_word (
       .i_a(incoming_word_i_a), .i_b(incoming_word_i_b), .i_target(incoming_live_word_i_target),
       .i_carry_in(incoming_word_i_carry_in), .o_equal(reference_word_match[1])
     );
@@ -487,7 +489,8 @@ module conv_im2col_descriptor #(
         candidate == 2 ? i_tap_step_bytes << 1 :
         candidate == 5 ? ~i_tap_step_bytes : candidate == 6 ? ~i_tap_pair_bytes : i_tap_step_bytes;
       if (!p_register_descriptor) begin : g_direct_sum
-      parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1), .p_carry_select_width(16)) u_sum (
+      parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1),
+          .p_carry_select_width(16), .p_dsp_split_width(16)) u_sum (
         .i_a(incoming_address_i_a[candidate][base]), .i_b(incoming_address_i_b[candidate][base]),
         .i_carry((candidate == 5 || candidate == 6)), .o_sum(incoming_address_sum[candidate][base]),
         .o_carry(unused_incoming_address_carry[candidate][base])
@@ -509,7 +512,7 @@ module conv_im2col_descriptor #(
       assign high_i_b = incoming_address_i_b[candidate][0][31:p_word_shift];
       assign high_i_target = target == 0 ? i_word_addr[31:p_word_shift] : i_addr[31:p_word_shift];
       assign high_i_carry = low_sum[p_word_shift];
-      (* keep_hierarchy = "yes" *) add_equal #(.p_width(32-p_word_shift), .p_preserve_bits(1'b1)) u_match (
+      add_equal #(.p_width(32-p_word_shift), .p_preserve_bits(1'b1)) u_match (
         .i_a(high_i_a), .i_b(high_i_b), .i_target(high_i_target),
         .i_carry_in(high_i_carry), .o_equal(incoming_candidate_word_match[candidate][target])
       );
@@ -529,7 +532,7 @@ module conv_im2col_descriptor #(
       assign byte_step = wrap == 0 ? i_row_step_bytes : i_row_wrap_bytes;
       assign low_sum = {1'b0, i_row_base_addr[p_word_shift-1:0]} +
           {1'b0, byte_step[p_word_shift-1:0]};
-      (* keep_hierarchy = "yes" *) add_equal #(.p_width(32-p_word_shift), .p_preserve_bits(1'b1)) u_match (
+      add_equal #(.p_width(32-p_word_shift), .p_preserve_bits(1'b1)) u_match (
         .i_a(i_row_base_addr[31:p_word_shift]), .i_b(byte_step[31:p_word_shift]),
         .i_target(high_i_target), .i_carry_in(low_sum[p_word_shift]), .o_equal(row_match[wrap])
       );
@@ -748,22 +751,39 @@ module conv_im2col_descriptor #(
     if (!p_register_descriptor) begin : g_prepared
       logic [32:0] target_sum, target_q;
       logic unused_target_carry;
+      logic target_eligible, target_eligible_nxt, target_low_equal;
 
       // 窗口起点和三个完整目标序号同时保存，接收周期直接比较目标值。
       parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1), .p_carry_select_width(16)) u_sum (
         .i_a({1'b0, i_q0}), .i_b(target_difference[target]), .i_carry(1'b0),
         .o_sum(target_sum), .o_carry(unused_target_carry)
       );
+      // 目标高位越界与核位置许可在目标保存前合并，查询只比较完整低三十二位。
+      assign target_eligible_nxt = !target_sum[32] &&
+          (target == 0 ? i_kx0_q < i_last_kernel_col_q :
+           target == 1 ? i_kx0_q != 16'd0 :
+           i_c.kernel_w == 16'd3 && i_kx0_q == 16'd0 && i_ky0_q != 16'd0);
       always_ff @(posedge i_clk) begin
-        if (i_rst_n && window_prepare_write) target_q <= target_sum;
+        if (i_rst_n && window_prepare_write) begin
+          target_q <= target_sum;
+          target_eligible <= target_eligible_nxt;
+        end
       end
+      conv_descriptor_match #(.p_width(32)) u_target_low_match (
+        .i_a(target_q[31:0]), .i_b(i_tile_q0), .o_equal(target_low_equal)
+      );
+      assign target_prepared_match[target] = target_eligible && target_low_equal;
       conv_descriptor_match #(.p_width(33)) u_target_match (
         .i_a(target_q), .i_b({1'b0, i_tile_q0}), .o_equal(target_difference_match[target])
       );
 `ifdef NPU_SIM_ASSERT
       always @(posedge i_clk) begin
-        if (i_rst_n && window_next_valid)
+        if (i_rst_n && window_next_valid) begin
           assert (target_q == {1'b0, window_next_q} + target_difference[target]);
+          assert (target_eligible == (!target_q[32] &&
+              (target == 0 ? window_forward_allowed_q :
+               target == 1 ? window_backward_allowed_q : window_previous_allowed_q)));
+        end
       end
 `endif
     end else begin : g_direct
@@ -772,9 +792,10 @@ module conv_im2col_descriptor #(
         .i_target({1'b0, i_tile_q0}), .i_carry_in(1'b0),
         .o_equal(target_difference_match[target])
       );
+      assign target_prepared_match[target] = target_difference_match[target];
     end
 `ifdef SYNTHESIS
-    assign incoming_tap_match_o_equal[target+1] = target_difference_match[target];
+    assign incoming_tap_match_o_equal[target+1] = target_prepared_match[target];
 `else
     // 未知输入保留完整减法和相等比较的事件仿真传播。
     always_comb begin
@@ -790,7 +811,7 @@ module conv_im2col_descriptor #(
   assign incoming_tile_match_i_b = 32'(i_rows_q);
   assign incoming_tile_match_i_target = i_tile_p0;
   assign incoming_tile_match_i_carry_in = 1'b0;
-  (* keep_hierarchy = "yes" *) add_equal #(.p_width(32), .p_preserve_bits(1'b1)) u_incoming_tile_match (
+  add_equal #(.p_width(32), .p_preserve_bits(1'b1)) u_incoming_tile_match (
     .i_a(incoming_tile_match_i_a), .i_b(incoming_tile_match_i_b),
     .i_target(incoming_tile_match_i_target), .i_carry_in(incoming_tile_match_i_carry_in),
     .o_equal(incoming_tile_match_o_equal)
@@ -808,12 +829,20 @@ module conv_im2col_descriptor #(
   conv_descriptor_match #(.p_width(32)) u_window_reduction_match (
     .i_a(i_tile_q0), .i_b(window_next_q), .o_equal(incoming_position_same_tap)
   );
-  assign incoming_position_forward_tap = window_forward_allowed_q &&
+  // 直接描述符使用同一准备边沿保存的许可；寄存描述符继续按原窗口状态选择。
+`ifdef SYNTHESIS
+  assign window_match_select = p_register_descriptor ?
+      {window_previous_allowed_q, window_backward_allowed_q, window_forward_allowed_q, 1'b1} : 4'b1111;
+`else
+  assign window_match_select =
+      {window_previous_allowed_q, window_backward_allowed_q, window_forward_allowed_q, 1'b1};
+`endif
+  assign incoming_position_forward_tap = window_match_select[1] &&
       incoming_tap_match_o_equal[1];
-  assign incoming_position_backward_tap = window_backward_allowed_q &&
+  assign incoming_position_backward_tap = window_match_select[2] &&
       incoming_tap_match_o_equal[2];
   // 三列卷积从顶部边缘进入下一输出行时，首个有效核位置向前移动两个位置。
-  assign incoming_position_previous_row = window_previous_allowed_q &&
+  assign incoming_position_previous_row = window_match_select[3] &&
       incoming_tap_match_o_equal[3];
   // 完整坐标比较先独立完成，运行资格只归并各比较的一位结果。
   conv_descriptor_match #(.p_width(32)) u_window_position_match (
@@ -828,7 +857,7 @@ module conv_im2col_descriptor #(
     .i_window(2'b00), .o_valid(incoming_window_context)
   );
   onehot_mux #(.p_choices(4), .p_width(1)) u_window_match (
-    .i_select({window_previous_allowed_q, window_backward_allowed_q, window_forward_allowed_q, 1'b1}),
+    .i_select(window_match_select),
     .i_data({incoming_tap_match_o_equal[3:1], incoming_position_same_tap}),
     .o_data(incoming_window_match)
   );
@@ -1043,7 +1072,7 @@ module conv_im2col_descriptor #(
   end
 
   if (p_register_descriptor) begin : g_commit_kernel_end
-    (* keep = 1 *) logic [5:0] kernel_group_equal;
+    logic [5:0] kernel_group_equal;
     for (genvar group_index = 0; group_index < 6; group_index++) begin : g_group
       localparam int p_first = group_index * 3;
       localparam int p_width = 16 - p_first < 3 ? 16 - p_first : 3;
@@ -1578,20 +1607,24 @@ module conv_im2col_descriptor #(
     endcase
   end
   for (genvar address_port = 0; address_port < 2; address_port++) begin : g_commit_address
-    logic [31:0] address_i_a, address_i_b;
-    logic address_i_carry;
+    if (p_register_descriptor) begin : g_registered
+      logic [31:0] address_i_a, address_i_b;
+      logic address_i_carry;
+      logic [31:0] address_sum;
+      logic unused_address_carry;
 
-    assign address_i_a = address_port == 0 ? prepared_tile_q.address : prepared_tile_q.group_address;
-    assign address_i_b = committing_address_delta;
-    assign address_i_carry = committing_address_carry;
-    logic [31:0] address_sum;
-    // 地址求和与数据字匹配分别位于提交和检查周期。
-    logic unused_address_carry;
-    parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_address_sum (
-      .i_a(address_i_a), .i_b(address_i_b), .i_carry(address_i_carry),
-      .o_sum(address_sum), .o_carry(unused_address_carry)
-    );
-    assign committing_address[address_port] = address_sum;
+      assign address_i_a = address_port == 0 ? prepared_tile_q.address : prepared_tile_q.group_address;
+      assign address_i_b = committing_address_delta;
+      assign address_i_carry = committing_address_carry;
+      // 登记描述符在提交周期计算地址，与先前的数据字匹配独立执行。
+      parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_address_sum (
+        .i_a(address_i_a), .i_b(address_i_b), .i_carry(address_i_carry),
+        .o_sum(address_sum), .o_carry(unused_address_carry)
+      );
+      assign committing_address[address_port] = address_sum;
+    end else begin : g_direct
+      assign committing_address[address_port] = '0;
+    end
   end
   always_comb begin
     preparing_tile = '0;
@@ -1649,7 +1682,7 @@ module conv_im2col_descriptor #(
     localparam int p_tag_width = 32 - p_word_shift;
     localparam int p_group_count = (p_tag_width + 2) / 3;
     logic [p_tag_width-1:0] target_tag;
-    (* keep = p_register_descriptor *) logic [p_group_count-1:0] tag_group_equal;
+    logic [p_group_count-1:0] tag_group_equal;
     assign target_tag = target == 0 ? descriptor_word_address_q : i_word_addr[31:p_word_shift];
     for (genvar part = 0; part < p_group_count; part++) begin : g_group
       localparam int p_first = part * 3;
@@ -1719,7 +1752,6 @@ module conv_im2col_descriptor #(
 endmodule
 
 // 原始字段完整比较后输出一位结果，控制资格在外部独立组合。
-(* keep_hierarchy = "yes" *)
 module conv_descriptor_match #(
   parameter int unsigned p_width = 32
 ) (
@@ -1727,18 +1759,11 @@ module conv_descriptor_match #(
   input wire logic [p_width-1:0] i_b,
   output logic o_equal
 );
-  localparam int p_parts = (p_width+2)/3;
-  (* keep = 1 *) logic [p_parts-1:0] part_equal;
-  for (genvar part = 0; part < p_parts; part++) begin : g_part
-    localparam int p_first = 3*part;
-    localparam int p_count = p_width-p_first < 3 ? p_width-p_first : 3;
-    assign part_equal[part] = i_a[p_first+:p_count] == i_b[p_first+:p_count];
-  end
-  assign o_equal = &part_equal;
+  // 完整比较表达式允许综合器与使用结果的资格条件共同优化。
+  assign o_equal = i_a == i_b;
 endmodule
 
 // 单个候选独立归并全部资格，保持各候选的并行关系。
-(* keep_hierarchy = "yes" *)
 module conv_descriptor_qualify #(
   parameter int unsigned p_flags = 6,
   parameter logic [p_flags-1:0] p_expected = '1,
@@ -1753,7 +1778,6 @@ endmodule
 
 
 // 高低段范围已经完成，低位进位只参与最后一层边界组合。
-(* keep_hierarchy = "yes" *)
 module conv_descriptor_row_range_result (
   input wire logic i_high_before, i_high_equal, i_high_last,
   input wire logic i_low_carry, i_low_within,

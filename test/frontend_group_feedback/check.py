@@ -342,6 +342,7 @@ def main() -> None:
         rtl, script, log = [out / (name + ext) for ext in ('.sv', '.ys', '.log')]
         rtl.write_text(text)
         script.write_text(f'read_slang --top comparison '
+                          f'{shlex.quote(str(root / "rtl/common/onehot_mux.sv"))} '
                           f'{shlex.quote(str(root / "rtl/common/add_equal.sv"))} '
                           f'{shlex.quote(str(root / "rtl/common/borrow_select_subtract.sv"))} '
                           f'{shlex.quote(str(root / "rtl/common/increment_equal.sv"))} '
@@ -367,7 +368,7 @@ def main() -> None:
         'source_sha256': digest(source_path),
         'range_compare_sha256': digest(root / 'rtl/npu/conv/conv_channel_range_compare.sv'),
         'arithmetic_helper_sha256': {name: digest(root / 'rtl/common' / name)
-                                    for name in ('add_equal.sv', 'borrow_select_subtract.sv', 'increment_equal.sv')}, 'cases': rows,
+                                    for name in ('add_equal.sv', 'borrow_select_subtract.sv', 'increment_equal.sv', 'onehot_mux.sv')}, 'cases': rows,
         'row_four_state': four_state(source, out),
     }, indent=2) + '\n')
 

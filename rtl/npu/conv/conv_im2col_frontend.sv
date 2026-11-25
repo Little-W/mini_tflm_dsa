@@ -75,8 +75,8 @@ module conv_im2col_frontend #(
   `include "conv_im2col_prepared_tile.svh"
   (* fsm_encoding = "none" *) st_t state;
   logic word_output_q;
-  (* keep = 1 *) st_t descriptor_state;
-  (* keep = 1 *) st_t operation_state;
+  st_t descriptor_state;
+  st_t operation_state;
   st_t selected_state;
   logic descriptor_commit_eligible;
   logic stream_response_error;
@@ -124,7 +124,7 @@ module conv_im2col_frontend #(
   logic narrow_output;
   logic [LANES-1:0] chunk_lane_allowed;
   logic [LANES:0] chunk_selected;
-  (* keep = 1 *) logic chunk_reaches_end;
+  logic chunk_reaches_end;
   logic [15:0] ox_q;
   logic [15:0] oy_q;
   logic [15:0] ky_q;
@@ -194,14 +194,14 @@ module conv_im2col_frontend #(
   logic [31:0] request_epoch_selected;
   logic [COORD_W-1:0] request_y_selected;
   logic [31:0] request_index_selected;
-  (* keep = 1 *) logic active_after_chunk;
+  logic active_after_chunk;
   logic [p_word_shift+1:0] byte_offset_sum;
   logic incoming_context;
   logic incoming_word_hit;
   logic finishing_tile;
   logic descriptor_response_forward;
   logic incoming_next_tile_fast;
-  (* keep = 1 *) logic incoming_next_position_fast;
+  logic incoming_next_position_fast;
   logic incoming_skip_tap;
   logic [15:0] window_next_x;
   logic [15:0] window_next_y;
@@ -313,7 +313,7 @@ module conv_im2col_frontend #(
   logic [9:0] incoming_pixel_select;
   logic [31:0] request_output_y;
   logic [31:0] incoming_req_epoch;
-  (* keep = 1 *) logic [1:0][31:0] incoming_epoch_candidate;
+  logic [1:0][31:0] incoming_epoch_candidate;
   logic [31:0] request_address_value;
   logic [31:0] request_address_reference;
   logic [4:0][31:0] epoch_o_sum;
@@ -355,10 +355,16 @@ module conv_im2col_frontend #(
   logic next_row_padding;
   logic next_tap_padding;
   logic row_wrap_q;
-  (* keep = 1 *) logic [5:0] row_wrap_candidate;
+  logic [5:0] row_wrap_candidate;
   logic tap_wrap_q;
   logic incoming_tap_wrap_q;
-  (* keep = 1 *) logic [8:0] tap_wrap_candidate;
+  logic [8:0] tap_wrap_candidate;
+  logic [3:0][5:0] wrap_update_candidate;
+  logic [2:0] wrap_write;
+  logic [2:0] wrap_value;
+  logic wrap_cfg_fire;
+  logic wrap_descriptor_check;
+  logic wrap_running_state;
   logic tap_next_o_equal;
   logic row_next_o_equal;
   logic signed [COORD_W-1:0] next_row_ix;
@@ -372,6 +378,7 @@ module conv_im2col_frontend #(
   logic [32:0] next_q_current;
   logic channel_accept_fire;
   logic tile_ready_context;
+  logic [1:0] tile_context_ready;
   logic tile_ready_static;
   logic tile_admission_ready;
   prepared_tile_t committing_tile;
@@ -937,36 +944,64 @@ module conv_im2col_frontend #(
     assign request_address_value = request_address_reference;
   end
 
-  // 请求来源先确定候选资格，描述符选择直接归并最终行号和索引。
+  // 像素坐标先完成来源选择，再共用缓存索引移位，描述符接收周期保持不变。
   if (!REGISTER_DESCRIPTOR) begin : g_parallel_request_index
-    logic [9:0][31:0] index_candidate;
+    logic [31:0] incoming_pixel_selected, request_pixel_selected;
     logic [12:0] request_select;
     logic [12:0][COORD_W+31:0] request_candidate;
+    logic [31:0] incoming_index_shifted, request_index_shifted;
+    onehot_mux #(.p_choices(10), .p_width(32)) u_select (
+      .i_select(incoming_pixel_select), .i_data(incoming_pixel_candidates),
+      .o_data(incoming_pixel_selected)
+    );
     for (genvar candidate = 0; candidate < 10; candidate++) begin : g_candidate
-      assign index_candidate[candidate] = short_pixel_q ?
-        incoming_pixel_candidates[candidate] >> window_index_shift_q : incoming_pixel_candidates[candidate];
       assign request_select[candidate] = incoming_pixel_select[candidate];
       assign request_candidate[candidate] =
-        {incoming_y_candidates[candidate], index_candidate[candidate]} &
+        {incoming_y_candidates[candidate], incoming_pixel_candidates[candidate]} &
         {(COORD_W+32){request_descriptor_metadata_context}};
     end
-    onehot_mux #(.p_choices(10), .p_width(32)) u_select (
-      .i_select(incoming_pixel_select), .i_data(index_candidate), .o_data(incoming_req_index)
-    );
     assign request_select[10] = !request_descriptor_metadata_context && request_row_metadata_context;
     assign request_select[11] = !request_descriptor_metadata_context && !request_row_metadata_context &&
       request_tap_context;
     assign request_select[12] = !request_descriptor_metadata_context && !request_row_metadata_context &&
       !request_tap_context;
-    assign request_candidate[10] = {next_row_iy,
-      short_pixel_q ? next_row_pixel >> window_index_shift_q : next_row_pixel};
-    assign request_candidate[11] = {next_tap_iy,
-      short_pixel_q ? next_tap_pixel >> window_index_shift_q : next_tap_pixel};
-    assign request_candidate[12] = {iy, current_req_index};
+    assign request_candidate[10] = {next_row_iy, next_row_pixel};
+    assign request_candidate[11] = {next_tap_iy, next_tap_pixel};
+    assign request_candidate[12] = {iy, pixel_index};
     onehot_mux #(.p_choices(13), .p_width(COORD_W+32)) u_request_select (
       .i_select(request_select), .i_data(request_candidate),
-      .o_data({request_y_selected, request_index_selected})
+      .o_data({request_y_selected, request_pixel_selected})
     );
+    assign incoming_index_shifted = short_pixel_q ?
+      incoming_pixel_selected >> window_index_shift_q : incoming_pixel_selected;
+    assign request_index_shifted = short_pixel_q ?
+      request_pixel_selected >> window_index_shift_q : request_pixel_selected;
+    always_comb begin
+      incoming_req_index = incoming_index_shifted;
+      request_index_selected = request_index_shifted;
+`ifndef SYNTHESIS
+      // 含未知值的移位和按位选择保留各候选独立求值的四态传播。
+      if ((^{short_pixel_q, window_index_shift_q, incoming_pixel_select,
+              incoming_pixel_candidates, request_select, request_candidate}) === 1'bx) begin
+        incoming_req_index = '0;
+        request_index_selected = '0;
+        for (int candidate = 0; candidate < 10; candidate++) begin
+          incoming_req_index |= (short_pixel_q ?
+            incoming_pixel_candidates[candidate] >> window_index_shift_q :
+            incoming_pixel_candidates[candidate]) & {32{incoming_pixel_select[candidate]}};
+          request_index_selected |= (short_pixel_q ?
+            incoming_pixel_candidates[candidate] >> window_index_shift_q :
+            incoming_pixel_candidates[candidate]) &
+            {32{incoming_pixel_select[candidate] & request_descriptor_metadata_context}};
+        end
+        request_index_selected |= (short_pixel_q ? next_row_pixel >> window_index_shift_q :
+          next_row_pixel) & {32{request_select[10]}};
+        request_index_selected |= (short_pixel_q ? next_tap_pixel >> window_index_shift_q :
+          next_tap_pixel) & {32{request_select[11]}};
+        request_index_selected |= current_req_index & {32{request_select[12]}};
+      end
+`endif
+    end
   end else begin : g_registered_request_index
     logic [2:0] request_select;
     logic [2:0][COORD_W+31:0] request_candidate;
@@ -1055,7 +1090,6 @@ module conv_im2col_frontend #(
       default: begin end
     endcase
   end
-
 
   // 缓存读取宽度随输出通道数扩展，最大读取范围限定在单个缓存行内。
 
@@ -1153,7 +1187,15 @@ module conv_im2col_frontend #(
                               !pred_busy && !pred_cfg_busy && !pred_cfg_pending && !cache_cfg_pending &&
                               !cache_hint_pending && address_step_phase==0;
   assign tile_admission_ready = tile_ready_static && !cfg_valid;
-  assign tile_ready_context = (state[$clog2(IDLE)] || finishing_tile) && tile_ready_static;
+  conv_im2col_tile_context u_tile_context (
+    .i_static_ready(tile_ready_static), .i_idle(state[$clog2(IDLE)]),
+    .i_stream(state[$clog2(STREAM)]), .i_zero_stream(state[$clog2(ZERO_STREAM)]),
+    .i_wait_word(state[$clog2(WAIT_WORD)]), .i_write_ready(wr_ready),
+    .i_row_last(row_last_q), .i_chunk_end(chunk_reaches_end), .o_ready(tile_context_ready)
+  );
+  // 返回成功只合并已经准备的描述符接收资格。
+  assign tile_ready_context = tile_context_ready[0] ||
+      (cache_rsp_success && tile_context_ready[1]);
   assign tile_ready = tile_ready_context && !cfg_valid &&
       (!REGISTER_DESCRIPTOR || !tile_prepared_valid || tile_commit);
   assign busy = !cfg_ready;
@@ -1536,6 +1578,89 @@ module conv_im2col_frontend #(
     end
   end
 
+  // 各运行来源先准备回绕值与写入资格，接收事件只选择完整结果。
+  assign wrap_cfg_fire = cfg_valid && cfg_ready;
+  assign wrap_descriptor_check = state[$clog2(DESCRIPTOR_CHECK)];
+  assign wrap_running_state = state[$clog2(WAIT_WORD)] || state[$clog2(STREAM)] || state[$clog2(ZERO_STREAM)];
+  always_comb begin
+    wrap_update_candidate[0] = {3'b111, tap_wrap_candidate[1], tap_wrap_candidate[0], row_wrap_candidate[0]};
+    wrap_update_candidate[1] = '0;
+    if (committing_tile.invalid) begin
+    end else if (committing_tile.fast) begin
+      wrap_update_candidate[1][5:4] = 2'b11;
+      wrap_update_candidate[1][2:1] = {2{tap_wrap_candidate[2]}};
+      if (committing_tile.output_position_update) begin
+        wrap_update_candidate[1][3] = 1'b1;
+        wrap_update_candidate[1][0] = row_wrap_candidate[1];
+      end
+    end
+    wrap_update_candidate[2] = '0;
+    if (chunk_reaches_end) begin
+      if (row_last_q) begin
+      end else begin
+        wrap_update_candidate[2][4:3] = 2'b11;
+        wrap_update_candidate[2][1] = tap_wrap_candidate[3];
+        if (row_wrap) wrap_update_candidate[2][0] = row_wrap_candidate[2];
+        else wrap_update_candidate[2][0] = row_wrap_candidate[3];
+      end
+    end else if (past_active_q || !active_after_chunk) begin
+    end else if (group_end_o_equal) begin
+      wrap_update_candidate[2][4] = 1'b1;
+      if (tap_wrap) wrap_update_candidate[2][1] = tap_wrap_candidate[4];
+      else wrap_update_candidate[2][1] = tap_wrap_candidate[5];
+    end
+    wrap_update_candidate[3] = '0;
+    case (1'b1)
+      state[$clog2(P_HISTORY)]: ;
+      state[$clog2(P_DECODE)]: if (p_fast_valid) begin
+        wrap_update_candidate[3][3] = 1'b1;
+        wrap_update_candidate[3][0] = row_wrap_candidate[4];
+      end
+      state[$clog2(P_START)]: ;
+      state[$clog2(P_WAIT)]: if (decode_index == p0) begin
+        wrap_update_candidate[3][3] = 1'b1;
+        wrap_update_candidate[3][0] = row_wrap_candidate[5];
+      end
+      state[$clog2(Q_DECODE)]: ;
+      state[$clog2(Q_START)]: ;
+      state[$clog2(Q_WAIT)]: ;
+      state[$clog2(K_DECODE)]: begin
+        if (kernel_shape_o_valid) begin
+          wrap_update_candidate[3][5:4] = 2'b11;
+          wrap_update_candidate[3][2:1] = {2{tap_wrap_candidate[6]}};
+        end else if (c.kernel_w == 16'd3 && tap0 < 32'd9) begin
+          wrap_update_candidate[3][5:4] = 2'b11;
+          wrap_update_candidate[3][2:1] = {2{tap_wrap_candidate[7]}};
+        end
+      end
+      state[$clog2(K_START)]: ;
+      state[$clog2(K_WAIT)]: if (decode_index == tap0) begin
+        wrap_update_candidate[3][5:4] = 2'b11;
+        wrap_update_candidate[3][2:1] = {2{tap_wrap_candidate[8]}};
+      end
+      default: ;
+    endcase
+  end
+  conv_im2col_wrap_update_select u_wrap_update (
+    .i_configuration(wrap_cfg_fire), .i_commit(tile_commit),
+    .i_descriptor_check(wrap_descriptor_check), .i_stream_error(stream_response_error),
+    .i_stream_accept(stream_operation_accept), .i_running(wrap_running_state),
+    .i_candidate(wrap_update_candidate), .o_write(wrap_write), .o_value(wrap_value)
+  );
+
+  // 输出行和卷积核回绕标志保持原有写入边沿与配置优先级。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      row_wrap_q <= 1'b0;
+      tap_wrap_q <= 1'b0;
+      incoming_tap_wrap_q <= 1'b0;
+    end else begin
+      if (wrap_write[0]) row_wrap_q <= wrap_value[0];
+      if (wrap_write[1]) tap_wrap_q <= wrap_value[1];
+      if (wrap_write[2]) incoming_tap_wrap_q <= wrap_value[2];
+    end
+  end
+
   // 保存前端配置、描述符和坐标状态。
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -1547,14 +1672,9 @@ module conv_im2col_frontend #(
       skip_group_q <= 33'd0;
       p0<=0; q0<=0; tap0<=0; row_idx<=0; col_idx<=0; rows_q<=0; cols_q<=TILE_COUNT_W'(SIZE);active_cols_q<=0;
       row_last_q <= 1'b0;
-      row_wrap_q <= 1'b0;
-      tap_wrap_q <= 1'b0;
-      incoming_tap_wrap_q <= 1'b0;
-
       past_active_q <= 1'b1;
       narrow_output <= 1'b0;
       ox_q <= 16'(0); oy_q <= 16'(0); ky_q <= 16'(0); kx_q <= 16'(0); ky0_q <= 16'(0); kx0_q <= 16'(0); ch0_q <= 16'(0);
-
       tap_group_base<=0;row_group_base<=0;
       q_current<=0; ix <= COORD_W'(0); iy <= COORD_W'(0); pixel_index <= 32'(0); pad_q<=0;
       word_buf<=0; word_addr<=0; word_valid<=0;  slot_q<=0;
@@ -1609,11 +1729,7 @@ module conv_im2col_frontend #(
       // 配置、描述符提交与各运行状态互斥选择，公共写条件只参与末级组合。
       unique case (1'b1)
         (cfg_valid && cfg_ready): begin
-        row_wrap_q <= row_wrap_candidate[0];
-        tap_wrap_q <= tap_wrap_candidate[0];
-        incoming_tap_wrap_q <= tap_wrap_candidate[1];
        c<=cfg; configured<=0;
-
         next_group_q <= cfg_next_group;
         skip_group_q <= cfg_skip_group;
         word_valid<=0;  reduction_len<=0;
@@ -1627,7 +1743,6 @@ module conv_im2col_frontend #(
         end
         tile_commit: begin
         if (committing_tile.invalid) begin
-
         end else begin
           p0<=committing_tile.position; q0<=committing_tile.reduction;
           q_current<={1'b0,committing_tile.reduction};
@@ -1636,24 +1751,18 @@ module conv_im2col_frontend #(
           row_last_q <= committing_tile.rows == TILE_COUNT_W'(1);
           rows_q<=committing_tile.rows; cols_q<=committing_tile.columns;
           active_cols_q <= committing_tile.active_columns;
-
           past_active_q <= 1'b0;
           row_idx<=0; col_idx<=0; slot_q<=committing_tile.slot;
           narrow_output <= committing_tile.narrow_output;
-
           row_base_valid<=0;coordinate_address_valid<=0;row_coordinate_valid<=0;
           geometry_tile<=committing_tile.geometry;
           if (committing_tile.fast) begin
             tap0<=committing_tile.tap; ch0_q<=16'(committing_tile.channel);
-
             if (committing_tile.output_position_update) begin
               ox_q<=committing_tile.output_x; oy_q<=committing_tile.output_y;
-              row_wrap_q<=row_wrap_candidate[1];
             end
             ky_q<=16'(committing_tile.kernel_y); ky0_q<=16'(committing_tile.kernel_y);
             kx_q<=kernel_column_payload; kx0_q<=16'(committing_tile.kernel_x);
-            tap_wrap_q<=tap_wrap_candidate[2];
-            incoming_tap_wrap_q<=tap_wrap_candidate[2];
             ix <= coordinate_payload[0]; iy <= coordinate_payload[1];
             pixel_index <= pixel_payload;
             if (!REGISTER_DESCRIPTOR) pad_q<=committing_tile.padding;
@@ -1671,10 +1780,8 @@ module conv_im2col_frontend #(
             word_addr <= {addr[31:p_word_shift], {p_word_shift{1'b0}}};
             word_valid <= 1'b1;
           end
-
         end
         stream_response_error: begin
-
         end
         stream_operation_accept: begin
           // 行推进和内核推进分别确定字段写入资格。
@@ -1694,11 +1801,10 @@ module conv_im2col_frontend #(
             else begin
               row_idx<=next_row_idx; row_last_q<=next_row_last; col_idx<=0; q_current<={1'b0,q0};
                past_active_q <= 1'b0;
-              ky_q <= 16'(ky0); kx_q <= kernel_column_payload; tap_wrap_q <= tap_wrap_candidate[3];
-              if (row_wrap) begin ox_q <= 16'(0); row_wrap_q <= row_wrap_candidate[2]; oy_q <= 16'(oy+1); end
+              ky_q <= 16'(ky0); kx_q <= kernel_column_payload;
+              if (row_wrap) begin ox_q <= 16'(0); oy_q <= 16'(oy+1); end
               else begin
                 ox_q <= 16'(ox+1);
-                row_wrap_q <= row_wrap_candidate[3];
               end
               if (row_base_valid && !geometry_tile) begin
                  coordinate_address_valid<=1;
@@ -1719,18 +1825,15 @@ module conv_im2col_frontend #(
             else if (group_end_o_equal) begin
               if (coordinate_address_valid) begin
                 if (tap_wrap) begin kx_q <= kernel_column_payload;
-                tap_wrap_q <= tap_wrap_candidate[4];
                 ky_q <= 16'(ky+1);
                 end
                 else begin
                   kx_q <= kernel_column_payload;
-                  tap_wrap_q <= tap_wrap_candidate[5];
                 end
               end else begin
-                if (tap_wrap) begin kx_q<=kernel_column_payload; tap_wrap_q <= tap_wrap_candidate[4];ky_q<=16'(ky+1);end
+                if (tap_wrap) begin kx_q<=kernel_column_payload; ky_q<=16'(ky+1);end
                 else begin
                   kx_q <= kernel_column_payload;
-                  tap_wrap_q <= tap_wrap_candidate[5];
                 end
                 coordinate_address_valid<=0;
               end
@@ -1741,7 +1844,7 @@ module conv_im2col_frontend #(
           (state[$clog2(WAIT_WORD)] || state[$clog2(STREAM)] || state[$clog2(ZERO_STREAM)])): ;
         state[$clog2(P_HISTORY)]: ;
         state[$clog2(P_DECODE)]: if (p_fast_valid) begin
-          oy_q <= 16'(p_fast_y);ox_q <= 16'(p_fast_x); row_wrap_q <= row_wrap_candidate[4];
+          oy_q <= 16'(p_fast_y);ox_q <= 16'(p_fast_x);
           last_p_valid<=1;last_p<=p0;last_p_overflow_q <= (&p0[31:16]) && history_limit_carry;last_y<=16'(p_fast_y);last_x<=16'(p_fast_x);
           p_cache_valid[p_cache_select]<=1;
         end
@@ -1749,8 +1852,6 @@ module conv_im2col_frontend #(
         state[$clog2(P_WAIT)]: if (decode_index==p0) begin
           oy_q <= 16'(decode_outer);
           ox_q <= 16'(decode_inner);
-          row_wrap_q <= row_wrap_candidate[5];
-
           last_p_valid<=1;last_p<=p0;last_p_overflow_q <= (&p0[31:16]) && history_limit_carry;last_y<=16'(decode_outer);last_x<=16'(decode_inner);
           p_cache_valid[p_cache_select]<=1;
         end
@@ -1764,7 +1865,6 @@ module conv_im2col_frontend #(
             ch0_q <= group_range_channel[2];
           end else if (c.group_c==3 && q0<27) begin
             tap0<=32'(current_q_div3);
-
             ch0_q <= current_q_remainder;
           end
         end
@@ -1777,17 +1877,13 @@ module conv_im2col_frontend #(
             ky_q <= 16'(tap0 >> kernel_width_shift);
             ky0_q <= 16'(tap0 >> kernel_width_shift);
             kx_q <= kernel_column_payload;
-            tap_wrap_q <= tap_wrap_candidate[6];
             kx0_q <= kernel_decode_column;
-            incoming_tap_wrap_q <= tap_wrap_candidate[6];
           end else if (c.kernel_w==3 && tap0<9) begin
             // 三列卷积核的行列由同一完整组合译码得到。
             ky_q <= 16'(k_decode_value[5:2]);
             ky0_q <= 16'(k_decode_value[5:2]);
             kx_q <= kernel_column_payload;
             kx0_q <= 16'(k_decode_value[1:0]);
-            tap_wrap_q <= tap_wrap_candidate[7];
-            incoming_tap_wrap_q <= tap_wrap_candidate[7];
           end
         end
         state[$clog2(K_START)]: ;
@@ -1795,9 +1891,7 @@ module conv_im2col_frontend #(
           ky_q <= 16'(decode_outer);
           ky0_q <= 16'(decode_outer);
           kx_q <= kernel_column_payload;
-          tap_wrap_q <= tap_wrap_candidate[8];
           kx0_q <= 16'(decode_inner);
-          incoming_tap_wrap_q <= tap_wrap_candidate[8];
         end
         state[$clog2(COORD)]: begin
           coordinate_address_valid<=0;
@@ -1832,7 +1926,6 @@ module conv_im2col_frontend #(
             row_base_addr<=channel_addr;
             row_group_base <= row_group_payload;
           end
-
         end
         state[$clog2(ADDRESS_MATCH)]: begin
           pad_q <= !address_position_valid;
@@ -1962,7 +2055,6 @@ module conv_im2col_frontend #(
 endmodule
 
 // 描述符范围、填充和字命中各自完成后，独立选择下一运行状态。
-(* keep_hierarchy = "yes" *)
 module conv_im2col_descriptor_state #(
   parameter bit p_register_descriptor = 1'b0
 ) (
@@ -1990,7 +2082,6 @@ module conv_im2col_descriptor_state #(
 endmodule
 
 // 地址资格独立译码，行位置不参与描述符候选数据的计算。
-(* keep_hierarchy = "yes" *)
 module conv_im2col_address_sources (
   input wire logic i_tap, i_incoming, i_row, i_stream, i_row_metadata,
   output logic [4:0] o_cache, o_saved
@@ -2008,7 +2099,6 @@ module conv_im2col_address_sources (
 endmodule
 
 // 各字段的行推进及内核推进条件分别归并，避免与状态保存值串行计算。
-(* keep_hierarchy = "yes" *)
 module conv_im2col_stream_position (
   input wire logic i_chunk_end, i_row_last, i_row_base_valid, i_geometry_tile,
   input wire logic i_row_coordinate_valid, i_past_active, i_active_after,
@@ -2050,7 +2140,6 @@ module conv_im2col_stream_position (
 endmodule
 
 // 配置、描述符和运行分支只在末级选择完整的错误标志。
-(* keep_hierarchy = "yes" *)
 module conv_im2col_error_select (
   input wire logic i_configuration, i_commit,
   input wire logic [1:0] i_configuration_value, i_commit_value, i_operation_value,
@@ -2061,7 +2150,6 @@ module conv_im2col_error_select (
 endmodule
 
 // 传输接收选择两个已经完成的运行结果。
-(* keep_hierarchy = "yes" *)
 module conv_im2col_error_operation_select (
   input wire logic i_accept,
   input wire logic [1:0] i_waiting, i_accepted,
@@ -2150,6 +2238,41 @@ module conv_im2col_error_update (
       end
     endcase
   end
+endmodule
+
+// 配置、描述符和流传输按既有优先级选择已准备的回绕字段。
+(* keep_hierarchy = "yes" *)
+module conv_im2col_wrap_update_select (
+  input logic i_configuration, i_commit, i_descriptor_check,
+  input logic i_stream_error, i_stream_accept, i_running,
+  input logic [3:0][5:0] i_candidate,
+  output logic [2:0] o_write, o_value
+);
+  always_comb begin
+    {o_write, o_value} = '0;
+    case (1'b1)
+      i_configuration: {o_write, o_value} = i_candidate[0];
+      i_commit: {o_write, o_value} = i_candidate[1];
+      i_descriptor_check: {o_write, o_value} = '0;
+      i_stream_error: {o_write, o_value} = '0;
+      i_stream_accept: {o_write, o_value} = i_candidate[2];
+      (!i_commit && i_stream_error !== 1'b1 && i_stream_accept !== 1'b1 && i_running): {o_write, o_value} = '0;
+      default: {o_write, o_value} = i_candidate[3];
+    endcase
+  end
+endmodule
+
+// 空闲与输出完成分别准备接收资格，缓存返回在外层完成末级选择。
+(* keep_hierarchy = "yes" *)
+module conv_im2col_tile_context (
+  input logic i_static_ready, i_idle, i_stream, i_zero_stream, i_wait_word,
+  input logic i_write_ready, i_row_last, i_chunk_end,
+  output logic [1:0] o_ready
+);
+  logic transfer_last;
+  assign transfer_last = i_write_ready && i_row_last && i_chunk_end;
+  assign o_ready[0] = i_static_ready && (i_idle || ((i_stream || i_zero_stream) && transfer_last));
+  assign o_ready[1] = i_static_ready && i_wait_word && transfer_last;
 endmodule
 
 `default_nettype wire

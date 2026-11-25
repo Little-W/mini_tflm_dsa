@@ -2,7 +2,6 @@
 `default_nettype none
 
 // 低位剩余通道数独立检查步长前后的区间。
-(* keep_hierarchy = "yes" *)
 module conv_channel_outside_interval #(
     parameter int unsigned p_width = 5,
     parameter int unsigned p_step = 1,
@@ -21,7 +20,6 @@ module conv_channel_outside_interval #(
 endmodule
 
 // 通道低位独立检查当前步长是否越过模计数边界。
-(* keep_hierarchy = "yes" *)
 module conv_channel_wrap_threshold #(
     parameter int unsigned p_width = 5,
     parameter int unsigned p_step = 1
@@ -36,8 +34,7 @@ module conv_channel_wrap_threshold #(
     end
 endmodule
 
-// 每个步长与通道的范围独立计算，综合时保留该组合比较边界。
-(* keep_hierarchy = "yes" *)
+// 各步长与通道共享低位区间和高位状态，形成完整有效范围。
 module conv_channel_range_compare #(
     parameter int unsigned p_width = 5,
     parameter int unsigned p_step = 1,

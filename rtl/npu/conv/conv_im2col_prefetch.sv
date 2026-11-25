@@ -204,7 +204,7 @@ module conv_im2col_prefetch #(
   assign pf_prepare_i_b = {pf_distance_q, 32'(pf_y_wrap_delta_q), 32'(pf_y_delta_q)};
   assign pf_prepare_i_carry = 1'b0;
   for (genvar source = 0; source < 3; source++) begin : g_prefetch_prepare
-    parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_sum (
+    parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1), .p_dsp_split_width(source == 2 ? 16 : 0)) u_sum (
       .i_a(pf_prepare_i_a[source]), .i_b(pf_prepare_i_b[source]), .i_carry(pf_prepare_i_carry),
       .o_sum(pf_prepare_o_sum[source]), .o_carry(unused_pf_prepare_carry[source])
     );

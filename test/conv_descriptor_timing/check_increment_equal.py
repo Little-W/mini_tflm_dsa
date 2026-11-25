@@ -27,6 +27,13 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
+    simulation_sources = []
+    for source in SOURCES:
+        local_source = out / source.name
+        local_source.write_text(source.read_text().replace(
+            "parameter int unsigned", "parameter integer").replace(
+            "localparam int unsigned", "localparam integer"))
+        simulation_sources.append(local_source)
     rows = []
     for width in (1, 2, 3, 4, 5, 6, 8, 11, 16, 17, 32):
         case = out / f"width{width}"
@@ -65,7 +72,7 @@ endmodule
 """)
         simulator = case / "simulation.vvp"
         run((shutil.which("iverilog") or "iverilog", "-g2012", "-s", "tb", "-o", simulator,
-             *SOURCES, model, bench), case / "build.log")
+             *simulation_sources, model, bench), case / "build.log")
         run((shutil.which("vvp") or "vvp", simulator), case / "run.log")
         if "INCREMENT_EQUAL_PASS checks=16384" not in (case / "run.log").read_text():
             raise RuntimeError(f"Missing simulation result for width {width}")

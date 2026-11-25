@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify every output lane of the parallel convolution response formatter."""
+"""验证卷积响应格式化器的全部输出通道和四态行为。"""
 from __future__ import annotations
 
 import argparse
@@ -31,6 +31,7 @@ def model(source: str) -> str:
         "conv_im2col_sample_sum_group", "conv_im2col_sample_sum_carry",
         "conv_im2col_sample_sum_select", "conv_im2col_sample_sum",
         "conv_im2col_formatter_reduce", "conv_im2col_formatter_mux",
+        "conv_im2col_sample_offsets",
     )
     helper_blocks = []
     for name in helper_names:
@@ -43,7 +44,10 @@ def model(source: str) -> str:
     first = source.index("  for (genvar data_lane = 0; data_lane < p_lanes; data_lane++) begin : g_signed_byte_offset")
     last = source.index("  assign stream_word =", first)
     correction = source[first:last]
-    first = source.index("  if (p_lanes <= 16 && p_cache_read_bytes <= 16) begin : g_parallel_formatter")
+    marker = "  for (genvar data_lane = 0; data_lane < p_lanes; data_lane++) begin : g_formatter"
+    if marker not in source:
+        marker = "  if (p_lanes <= 16 && p_cache_read_bytes <= 16) begin : g_parallel_formatter"
+    first = source.index(marker)
     last = source.index("  always_comb begin\n    channel_update =", first)
     selection = source[first:last]
     header = '''module formatter #(parameter int p_lanes=8,p_cache_read_bytes=8,
@@ -63,6 +67,9 @@ def model(source: str) -> str:
  logic[p_cache_read_width-1:0]stream_word,selected_word;
  logic[p_lanes-1:0][7:0]selected_s8_byte;
  logic[p_lanes-1:0][8:0]corrected_s8_sum;
+ logic[p_lanes-1:0][7:0]sample_offsets_i_data;
+ logic[8:0]sample_offsets_i_offset;
+ logic[p_lanes-1:0][8:0]sample_offsets_o_sum;
  logic[p_lanes-1:0][15:0]corrected_s8_value;
  always_comb begin
   i_state='0;
@@ -109,9 +116,27 @@ endmodule
 '''
 
 
+def comparison_model(source: str, reference: str, reference_package: str) -> str:
+    """参考模块使用独立名称，同时检查数学结果及参考实现。"""
+    reference_model = model(reference).split("\nmodule proof", 1)[0]
+    names = re.findall(r"\bmodule\s+(\w+)", reference_model)
+    names.append("conv_im2col_frontend_pkg")
+    pattern = re.compile(r"\b(?:" + "|".join(map(re.escape, names)) + r")\b")
+    reference_model = pattern.sub(lambda found: "reference_" + found.group(), reference_model)
+    reference_package = pattern.sub(lambda found: "reference_" + found.group(), reference_package)
+    candidate_model = model(source).replace(
+        " assign equivalent=&lane_equal;",
+        " logic[p_lanes-1:0][15:0] reference_data;\n"
+        " reference_formatter #(.p_lanes(p_lanes),.p_cache_read_bytes(p_cache_read_bytes))\n"
+        "   u_reference(.*,.o_wr_data(reference_data));\n"
+        " assign equivalent=(&lane_equal)&&(o_wr_data===reference_data);")
+    return reference_package + "\n" + reference_model + "\n" + candidate_model
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", type=Path, default=ROOT)
+    parser.add_argument("--reference-source-root", type=Path)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--iverilog", default=shutil.which("iverilog") or "iverilog")
     parser.add_argument("--vvp", default=shutil.which("vvp") or "vvp")
@@ -123,9 +148,17 @@ def main() -> None:
     helper = root / "rtl/common/parallel_prefix_add.sv"
     mux_helper = root / "rtl/common/onehot_mux.sv"
     inputs = (source, package, helper, mux_helper)
+    generated_text = model(source.read_text())
+    if args.reference_source_root is not None:
+        reference_root = args.reference_source_root.resolve()
+        reference_source = reference_root / source.relative_to(root)
+        reference_package = reference_root / package.relative_to(root)
+        inputs += (reference_source, reference_package)
+        generated_text = comparison_model(source.read_text(), reference_source.read_text(),
+                                          reference_package.read_text())
     hashes = {str(path): digest(path) for path in inputs}
     generated = out / "model.sv"
-    generated.write_text(model(source.read_text()))
+    generated.write_text(generated_text)
     proofs, simulations = [], []
     cases = ((1,4),(2,4),(4,4),(8,4),(8,8),(16,8),(16,16),(20,16))
     for lanes, byte_count in cases:
@@ -201,6 +234,8 @@ endmodule
         raise RuntimeError("Source changed during verification")
     report = {"passed": True, "source_sha256": hashes, "formal_cases": proofs,
               "four_state_cases": simulations,
+              "reference_source_root": (str(args.reference_source_root.resolve())
+                                         if args.reference_source_root else None),
               "domain": "All input data, offsets, byte positions, masks, formats and source selections",
               "property": "All public data lanes match, including inactive lanes and cycles"}
     (out / "summary.json").write_text(json.dumps(report,indent=2)+"\n")

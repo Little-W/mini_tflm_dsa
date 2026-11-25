@@ -380,7 +380,9 @@ def main() -> None:
     simulation_sources = []
     for source in [*sources[:4], sources[6]]:
         local = out / source.name
-        local.write_text(source.read_text().replace("parameter int unsigned", "parameter integer"))
+        local.write_text(source.read_text().replace(
+            "parameter int unsigned", "parameter integer").replace(
+            "localparam int unsigned", "localparam integer"))
         simulation_sources.append(local)
     bench = out / "bench.sv"
     bench.write_text(BENCH)

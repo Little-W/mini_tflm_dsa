@@ -1,0 +1,173 @@
+{
+  "passed": true,
+  "reference_revision": "83946820a57584f3ed922a3b68bcbfdf75a21635",
+  "scope": "描述符地址候选和目标许可使用原有准备边沿，全部公开输出与接收周期保持一致。",
+  "source_sha256": {
+    "rtl/npu/conv/conv_im2col_descriptor.sv": "2a420feead82ac3851a1718283ea036f8b1ef2edb55a652cfc1a34d2da2ad0cd",
+    "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+    "rtl/npu/conv/conv_im2col_frontend_pkg.sv": "b4c238259a7d92a1b606ec71f09ab6d9ebbbb8639c2aaefbd9d6531709c14da8",
+    "rtl/common/add_equal.sv": "3d8704883dccf75df618d85029a95b4aa8f340dad9cabf073f8e9525ff7fb12f",
+    "rtl/common/parallel_prefix_add.sv": "0c6403c737d02c1b64e21d3cfdd515c083293f9e17b492a5d73b9448510d1520",
+    "rtl/common/parallel_unsigned_compare.sv": "b0b732d0b4d2e94dd8b17a3727b2b2a455f382797d73149474ce15086b42e412",
+    "rtl/common/unsigned_compare.sv": "2f8a56bf2356ab9ef3bbe1691290758e110f275409a55b2ebee2025cdefb74dc",
+    "rtl/common/increment_equal.sv": "37170b3f2a6a6a64e03c371dc735960eb36be2f41975b2507a664277d96d8d3f",
+    "rtl/common/onehot_mux.sv": "e4305e87df62f6b702189f2d0c66a86f67ea50b47bc9c15addb4817a6b3c79ac",
+    "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
+    "include/conv_im2col_prepared_tile.svh": "82fad7a236b4bf174779c7618c9023258d64253c4d117124df15eb69e7af73dd"
+  },
+  "formal": {
+    "inputs_constrained": false,
+    "profiles": [
+      {
+        "profile": "production_direct",
+        "parameters": {
+          "p_size": 16,
+          "p_slot_w": 5,
+          "p_lanes": 8,
+          "p_line_bytes": 128,
+          "p_register_descriptor": 0
+        },
+        "passed": true,
+        "proven_points": 17705,
+        "log_sha256": "a6467c27000c29445aa9c525c28f8073789de32d85e821c1baabdc3bfcdd5660"
+      },
+      {
+        "profile": "production_registered",
+        "parameters": {
+          "p_size": 16,
+          "p_slot_w": 5,
+          "p_lanes": 8,
+          "p_line_bytes": 128,
+          "p_register_descriptor": 1
+        },
+        "passed": true,
+        "proven_points": 14265,
+        "log_sha256": "816e4bce7a12ce385f58d59d06a0ffe160668bca88bc3da0773e68c80cc42043"
+      },
+      {
+        "profile": "small_direct",
+        "parameters": {
+          "p_size": 4,
+          "p_slot_w": 3,
+          "p_lanes": 1,
+          "p_line_bytes": 16,
+          "p_register_descriptor": 0
+        },
+        "passed": true,
+        "proven_points": 17663,
+        "log_sha256": "c7950e44c4e8731fd5e3071dfdc5fc485125fba98b9f241c70e1df587208b006"
+      },
+      {
+        "profile": "wide_registered",
+        "parameters": {
+          "p_size": 17,
+          "p_slot_w": 6,
+          "p_lanes": 16,
+          "p_line_bytes": 256,
+          "p_register_descriptor": 1
+        },
+        "passed": true,
+        "proven_points": 14432,
+        "log_sha256": "22d48f61b0b524e320b6a334ea05c49550bea167893f3e63dc204e55ffeb14e1"
+      }
+    ],
+    "total_proven_points": 64065,
+    "reference_observation": "目标许可等于已保存的边界许可与目标高位有效条件，此关系与所有公开输出一并证明。",
+    "checker_sha256": "2c33968fb871b735c2ba24a4b5a7c3c248d444102a1f9d5da0556db7101d4402"
+  },
+  "four_state": {
+    "checks": 32769,
+    "configurations": 2,
+    "passed": true,
+    "model_sha256": "4b34340338a242fac2e642f58c1c4ef008e417030becb5716790f8d7ffda587c",
+    "bench_sha256": "aa7725288275d972d69e548d4e217c312e13d287ba27382205ff2bbd3d22f21d",
+    "log_sha256": "a64591e923caa9e55ed9d8e176d9aa1554cb1a20968ccde38d2e2d59f5b790bd"
+  },
+  "frontend_cycle_comparison": {
+    "passed": true,
+    "jobs": 42,
+    "cycles": 116671,
+    "all_public_outputs_each_cycle": true,
+    "parameters": {
+      "size": 16,
+      "slot_width": 5,
+      "lanes": 8,
+      "bus_width": 64,
+      "cache_sets": 16,
+      "line_bytes": 128,
+      "register_descriptor": 0,
+      "cache_response_depth": 1,
+      "windowed": true,
+      "fpga": true,
+      "synthesis": true,
+      "jobs": 1
+    },
+    "summary_sha256": "5ed2dc6bb85d60808e8f7bb8f3cd3162a83b737e6c599de3656bee5912d7bbac"
+  },
+  "mapping": {
+    "device_family": "xc7",
+    "parameters": {
+      "SIZE": 16,
+      "SLOT_W": 5,
+      "LANES": 8,
+      "CACHE_SETS": 16,
+      "CACHE_WAYS": 2,
+      "LINE_BYTES": 128,
+      "BUS_WIDTH": 64,
+      "DMA_MAX_BYTES": 2048,
+      "CACHE_POLICY": 3,
+      "REGISTER_DESCRIPTOR": 0,
+      "REGISTER_ROW_ADDRESS": 0,
+      "REGISTER_CACHE_REQUEST": 1,
+      "CACHE_RESPONSE_DEPTH": 1
+    },
+    "abc9_batch_mapping": {
+      "batch_size": 64,
+      "mapper_sha256": "2bf4eeeac671d689046d72096829523a313071ab4e8f0dc76c7ceb5ec01bdb27",
+      "isolate_leaves": true,
+      "keep_checkpoints": false
+    },
+    "reference": {
+      "logic_lut_cells": 16677,
+      "distributed_ram_lut_sites_nominal": 68,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 16745,
+      "flip_flops": 6241,
+      "dsp48e1": 18,
+      "ramb36e1": 1,
+      "ramb18e1": 22,
+      "carry4": 1383
+    },
+    "candidate": {
+      "logic_lut_cells": 16461,
+      "distributed_ram_lut_sites_nominal": 68,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 16529,
+      "flip_flops": 6238,
+      "dsp48e1": 32,
+      "ramb36e1": 1,
+      "ramb18e1": 22,
+      "carry4": 1227
+    },
+    "reference_maximum_depth": {
+      "register_to_register": 17,
+      "input_to_register": 17,
+      "register_to_output": 12,
+      "input_to_output": 2
+    },
+    "candidate_maximum_depth": {
+      "register_to_register": 16,
+      "input_to_register": 16,
+      "register_to_output": 12,
+      "input_to_output": 2
+    },
+    "graph_complete": true,
+    "mapped_sha256": "c5f4db8450e097548764574f2292b7fc6a0e2193c08e332d8717386770a2f775",
+    "physical_placement_timing_available": false
+  },
+  "hotspot_fanout": {
+    "lookup_snapshot_valid": 4,
+    "cache_ram_enable": 30,
+    "scope": "映射后端口负载数量"
+  }
+}

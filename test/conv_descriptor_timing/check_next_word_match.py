@@ -88,7 +88,9 @@ def main() -> None:
     hashes = {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
               for path in (geometry, helper)}
     local_helper = out / helper.name
-    local_helper.write_text(helper.read_text().replace("parameter int unsigned", "parameter integer"))
+    local_helper.write_text(helper.read_text().replace(
+        "parameter int unsigned", "parameter integer").replace(
+        "localparam int unsigned", "localparam integer"))
     bench = out / "bench.sv"
     bench.write_text(BENCH)
     runs = []

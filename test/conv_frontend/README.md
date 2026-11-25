@@ -144,3 +144,26 @@ python3 test/conv_frontend/tools/synthesis.py \
 | `ox_q` 到状态寄存器的组合路径单元数 | 26 | 24 |
 
 综合脚本保存源码快照、SHA-256、映射后 JSON 和 `pre_lut.il`。后者保留映射前的寄存器名称，供寄存器间连通路径分析使用。这里的单元数用于比较组合结构；器件频率由完整 SoC 的布局布线时序报告确定。
+
+## 共享索引和输出格式化检查
+
+直接接收描述符时，前端先选择完整像素坐标，再共用缓存索引移位。流式输出先选择数据字和字节位置，各通道随后完成八位符号扩展、九位偏移加法或十六位数据提取。这两部分均使用原有时钟边界和传输条件。
+
+`compare_complete_frontend.py` 分别读取参考目录与当前目录的全部 RTL 依赖，并为参考模块、包和观察模块使用独立名称。测试逐周期比较全部公开输出，包括无效周期的数据、各通道掩码、存储请求、完成状态和错误状态。以下参数对应八通道、64 位总线和 4 KiB 窗口缓存。
+
+```bash
+python3 test/conv_frontend/tools/compare_complete_frontend.py \
+  --reference-source-root /path/to/reference \
+  --out build/frontend_shared_selection/compare \
+  --size 16 --slot-width 5 --lanes 8 --bus-width 64 \
+  --cache-sets 16 --line-bytes 128 --register-descriptor 0 \
+  --cache-response-depth 1 --windowed --fpga --synthesis --jobs 1
+python3 test/conv_frontend/tools/check_shared_index.py \
+  --reference-source-root /path/to/reference \
+  --out build/frontend_shared_selection/index
+python3 test/conv_frontend/tools/check_return_formatter.py \
+  --reference-source-root /path/to/reference \
+  --out build/frontend_shared_selection/formatter
+```
+
+索引检查从实际 RTL 提取表达式，证明关闭移位及全部 32 种移位量下的逐位等价性。数据、选择位和上下文条件保持自由输入，并另外检查包含未知态和高阻态的仿真样本。格式化检查覆盖 1、2、4、8、16、20 个输出通道及 4、8、16 字节读取宽度的八种组合，同时比较参考实现和数学结果。每次运行保存源码摘要、证明日志和结果汇总。

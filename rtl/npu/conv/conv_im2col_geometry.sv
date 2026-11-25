@@ -419,8 +419,8 @@ module conv_im2col_geometry #(
         .i_a(p_coord_w'(range_limit[range_index])), .i_b(~range_delta[range_index]), .i_carry(1'b1),
         .o_sum(range_upper[range_index]), .o_carry(unused_upper_carry)
       );
-      assign range_cross[range_index] = (|range_delta[range_index][15:0]) &&
-          range_delta[range_index][15:0] <= range_limit[range_index];
+      // 区间长度小于 2^16，端点第十六位的差异直接表示跨越低位分段。
+      assign range_cross[range_index] = range_lower[range_index][16] ^ range_upper[range_index][16];
     end
     always_ff @(posedge i_clk) begin
       if (i_address_step_phase == 2'd3) begin
@@ -457,7 +457,7 @@ module conv_im2col_geometry #(
       localparam int p_base_range = step < 4 ? step % 2 : 2;
       logic [p_coord_w-1:0] lower_base, upper_base, adjustment;
       logic [p_coord_w-1:0] lower_sum, upper_sum, coordinate_base;
-      logic [15:0] base_delta_low, adjustment_low, delta_low, coordinate_limit;
+      logic [15:0] coordinate_limit;
       logic block_cross;
       logic unused_lower_carry, unused_upper_carry;
 
@@ -473,12 +473,8 @@ module conv_im2col_geometry #(
         .i_a(upper_base), .i_b(adjustment), .i_carry(step < 2),
         .o_sum(upper_sum), .o_carry(unused_upper_carry)
       );
-      assign base_delta_low = step == 4 ? 16'd0 : range_delta[p_base_range][15:0];
-      assign adjustment_low = step < 2 ? i_c.dilation_w :
-          step < 4 ? range_lower_q[3][15:0] : range_lower_q[5][15:0];
-      assign delta_low = base_delta_low + adjustment_low;
       assign coordinate_limit = step < 4 ? i_c.input_w : i_c.input_h;
-      assign block_cross = (|delta_low) && delta_low <= coordinate_limit;
+      assign block_cross = lower_sum[16] ^ upper_sum[16];
       always_ff @(posedge i_clk) begin
         if (i_address_step_phase == 2'd0) begin
           window_lower_q[step] <= lower_sum;
@@ -593,15 +589,12 @@ module conv_im2col_geometry #(
       32'(i_row_wrap_pixels), i_row_wrap_bytes, i_row_wrap_bytes};
   assign movement_wrap_select = {{2{o_tap_wrap}}, {3{o_row_wrap}}};
   for (genvar source = 0; source < 5; source++) begin : g_movement_sum
-    logic [31:0] step_sum, wrap_sum, movement_sum;
-    // 两种固定步长分别完成地址运算，行末和核末条件只选择完整结果。
-    conv_geometry_movement_add u_step (
-      .i_base(movement_i_a[source]), .i_delta(movement_step_delta[source]), .o_sum(step_sum)
+    logic [31:0] movement_sum;
+    // 行末和核末标志已由寄存器保存，每种地址共用一个完整加法器。
+    conv_geometry_movement_add u_sum (
+      .i_base(movement_i_a[source]), .i_delta(movement_i_b[source]),
+      .o_sum(movement_sum)
     );
-    conv_geometry_movement_add u_wrap (
-      .i_base(movement_i_a[source]), .i_delta(movement_wrap_delta[source]), .o_sum(wrap_sum)
-    );
-    assign movement_sum = movement_wrap_select[source] ? wrap_sum : step_sum;
 `ifdef SYNTHESIS
     assign movement_o_sum[source] = movement_sum;
 `else
@@ -1425,14 +1418,14 @@ module conv_history_wrap_select (
        (i_sum_wrap_equal && (!i_last_col_high || i_wrap_after)));
 endmodule
 
-// 每个地址候选独立保留完整进位，候选选择位不进入加法器。
+// 地址加法保留完整三十二位进位结构。
 (* keep_hierarchy = "yes" *)
 module conv_geometry_movement_add (
   input wire logic [31:0] i_base, i_delta,
   output logic [31:0] o_sum
 );
   logic unused_carry;
-  parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_sum (
+  parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1), .p_dsp_split_width(16)) u_sum (
     .i_a(i_base), .i_b(i_delta), .i_carry(1'b0), .o_sum(o_sum), .o_carry(unused_carry)
   );
 endmodule
