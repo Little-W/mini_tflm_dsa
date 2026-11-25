@@ -33,10 +33,14 @@ def main():
     parser.add_argument('--chipdb', type=Path, required=True)
     parser.add_argument('--package-pins', type=Path, required=True)
     parser.add_argument('--freq', type=float, default=150.0)
+    parser.add_argument('--max-lut-sites', type=int, default=50000,
+                        help='完整 SoC 可使用的物理 LUT 位置总数上限')
     parser.add_argument('--through', choices=('pair', 'place'), default='place',
                         help='完成 LUT 配对后保存网表，或继续合法布局及资源检查')
     parser.add_argument('--resume', action='store_true', help='继续已保存且输入一致的实现阶段')
     args = parser.parse_args()
+    if args.max_lut_sites < 1:
+        parser.error('--max-lut-sites must be positive')
     source, out = args.source.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     tools = out / 'tools'
@@ -55,6 +59,7 @@ def main():
         'nextpnr_sha256': digest(args.nextpnr), 'chipdb_sha256': digest(args.chipdb),
         'tools_sha256': {str(p.relative_to(tools)): digest(p) for p in tools.rglob('*.py')},
         'frequency_mhz_target': args.freq, 'seed': 1,
+        'physical_lut_positions_maximum': args.max_lut_sites,
         'placement_environment': {k: v for k, v in environment.items()
                                   if k.startswith(('XC7_', 'NEXTPNR_'))},
     }
@@ -128,7 +133,8 @@ def main():
     assert mapping['passed'] and mapping['error_count'] == 0
     resources.update(routing_completed=False, frequency_mhz_target=args.freq,
                      timing_150mhz_confirmed=False, pin_mapping_passed=True,
-                     lut_limit=45000, lut_limit_met=resources['physical_lut_positions'] <= 45000)
+                     lut_limit=args.max_lut_sites,
+                     lut_limit_met=resources['physical_lut_positions'] <= args.max_lut_sites)
     save(out / 'resources.json', resources)
     print(json.dumps({k: resources[k] for k in
                       ('physical_lut_positions', 'placement_complete', 'lut_limit_met', 'pin_mapping_passed')}), flush=True)

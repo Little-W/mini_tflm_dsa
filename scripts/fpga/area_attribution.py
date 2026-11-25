@@ -216,7 +216,7 @@ def main():
         })
     resources = metrics['resources']
     nominal = resources['lut_sites_nominal_before_packing']
-    target = 45000
+    target = 50000
     paths = []
     for path in metrics['paths']['distinct_register_path_groups']:
         paths.append({

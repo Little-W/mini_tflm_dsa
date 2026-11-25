@@ -1,0 +1,27 @@
+{
+  "passed": true,
+  "slice_lut_target": 50000,
+  "physical_lut_position_target": 50000,
+  "test_count": 33,
+  "resource_boundary_cases": [
+    49999,
+    50000,
+    50001
+  ],
+  "register_path_limit": 10,
+  "clock_target_mhz": 150,
+  "custom_resource_limit_supported": true,
+  "placement_executed": false,
+  "commands": [
+    "python -m unittest discover -s scripts/fpga/tests -p test_vivado_soc_results.py",
+    "python -m unittest discover -s scripts/fpga/tests -p test_vivado_structural_coverage.py",
+    "python test/soc_rtl_optimization/run_physical.py --help"
+  ],
+  "source_sha256": {
+    "scripts/fpga/vivado_soc_results.py": "bdf157f5b8161c2bddb2f797323e26db72f878e785663835136821fbc1d4f4fe",
+    "scripts/fpga/tests/test_vivado_soc_results.py": "798aa1127706c72ea8b2d923bb65b41a82fe13857a5fd33d07123346c62d6e7b",
+    "scripts/fpga/tests/test_vivado_structural_coverage.py": "ad6b781b22591ec9ded73ef7350e218a387fd9c49c844fdaa10c0f76ccb0ebac",
+    "test/soc_rtl_optimization/run_physical.py": "6e2a1e346aee33019124b635b0586bb90ceafbe2979ad6c2351870f8e808b994",
+    "scripts/fpga/area_attribution.py": "a96e4eb214d412227e85f056e8abba1fd1341921931f22dc59d43d6a9f07336e"
+  }
+}

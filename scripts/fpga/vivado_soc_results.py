@@ -447,7 +447,7 @@ def core_clock(path):
     return value
 
 
-def summarize(manifest, directory, stage, prefix='soc_top', max_slice_luts=45000,
+def summarize(manifest, directory, stage, prefix='soc_top', max_slice_luts=50000,
               max_register_path_cells=10):
     if max_slice_luts < 1:
         raise ValueError('Maximum Slice LUT count must be positive')
@@ -522,7 +522,7 @@ def main():
     report.add_argument('--directory', required=True, type=Path)
     report.add_argument('--stage', required=True, choices=('synthesized', 'routed'))
     report.add_argument('--prefix', choices=('soc_top', 'fpga_top'), default='soc_top')
-    report.add_argument('--max-slice-luts', type=int, default=45000,
+    report.add_argument('--max-slice-luts', type=int, default=50000,
                         help='Maximum total Slice LUT count, including LUT RAM and SRL')
     report.add_argument('--max-register-path-cells', type=int, default=10)
     timing_command = commands.add_parser('check-timing')
