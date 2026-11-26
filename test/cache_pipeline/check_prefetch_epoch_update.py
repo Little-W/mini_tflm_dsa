@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from rtl_source_view import read_sources, module_definition, controller_module, source_manifest
 import re
 import shlex
 import subprocess
@@ -19,6 +20,7 @@ from check_state_context import Statements
 
 
 def model(name: str, source: str) -> str:
+    source = controller_module(source)
     first = source.index("  // 代次比较与需求接收及预取写入同时保存")
     first = source.index("\n", first) + 1
     loop = source.index("  for (genvar slot=0; slot<PF_DEPTH; slot++) begin : g_prefetch_valid", first)
@@ -64,13 +66,8 @@ endmodule
 """
 
 
-def support(source: str) -> str:
-    result = ""
-    for name in ("conv_cache_snapshot_equal", "conv_cache_prefetch_epoch_value"):
-        start = source.index("module " + name)
-        result += source[start:source.index("endmodule", start)+len("endmodule")] + "\n"
-    return result
-
+def support(source):
+    return '\n'.join(module_definition(source, name) for name in ('conv_cache_snapshot_equal', 'conv_cache_prefetch_epoch_value')) + '\n'
 
 def bench() -> str:
     return """module tb;
@@ -129,8 +126,8 @@ def main() -> None:
     args = parser.parse_args()
     root, out = args.source_root.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    current = (root / SOURCE).read_text()
-    original = ((args.reference_root.resolve() / SOURCE).read_text() if args.reference_root else
+    current = read_sources(root, SOURCE)
+    original = (read_sources(args.reference_root.resolve(), SOURCE) if args.reference_root else
         read_reference_file(ROOT, args.reference_ref, SOURCE, text=True))
     modules = model("reference", original) + model("candidate", current) + support(current)
     proof = out / "comparison.sv"
@@ -161,12 +158,13 @@ endmodule
     matched = re.search(r"PREFETCH_EPOCH_FOUR_STATE_PASS checks=(\d+)", (out / "four_state.log").read_text())
     if not matched or int(matched[1]) != 526496:
         raise RuntimeError("预取代次匹配的四态检查数量不符")
-    if current != (root / SOURCE).read_text():
+    if current != read_sources(root, SOURCE):
         raise RuntimeError("预取代次检查期间生产源码发生变化")
     result = dict(passed=True,actual_rtl_expressions=True,external_inputs_constrained=False,
         source_sha256=digest(root / SOURCE),reference_sha256=hashlib.sha256(original.encode()).hexdigest(),
         profiles=profiles,four_state_cases=int(matched[1]),proof_sha256=digest(proof),
         four_state_log_sha256=digest(out / "four_state.log"))
+    result["dependency_sha256"] = source_manifest(root, SOURCE)
     (out / "summary.json").write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n")
     print(json.dumps(result,ensure_ascii=False))
 

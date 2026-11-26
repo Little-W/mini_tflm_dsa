@@ -1,0 +1,128 @@
+{
+  "passed": true,
+  "reference_commit": "57b61b24",
+  "rtl_sha256": "f64ef30ee0f6a1e492b7793145c307202c0dd657c53c31067c1bec22446f62d9",
+  "arbitrary_input_parent_equivalence": {
+    "configurations": 8,
+    "equivalence_points": 123046,
+    "all_public_outputs_and_common_state_every_cycle": true,
+    "input_constraints": [],
+    "report": "results/prefetch_priority_parent.json"
+  },
+  "priority_combinational_equivalence": {
+    "configurations": 8,
+    "four_state_comparisons": 1151136,
+    "depths": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "report": "results/prefetch_priority_four_state.json"
+  },
+  "full_cache_mapping": {
+    "parameters": {
+      "SETS": 16,
+      "WAYS": 2,
+      "LINE_BYTES": 128,
+      "BUS_WIDTH": 64,
+      "READ_WIDTH": 64,
+      "DEMAND_DEPTH": 2,
+      "PREVIEW_REQUEST": 1
+    },
+    "options": [
+      "SYNTHESIS",
+      "XILINX_FPGA"
+    ],
+    "mapping": {
+      "mode": "physical-cost",
+      "delay_target_ps": 6667,
+      "wire_delay_ps": 300,
+      "max_lut_inputs": 8
+    },
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 3031,
+        "distributed_ram_lut_sites_nominal": 68,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 3099,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 2002,
+        "dsp48e1": 18,
+        "ramb36e1": 1,
+        "ramb18e1": 26,
+        "carry4": 59,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 59,
+          "DSP48E1": 18,
+          "FDCE": 377,
+          "FDPE": 45,
+          "FDRE": 1547,
+          "FDSE": 33,
+          "INV": 38,
+          "LUT2": 265,
+          "LUT3": 621,
+          "LUT4": 418,
+          "LUT5": 525,
+          "LUT6": 1202,
+          "MUXF7": 60,
+          "RAM32M": 17,
+          "RAMB18E1": 26,
+          "RAMB36E1": 1
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 10,
+      "graph_complete": true
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 3040,
+        "distributed_ram_lut_sites_nominal": 68,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 3108,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 2002,
+        "dsp48e1": 18,
+        "ramb36e1": 1,
+        "ramb18e1": 26,
+        "carry4": 59,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 59,
+          "DSP48E1": 18,
+          "FDCE": 377,
+          "FDPE": 45,
+          "FDRE": 1547,
+          "FDSE": 33,
+          "INV": 38,
+          "LUT1": 4,
+          "LUT2": 267,
+          "LUT3": 623,
+          "LUT4": 416,
+          "LUT5": 528,
+          "LUT6": 1202,
+          "MUXF7": 63,
+          "RAM32M": 17,
+          "RAMB18E1": 26,
+          "RAMB36E1": 1
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 10,
+      "graph_complete": true
+    },
+    "mapping_manifest_sha256": "ebc58c488fd7b3d11629052b7ab8b20af8957d6389890f99d559743ba6e51cb3"
+  },
+  "registered_eight_slot_helper": {
+    "reference": {
+      "logic_lut_cells": 24,
+      "longest_register_path_cells": 6
+    },
+    "current": {
+      "logic_lut_cells": 33,
+      "longest_register_path_cells": 5
+    }
+  }
+}

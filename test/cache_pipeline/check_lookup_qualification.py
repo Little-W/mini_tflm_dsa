@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from rtl_source_view import read_sources, module_definition, request_module, controller_module, source_manifest
 import re
 import runpy
 import shlex
@@ -35,6 +36,8 @@ def digest(path):
 
 
 def model(name, source):
+    controller = controller_module(source)
+    source = request_module(source)
     start = source.index("  function automatic logic [SI-1:0] cache_set")
     function = source[start:source.index("  endfunction", start) + len("  endfunction")]
     if "  if (DEMAND_DEPTH == 1) begin : g_direct_read_source" in source:
@@ -46,9 +49,21 @@ def model(name, source):
     lookup = lookup.replace("request_queue[DQ_AW'(request_head + DQ_AW'(1))]", "head_request")
     lookup = lookup.replace("request_queue[request_head]", "head_request")
     lookup = lookup.replace("  logic metadata_enable, metadata_fill_good;", "")
-    start = source.index("  localparam int WAY_DEPTH")
-    end = source.index("  for (genvar data_way", start)
-    qualification = source[start:end]
+    if "module conv_cache_request_path" in source:
+        start = controller.index("  localparam int WAY_DEPTH")
+        end = controller.index("  logic [WAYS-1:0] metadata_lookup_valid_next", start)
+        qualification = controller[start:end]
+        start = source.index("  logic [1:0][1:0] input_conflict_results;")
+        end = source.index("  // 快照内容在时钟边沿保存", start)
+        qualification += source[start:end]
+        declaration = re.search(r"^  logic \[1:0\] lookup_candidate_select;", source, re.M)
+        if declaration is None:
+            raise RuntimeError("未找到候选选择编号的完整类型")
+        lookup = declaration[0] + "\n" + lookup
+    else:
+        start = source.index("  localparam int WAY_DEPTH")
+        end = source.index("  for (genvar data_way", start)
+        qualification = source[start:end]
     qualification = qualification.replace("request_queue[request_head]", "head_request")
     # 过程赋值的元素使用独立变量，其余元素保留连续赋值。
     first = qualification.index("    if (candidate == 2) begin : g_input")
@@ -90,11 +105,7 @@ endmodule
 
 
 def support(source):
-    if "module conv_cache_input_set_match" not in source:
-        return ""
-    start = source.index("// 两位哈希组号")
-    return source[start:source.rindex("`default_nettype wire")]
-
+    return '\n'.join(module_definition(source, name) for name in ('conv_cache_input_set_match', 'conv_cache_lookup_qualification')) + '\n'
 
 def bench():
     declarations = PORTS.replace("input logic", "logic").replace(",\n", ";\n") + ";\n"
@@ -210,8 +221,8 @@ def main():
     args = parser.parse_args()
     root, out = args.source_root.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    current = (root / CACHE).read_text()
-    original = ((args.reference_root.resolve() / CACHE).read_text() if args.reference_root else
+    current = read_sources(root, CACHE)
+    original = (read_sources(args.reference_root.resolve(), CACHE) if args.reference_root else
         read_reference_file(ROOT, args.reference_ref, CACHE, text=True))
     models = {"reference": model("reference", original), "candidate": model("candidate", current)}
     helpers = support(current)
@@ -263,8 +274,9 @@ endmodule
                 cases[f"{label}_si{si}"] = dict(top=label, sources=[str(path),str(root / SELECTOR)],
                     options=[f"-GSI={si}"], configuration="缓存实际读取冲突和快照资格组合表达式")
         report["mapping"] = measure(root, out, cases)
-    if current != (root / CACHE).read_text():
+    if current != read_sources(root, CACHE):
         raise RuntimeError("查询资格检查期间缓存源码发生变化")
+    report["dependency_sha256"] = source_manifest(root, CACHE)
     (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps(report, ensure_ascii=False))
 

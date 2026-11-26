@@ -10,37 +10,38 @@ module conv_cache_metadata_way #(
   parameter int p_line_shift = 4,
   parameter int p_epoch_width = 17 - p_line_shift
 ) (
-  input wire logic clk, rst_n,
-  input wire logic i_cfg_accept, i_configured, i_clearing, i_bypass, i_windowed,
-  input wire logic i_metadata_enable, i_metadata_fill, i_metadata_fill_good, i_metadata_hit,
-  input wire logic i_fill_active, i_fill_selected, i_hit_selected,
-  input wire logic [p_set_width-1:0] i_clear_set, i_fill_set, i_lookup_set, i_candidate_set,
-  input wire logic [5:0][p_set_width-1:0] i_read_set,
-  input wire logic [1:0][p_set_width-1:0] i_offer_tag_set,
-  input wire logic [p_set_width-1:0] i_lookup_snapshot_set,
-  input wire logic [3:0][p_set_width-1:0] i_lookup_candidate_set,
-  input wire logic [1:0][p_set_width-1:0] i_lookup_input_set,
-  input wire logic [1:0] i_lookup_candidate_select,
-  input wire logic i_lookup_saved_fill_match,
-  input wire logic [31:p_line_shift] i_fill_tag, i_hint_tag,
-  input wire logic [p_epoch_width-1:0] i_fill_epoch, i_hit_epoch,
-  input wire logic [31:0] i_fill_rank, i_hit_rank, i_hint_rank,
-  input wire logic i_hint_resolved, i_hint_valid, i_select_stage_valid,
+  input wire logic clk /* 工作时钟 */, rst_n /* 低有效复位 */ , // 工作时钟；低有效复位
+  input wire logic i_cfg_accept /* 本周期接收配置 */, i_configured /* 配置已完成 */, i_clearing /* 正在清除缓存有效位 */, i_bypass /* 启用缓存旁路 */, i_windowed /* 采用窗口索引 */ , // 本周期接收配置；配置已完成；正在清除缓存有效位；启用缓存旁路；采用窗口索引
+  input wire logic i_metadata_enable /* 允许更新元数据 */, i_metadata_fill /* 填充元数据更新事件 */, i_metadata_fill_good /* 填充完成且数据有效 */, i_metadata_hit /* 命中元数据更新事件 */ , // 允许更新元数据；填充元数据更新事件；填充完成且数据有效；命中元数据更新事件
+  input wire logic i_fill_active /* 填充传输正在进行 */, i_fill_selected /* 当前缓存路承担填充 */, i_hit_selected /* 当前缓存路被命中选择 */ , // 填充传输正在进行；当前缓存路承担填充；当前缓存路被命中选择
+  input wire logic [p_set_width-1:0] i_clear_set /* 待清除缓存组号 */, i_fill_set /* 填充缓存组号 */, i_lookup_set /* 当前查询缓存组号 */, i_candidate_set /* 替换候选缓存组号 */ , // 待清除缓存组号；填充缓存组号；当前查询缓存组号；替换候选缓存组号
+  input wire logic [5:0][p_set_width-1:0] i_read_set, // 各读取端口的缓存组号
+  input wire logic [1:0][p_set_width-1:0] i_offer_tag_set, // 当前与下一预取候选的标签读取组号
+  input wire logic [p_set_width-1:0] i_lookup_snapshot_set, // 已保存查询组号
+  input wire logic [3:0][p_set_width-1:0] i_lookup_candidate_set, // 队首、下一项、输入和缺失请求的组号
+  input wire logic [1:0][p_set_width-1:0] i_lookup_input_set, // 正式输入与预读输入的组号
+  input wire logic [1:0] i_lookup_candidate_select, // 查询候选来源编号
+  input wire logic i_lookup_preview_selected, // 当前输入读取选择预读来源
+  input wire logic i_lookup_saved_fill_match, // 已保存查询组号与填充组号相同
+  input wire logic [31:p_line_shift] i_fill_tag /* 填充标签 */, i_hint_tag /* 提示查询标签 */ , // 填充标签；提示查询标签
+  input wire logic [p_epoch_width-1:0] i_fill_epoch /* 填充窗口代次 */, i_hit_epoch /* 命中窗口代次 */ , // 填充窗口代次；命中窗口代次
+  input wire logic [31:0] i_fill_rank /* 填充替换顺序 */, i_hit_rank /* 命中替换顺序 */, i_hint_rank /* 提示替换顺序 */ , // 填充替换顺序；命中替换顺序；提示替换顺序
+  input wire logic i_hint_resolved /* 提示查询已完成 */, i_hint_valid /* 下一次使用提示有效 */, i_select_stage_valid /* 替换选择阶段有效 */ , // 提示查询已完成；下一次使用提示有效；替换选择阶段有效
 `ifndef SYNTHESIS
-  input wire logic i_lookup_unknown,
+  input wire logic i_lookup_unknown, // 查询控制或地址含未知位
 `endif
 `ifdef NPU_SIM_ASSERT
-  input wire logic [4:0] i_tag_read_valid,
-  input wire logic i_select_metadata_busy,
+  input wire logic [4:0] i_tag_read_valid, // 各标签读口的消费资格
+  input wire logic i_select_metadata_busy, // 替换候选元数据正在更新
 `endif
-  output logic [5:0] o_valid,
-  output logic [4:0][31:p_line_shift] o_tags,
-  output logic [31:p_line_shift] o_lookup_tag_raw,
-  output logic o_lookup_valid_raw, o_lookup_valid_saved,
-  output logic [3:0][31:p_line_shift] o_lookup_source_tags,
-  output logic [3:0] o_lookup_source_valid,
-  output logic [p_epoch_width-1:0] o_epoch,
-  output logic [31:0] o_rank
+  output logic [5:0] o_valid, // 读取或传输有效结果
+  output logic [4:0][31:p_line_shift] o_tags, // 各同步读口的标签
+  output logic [31:p_line_shift] o_lookup_tag_raw, // 当前查询地址的异步标签
+  output logic o_lookup_valid_raw /* 当前查询地址的转发有效位 */, o_lookup_valid_saved /* 已保存查询有效位 */ , // 当前查询地址的转发有效位；已保存查询有效位
+  output logic [3:0][31:p_line_shift] o_lookup_source_tags, // 各请求来源的异步标签
+  output logic [3:0] o_lookup_source_valid, // 各请求来源的转发有效位
+  output logic [p_epoch_width-1:0] o_epoch, // 选择后的窗口代次
+  output logic [31:0] o_rank // 选择后的替换顺序
 );
   localparam int SETS = p_sets;
   localparam int DEMAND_DEPTH = p_demand_depth;
@@ -52,7 +53,8 @@ module conv_cache_metadata_way #(
     logic [SI-1:0] valid_i_wr_addr;
     logic [0:0] valid_i_wr_data, valid_i_wr_mask;
     localparam bit p_parallel_preview = DEMAND_DEPTH == 1 && p_preview_request;
-    localparam int p_valid_read_ports = DEMAND_DEPTH > 1 ? 10 : 9 + int'(p_parallel_preview);
+    localparam int p_valid_read_ports = DEMAND_DEPTH > 1 ? 10 + 2*int'(p_preview_request) :
+        9 + int'(p_parallel_preview);
     logic [p_valid_read_ports-1:0] valid_i_rd_en;
     logic [p_valid_read_ports-1:0][SI-1:0] valid_i_rd_addr;
     logic [p_valid_read_ports-1:0][0:0] valid_o_rd_data;
@@ -147,12 +149,41 @@ module conv_cache_metadata_way #(
             lookup_candidate_valid[candidate] = valid_i_wr_data[0];
         end
       end
+      logic lookup_selected_valid;
+      if (p_preview_request) begin : g_parallel_input
+        (* keep = 1 *) logic [1:0] input_forwarded_valid;
+        logic [3:0] formal_candidates;
+        logic parallel_selected_valid;
+        // 两种输入分别读取有效位并转发同拍写入，来源选择只处理一位结果。
+        for (genvar input_index = 0; input_index < 2; input_index++) begin : g_input
+          assign valid_i_rd_addr[10+input_index] = i_lookup_input_set[input_index];
+          always_comb begin
+            input_forwarded_valid[input_index] = valid_o_rd_data[10+input_index][0];
+            if (valid_i_wr_en && valid_i_wr_addr == i_lookup_input_set[input_index])
+              input_forwarded_valid[input_index] = valid_i_wr_data[0];
+          end
+        end
+        always_comb begin
+          formal_candidates = lookup_candidate_valid;
+          formal_candidates[2] = input_forwarded_valid[0];
+          parallel_selected_valid = i_lookup_preview_selected && i_lookup_candidate_select == 2'd2 ?
+              input_forwarded_valid[1] : formal_candidates[i_lookup_candidate_select];
+          lookup_selected_valid = parallel_selected_valid;
+          case (^{i_lookup_preview_selected, i_lookup_candidate_select,
+                   i_lookup_input_set, i_lookup_candidate_set})
+            1'b0, 1'b1: begin end
+            default: lookup_selected_valid = lookup_candidate_valid[i_lookup_candidate_select];
+          endcase
+        end
+      end else begin : g_selected_input
+        assign lookup_selected_valid = lookup_candidate_valid[i_lookup_candidate_select];
+      end
       // 每个候选位置独立处理同拍写入，时钟边沿仅保存选择结果。
       always_ff @(posedge clk) begin
         if (!rst_n) begin
         end else if (i_cfg_accept) begin
         end else begin
-          lookup_valid_q <= lookup_candidate_valid[i_lookup_candidate_select];
+          lookup_valid_q <= lookup_selected_valid;
 `ifndef SYNTHESIS
           // 未知地址按完整数组索引读取，保持部分未知索引的四态语义。
           if (i_lookup_unknown ||
@@ -206,7 +237,8 @@ module conv_cache_metadata_way #(
     assign o_valid[5] = valid_active[5];
     regfile #(
       .p_data_width(1), .p_depth(SETS), .p_addr_width(SI),
-      .p_write_unit(1), .p_read_ports(p_valid_read_ports), .p_sync_read(1'b0)
+      .p_write_unit(1), .p_read_ports(p_valid_read_ports), .p_sync_read(1'b0),
+      .p_ram_style(SETS >= 16 ? "distributed" : "auto")
     ) u_valid (
       .clk(clk), .i_wr_en(valid_i_wr_en), .i_wr_addr(valid_i_wr_addr),
       .i_wr_data(valid_i_wr_data), .i_wr_mask(valid_i_wr_mask),
@@ -474,24 +506,6 @@ module conv_cache_metadata_way #(
         assert (!$isunknown({rank_source_q, o_epoch, o_rank}));
     end
 `endif
-endmodule
-
-// 清除和填充的地址匹配独立完成，最终转发保留清除优先级。
-module conv_cache_valid_forward (
-  input wire logic i_clear_write, i_clear_match,
-  input wire logic i_fill_write, i_fill_match, i_fill_valid, i_stored_valid,
-  output logic o_valid
-);
-  assign o_valid = (i_clear_write && i_clear_match) ? 1'b0 :
-      ((i_fill_write && i_fill_match) ? i_fill_valid : i_stored_valid);
-endmodule
-
-// 更新模式提前提供，命中事件在末级同时控制顺序值和来源标记。
-module conv_cache_metadata_rank_hit (
-  input wire logic i_enable, i_hit, i_selected, i_windowed, i_hint_valid,
-  output logic o_update
-);
-  assign o_update = i_enable && i_hit && i_selected && (i_windowed || i_hint_valid);
 endmodule
 
 `default_nettype wire

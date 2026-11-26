@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from rtl_source_view import read_sources, module_definition, request_module, controller_module, source_manifest
 import re
 import shlex
 import subprocess
@@ -17,18 +18,16 @@ from reference_sources import read_reference_file
 METADATA_SOURCE = Path("rtl/npu/dma/cache/conv_cache_metadata_way.sv")
 
 
-def support(source: str) -> str:
-    result = ""
-    for name in ("conv_cache_request_qualification", "conv_cache_work_lookup",
-                 "conv_cache_snapshot_response", "conv_cache_metadata_eligibility",
-                 "conv_cache_metadata_rank_hit", "conv_cache_select_busy",
-                 "conv_cache_lookup_hit", "conv_cache_demand_hit"):
-        start = source.index("module " + name)
-        result += source[start:source.index("endmodule", start)+len("endmodule")] + "\n"
-    return result
-
+def support(source):
+    return '\n'.join(module_definition(source, name) for name in ('conv_cache_request_qualification', 'conv_cache_work_lookup', 'conv_cache_snapshot_response', 'conv_cache_metadata_eligibility', 'conv_cache_metadata_rank_hit', 'conv_cache_select_busy', 'conv_cache_lookup_hit', 'conv_cache_demand_hit')) + '\n'
 
 def model(name: str, source: str, unit: str) -> tuple[str, int]:
+    if unit == "rank":
+        source = module_definition(source, "conv_cache_metadata_way")
+    elif unit in ("prefetch_busy", "demand_busy"):
+        source = controller_module(source)
+    else:
+        source = request_module(source)
     if unit == "fire":
         names = ("work_valid", "work_capacity_ready", "bypass_q", "lookup_snapshot_valid",
                  "work_snapshot_matches_q", "work_lookup_ready")
@@ -170,11 +169,11 @@ def main() -> None:
     args = parser.parse_args()
     root, out = args.source_root.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    current = (root / SOURCE).read_text()
-    metadata = (root / METADATA_SOURCE).read_text()
-    original = ((args.reference_root.resolve() / SOURCE).read_text() if args.reference_root else
+    current = read_sources(root, SOURCE)
+    metadata = read_sources(root, METADATA_SOURCE)
+    original = (read_sources(args.reference_root.resolve(), SOURCE) if args.reference_root else
         read_reference_file(ROOT, args.reference_ref, SOURCE, text=True))
-    original_metadata = ((args.reference_root.resolve() / METADATA_SOURCE).read_text() if args.reference_root else
+    original_metadata = (read_sources(args.reference_root.resolve(), METADATA_SOURCE) if args.reference_root else
         read_reference_file(ROOT, args.reference_ref, METADATA_SOURCE, text=True))
     profiles = []
     for unit in ("fire", "lookup", "demand_lookup", "hit", "prefetch_busy", "demand_busy", "rank", "ready"):
@@ -211,13 +210,14 @@ endmodule
         profiles.append(dict(name=unit,passed=True,input_bits=width,four_state_cases=int(matched[1]),
             proof_sha256=digest(proof),sat_log_sha256=digest(log),
             four_state_log_sha256=digest(folder / "four_state.log")))
-    if current != (root / SOURCE).read_text() or metadata != (root / METADATA_SOURCE).read_text():
+    if current != read_sources(root, SOURCE) or metadata != read_sources(root, METADATA_SOURCE):
         raise RuntimeError("快照控制检查期间生产源码发生变化")
     result = dict(passed=True,actual_rtl_expressions=True,external_operands_constrained=False,
         scope="请求接收和查询匹配的全部一位输入；返回名额检查包含自由状态译码结果",
         source_sha256=digest(root / SOURCE),reference_sha256=hashlib.sha256(original.encode()).hexdigest(),
         metadata_source_sha256=digest(root / METADATA_SOURCE),
         metadata_reference_sha256=hashlib.sha256(original_metadata.encode()).hexdigest(),profiles=profiles)
+    result["dependency_sha256"] = source_manifest(root, SOURCE)
     (out / "summary.json").write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n")
     print(json.dumps(result,ensure_ascii=False))
 

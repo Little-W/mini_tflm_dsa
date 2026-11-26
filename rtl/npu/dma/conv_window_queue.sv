@@ -12,40 +12,42 @@ module conv_window_queue #(
   parameter int p_frontend_outstanding=1,
   parameter int p_active_width=$clog2(p_frontend_outstanding+1)
 ) (
-  input wire logic clk,rst_n,configure,enable,
-  input wire logic req_valid,
-  output logic req_ready,
-  input wire logic [31:0] req_p0,req_q0,req_cols,
-  input wire logic [TAG_W-1:0] req_tag,
-  output logic rsp_valid,
-  input wire logic rsp_ready,
-  output logic [TAG_W-1:0] rsp_tag,
-  output logic [COL_W-1:0] rsp_col,
-  output logic signed [15:0] rsp_data[WINDOW_LANES],
-  output logic [WINDOW_LANES-1:0] rsp_mask,
-  output logic rsp_last,rsp_error,busy,
-  output logic frontend_valid,frontend_active,
-  input wire logic frontend_ready,
-  output logic [31:0] frontend_p0,frontend_q0,frontend_cols,
-  output logic frontend_cols_valid,
-  input wire logic frontend_rsp_valid,
-  output logic frontend_rsp_ready,
-  input wire logic [COL_W-1:0] frontend_rsp_col,
-  input wire logic signed [15:0] frontend_rsp_data[WINDOW_LANES],
-  input wire logic [WINDOW_LANES-1:0] frontend_rsp_mask,
-  input wire logic frontend_rsp_last,frontend_error);
+  input wire logic clk /* 窗口队列工作时钟。 */,rst_n /* 低有效异步复位。 */,configure /* 清空窗口队列、在途计数和错误状态。 */,enable /* 允许接收窗口请求并向前端发送描述符。 */,
+  input wire logic req_valid, // 输入窗口描述符有效。
+  output logic req_ready, // 窗口队列可接收输入描述符。
+  input wire logic [31:0] req_p0 /* 窗口起始输出位置。 */,req_q0 /* 窗口起始归约位置。 */,req_cols /* 窗口请求的输出列数。 */,
+  input wire logic [TAG_W-1:0] req_tag, // 请求所属目标的标签。
+  output logic rsp_valid, // 队首窗口的返回数据或错误有效。
+  input wire logic rsp_ready, // 下游可接收当前窗口返回。
+  output logic [TAG_W-1:0] rsp_tag, // 当前返回所属请求的标签。
+  output logic [COL_W-1:0] rsp_col, // 当前返回在窗口内的列索引。
+  output logic signed [15:0] rsp_data[WINDOW_LANES], // 当前返回各通道的有符号数据。
+  output logic [WINDOW_LANES-1:0] rsp_mask, // 当前返回各通道的数据有效掩码。
+  output logic rsp_last /* 当前返回为窗口最后一拍。 */,rsp_error /* 当前窗口返回错误。 */,busy /* 队列中仍有尚未完成返回的窗口。 */,
+  output logic frontend_valid /* 已准备的窗口描述符可发送到前端。 */,frontend_active /* 已有窗口在前端执行或等待末拍返回。 */,
+  input wire logic frontend_ready, // 前端可接收当前窗口描述符。
+  output logic [31:0] frontend_p0 /* 发送到前端的起始输出位置。 */,frontend_q0 /* 发送到前端的起始归约位置。 */,frontend_cols /* 发送到前端的窗口列数。 */,
+  output logic frontend_cols_valid, // 已准备窗口的列数处于支持范围。
+  input wire logic frontend_rsp_valid, // 前端返回数据有效。
+  output logic frontend_rsp_ready, // 当前在途窗口可接收前端返回。
+  input wire logic [COL_W-1:0] frontend_rsp_col, // 前端返回数据在窗口内的列索引。
+  input wire logic signed [15:0] frontend_rsp_data[WINDOW_LANES], // 前端返回各通道的有符号数据。
+  input wire logic [WINDOW_LANES-1:0] frontend_rsp_mask, // 前端返回各通道的数据有效掩码。
+  input wire logic frontend_rsp_last /* 前端返回当前窗口的最后一拍。 */,frontend_error /* 前端报告窗口处理错误。 */);
   logic descriptor_i_wr_en;
   logic [PTR_W-1:0] descriptor_i_wr_addr;
   logic [2:0][31:0] descriptor_i_wr_data;
-  logic [0:0] descriptor_i_wr_mask, descriptor_i_rd_en;
-  logic [0:0][PTR_W-1:0] descriptor_i_rd_addr;
-  logic [2:0][0:0][31:0] descriptor_o_rd_data;
+  logic [0:0] descriptor_i_wr_mask;
+  logic [1:0] descriptor_i_rd_en;
+  logic [1:0][PTR_W-1:0] descriptor_i_rd_addr;
+  logic [2:0][1:0][31:0] descriptor_read_data;
   logic cols_valid[DEPTH];
   logic [TAG_W-1:0] tags[DEPTH];
   logic [PTR_W-1:0] head,tail,present;
   logic [COUNT_W-1:0] count,next_count;
   logic count_increment, count_decrement, next_busy;
-  logic active,failed,accept,retire,launch,response_fire;
+  logic active,failed,accept,retire,response_fire;
+  (* keep = 1 *) logic launch;
   logic [p_active_width-1:0] active_count;
   logic active_retire;
   logic frontend_slot_available, frontend_tail_accept;
@@ -58,6 +60,14 @@ module conv_window_queue #(
   logic descriptor_request_cols_valid, descriptor_cols_value, descriptor_cols_selected;
   logic [1:0] descriptor_cols_candidates;
   logic [2:0][31:0] descriptor_prepared_data;
+  logic [2:0][31:0] descriptor_prepared_value, descriptor_selected_value;
+  logic descriptor_data_enable, descriptor_selected_enable;
+  // 未知控制期间保存完整读地址语义；二态电路中该状态恒为零。
+  logic descriptor_unknown_seen = 1'b0;
+  logic [14:0] descriptor_controls;
+  assign descriptor_controls = {rst_n,configure,enable,req_valid,rsp_ready,frontend_ready,
+      frontend_rsp_valid,frontend_rsp_last,frontend_error,failed,descriptor_available,
+      descriptor_multiple,accept,frontend_valid,launch};
   function automatic logic [PTR_W-1:0] increment(input logic [PTR_W-1:0] value);
     return value==PTR_W'(DEPTH-1) ? '0 : value+1'b1;
   endfunction
@@ -134,12 +144,51 @@ module conv_window_queue #(
       descriptor_prepared <= descriptor_prepared_nxt;
     end
   end
-  always_ff @(posedge clk) begin
-    if (descriptor_forward) descriptor_prepared_data <= descriptor_i_wr_data;
-    else if (descriptor_read_available) begin
-      for (int field_index = 0; field_index < 3; field_index++)
-        descriptor_prepared_data[field_index] <= descriptor_o_rd_data[field_index][0];
+  // 未知的发送或复位控制可能暂时改变准备字段与存储项的对应关系。
+  // 后续周期持续采用完整读取语义，重新配置或复位时恢复空队列状态。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) descriptor_unknown_seen <= 1'b0;
+    else if (configure) descriptor_unknown_seen <= 1'b0;
+    else begin
+      case (^descriptor_controls)
+        1'b0, 1'b1: begin end
+        default: descriptor_unknown_seen <= 1'b1;
+      endcase
     end
+  end
+  // 正常等待时准备字段已经对应当前项，发送后读取下一项；错误阶段读取当前项。
+  conv_window_data_enable u_data_enable (
+    .i_available(descriptor_available), .i_multiple(descriptor_multiple),
+    .i_accept(accept), .i_launch(launch), .i_failed(failed), .o_enable(descriptor_selected_enable)
+  );
+  for (genvar field_index = 0; field_index < 3; field_index++) begin : g_prepared_value
+    conv_window_data_select u_select (
+      .i_available(descriptor_available), .i_multiple(descriptor_multiple), .i_launch(launch),
+      .i_read(descriptor_read_data[field_index][0]), .i_request(descriptor_i_wr_data[field_index]),
+      .o_value(descriptor_selected_value[field_index])
+    );
+  end
+  always_comb begin
+    descriptor_prepared_value = descriptor_selected_value;
+    descriptor_data_enable = descriptor_selected_enable;
+    case ({descriptor_unknown_seen,^descriptor_controls})
+      2'b00, 2'b01: begin end
+      default: begin
+        descriptor_prepared_value = descriptor_prepared_data;
+        descriptor_data_enable = 1'b0;
+        if (descriptor_forward) begin
+          descriptor_prepared_value = descriptor_i_wr_data;
+          descriptor_data_enable = 1'b1;
+        end else if (descriptor_read_available) begin
+          for (int field_index = 0; field_index < 3; field_index++)
+            descriptor_prepared_value[field_index] = descriptor_read_data[field_index][1];
+          descriptor_data_enable = 1'b1;
+        end
+      end
+    endcase
+  end
+  always_ff @(posedge clk) begin
+    if (descriptor_data_enable) descriptor_prepared_data <= descriptor_prepared_value;
   end
   // 小容量描述符存储异步读取，统一的准备寄存器直接驱动前端字段。
   assign descriptor_i_wr_en = rst_n && accept;
@@ -148,17 +197,20 @@ module conv_window_queue #(
   assign descriptor_i_wr_data[1] = req_q0;
   assign descriptor_i_wr_data[2] = req_cols;
   assign descriptor_i_wr_mask = 1'b1;
-  assign descriptor_i_rd_en = descriptor_read_available;
-  assign descriptor_i_rd_addr[0] = descriptor_read_index;
+  assign descriptor_i_rd_en = 2'b11;
+  // 第一个端口提前选择正常预取或错误恢复地址，发送事件只作用于末级选择。
+  assign descriptor_i_rd_addr[0] = failed ? present : increment(present);
+  // 第二个端口保留未知控制的读取语义，二态综合删除该端口。
+  assign descriptor_i_rd_addr[1] = descriptor_read_index;
   for (genvar field_index = 0; field_index < 3; field_index++) begin : g_descriptor
     regfile #(
       .p_data_width(32), .p_depth(DEPTH), .p_addr_width(PTR_W),
-      .p_write_unit(32), .p_read_ports(1), .p_sync_read(1'b0), .p_ram_style("distributed")
+      .p_write_unit(32), .p_read_ports(2), .p_sync_read(1'b0), .p_ram_style("distributed")
     ) u_value (
       .clk(clk), .i_wr_en(descriptor_i_wr_en), .i_wr_addr(descriptor_i_wr_addr),
       .i_wr_data(descriptor_i_wr_data[field_index]), .i_wr_mask(descriptor_i_wr_mask),
       .i_rd_en(descriptor_i_rd_en), .i_rd_addr(descriptor_i_rd_addr),
-      .o_rd_data(descriptor_o_rd_data[field_index])
+      .o_rd_data(descriptor_read_data[field_index])
     );
   end
   assign frontend_p0 = descriptor_prepared_data[0];
@@ -248,67 +300,6 @@ module conv_window_queue #(
     if(launch) assert(count>COUNT_W'(active_count));
   end
 `endif
-endmodule
-
-// 待发送数量、接收事件和前端启动资格共同形成下一拍准备标志。
-(* keep_hierarchy = "yes" *)
-module conv_window_prepared_flag (
-  input wire logic i_configure, i_multiple, i_available,
-  input wire logic i_frontend_valid, i_frontend_ready, i_accept,
-  output logic o_prepared
-);
-  always_comb begin
-    if (i_configure) o_prepared = 1'b0;
-    else o_prepared = i_multiple || i_accept ||
-        (i_available && !(i_frontend_valid && i_frontend_ready));
-  end
-endmodule
-// 请求列数先完成完整范围比较，保存条目和直接转发共用同一结果。
-(* keep_hierarchy = "yes" *)
-module conv_window_cols_range #(
-  parameter int p_max_cols = 16
-) (
-  input wire logic [31:0] i_columns,
-  output logic o_valid
-);
-  localparam logic [32:0] p_limit = {1'b0, 32'(p_max_cols)};
-  localparam int unsigned p_low_width = p_limit == 0 ? 1 : $clog2(p_limit + 33'd1);
-  logic high_zero, low_valid;
-
-  // 高位归零和低位上限同时比较，保留完整三十二位无符号范围。
-  if (p_low_width < 32) begin : g_high_columns
-    assign high_zero = !(|i_columns[31:p_low_width]);
-  end else begin : g_full_columns
-    assign high_zero = 1'b1;
-  end
-  assign low_valid = (|i_columns[p_low_width-1:0]) &&
-      i_columns[p_low_width-1:0] <= p_low_width'(p_max_cols);
-  always_comb begin
-    o_valid = high_zero && low_valid;
-`ifndef SYNTHESIS
-    if ((^i_columns) === 1'bx) o_valid = i_columns > 32'd0 && i_columns <= 32'(p_max_cols);
-`endif
-  end
-endmodule
-
-// 两种启动状态分别准备列资格，原值作为没有读取和接收事件时的保持结果。
-(* keep_hierarchy = "yes" *)
-module conv_window_cols_candidates (
-  input wire logic i_available, i_multiple, i_accept, i_request, i_current, i_next, i_saved,
-  output logic [1:0] o_value
-);
-  assign o_value[0] = (i_multiple || i_available) ? i_current : (i_accept ? i_request : i_saved);
-  assign o_value[1] = i_multiple ? i_next : (i_accept ? i_request : i_saved);
-endmodule
-
-// 前端握手只选择已经准备的列资格，不再重新计算来源优先级。
-(* keep_hierarchy = "yes" *)
-module conv_window_cols_select (
-  input wire logic i_frontend_valid, i_frontend_ready,
-  input wire logic [1:0] i_candidate,
-  output logic o_value
-);
-  assign o_value = (i_frontend_valid && i_frontend_ready) ? i_candidate[1] : i_candidate[0];
 endmodule
 
 `default_nettype wire

@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import runpy
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -19,8 +20,10 @@ def main():
                         metavar=("DEPTH", "LANES", "OUTSTANDING"))
     args = parser.parse_args()
     out = args.out.resolve()
-    sources = [args.source_root.resolve() / "rtl/common/regfile.v", args.source_root.resolve() / "rtl/npu/dma/conv_window_queue.sv",
-               Path(__file__).with_name("main.cpp")]
+    source_root = args.source_root.resolve()
+    resolve = runpy.run_path(str(ROOT / "scripts/rtl/source_files.py"))["with_dependencies"]
+    sources = resolve([source_root / "rtl/npu/dma/conv_window_queue.sv"], source_root)
+    sources.append(Path(__file__).with_name("main.cpp"))
     hashes = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}
     cases = []
     configurations = args.case or [*((depth, lanes, outstanding)

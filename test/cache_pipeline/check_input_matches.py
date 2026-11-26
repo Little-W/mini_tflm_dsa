@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from rtl_source_view import read_sources, request_module, source_manifest
 import re
 import runpy
 import shlex
@@ -35,6 +36,7 @@ def assignment(source, name):
 
 
 def unit(name, source, parallel):
+    source = request_module(source)
     if parallel:
         start = source.index("  // 两种输入地址并行比较")
         end = source.index("  assign lookup_idle_demand_match", start)
@@ -173,10 +175,10 @@ def main():
     args = parser.parse_args()
     root, out = args.source_root.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    current = (root / SOURCE).read_text()
-    original = ((args.reference_root.resolve() / SOURCE).read_text()
+    current = read_sources(root, SOURCE)
+    original = (read_sources(args.reference_root.resolve(), SOURCE)
                 if args.reference_root else read_reference_file(ROOT, args.reference_ref, SOURCE, text=True))
-    models = {"reference": unit("reference", original, False),
+    models = {"reference": unit("reference", original, "g_input_word_group" in request_module(original)),
               "candidate": unit("candidate", current, True)}
     ports = ",".join(f".{name}({name})" for name in NAMES)
     comparison = "\n".join(models.values()) + f"""module comparison (
@@ -213,7 +215,7 @@ endmodule
         cases[label] = dict(top=label, sources=[str(path), str(root / SELECTOR)], options=[],
                             configuration="原始输入字地址匹配，选择信号为独立输入")
     (out / "synthesis_cases.json").write_text(json.dumps(cases, indent=2, ensure_ascii=False) + "\n")
-    if current != (root / SOURCE).read_text():
+    if current != read_sources(root, SOURCE):
         raise RuntimeError("验证期间缓存源码发生变化")
     result = dict(passed=True, source_sha256=digest(root / SOURCE),
         selector_sha256=digest(root / SELECTOR),
@@ -224,6 +226,7 @@ endmodule
         four_state_log_sha256=digest(out / "four_state.log"))
     if args.map:
         result["mapping"] = measure_cases(root, out)
+    result["dependency_sha256"] = source_manifest(root, SOURCE)
     (out / "summary.json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result))
 

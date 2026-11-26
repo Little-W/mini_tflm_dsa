@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // Geometry-derived next whole-line event. Eligible lines are one pixel's
 // aligned 16-channel s8 fragment; no per-pixel plan table or runtime division.
-module conv_next_use_predictor (
-  input logic clk, rst_n,
-  input logic cfg_valid,
-  input conv_im2col_pkg::conv_cfg_t cfg,
-  input logic [31:0] cfg_r, cfg_groups,
-  output logic cfg_eligible, cfg_busy,
-  output logic enabled,
-  input logic start,
-  input logic [31:0] input_y, input_x, channel,
-  input logic [31:0] current_p, current_q, current_group,
-  output logic busy, done,
-  output logic [31:0] next_rank
+/* 根据卷积几何和调度位置计算缓存行的下一次完整使用顺序。 */ module conv_next_use_predictor (
+  input logic clk /* 工作时钟 */, rst_n /* 低有效复位 */,
+  input logic cfg_valid /* 接收卷积几何及遍历调度参数 */,
+  input conv_im2col_pkg::conv_cfg_t cfg /* 卷积图像、卷积核、步长与填充参数 */,
+  input logic [31:0] cfg_r /* 空间行方向每组复用的矩阵块数 */, cfg_groups /* 遍历中的调度分组总数 */,
+  output logic cfg_eligible /* 当前几何形状满足下一次使用预测条件 */, cfg_busy /* 正在计算任务级几何派生参数 */,
+  output logic enabled /* 当前任务的下一次使用预测已启用 */,
+  input logic start /* 启动当前缓存行的下一次使用预测 */,
+  input logic [31:0] input_y /* 缓存行所属输入像素的纵坐标 */, input_x /* 缓存行所属输入像素的横坐标 */, channel /* 缓存行片段对应的起始输入通道 */,
+  input logic [31:0] current_p /* 当前访问的展平输出空间位置 */, current_q /* 当前访问的归约起点 */, current_group /* 当前访问的调度分组编号 */,
+  output logic busy /* 下一次使用位置计算正在进行 */, done /* 下一次使用顺序计算完成 */,
+  output logic [31:0] next_rank /* 预测的下一次完整缓存行使用顺序 */
 );
   localparam logic [31:0] INF = 32'hffff_ffff;
   function automatic logic [5:0] log2_pow2(input logic [31:0] value);
@@ -172,6 +172,7 @@ module conv_next_use_predictor (
   end
 
   // 坐标减法保持完整三十四位，各字节与范围上限分别比较。
+  // 两个坐标轴各自采用二十位低段与十四位高段的并行算术。
   logic [1:0] coordinate_before_limit;
   assign coordinate_pad[0] = y_pad_q;
   assign coordinate_pad[1] = x_pad_q;
@@ -186,7 +187,10 @@ module conv_next_use_predictor (
     logic unused_limit_carry;
     assign difference_i_a = {1'b0, coordinate_pad[axis]};
     assign difference_i_b = ~{2'b0, coordinate_product[axis]};
-    parallel_prefix_add #(.p_width(34), .p_group_width(4), .p_preserve_groups(1'b1)) u_difference (
+    parallel_prefix_add #(.p_width(34), .p_group_width(4), .p_preserve_groups(1'b1),
+        .p_dsp_split_width(20), .p_parallel_high_prefix(1'b1),
+        .p_keep_carry(1'b0), .p_preserve_grouped_unknowns(1'b1),
+        .p_direct_subtract(1'b1)) u_difference (
       .i_a(difference_i_a), .i_b(difference_i_b), .i_carry(1'b1),
       .o_sum(coordinate_difference[axis]), .o_carry(unused_difference_carry)
     );

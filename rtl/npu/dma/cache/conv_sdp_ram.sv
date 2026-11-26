@@ -8,14 +8,14 @@ module conv_sdp_ram #(
   parameter int WRITE_WIDTH = 32,
   parameter int READ_WIDTH = 32
 ) (
-  input wire logic clk,
-  input wire logic rd_en,
-  input wire logic [AW-1:0] rd_addr,
-  output logic [READ_WIDTH-1:0] rd_data,
-  input wire logic wr_en,
-  input wire logic [AW-1:0] wr_addr,
-  input wire logic [WRITE_WIDTH-1:0] wr_data,
-  input wire logic [WRITE_WIDTH/8-1:0] wr_strb
+  input wire logic clk /* 工作时钟 */,
+  input wire logic rd_en /* 使能同步读取并更新读数据寄存器 */,
+  input wire logic [AW-1:0] rd_addr /* 同步读取的存储字地址 */,
+  output logic [READ_WIDTH-1:0] rd_data /* 最近一次有效读取返回的存储字 */,
+  input wire logic wr_en /* 使能当前周期的存储字写入 */,
+  input wire logic [AW-1:0] wr_addr /* 当前写入的存储字地址 */,
+  input wire logic [WRITE_WIDTH-1:0] wr_data /* 当前写入的存储字数据 */,
+  input wire logic [WRITE_WIDTH/8-1:0] wr_strb /* 当前存储字的逐字节写使能 */
 );
   //! 0. 参数与内部信号
   //! ------------------

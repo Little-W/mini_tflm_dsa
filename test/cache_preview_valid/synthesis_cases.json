@@ -1,0 +1,35 @@
+{
+  "cache_preview": {
+    "top": "conv_read_cache",
+    "sources": [
+      "rtl/npu/dma/cache/conv_read_cache.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GSETS=16",
+      "-GWAYS=2",
+      "-GLINE_BYTES=128",
+      "-GBUS_WIDTH=64",
+      "-GREAD_WIDTH=128",
+      "-GDEMAND_DEPTH=1",
+      "-GCACHE_POLICY=3",
+      "-Gp_defer_retire_shift=1",
+      "-Gp_preview_request=1"
+    ],
+    "parameters": {
+      "SETS": 16,
+      "WAYS": 2,
+      "LINE_BYTES": 128,
+      "BUS_WIDTH": 64,
+      "READ_WIDTH": 128,
+      "DEMAND_DEPTH": 1,
+      "CACHE_POLICY": 3,
+      "p_defer_retire_shift": 1,
+      "p_preview_request": 1
+    },
+    "configuration": "生产单项请求缓存，同拍预读和原有读写转发"
+  }
+}

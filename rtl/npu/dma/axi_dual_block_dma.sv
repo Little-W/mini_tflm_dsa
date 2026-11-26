@@ -13,7 +13,7 @@
  */
 `default_nettype none
 
-module axi_dual_block_dma #(
+/* 统一矩阵块与图像展开读取，管理卷积缓存、访问范围及独立 AXI 写回。 */ module axi_dual_block_dma #(
     parameter int unsigned DATA_WIDTH   = 16,
     parameter int unsigned SIZE         = 16,
     parameter int unsigned BUS_WIDTH    = 32,
@@ -33,129 +33,129 @@ module axi_dual_block_dma #(
     parameter int unsigned CONV_LINE_BYTES = 16,
     parameter int unsigned CONV_CACHE_POLICY = 3
 ) (
-    input wire logic clk,
-    input wire logic rst_n,
-    input wire logic abort = 1'b0,
+    input wire logic clk /* 工作时钟 */,
+    input wire logic rst_n /* 低有效复位 */,
+    input wire logic abort = 1'b0 /* 中止当前传输并清空未完成命令状态 */,
 
     // ---- Immutable job context; accepted only with all reads drained ----
     // Assert for every job, including GEMM (conv_enable=0). No read command may
     // be submitted on the same cycle. Existing non-Conv users may omit these.
     // Independent ordered window requests use destination tags and credits.
-    input wire logic win_req_valid = 1'b0,
-    output logic win_req_ready,
-    input wire logic [31:0] win_req_p0 = '0, win_req_q0 = '0, win_req_cols = '0,
-    input wire logic [1:0] win_req_tag = '0,
-    output logic win_rsp_valid,
-    input wire logic win_rsp_ready = 1'b1,
-    output logic [1:0] win_rsp_tag,
-    output logic [31:0] win_rsp_col,
-    output logic signed [15:0] win_rsp_data[WINDOW_LANES],
-    output logic [WINDOW_LANES-1:0] win_rsp_mask,
-    output logic win_rsp_last,win_rsp_error,win_busy,
+    input wire logic win_req_valid = 1'b0 /* 有序窗口读取请求有效 */,
+    output logic win_req_ready /* 窗口队列可接收新请求 */,
+    input wire logic [31:0] win_req_p0 = '0 /* 窗口请求的起始空间位置 */, win_req_q0 = '0 /* 窗口请求的归约起点 */, win_req_cols = '0 /* 窗口请求的有效列数 */,
+    input wire logic [1:0] win_req_tag = '0 /* 窗口响应目的端标签 */,
+    output logic win_rsp_valid /* 窗口响应数据有效 */,
+    input wire logic win_rsp_ready = 1'b1 /* 目的端可接收窗口响应 */,
+    output logic [1:0] win_rsp_tag /* 窗口响应对应的目的端标签 */,
+    output logic [31:0] win_rsp_col /* 当前窗口响应的起始列号 */,
+    output logic signed [15:0] win_rsp_data[WINDOW_LANES] /* 当前窗口响应各通道的有符号元素 */,
+    output logic [WINDOW_LANES-1:0] win_rsp_mask /* 窗口响应各通道的有效标记 */,
+    output logic win_rsp_last /* 当前窗口请求的最后一个响应拍 */,win_rsp_error /* 当前窗口请求发生读取错误 */,win_busy /* 窗口队列或窗口读取仍有未完成请求 */,
 
-    input  wire logic conv_cfg_valid = 1'b0,
-    output logic conv_cfg_ready,
-    input  wire logic conv_enable = 1'b0,
-    input  wire logic dma_range_enable = 1'b0,
-    input  wire conv_im2col_pkg::conv_cfg_t conv_cfg = '0,
-    input  wire logic [31:0] conv_sched_r = 32'd0,
-    input  wire logic [31:0] conv_sched_groups = 32'd0,
-    input  wire logic [31:0] conv_range_base [4] = '{default:'0},
-    input  wire logic [32:0] conv_range_end [4] = '{default:'0},
-    output logic conv_error, conv_busy,
+    input  wire logic conv_cfg_valid = 1'b0 /* 卷积任务配置有效 */,
+    output logic conv_cfg_ready /* 所有读请求完成后可接收新任务配置 */,
+    input  wire logic conv_enable = 1'b0 /* 启用当前任务的图像展开读取 */,
+    input  wire logic dma_range_enable = 1'b0 /* 启用 DMA 地址范围检查 */,
+    input  wire conv_im2col_pkg::conv_cfg_t conv_cfg = '0 /* 图像尺寸、卷积核、步长及填充等任务参数 */,
+    input  wire logic [31:0] conv_sched_r = 32'd0 /* 卷积调度的行复用块数 */,
+    input  wire logic [31:0] conv_sched_groups = 32'd0 /* 卷积调度的分组总数 */,
+    input  wire logic [31:0] conv_range_base [4] = '{default:'0} /* 各允许访问区域的首字节地址 */,
+    input  wire logic [32:0] conv_range_end [4] = '{default:'0} /* 各允许访问区域的不包含末端地址 */,
+    output logic conv_error /* 图像展开读取出现配置或传输错误 */, conv_busy /* 图像展开前端仍有活动请求 */,
 
     // ---- Read block command ----
     // Im2col returns rows_to_read by IM2COL_SIZE signed-16 elements. Padding
     // and reduction tail are explicit zero; no extra transpose is performed.
-    input  wire logic rd_im2col = 1'b0,
-    input  wire logic rd_wide_im2col = 1'b0,
-    input  wire logic [31:0] rd_p0 = 32'd0,
-    input  wire logic [31:0] rd_q0 = 32'd0,
-    input  wire logic [31:0] rd_group = 32'd0,
-    input  wire logic                                   rd_start,
-    input  wire logic [RD_TAG_WIDTH-1:0]                 rd_tag = '0,
-    output logic                                   rd_start_ready,
-    output logic [RD_TAG_WIDTH-1:0]                 rd_response_tag,
-    output logic [RD_TAG_WIDTH-1:0]                 rd_finish_tag,
-    input  wire logic                                   rd_linear_read_mode,
-    input  wire logic        [           REG_WIDTH-1:0] rd_base_addr,
-    input  wire logic        [           REG_WIDTH-1:0] rd_row_stride,
-    input  wire logic        [           REG_WIDTH-1:0] rd_rows_to_read,
-    input  wire logic        [           REG_WIDTH-1:0] rd_valid_cols,
-    input  wire logic        [                     7:0] rd_burst_len_m1,
-    input  wire logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_slot_id,
-    input  wire logic                                   rd_use_16bits,
-    input  wire logic signed [           REG_WIDTH-1:0] rd_lhs_zp,
-    output logic                                   rd_busy,
-    output logic                                   rd_done,
-    output logic                                   rd_finish_beat,
+    input  wire logic rd_im2col = 1'b0 /* 块读取：选择图像展开读取 */,
+    input  wire logic rd_wide_im2col = 1'b0 /* 块读取：选择宽数据通道的图像展开读取 */,
+    input  wire logic [31:0] rd_p0 = 32'd0 /* 块读取：逻辑矩阵块的起始行坐标 */,
+    input  wire logic [31:0] rd_q0 = 32'd0 /* 块读取：逻辑矩阵块的归约起点 */,
+    input  wire logic [31:0] rd_group = 32'd0 /* 块读取：当前调度分组编号 */,
+    input  wire logic                                   rd_start /* 块读取：启动本次块传输 */,
+    input  wire logic [RD_TAG_WIDTH-1:0]                 rd_tag = '0 /* 读命令携带的客户端标签 */,
+    output logic                                   rd_start_ready /* 读命令队列可接收新命令 */,
+    output logic [RD_TAG_WIDTH-1:0]                 rd_response_tag /* 当前读取数据对应的客户端标签 */,
+    output logic [RD_TAG_WIDTH-1:0]                 rd_finish_tag /* 当前完成事件对应的客户端标签 */,
+    input  wire logic                                   rd_linear_read_mode /* 块读取：启用逐行单拍读取模式 */,
+    input  wire logic        [           REG_WIDTH-1:0] rd_base_addr /* 块读取：本次传输的首字节地址 */,
+    input  wire logic        [           REG_WIDTH-1:0] rd_row_stride /* 块读取：相邻传输行的字节步长 */,
+    input  wire logic        [           REG_WIDTH-1:0] rd_rows_to_read /* 块读取：本次块传输的行数 */,
+    input  wire logic        [           REG_WIDTH-1:0] rd_valid_cols /* 块读取：每行实际有效的元素数 */,
+    input  wire logic        [                     7:0] rd_burst_len_m1 /* 块读取：每行突发传输拍数减一 */,
+    input  wire logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_slot_id /* 块读取：读取结果写入的缓存槽号 */,
+    input  wire logic                                   rd_use_16bits /* 块读取：输入元素采用16 位格式 */,
+    input  wire logic signed [           REG_WIDTH-1:0] rd_lhs_zp /* 块读取：输入元素的有符号零点 */,
+    output logic                                   rd_busy /* 块读取：块传输正在执行 */,
+    output logic                                   rd_done /* 块读取：本次块传输完成 */,
+    output logic                                   rd_finish_beat /* 当前接收数据拍结束一个读命令 */,
 
     // ---- Write block command ----
-    input  wire logic                            wr_start,
-    input  wire logic [           REG_WIDTH-1:0] wr_base_addr,
-    input  wire logic [           REG_WIDTH-1:0] wr_row_stride,
-    input  wire logic [           REG_WIDTH-1:0] wr_rows_to_write,
-    input  wire logic [                     7:0] wr_burst_len_m1,
-    output logic                            wr_busy,
-    output logic                            wr_done,
+    input  wire logic                            wr_start /* 块写入：启动本次块传输 */,
+    input  wire logic [           REG_WIDTH-1:0] wr_base_addr /* 块写入：本次传输的首字节地址 */,
+    input  wire logic [           REG_WIDTH-1:0] wr_row_stride /* 块写入：相邻传输行的字节步长 */,
+    input  wire logic [           REG_WIDTH-1:0] wr_rows_to_write /* 块写入：本次写入的行数 */,
+    input  wire logic [                     7:0] wr_burst_len_m1 /* 块写入：每行突发传输拍数减一 */,
+    output logic                            wr_busy /* 块写入：块传输正在执行 */,
+    output logic                            wr_done /* 块写入：本次块传输完成 */,
 
     // ---- Write data stream ----
-    input  wire logic [  BUS_WIDTH-1:0] src_wdata,
-    input  wire logic [BUS_WIDTH/8-1:0] src_wmask,
-    input  wire logic                   src_wvalid,
-    output logic                   src_wready,
+    input  wire logic [  BUS_WIDTH-1:0] src_wdata /* 来自写回客户端的总线数据 */,
+    input  wire logic [BUS_WIDTH/8-1:0] src_wmask /* 来自写回客户端的逐字节有效掩码 */,
+    input  wire logic                   src_wvalid /* 写回客户端提供有效数据拍 */,
+    output logic                   src_wready /* 写引擎可接收当前数据拍 */,
 
     // ---- AXI4 master read address channel ----
-    output logic                   m_axi_arvalid,
-    input  wire logic                   m_axi_arready,
-    output logic [  REG_WIDTH-1:0] m_axi_araddr,
-    output logic [            7:0] m_axi_arlen,
-    output logic [            2:0] m_axi_arsize,
-    output logic [            1:0] m_axi_arburst,
+    output logic                   m_axi_arvalid /* 存储侧 AXI：读地址请求有效 */,
+    input  wire logic                   m_axi_arready /* 存储侧 AXI：可接收读地址请求 */,
+    output logic [  REG_WIDTH-1:0] m_axi_araddr /* 存储侧 AXI：读突发首字节地址 */,
+    output logic [            7:0] m_axi_arlen /* 存储侧 AXI：读突发传输拍数减一 */,
+    output logic [            2:0] m_axi_arsize /* 存储侧 AXI：每个读数据拍字节数的二进制对数 */,
+    output logic [            1:0] m_axi_arburst /* 存储侧 AXI：读突发地址递增类型 */,
 
     // ---- AXI4 master read data channel ----
-    input  wire logic                   m_axi_rvalid,
-    output logic                   m_axi_rready,
-    input  wire logic [  BUS_WIDTH-1:0] m_axi_rdata,
-    input  wire logic [            1:0] m_axi_rresp,
-    input  wire logic                   m_axi_rlast,
+    input  wire logic                   m_axi_rvalid /* 存储侧 AXI：读响应数据有效 */,
+    output logic                   m_axi_rready /* 存储侧 AXI：可接收读响应数据 */,
+    input  wire logic [  BUS_WIDTH-1:0] m_axi_rdata /* 存储侧 AXI：读响应数据 */,
+    input  wire logic [            1:0] m_axi_rresp /* 存储侧 AXI：读响应状态码 */,
+    input  wire logic                   m_axi_rlast /* 存储侧 AXI：当前读突发的最后一个数据拍 */,
 
     // ---- AXI4 master write address channel ----
-    output logic                   m_axi_awvalid,
-    input  wire logic                   m_axi_awready,
-    output logic [  REG_WIDTH-1:0] m_axi_awaddr,
-    output logic [            7:0] m_axi_awlen,
-    output logic [            2:0] m_axi_awsize,
-    output logic [            1:0] m_axi_awburst,
+    output logic                   m_axi_awvalid /* 存储侧 AXI：写地址请求有效 */,
+    input  wire logic                   m_axi_awready /* 存储侧 AXI：可接收写地址请求 */,
+    output logic [  REG_WIDTH-1:0] m_axi_awaddr /* 存储侧 AXI：写突发首字节地址 */,
+    output logic [            7:0] m_axi_awlen /* 存储侧 AXI：写突发传输拍数减一 */,
+    output logic [            2:0] m_axi_awsize /* 存储侧 AXI：每个写数据拍字节数的二进制对数 */,
+    output logic [            1:0] m_axi_awburst /* 存储侧 AXI：写突发地址递增类型 */,
 
     // ---- AXI4 master write data channel ----
-    output logic                   m_axi_wvalid,
-    input  wire logic                   m_axi_wready,
-    output logic [  BUS_WIDTH-1:0] m_axi_wdata,
-    output logic [BUS_WIDTH/8-1:0] m_axi_wstrb,
-    output logic                   m_axi_wlast,
+    output logic                   m_axi_wvalid /* 存储侧 AXI：写数据有效 */,
+    input  wire logic                   m_axi_wready /* 存储侧 AXI：可接收写数据 */,
+    output logic [  BUS_WIDTH-1:0] m_axi_wdata /* 存储侧 AXI：待写入的总线数据 */,
+    output logic [BUS_WIDTH/8-1:0] m_axi_wstrb /* 存储侧 AXI：写数据逐字节使能 */,
+    output logic                   m_axi_wlast /* 存储侧 AXI：当前写突发的最后一个数据拍 */,
 
     // ---- AXI4 master write response channel ----
-    input  wire logic                   m_axi_bvalid,
-    output logic                   m_axi_bready,
-    input  wire logic [            1:0] m_axi_bresp,
+    input  wire logic                   m_axi_bvalid /* 存储侧 AXI：写响应有效 */,
+    output logic                   m_axi_bready /* 存储侧 AXI：可接收写响应 */,
+    input  wire logic [            1:0] m_axi_bresp /* 存储侧 AXI：写响应状态码 */,
 
     // ---- Read unpack output ----
-    output logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] wr_slot,
-    output logic        [        $clog2(SIZE)-1:0] wr_row,
-    output logic        [        $clog2(SIZE)-1:0] wr_col_base,
-    output logic signed [          DATA_WIDTH-1:0] wr_data      [DATA_LANES],
-    output logic                                   wr_valid     [DATA_LANES],
-    output logic                                   wr_use_16bits,
+    output logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] wr_slot /* 解包结果写入的缓存槽号 */,
+    output logic        [        $clog2(SIZE)-1:0] wr_row /* 解包结果在矩阵块内的行号 */,
+    output logic        [        $clog2(SIZE)-1:0] wr_col_base /* 解包结果首通道在矩阵块内的列号 */,
+    output logic signed [          DATA_WIDTH-1:0] wr_data      [DATA_LANES] /* 解包后写入缓存的有符号元素数组 */,
+    output logic                                   wr_valid     [DATA_LANES] /* 解包结果各通道的写入有效标记 */,
+    output logic                                   wr_use_16bits /* 当前解包结果采用16 位格式 */,
 
     // ---- Raw read stream for quant/bias-like users ----
-    output logic [   BUS_WIDTH-1:0] rd_raw_data,
-    output logic                    rd_raw_valid,
-    output logic [$clog2(SIZE)-1:0] rd_raw_row,
-    output logic [$clog2(SIZE)-1:0] rd_raw_col_base,
+    output logic [   BUS_WIDTH-1:0] rd_raw_data /* 块读取：未经元素解包的总线读取数据 */,
+    output logic                    rd_raw_valid /* 块读取：原始总线读取数据有效 */,
+    output logic [$clog2(SIZE)-1:0] rd_raw_row /* 块读取：原始读取数据在块内的行号 */,
+    output logic [$clog2(SIZE)-1:0] rd_raw_col_base /* 块读取：原始读取数据在块内的起始列号 */,
 
-    output logic rd_error,
-    output logic wr_error
+    output logic rd_error /* 块读取：本次块传输出现响应或范围错误 */,
+    output logic wr_error /* 块写入：本次块传输出现响应或范围错误 */
 );
     localparam int LANES = BUS_WIDTH / 8;
     localparam int SLOT_W = (CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS);
@@ -490,10 +490,12 @@ module axi_dual_block_dma #(
             .SIZE(IM2COL_SIZE), .SLOT_W(SLOT_W), .LANES(WINDOW_LANES),
             .CACHE_SETS(CONV_CACHE_SETS), .CACHE_WAYS(CONV_CACHE_WAYS),
             .LINE_BYTES(CONV_LINE_BYTES), .CACHE_POLICY(CONV_CACHE_POLICY),
-            .REGISTER_DESCRIPTOR(1'b0),
-            .REGISTER_ROW_ADDRESS(1'b0),
+            // 描述符准备和行地址各自保存，提交阶段共用坐标与地址运算。
+            .REGISTER_DESCRIPTOR(1'b1),
+            .REGISTER_ROW_ADDRESS(1'b1),
             .REGISTER_CACHE_REQUEST(1'b1),
-            .CACHE_RESPONSE_DEPTH(1)
+            // 两项响应缓冲分别保存需求与返回数据，隔开命中判断和数据消费。
+            .CACHE_RESPONSE_DEPTH(2)
         ) u_frontend (
             .clk, .rst_n, .cfg_valid(cfg_fire && conv_enable), .cfg_ready(fe_cfg_ready),
             .cfg(conv_cfg), .cfg_sched_r(conv_sched_r), .cfg_sched_groups(conv_sched_groups),

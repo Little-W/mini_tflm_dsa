@@ -1,0 +1,119 @@
+{
+  "passed": true,
+  "reference_commit": "d485d636",
+  "input_constraints": [],
+  "formal": [
+    {
+      "mode": "generic",
+      "sets": 2,
+      "ways": 1,
+      "passed": true,
+      "log_sha256": "cb47944c94c9cbb2aa64ae88ec84e5892adbfc5e0ff813f84cfdbf9f9f172926"
+    },
+    {
+      "mode": "generic",
+      "sets": 16,
+      "ways": 2,
+      "passed": true,
+      "log_sha256": "1f0624e10206371e55ed4d5d5dfbbbad9be4acc7b05508c5ea3850ae4cbe4ae7"
+    },
+    {
+      "mode": "generic",
+      "sets": 256,
+      "ways": 2,
+      "passed": true,
+      "log_sha256": "8e33c14578c72ef51f721da84a833f2cca45453c4c026b0d5a25492a63da2f49"
+    },
+    {
+      "mode": "synthesis",
+      "sets": 2,
+      "ways": 1,
+      "passed": true,
+      "log_sha256": "53d786ff3e385bb22583d37c31953c9ee286f8d95ed64bb847aeb853cb29488d"
+    },
+    {
+      "mode": "synthesis",
+      "sets": 16,
+      "ways": 2,
+      "passed": true,
+      "log_sha256": "d6869d291e0c18fdb71d2ff3805ebb44bcfdd598e760555aca9dd2e4d94b2339"
+    },
+    {
+      "mode": "synthesis",
+      "sets": 256,
+      "ways": 2,
+      "passed": true,
+      "log_sha256": "03d76e8ac5812ed7d795dbcd65bd8d17e38332bba87400221a89455f1df037be"
+    },
+    {
+      "mode": "fpga",
+      "sets": 2,
+      "ways": 1,
+      "passed": true,
+      "log_sha256": "d956ce93cf5d27c3e412c119cca06ea7a8caf5413832cd9705bb06a24f0a81d3"
+    },
+    {
+      "mode": "fpga",
+      "sets": 16,
+      "ways": 2,
+      "passed": true,
+      "log_sha256": "0296c7c66e5b52374effcaf1bc5649b35a288c41fa248c3f909f392b4a32cd4c"
+    },
+    {
+      "mode": "fpga",
+      "sets": 256,
+      "ways": 2,
+      "passed": true,
+      "log_sha256": "ddd920ed70fe512ee4ad5fe7683d6c5c22af7ab82a68ab6fae5762cf09b7046d"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "sets": 2,
+      "ways": 1,
+      "passed": true,
+      "log_sha256": "f6969d36e51156ccc0e69211521a49410f1649b62121c4a6f49b559686184364"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "sets": 16,
+      "ways": 2,
+      "passed": true,
+      "log_sha256": "0f76515017a7890e65b0ea15dfe6bf165f704d026d59be4830574fb094a507e6"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "sets": 256,
+      "ways": 2,
+      "passed": true,
+      "log_sha256": "e9da067fbe4013be210759760be7c00c5f4a439471960d9b6bc0261209061986"
+    }
+  ],
+  "four_state": [
+    {
+      "mode": "generic",
+      "passed": true,
+      "comparisons": 442368,
+      "log_sha256": "81fea50aa6a965f90caf2cc622f7ed190bf2dcce9edc5b08660e6ef22ff6b8c8"
+    },
+    {
+      "mode": "synthesis",
+      "passed": true,
+      "comparisons": 442368,
+      "log_sha256": "81fea50aa6a965f90caf2cc622f7ed190bf2dcce9edc5b08660e6ef22ff6b8c8"
+    },
+    {
+      "mode": "fpga",
+      "passed": true,
+      "comparisons": 442368,
+      "log_sha256": "81fea50aa6a965f90caf2cc622f7ed190bf2dcce9edc5b08660e6ef22ff6b8c8"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "passed": true,
+      "comparisons": 442368,
+      "log_sha256": "81fea50aa6a965f90caf2cc622f7ed190bf2dcce9edc5b08660e6ef22ff6b8c8"
+    }
+  ],
+  "source_sha256": "52cef81e3bec3b62a83d64278d5e91360bcacc9c03a3a6fd031f4efc1abe3132",
+  "runner_sha256": "cc08250f334ffc8ae3b71427a585f37dd6ad391f9e3e3f34097314f8706970fe"
+}

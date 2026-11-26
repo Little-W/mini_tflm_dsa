@@ -1,0 +1,82 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/dma/cache/conv_cache_request_path.sv": "032d9fd16017713896825fa23aae5cde648eaa8dc83b2717c56fc8293d12b2d3",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/test/cache_queued_preview/reference_request_path.sv": "3916aba497fe12c81d4874e68153fc43ec1e0a88db0d9c087f28211379a12fea"
+  },
+  "cases": [
+    {
+      "mode": "generic",
+      "count_width": 2,
+      "enabled": 0,
+      "formal_passed": true,
+      "four_state_checks": 85536,
+      "log_sha256": "153e862131699bbea35a85b06e1cf14c62bacca62dc4148ba57c4eef2e51b00b",
+      "simulation_log_sha256": "7f26d2eb9cd41e4fecb69d2ced64bcdc6327303b3bfd3ed2bcafd216e762771c"
+    },
+    {
+      "mode": "fpga",
+      "count_width": 2,
+      "enabled": 0,
+      "formal_passed": true,
+      "four_state_checks": 85536,
+      "log_sha256": "a81dfffe31dfd144eff2af226ce5bdd8bd08294ae0ce3370268d25ab1fea2d10",
+      "simulation_log_sha256": "7f26d2eb9cd41e4fecb69d2ced64bcdc6327303b3bfd3ed2bcafd216e762771c"
+    },
+    {
+      "mode": "generic",
+      "count_width": 2,
+      "enabled": 1,
+      "formal_passed": true,
+      "four_state_checks": 85536,
+      "log_sha256": "e9ed39b1e27226d13bb5b52e25f8caf69f357d533847e44a19d5782f11f8f3fb",
+      "simulation_log_sha256": "4cae642ba4305a082c2c19feb89a36638d3162f72f8278c55c4af5d62bbbb987"
+    },
+    {
+      "mode": "fpga",
+      "count_width": 2,
+      "enabled": 1,
+      "formal_passed": true,
+      "four_state_checks": 85536,
+      "log_sha256": "73e9f9eb27ed8cf579239f2a234cb039393dfcd1bb580bd011c100d54d29f88a",
+      "simulation_log_sha256": "4cae642ba4305a082c2c19feb89a36638d3162f72f8278c55c4af5d62bbbb987"
+    },
+    {
+      "mode": "generic",
+      "count_width": 3,
+      "enabled": 0,
+      "formal_passed": true,
+      "four_state_checks": 85536,
+      "log_sha256": "e4cbb26a720b00c510656382885ebcb8b2b225b858f403c4b169146b4f19941d",
+      "simulation_log_sha256": "e90de6c31f41ba59265ffc45501c7d21d7c8da557bb33a04f2006555a063a7e5"
+    },
+    {
+      "mode": "fpga",
+      "count_width": 3,
+      "enabled": 0,
+      "formal_passed": true,
+      "four_state_checks": 85536,
+      "log_sha256": "7a04fec306356a9f78dace62f7a5c2571c2dedaa7dfdd1b88c2974810a2abe38",
+      "simulation_log_sha256": "e90de6c31f41ba59265ffc45501c7d21d7c8da557bb33a04f2006555a063a7e5"
+    },
+    {
+      "mode": "generic",
+      "count_width": 3,
+      "enabled": 1,
+      "formal_passed": true,
+      "four_state_checks": 85536,
+      "log_sha256": "3221fb155e8fd5145b459e6f4d27e382ca3d7ecc680eb66edbda7d1fe2e0e8db",
+      "simulation_log_sha256": "825f28e382fe98467a6a94a39281adb29b23cc12abee213d35c96b7bbeb4d6b7"
+    },
+    {
+      "mode": "fpga",
+      "count_width": 3,
+      "enabled": 1,
+      "formal_passed": true,
+      "four_state_checks": 85536,
+      "log_sha256": "4d8248c4abc262879ab9253663e7b5ee9fca380fc24bb08f89cdb2be5c1c2d0b",
+      "simulation_log_sha256": "825f28e382fe98467a6a94a39281adb29b23cc12abee213d35c96b7bbeb4d6b7"
+    }
+  ],
+  "input_constraints": []
+}

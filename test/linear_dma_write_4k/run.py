@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -17,9 +18,11 @@ def sha(path):
 
 def build(rtl, out, outstanding, args):
     out.mkdir(parents=True, exist_ok=True)
-    sources = [rtl, args.source_root/'rtl/common/regfile.v', args.source_root/'rtl/common/add_equal.sv',
-               Path(__file__).with_name('linear_dma_write_4k_top.sv'),
-               Path(__file__).with_name('main.cpp'), Path(__file__).resolve()]
+    resolver = runpy.run_path(str(ROOT/'scripts/rtl/source_files.py'))['with_dependencies']
+    rtl_sources = resolver([rtl, Path(__file__).with_name('linear_dma_write_4k_top.sv')],
+                           args.source_root)
+    compile_sources = [*rtl_sources, Path(__file__).with_name('main.cpp')]
+    sources = [*compile_sources, Path(__file__).resolve()]
     hashes = {str(p): sha(p) for p in sources}
     options = ['-DSYNTHESIS=1', '-DXILINX_FPGA=1'] if args.fpga else []
     generate = [args.verilator, '--cc', '--exe', '--assert', '-Wno-fatal',
@@ -30,7 +33,7 @@ def build(rtl, out, outstanding, args):
                 f'-GBUS_WIDTH={args.bus_width}', f'-GDMA_MAX_BYTES={args.dma_max_bytes}',
                 '-CFLAGS', f'-std=c++20 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -fsanitize=undefined -fno-sanitize-recover=undefined -DTEST_DMA_MAX_BYTES={args.dma_max_bytes} -DTEST_BUS_WIDTH={args.bus_width}',
                 '-LDFLAGS', '-fsanitize=undefined', *options,
-                *map(str, sources[:5])]
+                *map(str, compile_sources)]
     compile_command = ['make', '-C', str(out/'obj'), '-f', 'Vlinear_dma_write_4k_top.mk',
                        '-j', str(args.jobs), 'OPT_FAST=-O1', 'OPT_SLOW=-O0', 'OPT_GLOBAL=-O1',
                        'VK_PCH_I_FAST=', 'VK_PCH_I_SLOW=', 'CFG_CXXFLAGS_PCH=-E']

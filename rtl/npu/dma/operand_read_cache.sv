@@ -2,30 +2,30 @@
 // A: 256 KiB direct indexed. B: 32 KiB XOR indexed to avoid power-of-two
 // column-stride conflicts. Raw INT8 bytes are retained before zero-point logic.
 // External interface remains AXI32, with at most four ordered transactions.
-module operand_read_cache #(
+/* 缓存任务内的原始操作数数据，分别管理两类输入区域并支持顺序预取。 */ module operand_read_cache #(
     parameter int AW=32, DW=32, OUTSTANDING=4,
     parameter int A_BYTES=262144, B_BYTES=32768
 )(
-    input logic clk, rst_n, flush,
-    input logic prefetch_enable,
-    input logic [AW-1:0] a_base, a_bytes, b_base, b_bytes,
-    input logic s_arvalid, output logic s_arready,
-    input logic [AW-1:0] s_araddr,
-    input logic [7:0] s_arlen,
-    input logic [2:0] s_arsize,
-    input logic [1:0] s_arburst,
-    output logic s_rvalid, input logic s_rready,
-    output logic [DW-1:0] s_rdata,
-    output logic [1:0] s_rresp, output logic s_rlast,
-    output logic m_arvalid, input logic m_arready,
-    output logic [AW-1:0] m_araddr,
-    output logic [7:0] m_arlen,
-    output logic [2:0] m_arsize,
-    output logic [1:0] m_arburst,
-    input logic m_rvalid, output logic m_rready,
-    input logic [DW-1:0] m_rdata,
-    input logic [1:0] m_rresp, input logic m_rlast,
-    output logic idle
+    input logic clk /* 工作时钟 */, rst_n /* 低有效复位 */, flush /* 清除当前任务的操作数缓存有效状态 */,
+    input logic prefetch_enable /* 允许发起操作数顺序预取 */,
+    input logic [AW-1:0] a_base /* 第一操作数区域的首字节地址 */, a_bytes /* 第一操作数区域的字节数 */, b_base /* 第二操作数区域的首字节地址 */, b_bytes /* 第二操作数区域的字节数 */,
+    input logic s_arvalid /* 客户端 AXI：读地址请求有效 */, output logic s_arready /* 客户端 AXI：可接收读地址请求 */,
+    input logic [AW-1:0] s_araddr /* 客户端 AXI：读突发首字节地址 */,
+    input logic [7:0] s_arlen /* 客户端 AXI：读突发传输拍数减一 */,
+    input logic [2:0] s_arsize /* 客户端 AXI：每个读数据拍字节数的二进制对数 */,
+    input logic [1:0] s_arburst /* 客户端 AXI：读突发地址递增类型 */,
+    output logic s_rvalid /* 客户端 AXI：读响应数据有效 */, input logic s_rready /* 客户端 AXI：可接收读响应数据 */,
+    output logic [DW-1:0] s_rdata /* 客户端 AXI：读响应数据 */,
+    output logic [1:0] s_rresp /* 客户端 AXI：读响应状态码 */, output logic s_rlast /* 客户端 AXI：当前读突发的最后一个数据拍 */,
+    output logic m_arvalid /* 存储侧 AXI：读地址请求有效 */, input logic m_arready /* 存储侧 AXI：可接收读地址请求 */,
+    output logic [AW-1:0] m_araddr /* 存储侧 AXI：读突发首字节地址 */,
+    output logic [7:0] m_arlen /* 存储侧 AXI：读突发传输拍数减一 */,
+    output logic [2:0] m_arsize /* 存储侧 AXI：每个读数据拍字节数的二进制对数 */,
+    output logic [1:0] m_arburst /* 存储侧 AXI：读突发地址递增类型 */,
+    input logic m_rvalid /* 存储侧 AXI：读响应数据有效 */, output logic m_rready /* 存储侧 AXI：可接收读响应数据 */,
+    input logic [DW-1:0] m_rdata /* 存储侧 AXI：读响应数据 */,
+    input logic [1:0] m_rresp /* 存储侧 AXI：读响应状态码 */, input logic m_rlast /* 存储侧 AXI：当前读突发的最后一个数据拍 */,
+    output logic idle /* 缓存没有未完成的读取或预取事务 */
 );
     localparam int AL=$clog2(A_BYTES), BL=$clog2(B_BYTES), BI=BL-4;
     localparam int QW=$clog2(OUTSTANDING), CW=$clog2(OUTSTANDING+1);

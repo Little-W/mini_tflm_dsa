@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from rtl_source_view import read_sources, module_definition, request_module, controller_module, source_manifest
 import re
 import shlex
 import subprocess
@@ -37,9 +38,13 @@ def connection(source, name):
 
 
 def model(name, source):
-    start = source.index("  always_comb begin\n    lookup_way =")
-    end = source.index("  localparam int p_prefetch_fill_tag_groups", start)
-    way = source[start:end]
+    request = request_module(source)
+    source = controller_module(source)
+    start = request.index("  always_comb begin\n    lookup_way =")
+    end_marker = ("  logic [1:0][1:0] input_conflict_results;" if "module conv_cache_request_path" in request
+                  else "  localparam int p_prefetch_fill_tag_groups")
+    end = request.index(end_marker, start)
+    way = request[start:end]
     metadata = re.search(r"wire\s+metadata_hit\s*=\s*(.*?);", source, re.S)[1]
     eligible, selected = "", ""
     if "logic selected_metadata_hit, metadata_hit_parallel" in source:
@@ -47,17 +52,17 @@ def model(name, source):
         eligible = source[start:source.index("  for (genvar metadata_way", start)]
         start = source.index("    logic selected_metadata_hit, metadata_hit_parallel")
         selected = source[start:source.index("    conv_cache_metadata_way #(",start)]
-    if "conv_cache_lookup_hit #(.p_ways(WAYS)) u_lookup_hit" in source:
-        start = source.index("  conv_cache_lookup_hit #(.p_ways(WAYS)) u_lookup_hit")
-        lookup = source[start:source.index("  );", start)+5]
+    if "conv_cache_lookup_hit #(.p_ways(WAYS)) u_lookup_hit" in request:
+        start = request.index("  conv_cache_lookup_hit #(.p_ways(WAYS)) u_lookup_hit")
+        lookup = request[start:request.index("  );", start)+5]
     else:
-        lookup = assign(source, "lookup_hit")
+        lookup = assign(request, "lookup_hit")
     return f"""module {name} #(parameter integer WAYS=2,WI=(WAYS==1?1:$clog2(WAYS)))(
 {PORTS},output logic [WAYS-1:0] observed);
   localparam logic [1:0] FG_IDLE=0,FG_MISS=1,FG_RESP=2;
   logic lookup_ready,lookup_hit,metadata_hit;
   logic [WI-1:0] lookup_way;
-  {assign(source,'lookup_ready')}
+  {assign(request,'lookup_ready')}
 {lookup}
   assign metadata_hit={metadata};
 {way}
@@ -71,14 +76,7 @@ endmodule
 
 
 def support(source):
-    result = ""
-    for name in ("conv_cache_metadata_hit_select", "conv_cache_metadata_hit_finish", "conv_cache_metadata_eligibility",
-                 "conv_cache_lookup_hit", "conv_cache_demand_hit", "conv_cache_snapshot_response"):
-        declaration = source.index("module " + name)
-        start = declaration
-        result += source[start:source.index("endmodule", declaration)+len("endmodule")] + "\n"
-    return result
-
+    return '\n'.join(module_definition(source, name) for name in ('conv_cache_metadata_hit_select', 'conv_cache_metadata_hit_finish', 'conv_cache_metadata_eligibility', 'conv_cache_lookup_hit', 'conv_cache_demand_hit', 'conv_cache_snapshot_response')) + '\n'
 
 def bench():
     declarations = PORTS.replace("input logic","logic").replace(",\n",";\n") + ";\n"
@@ -144,8 +142,8 @@ def main():
     args=parser.parse_args()
     root,out=args.source_root.resolve(),args.out.resolve()
     out.mkdir(parents=True,exist_ok=True)
-    current=(root/SOURCE).read_text()
-    original=((args.reference_root.resolve()/SOURCE).read_text() if args.reference_root else
+    current=read_sources(root, SOURCE)
+    original=(read_sources(args.reference_root.resolve(), SOURCE) if args.reference_root else
         read_reference_file(ROOT, args.reference_ref, SOURCE, text=True))
     modules=model("reference",original)+model("candidate",current)+support(current)
     connections=",".join(f".{name}({name})" for name in NAMES)
@@ -174,12 +172,13 @@ endmodule
     matched=re.search(r"METADATA_HIT_FOUR_STATE_PASS checks=(\d+)",(out/"four_state.log").read_text())
     if not matched or int(matched[1])!=524504:
         raise RuntimeError("元数据命中更新的四态检查数量不符")
-    if current!=(root/SOURCE).read_text():
+    if current!=read_sources(root, SOURCE):
         raise RuntimeError("控制检查期间生产源码发生变化")
     result=dict(passed=True,actual_rtl_expressions=True,external_inputs_constrained=False,
         source_sha256=digest(root/SOURCE),reference_sha256=hashlib.sha256(original.encode()).hexdigest(),
         sat_profiles=profiles,four_state_cases=int(matched[1]),proof_sha256=digest(proof),
         four_state_log_sha256=digest(out/"four_state.log"))
+    result["dependency_sha256"] = source_manifest(root, SOURCE)
     (out/"summary.json").write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n")
     print(json.dumps(result,ensure_ascii=False))
 

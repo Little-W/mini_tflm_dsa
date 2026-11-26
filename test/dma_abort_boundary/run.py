@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import runpy
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -35,9 +36,14 @@ def main():
     paths += sorted((source / 'rtl/common').glob('*.sv'))
     paths += [source / 'rtl/common/regfile.v', source / 'rtl/common/pseudo_dual_port_ram.v',
               HERE / 'top.sv', HERE / 'main.cpp']
+    dependency_reader = runpy.run_path(str(ROOT / 'scripts/rtl/source_files.py'))
+    paths = dependency_reader['with_dependencies'](paths, source)
     def digest(path):
         return hashlib.sha256(path.read_bytes()).hexdigest()
-    hashes = {str(path): digest(path) for path in paths}
+    include_dirs = sorted({source / 'include',
+                           *(path.parent for path in paths if path.suffix in ('.v', '.sv'))})
+    inputs = dependency_reader['input_files'](paths, source, include_dirs)
+    hashes = {str(path): digest(path) for path in inputs}
     options = ['-DSYNTHESIS=1', '-DXILINX_FPGA=1'] if args.fpga else []
     commands = [
         [args.verilator, '--cc', '--exe', '--timing', '--assert', '-DNPU_SIM_ASSERT',
@@ -47,7 +53,8 @@ def main():
          f'-GCACHE_BLOCKS={args.cache_blocks}',
          f'-GDATA_WIDTH={args.data_width}', f'-GOUTSTANDING={args.outstanding}',
          '-CFLAGS', f'-std=c++20 -fsanitize=undefined -fno-sanitize-recover=undefined -DTEST_BUS_WIDTH={args.bus_width} -DTEST_PREPARE_ABORT={int(args.prepare_abort)}',
-         '-LDFLAGS', '-fsanitize=undefined', *options, *map(str, paths)],
+         '-LDFLAGS', '-fsanitize=undefined', *options,
+         *('-I' + str(path) for path in include_dirs), *map(str, paths)],
         ['make', '-C', str(out / 'obj'), '-f', 'Vdma_abort_top.mk', '-j', str(args.jobs),
          'OPT_FAST=-O1', 'OPT_SLOW=-O0', 'VK_PCH_I_FAST=', 'VK_PCH_I_SLOW=', 'CFG_CXXFLAGS_PCH=-E'],
         [str(out / 'obj/Vdma_abort_top')]]
@@ -56,7 +63,7 @@ def main():
             result = subprocess.run(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT)
         if result.returncode:
             raise RuntimeError((out / filename).read_text()[-8000:])
-    if hashes != {str(path): digest(path) for path in paths}:
+    if hashes != {str(path): digest(path) for path in inputs}:
         raise RuntimeError('RTL changed while verifying DMA transactions')
     log = (out / 'run.log').read_text()
     cases = 24 if args.prepare_abort else 16

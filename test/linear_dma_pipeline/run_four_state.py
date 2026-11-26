@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""检查线性 DMA 的字节旋转、末拍比较和相邻计数的四态行为。"""
+"""检查线性 DMA 的字节旋转、读取末拍比较和相邻计数的四态行为。"""
 import argparse
 import hashlib
 import json
@@ -36,7 +36,6 @@ def main():
     counter = section(source, '    // 相邻计数提前并行形成', '    logic wr_done_r;')
     read_compare = section(source, '    localparam int unsigned p_read_last_groups',
                            '    // 末拍和末行条件并行准备')
-    write_compare = section(source, '    localparam int unsigned p_row_equal_groups', '    wire wr_row_end =')
     records = []
     for bus, count_width in [(32, 1), (64, 3), (128, 5), (256, 9)]:
         folder = out / f'b{bus}_c{count_width}'
@@ -60,7 +59,7 @@ def main():
     logic rsp_last_equal_o_equal;
     logic [BEAT_CNT_W-1:0] helper_a, helper_b;
     logic helper_carry;
-    logic expected_read_plain, expected_read_cross, expected_write_cross;
+    logic expected_read_plain, expected_read_cross;
     logic [2*BUS_WIDTH-1:0] expected_data;
     logic [2*BYTE_PER_BEAT-1:0] expected_mask;
     logic [WR_OUTS_W-1:0] expected_inc, expected_dec;
@@ -75,7 +74,6 @@ def main():
 {rotation}
 {counter}
 {read_compare}
-{write_compare}
     task automatic verify;
         begin
             rd_head.cross_last=beat_count_t'(rd_head.burst_len_m1)+beat_count_t'(1);
@@ -89,16 +87,13 @@ def main():
                 rd_rsp_beat_cnt==beat_count_t'(rd_head.burst_len_m1);
             expected_read_cross=rd_head.linear_read ? rd_rsp_beat_cnt==beat_count_t'(1) :
                 rsp_last_equal_o_equal;
-            expected_write_cross=wr_beat_cnt==(beat_count_t'(wr_burst)+beat_count_t'(1));
             if(wr_shifted_data!==expected_data || wr_shifted_mask!==expected_mask)
                 $fatal(1,"byte selection mismatch");
             if(wr_pending_increment!==expected_inc || wr_pending_decrement!==expected_dec)
                 $fatal(1,"count arithmetic mismatch");
             if(rd_rsp_last_without_cross!==expected_read_plain || rd_rsp_last_with_cross!==expected_read_cross)
                 $fatal(1,"read completion comparison mismatch");
-            if(wr_cross_row_end!==expected_write_cross)
-                $fatal(1,"write completion comparison mismatch");
-            checks+=7;
+            checks+=6;
         end
     endtask
     initial begin

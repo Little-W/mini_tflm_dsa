@@ -1,0 +1,56 @@
+{
+  "passed": true,
+  "source_sha256": "32ddb2efabb37b43d2ef064cd810d693d93ad42ce7eaedaff3a13dadb437e96a",
+  "reference_commit": "3f4bc2a97dfecf0ec38ad49d704c2ee4ee7f8365",
+  "cases": [
+    {
+      "mode": "generic",
+      "sets": 2,
+      "formal_passed": true,
+      "four_state_checks": 87712,
+      "log_sha256": "f5fa28b4c92ebbfac6ee4a2e95612ff9f120b9e6d2b6bdf7537581fcbdc8db36",
+      "four_state_log_sha256": "d5ec27f355c190f626ee20b33478de416b630084d44c9c9567100336ffe2b100"
+    },
+    {
+      "mode": "fpga",
+      "sets": 2,
+      "formal_passed": true,
+      "four_state_checks": 87712,
+      "log_sha256": "923b95647321cfeae7baf4ad0f4fea30ea8c8f0233d3e9bb8551a7c512630bab",
+      "four_state_log_sha256": "d5ec27f355c190f626ee20b33478de416b630084d44c9c9567100336ffe2b100"
+    },
+    {
+      "mode": "generic",
+      "sets": 16,
+      "formal_passed": true,
+      "four_state_checks": 92192,
+      "log_sha256": "1cc0703484f8c1de2bb8d5aac887c767a8190b242101e45d4e58849acac59851",
+      "four_state_log_sha256": "963dc7ee0e53263f699340714cb857e842587d5c17f84ee84d7596660d9052a3"
+    },
+    {
+      "mode": "fpga",
+      "sets": 16,
+      "formal_passed": true,
+      "four_state_checks": 92192,
+      "log_sha256": "3b67383215fc46dedb064cd8a22bbf44b2f1bfed92eb9f3871fb1c4898ef5582",
+      "four_state_log_sha256": "963dc7ee0e53263f699340714cb857e842587d5c17f84ee84d7596660d9052a3"
+    },
+    {
+      "mode": "generic",
+      "sets": 256,
+      "formal_passed": true,
+      "four_state_checks": 126496,
+      "log_sha256": "49a77841d1380eb700f28483ca643930fb6d88bc050f0212ee11c80887936c2f",
+      "four_state_log_sha256": "1db408e75ebde1e0643fca2a14fbb566ee022398d36903c6c0f32821a2d39f4c"
+    },
+    {
+      "mode": "fpga",
+      "sets": 256,
+      "formal_passed": true,
+      "four_state_checks": 126496,
+      "log_sha256": "cfb7692accff562cf42a88ed8e979a5805445ec0809dc68f30ff23fcbc26595f",
+      "four_state_log_sha256": "1db408e75ebde1e0643fca2a14fbb566ee022398d36903c6c0f32821a2d39f4c"
+    }
+  ],
+  "input_constraints": []
+}

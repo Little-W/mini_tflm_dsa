@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from rtl_source_view import read_sources, module_definition, source_manifest
 import re
 import shlex
 import subprocess
@@ -25,16 +26,10 @@ def digest(path):
 
 
 def support(text, prefix):
-    blocks = []
-    for name in HELPERS:
-        match = re.search(r'(?m)^(?:\(\*[^\n]*\*\)\s*)?module\s+' + name + r'\b', text)
-        if match is not None:
-            blocks.append(text[match.start():text.index("endmodule", match.end()) + len("endmodule")])
-    body = "\n\n".join(blocks)
+    body = '\n'.join(module_definition(text, name) for name in HELPERS)
     for name in HELPERS:
         body = re.sub(r"\b" + name + r"\b", prefix + name, body)
     return body
-
 
 def comparison():
     connections = ",".join(f".{name}({name})" for name in NAMES if name != "i_reference")
@@ -119,7 +114,7 @@ def main():
     args = parser.parse_args()
     root, reference, out = args.source_root.resolve(), args.reference_root.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    original, current = (reference / SOURCE).read_text(), (root / SOURCE).read_text()
+    original, current = read_sources(reference, SOURCE), read_sources(root, SOURCE)
     common = [root / "rtl/common/unsigned_compare.sv", root / "rtl/common/parallel_unsigned_compare.sv"]
     model = support(original, "reference_") + "\n" + support(current, "candidate_") + "\n" + comparison()
     proof = out / "comparison.sv"
@@ -145,13 +140,14 @@ def main():
                         (out / "four_state.log").read_text())
     if not matched or int(matched[1]) != 18272:
         raise RuntimeError("快照函数四态检查数量不符")
-    if current != (root / SOURCE).read_text() or original != (reference / SOURCE).read_text():
+    if current != read_sources(root, SOURCE) or original != read_sources(reference, SOURCE):
         raise RuntimeError("检查期间快照源码发生变化")
     result = {"passed": True, "actual_rtl_modules": True, "external_inputs_constrained": False,
               "reference_sha256": digest(reference / SOURCE), "candidate_sha256": digest(root / SOURCE),
               "common_sha256": {str(path.relative_to(root)): digest(path) for path in common},
               "formal_profiles": profiles, "four_state_cases": int(matched[1]),
               "proof_sha256": digest(proof), "four_state_log_sha256": digest(out / "four_state.log")}
+    result["dependency_sha256"] = source_manifest(root, SOURCE)
     (out / "summary.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps({"passed": True, "formal_profiles": len(profiles),
                       "four_state_cases": int(matched[1])}, ensure_ascii=False))

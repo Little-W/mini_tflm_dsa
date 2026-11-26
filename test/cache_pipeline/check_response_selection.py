@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from rtl_source_view import read_sources, module_definition, request_module, source_manifest
 import re
 import shlex
 import subprocess
@@ -39,6 +40,7 @@ def assignment(source: str, name: str) -> str:
 
 
 def model(name: str, source: str) -> str:
+    source = request_module(source)
     start = source.index("    logic [READ_WIDTH-1:0] fast_hit_data;")
     fast_data = source[start:source.index("    logic [1:0] fast_response_conditions;", start)]
     start = source.index("  end else begin : g_single_response")
@@ -49,6 +51,7 @@ def model(name: str, source: str) -> str:
     response = response.replace("g_direct_response_lookup.fast_response_conditions", "fast_response_conditions")
     response = response.replace("response_queue_data[response_head]", "queue_data")
     response = response.replace("response_queue_error[response_head]", "queue_error")
+    response = response.replace("saved_response_data", "queue_data").replace("saved_response_error", "queue_error")
     return f"""module {name} #(parameter integer WAYS=2,READ_WIDTH=128)(
 {PORTS},output logic [READ_WIDTH+3:0] observed);
   localparam logic [1:0] FG_IDLE=0,FG_MISS=1,FG_RESP=2;
@@ -69,13 +72,8 @@ endmodule
 """
 
 
-def support(source: str) -> str:
-    result = ""
-    for name in ("conv_cache_direct_response", "conv_cache_snapshot_response", "conv_cache_response_data_select"):
-        start = source.index("module " + name)
-        result += source[start:source.index("endmodule", start)+len("endmodule")] + "\n"
-    return result
-
+def support(source):
+    return '\n'.join(module_definition(source, name) for name in ('conv_cache_direct_response', 'conv_cache_snapshot_response', 'conv_cache_response_data_select')) + '\n'
 
 def bench() -> str:
     declarations = PORTS.replace("input logic", "logic").replace(",\n", ";\n") + ";\n"
@@ -154,8 +152,8 @@ def main() -> None:
     args = parser.parse_args()
     root, out = args.source_root.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    current = (root / SOURCE).read_text()
-    original = ((args.reference_root.resolve() / SOURCE).read_text() if args.reference_root else
+    current = read_sources(root, SOURCE)
+    original = (read_sources(args.reference_root.resolve(), SOURCE) if args.reference_root else
         read_reference_file(ROOT, args.reference_ref, SOURCE, text=True))
     modules = model("reference", original) + model("candidate", current) + support(current)
     connections = ",".join(f".{name}({name})" for name in NAMES)
@@ -187,12 +185,13 @@ endmodule
     matched = re.search(r"RESPONSE_SELECTION_FOUR_STATE_PASS checks=(\d+)",(out / "four_state.log").read_text())
     if not matched or int(matched[1]) != 4984928:
         raise RuntimeError("缓存响应选择的四态检查数量不符")
-    if current != (root / SOURCE).read_text():
+    if current != read_sources(root, SOURCE):
         raise RuntimeError("响应检查期间生产源码发生变化")
     result = dict(passed=True,actual_rtl_expressions=True,external_inputs_constrained=False,
         source_sha256=digest(root / SOURCE),reference_sha256=hashlib.sha256(original.encode()).hexdigest(),
         sat_profiles=profiles,four_state_cases=int(matched[1]),proof_sha256=digest(proof),
         four_state_log_sha256=digest(out / "four_state.log"))
+    result["dependency_sha256"] = source_manifest(root, SOURCE)
     (out / "summary.json").write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n")
     print(json.dumps(result,ensure_ascii=False))
 

@@ -5,7 +5,7 @@
 // Blocking read-only cache. Policy 0: original LRU. Policy 1: geometric
 // next-line-use. Policy 2: geometric next-use plus reversible XOR set indexing.
 // A 16-byte transient buffer serves only the current consecutive line run.
-module conv_read_cache_reference #(
+/* 按地址组织共享输入缓存，保存读取请求并执行标签替换与数据填充。 */ module conv_read_cache_reference #(
   parameter int SETS=32,
   parameter int WAYS=2,
   parameter int LINE_BYTES=16,
@@ -21,35 +21,35 @@ module conv_read_cache_reference #(
   parameter int DA=$clog2(DEPTH),
   parameter int TAGW=32-LB-SI
 ) (
-  input wire logic clk, rst_n,
-  input wire logic cfg_valid,
-  output logic cfg_ready,
-  input wire logic [31:0] cfg_base, cfg_bytes,
-  input wire logic cfg_bypass,
-  input wire logic cfg_geometry = 1'b0,
-  input wire logic req_valid,
-  output logic req_ready,
-  input wire logic [31:0] req_addr,
-  input wire logic req_geometry = 1'b0,
-  input wire logic req_event_first = 1'b0,
-  input wire logic hint_valid = 1'b0,
-  input wire logic [31:0] hint_next = 32'hffff_ffff,
-  output logic hint_pending,
-  output logic rsp_valid,
-  input wire logic rsp_ready,
-  output logic [READ_WIDTH-1:0] rsp_data,
-  output logic rsp_error,
-  output logic arvalid,
-  input wire logic arready,
-  output logic [31:0] araddr,
-  output logic [7:0] arlen,
-  output logic [2:0] arsize,
-  output logic [1:0] arburst,
-  input wire logic rvalid,
-  output logic rready,
-  input wire logic [BUS_WIDTH-1:0] rdata,
-  input wire logic [1:0] rresp,
-  input wire logic rlast);
+  input wire logic clk /* 工作时钟 */, rst_n /* 低有效复位 */,
+  input wire logic cfg_valid /* 缓存任务配置有效 */,
+  output logic cfg_ready /* 缓存可接收任务配置 */,
+  input wire logic [31:0] cfg_base /* 输入区域首字节地址 */, cfg_bytes /* 输入区域的字节数 */,
+  input wire logic cfg_bypass /* 启用直接读取旁路 */,
+  input wire logic cfg_geometry = 1'b0 /* 启用卷积几何事件信息 */,
+  input wire logic req_valid /* 正式缓存读取请求有效 */,
+  output logic req_ready /* 缓存可接收正式读取请求 */,
+  input wire logic [31:0] req_addr /* 正式请求的字节地址 */,
+  input wire logic req_geometry = 1'b0 /* 当前请求携带卷积几何事件信息 */,
+  input wire logic req_event_first = 1'b0 /* 当前请求是几何事件的首个数据拍 */,
+  input wire logic hint_valid = 1'b0 /* 下一次使用顺序提示有效 */,
+  input wire logic [31:0] hint_next = 32'hffff_ffff /* 当前缓存行的下一次使用顺序 */,
+  output logic hint_pending /* 当前缓存行仍等待下一次使用顺序提示 */,
+  output logic rsp_valid /* 缓存读取响应有效 */,
+  input wire logic rsp_ready /* 请求端可接收缓存读取响应 */,
+  output logic [READ_WIDTH-1:0] rsp_data /* 返回请求端的读取数据 */,
+  output logic rsp_error /* 当前读取响应携带错误 */,
+  output logic arvalid /* AXI：读地址请求有效 */,
+  input wire logic arready /* AXI：可接收读地址请求 */,
+  output logic [31:0] araddr /* AXI：读突发首字节地址 */,
+  output logic [7:0] arlen /* AXI：读突发传输拍数减一 */,
+  output logic [2:0] arsize /* AXI：每个读数据拍字节数的二进制对数 */,
+  output logic [1:0] arburst /* AXI：读突发地址递增类型 */,
+  input wire logic rvalid /* AXI：读响应数据有效 */,
+  output logic rready /* AXI：可接收读响应数据 */,
+  input wire logic [BUS_WIDTH-1:0] rdata /* AXI：读响应数据 */,
+  input wire logic [1:0] rresp /* AXI：读响应状态码 */,
+  input wire logic rlast /* AXI：当前读突发的最后一个数据拍 */);
   localparam int p_read_bytes = READ_WIDTH / 8;
   localparam int p_read_shift = $clog2(p_read_bytes);
   localparam logic [31:0] INF = 32'hffff_ffff;

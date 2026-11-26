@@ -1,17 +1,7 @@
-/*
- * axi_linear_block_dma -- native AXI4 linear read/write engine
- * ======================================================
- *
- * This module is the shared AXI block DMA for accelerator memory traffic.
- * Read and write commands are split into independent engines:
- *
- *   - read  engine: AXI AR/R, used by IA/kernel/bias/quant loaders
- *   - write engine: AXI AW/W/B, used by OA writer
- *
- * The two engines can be active at the same time, allowing AXI full-duplex
- * memory traffic without a protocol bridge.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// AXI 块传输模块分别执行读取和写入，两套控制可以同时工作。
+// 读取端按接收顺序保存命令上下文，为 IA、权重、偏置及量化参数提供数据；
+// 写入端接收输出数据流，处理行内字节偏移、4 KiB 边界和中止后的已接收突发。
 module axi_linear_block_dma #(
     parameter int unsigned DATA_WIDTH   = 16,
     parameter int unsigned SIZE         = 16,
@@ -24,95 +14,95 @@ module axi_linear_block_dma #(
     parameter int unsigned RD_TAG_WIDTH = 3,
     parameter int unsigned WRITE_OUTSTANDING = READ_OUTSTANDING
 ) (
-    input logic clk,
-    input logic rst_n,
-    input logic abort = 1'b0,
+    input logic clk /* 工作时钟 */,
+    input logic rst_n /* 低有效复位 */,
+    input logic abort = 1'b0 /* 中止当前传输并清空未完成命令状态 */,
 
-    // ---- Read block command ----
-    input  logic                                   rd_start,
-    output logic                                   rd_start_ready,
-    input  logic [RD_TAG_WIDTH-1:0]                 rd_tag = '0,
-    output logic [RD_TAG_WIDTH-1:0]                 rd_response_tag,
-    output logic [RD_TAG_WIDTH-1:0]                 rd_finish_tag,
-    input  logic                                   rd_linear_read_mode,
-    input  logic        [           REG_WIDTH-1:0] rd_base_addr,
-    input  logic        [           REG_WIDTH-1:0] rd_row_stride,
-    input  logic        [           REG_WIDTH-1:0] rd_rows_to_read,
-    input  logic        [           REG_WIDTH-1:0] rd_valid_cols,
-    input  logic        [                     7:0] rd_burst_len_m1,
-    input  logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_slot_id,
-    input  logic                                   rd_use_16bits,
-    input  logic signed [           REG_WIDTH-1:0] rd_lhs_zp,
-    output logic                                   rd_busy,
-    output logic                                   rd_done,
-    output logic                                   rd_finish_beat,
+    // 块读取命令
+    input  logic                                   rd_start /* 块读取：启动本次块传输 */,
+    output logic                                   rd_start_ready /* 读命令队列可接收新命令 */,
+    input  logic [RD_TAG_WIDTH-1:0]                 rd_tag = '0 /* 读命令携带的客户端标签 */,
+    output logic [RD_TAG_WIDTH-1:0]                 rd_response_tag /* 当前读取数据对应的客户端标签 */,
+    output logic [RD_TAG_WIDTH-1:0]                 rd_finish_tag /* 当前完成事件对应的客户端标签 */,
+    input  logic                                   rd_linear_read_mode /* 块读取：启用逐行单拍读取模式 */,
+    input  logic        [           REG_WIDTH-1:0] rd_base_addr /* 块读取：本次传输的首字节地址 */,
+    input  logic        [           REG_WIDTH-1:0] rd_row_stride /* 块读取：相邻传输行的字节步长 */,
+    input  logic        [           REG_WIDTH-1:0] rd_rows_to_read /* 块读取：本次块传输的行数 */,
+    input  logic        [           REG_WIDTH-1:0] rd_valid_cols /* 块读取：每行实际有效的元素数 */,
+    input  logic        [                     7:0] rd_burst_len_m1 /* 块读取：每行突发传输拍数减一 */,
+    input  logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_slot_id /* 块读取：读取结果写入的缓存槽号 */,
+    input  logic                                   rd_use_16bits /* 块读取：输入元素采用16 位格式 */,
+    input  logic signed [           REG_WIDTH-1:0] rd_lhs_zp /* 块读取：输入元素的有符号零点 */,
+    output logic                                   rd_busy /* 块读取：块传输正在执行 */,
+    output logic                                   rd_done /* 块读取：本次块传输完成 */,
+    output logic                                   rd_finish_beat /* 当前接收数据拍结束一个读命令 */,
 
-    // ---- Write block command ----
-    input  logic                            wr_start,
-    input  logic [           REG_WIDTH-1:0] wr_base_addr,
-    input  logic [           REG_WIDTH-1:0] wr_row_stride,
-    input  logic [           REG_WIDTH-1:0] wr_rows_to_write,
-    input  logic [                     7:0] wr_burst_len_m1,
-    output logic                            wr_busy,
-    output logic                            wr_done,
+    // 块写入命令
+    input  logic                            wr_start /* 块写入：启动本次块传输 */,
+    input  logic [           REG_WIDTH-1:0] wr_base_addr /* 块写入：本次传输的首字节地址 */,
+    input  logic [           REG_WIDTH-1:0] wr_row_stride /* 块写入：相邻传输行的字节步长 */,
+    input  logic [           REG_WIDTH-1:0] wr_rows_to_write /* 块写入：本次写入的行数 */,
+    input  logic [                     7:0] wr_burst_len_m1 /* 块写入：每行突发传输拍数减一 */,
+    output logic                            wr_busy /* 块写入：块传输正在执行 */,
+    output logic                            wr_done /* 块写入：本次块传输完成 */,
 
-    // ---- Write data stream ----
-    input  logic [  BUS_WIDTH-1:0] src_wdata,
-    input  logic [BUS_WIDTH/8-1:0] src_wmask,
-    input  logic                   src_wvalid,
-    output logic                   src_wready,
+    // 写入数据流
+    input  logic [  BUS_WIDTH-1:0] src_wdata /* 来自写回客户端的总线数据 */,
+    input  logic [BUS_WIDTH/8-1:0] src_wmask /* 来自写回客户端的逐字节有效掩码 */,
+    input  logic                   src_wvalid /* 写回客户端提供有效数据拍 */,
+    output logic                   src_wready /* 写引擎可接收当前数据拍 */,
 
-    // ---- AXI4 master read address channel ----
-    output logic                   m_axi_arvalid,
-    input  logic                   m_axi_arready,
-    output logic [  REG_WIDTH-1:0] m_axi_araddr,
-    output logic [            7:0] m_axi_arlen,
-    output logic [            2:0] m_axi_arsize,
-    output logic [            1:0] m_axi_arburst,
+    // AXI4 主设备读地址通道
+    output logic                   m_axi_arvalid /* 存储侧 AXI：读地址请求有效 */,
+    input  logic                   m_axi_arready /* 存储侧 AXI：可接收读地址请求 */,
+    output logic [  REG_WIDTH-1:0] m_axi_araddr /* 存储侧 AXI：读突发首字节地址 */,
+    output logic [            7:0] m_axi_arlen /* 存储侧 AXI：读突发传输拍数减一 */,
+    output logic [            2:0] m_axi_arsize /* 存储侧 AXI：每个读数据拍字节数的二进制对数 */,
+    output logic [            1:0] m_axi_arburst /* 存储侧 AXI：读突发地址递增类型 */,
 
-    // ---- AXI4 master read data channel ----
-    input  logic                   m_axi_rvalid,
-    output logic                   m_axi_rready,
-    input  logic [  BUS_WIDTH-1:0] m_axi_rdata,
-    input  logic [            1:0] m_axi_rresp,
-    input  logic                   m_axi_rlast,
+    // AXI4 主设备读数据通道
+    input  logic                   m_axi_rvalid /* 存储侧 AXI：读响应数据有效 */,
+    output logic                   m_axi_rready /* 存储侧 AXI：可接收读响应数据 */,
+    input  logic [  BUS_WIDTH-1:0] m_axi_rdata /* 存储侧 AXI：读响应数据 */,
+    input  logic [            1:0] m_axi_rresp /* 存储侧 AXI：读响应状态码 */,
+    input  logic                   m_axi_rlast /* 存储侧 AXI：当前读突发的最后一个数据拍 */,
 
-    // ---- AXI4 master write address channel ----
-    output logic                   m_axi_awvalid,
-    input  logic                   m_axi_awready,
-    output logic [  REG_WIDTH-1:0] m_axi_awaddr,
-    output logic [            7:0] m_axi_awlen,
-    output logic [            2:0] m_axi_awsize,
-    output logic [            1:0] m_axi_awburst,
+    // AXI4 主设备写地址通道
+    output logic                   m_axi_awvalid /* 存储侧 AXI：写地址请求有效 */,
+    input  logic                   m_axi_awready /* 存储侧 AXI：可接收写地址请求 */,
+    output logic [  REG_WIDTH-1:0] m_axi_awaddr /* 存储侧 AXI：写突发首字节地址 */,
+    output logic [            7:0] m_axi_awlen /* 存储侧 AXI：写突发传输拍数减一 */,
+    output logic [            2:0] m_axi_awsize /* 存储侧 AXI：每个写数据拍字节数的二进制对数 */,
+    output logic [            1:0] m_axi_awburst /* 存储侧 AXI：写突发地址递增类型 */,
 
-    // ---- AXI4 master write data channel ----
-    output logic                   m_axi_wvalid,
-    input  logic                   m_axi_wready,
-    output logic [  BUS_WIDTH-1:0] m_axi_wdata,
-    output logic [BUS_WIDTH/8-1:0] m_axi_wstrb,
-    output logic                   m_axi_wlast,
+    // AXI4 主设备写数据通道
+    output logic                   m_axi_wvalid /* 存储侧 AXI：写数据有效 */,
+    input  logic                   m_axi_wready /* 存储侧 AXI：可接收写数据 */,
+    output logic [  BUS_WIDTH-1:0] m_axi_wdata /* 存储侧 AXI：待写入的总线数据 */,
+    output logic [BUS_WIDTH/8-1:0] m_axi_wstrb /* 存储侧 AXI：写数据逐字节使能 */,
+    output logic                   m_axi_wlast /* 存储侧 AXI：当前写突发的最后一个数据拍 */,
 
-    // ---- AXI4 master write response channel ----
-    input  logic                   m_axi_bvalid,
-    output logic                   m_axi_bready,
-    input  logic [            1:0] m_axi_bresp,
+    // AXI4 主设备写响应通道
+    input  logic                   m_axi_bvalid /* 存储侧 AXI：写响应有效 */,
+    output logic                   m_axi_bready /* 存储侧 AXI：可接收写响应 */,
+    input  logic [            1:0] m_axi_bresp /* 存储侧 AXI：写响应状态码 */,
 
-    // ---- Read unpack output ----
-    output logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] wr_slot,
-    output logic        [        $clog2(SIZE)-1:0] wr_row,
-    output logic        [        $clog2(SIZE)-1:0] wr_col_base,
-    output logic signed [          DATA_WIDTH-1:0] wr_data      [BUS_WIDTH/8],
-    output logic                                   wr_valid     [BUS_WIDTH/8],
-    output logic                                   wr_use_16bits,
+    // 读取数据解包输出
+    output logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] wr_slot /* 解包结果写入的缓存槽号 */,
+    output logic        [        $clog2(SIZE)-1:0] wr_row /* 解包结果在矩阵块内的行号 */,
+    output logic        [        $clog2(SIZE)-1:0] wr_col_base /* 解包结果首通道在矩阵块内的列号 */,
+    output logic signed [          DATA_WIDTH-1:0] wr_data      [BUS_WIDTH/8] /* 解包后写入缓存的有符号元素数组 */,
+    output logic                                   wr_valid     [BUS_WIDTH/8] /* 解包结果各通道的写入有效标记 */,
+    output logic                                   wr_use_16bits /* 当前解包结果采用16 位格式 */,
 
-    // ---- Raw read stream for quant/bias-like users ----
-    output logic [   BUS_WIDTH-1:0] rd_raw_data,
-    output logic                    rd_raw_valid,
-    output logic [$clog2(SIZE)-1:0] rd_raw_row,
-    output logic [$clog2(SIZE)-1:0] rd_raw_col_base,
+    // 供量化参数和偏置使用的原始读取数据流
+    output logic [   BUS_WIDTH-1:0] rd_raw_data /* 块读取：未经元素解包的总线读取数据 */,
+    output logic                    rd_raw_valid /* 块读取：原始总线读取数据有效 */,
+    output logic [$clog2(SIZE)-1:0] rd_raw_row /* 块读取：原始读取数据在块内的行号 */,
+    output logic [$clog2(SIZE)-1:0] rd_raw_col_base /* 块读取：原始读取数据在块内的起始列号 */,
 
-    output logic rd_error,
-    output logic wr_error
+    output logic rd_error /* 块读取：本次块传输出现响应或范围错误 */,
+    output logic wr_error /* 块写入：本次块传输出现响应或范围错误 */
 );
 
     localparam int unsigned BYTE_PER_BEAT = BUS_WIDTH / 8;
@@ -142,7 +132,7 @@ module axi_linear_block_dma #(
     localparam int unsigned BEAT_CNT_W = 9;
     localparam bit SUPPORT_16BIT = (DATA_WIDTH > 8);
     typedef logic [ROW_CNT_W-1:0] row_count_t;
-    // A segmented output descriptor can span 16 row tiles (256 rows).
+    // 分段输出描述符最多覆盖 16 个行块，共 256 行。
     localparam int unsigned WR_ROW_CNT_W = (ROW_CNT_W > 9) ? ROW_CNT_W : 9;
     typedef logic [WR_ROW_CNT_W-1:0] write_row_count_t;
     typedef logic [BEAT_CNT_W-1:0] beat_count_t;
@@ -155,7 +145,7 @@ module axi_linear_block_dma #(
     wire wr_b_hs  = m_axi_bvalid && m_axi_bready;
 
     // ---------------------------------------------------------------------
-    // Read command issue and ordered response contexts
+    // 读取命令发送与按接收顺序排列的响应上下文。
     // ---------------------------------------------------------------------
     localparam int unsigned RD_CTX_DEPTH = (RD_CONTEXT_DEPTH < 1) ? 1 : RD_CONTEXT_DEPTH;
     localparam int unsigned RD_CTX_PTR_W = (RD_CTX_DEPTH <= 1) ? 1 : $clog2(RD_CTX_DEPTH);
@@ -253,7 +243,8 @@ module axi_linear_block_dma #(
     wire rd_unaligned_mode = rd_cfg_base_addr[ADDR_LSB-1:0] != '0 ||
                              rd_cfg_row_stride[ADDR_LSB-1:0] != '0;
     wire [ADDR_LSB-1:0] rd_rsp_offset = rd_rsp_row_addr_cur[ADDR_LSB-1:0];
-    wire rd_rsp_cross = rd_rsp_offset != '0;
+    // 地址跨字判断独立完成，返回数据的列范围只读取该一位条件。
+    (* keep = "true" *) wire rd_rsp_cross = rd_rsp_offset != '0;
     wire rd_rsp_emit = !rd_rsp_cross || rd_rsp_beat_cnt != '0;
     // 两种字节排列分别判断最后一拍，行地址低位只选择已经完成的比较结果。
     // 线性读取对应一个有效字，跨字读取再接收一拍以组成完整数据。
@@ -278,7 +269,7 @@ module axi_linear_block_dma #(
 
 `endif
 
-    add_equal #(.p_width(ROW_CNT_W)) u_rsp_row_equal (
+    add_equal #(.p_width(ROW_CNT_W), .p_preserve_bits(1'b1)) u_rsp_row_equal (
         .i_a(rsp_row_equal_i_a), .i_b(rsp_row_equal_i_b),
         .i_target(rsp_row_equal_i_target), .i_carry_in(rsp_row_equal_i_carry_in),
         .o_equal(rsp_row_equal_o_equal)
@@ -295,7 +286,8 @@ module axi_linear_block_dma #(
         assign rd_rsp_plain_equal_group[group] = rd_rsp_beat_cnt[p_first +: p_bits] ==
             rd_rsp_plain_last[p_first +: p_bits];
     end
-    (* keep = "true" *) logic rd_rsp_count_zero, rd_rsp_count_one, rd_rsp_plain_equal;
+    (* keep = "true" *) logic rd_rsp_count_zero, rd_rsp_plain_equal;
+    logic rd_rsp_count_one;
     (* keep = "true" *) logic rd_rsp_high_zero;
     // 零拍与一拍共用高六位检查，低三位直接参加各自的判断。
     assign rd_rsp_high_zero = rd_rsp_beat_cnt[BEAT_CNT_W-1:3] == '0;
@@ -328,7 +320,7 @@ module axi_linear_block_dma #(
     assign rd_rsp_done = rd_r_hs &&
         (rd_rsp_cross ? rd_rsp_last_with_cross : rd_rsp_last_without_cross);
     // 接收与末行判断并行完成，末拍判断只参与最后的完成选择。
-    (* keep = "true" *) wire rd_finish_enable = rd_r_hs && rsp_row_equal_o_equal;
+    wire rd_finish_enable = rd_r_hs && rsp_row_equal_o_equal;
     assign rd_finish_beat = rd_finish_enable &&
         (rd_rsp_cross ? rd_rsp_last_with_cross : rd_rsp_last_without_cross);
     (* keep = "true" *) wire rd_issue_all_rows = rd_issue_active &&
@@ -449,7 +441,7 @@ module axi_linear_block_dma #(
         end
     end
 
-    // AXI credits cover physical bursts from all accepted logical commands.
+    // AXI 未完成计数包含全部已接收逻辑命令对应的物理突发。
     always_ff @(posedge clk) begin
         if (!rst_n) rd_outstanding_cnt <= '0;
         else begin
@@ -590,7 +582,7 @@ module axi_linear_block_dma #(
         end
     end
 
-    // Logical row progression uses the response head, independent of AR issue.
+    // 逻辑行进度由响应队首推进，读地址发送独立执行。
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             rd_rsp_row_cnt <= '0; rd_rsp_row_addr_direct <= '0; rd_rsp_from_context <= 1'b0;
@@ -628,10 +620,21 @@ module axi_linear_block_dma #(
     end
 
     beat_count_t rd_rsp_logical_beat_comb;
-    logic [$clog2(SIZE)-1:0] rd_rsp_col_base_comb;
+    (* keep = "true" *) logic [$clog2(SIZE)-1:0] rd_rsp_col_base_comb;
     logic [BUS_WIDTH-1:0] rd_rsp_aligned_data_comb;
     logic [2*BUS_WIDTH-1:0] rd_rsp_joined_data;
     logic [2*BUS_WIDTH-1:0] rd_rsp_shifted_data;
+    logic rd_rsp_columns_high_zero;
+
+    // 所有输出通道共用有效列数高段的零值归并，各六位片段独立形成比较结果。
+    if (REG_WIDTH > $clog2(SIZE)) begin : g_response_columns_high
+        zero_reduce #(.p_width(REG_WIDTH-$clog2(SIZE)), .p_group_width(6)) u_zero (
+            .i_value(rd_head.valid_cols[REG_WIDTH-1:$clog2(SIZE)]),
+            .o_zero(rd_rsp_columns_high_zero)
+        );
+    end else begin : g_response_columns_full
+        assign rd_rsp_columns_high_zero = 1'b1;
+    end
 
     // 跨字读取先连接相邻两个总线字，再按字节偏移选择连续数据。
     assign rd_rsp_joined_data = {m_axi_rdata, rd_rsp_prev_data};
@@ -701,12 +704,12 @@ module axi_linear_block_dma #(
         if (REG_WIDTH > $clog2(SIZE) && lane < (1 << $clog2(SIZE))) begin : g_column_range
             localparam int p_column_width = $clog2(SIZE);
             logic [p_column_width:0] limit_low_delta;
-            logic limit_high_zero;
+            (* keep = "true" *) logic limit_high_zero;
 
             // 固定通道偏移先作用于有效长度，列地址直接参与低段比较。
             assign limit_low_delta = {1'b0, rd_head.valid_cols[p_column_width-1:0]} -
                 (p_column_width+1)'(lane);
-            assign limit_high_zero = !(|rd_head.valid_cols[REG_WIDTH-1:p_column_width]);
+            assign limit_high_zero = rd_rsp_columns_high_zero;
             // 有效输出已限定在当前块内，长度高段非零时覆盖全部块内通道。
             assign rd_rsp_lane_in_data_comb[lane] = !limit_high_zero ||
                 (!limit_low_delta[p_column_width] &&
@@ -726,7 +729,7 @@ module axi_linear_block_dma #(
     end
 
     // ---------------------------------------------------------------------
-    // Write engine configuration/state
+    // 写引擎的配置与状态。
     // ---------------------------------------------------------------------
     logic [REG_WIDTH-1:0] wr_cfg_base_addr;
     logic [REG_WIDTH-1:0] wr_cfg_row_stride;
@@ -782,8 +785,8 @@ module axi_linear_block_dma #(
      logic [REG_WIDTH:0] wr_data_next_addr_sum;
     assign wr_data_next_addr_sum = {1'b0, wr_data_row_addr_cur} + {1'b0, wr_cfg_row_stride};
 
-    // Preserve a stalled W beat across abort. Subsequent accepted AW bursts
-    // finish with zero byte enables, independent of the producer's progress.
+    // 中止期间保留已有效且正在等待接收的写数据拍。
+    // 后续已接收写地址对应的突发使用零字节使能完成，不再等待上游数据。
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             wr_abort <= 1'b0;
@@ -813,15 +816,19 @@ module axi_linear_block_dma #(
     wire wr_row_cross = (wr_row_offset != '0);
     // 两种行结束位置分别比较，字节偏移仅选择已完成的比较结果。
     wire wr_plain_row_end = wr_beat_cnt == wr_cfg_burst_len_ext;
-    localparam int unsigned p_row_equal_groups = (BEAT_CNT_W + 2) / 3;
-    (* keep = "true" *) logic [p_row_equal_groups-1:0] wr_cross_equal_group;
-    for (genvar group = 0; group < p_row_equal_groups; group++) begin : g_write_row_equal
-        localparam int unsigned p_first = 3 * group;
-        localparam int unsigned p_bits = BEAT_CNT_W - p_first < 3 ? BEAT_CNT_W - p_first : 3;
-        assign wr_cross_equal_group[group] = wr_beat_cnt[p_first +: p_bits] ==
-            wr_cfg_cross_last[p_first +: p_bits];
+    // 保存当前拍是否为跨字行末拍，与拍计数器在同一边沿更新。
+    logic wr_cross_row_end_q;
+    wire wr_cross_row_end = wr_cross_row_end_q;
+    logic wr_cross_row_next;
+    // 计数与跨字末拍序号同时加一时，相等关系直接使用未加一的行末比较。
+    always_comb begin
+        wr_cross_row_next = wr_plain_row_end;
+        case (^{wr_beat_cnt, wr_cfg_burst_len_m1, wr_cfg_cross_last})
+            1'b0, 1'b1: begin end
+            default: wr_cross_row_next =
+                (wr_beat_cnt + beat_count_t'(1)) == wr_cfg_cross_last;
+        endcase
     end
-    wire wr_cross_row_end = &wr_cross_equal_group;
 
     wire wr_row_end = wr_row_cross ? wr_cross_row_end : wr_plain_row_end;
     wire [BEAT_CNT_W-1:0] wr_cmd_row_beats = wr_cfg_burst_len_ext + beat_count_t'(1)
@@ -865,8 +872,8 @@ module axi_linear_block_dma #(
         assign boundary_last_beat = 13'(page_last_beat) < 13'(MAX_BURST_BEATS-1) ?
             beat_count_t'(page_last_beat) : beat_count_t'(MAX_BURST_BEATS-1);
 
-        // Both alignment cases finish their arithmetic and bounds checks before
-        // the byte offset selects the physical burst's final beat number.
+        // 两种字节偏移情况分别完成算术和边界检查，
+        // 字节偏移仅选择物理突发的最终拍序号。
         for (genvar crossing = 0; crossing < 2; crossing++) begin : g_alignment
             logic candidate_zero, candidate_within_page, candidate_within_burst;
             assign remaining_candidate[crossing] =
@@ -884,7 +891,7 @@ module axi_linear_block_dma #(
                 end
             end
         end
-        // The unqualified expression retains the arithmetic X/Z behavior.
+        // 完整算术表达式保留输入含 X 或 Z 时的传播结果。
         always_comb begin
             case (wr_segment_cross[segment])
                 1'b0: wr_selected_last_beat[segment] = selected_candidate[0];
@@ -916,13 +923,18 @@ module axi_linear_block_dma #(
 
     // 同一字节旋转同时准备当前字和后续保留字，再按字节位置分配两部分。
     if (ADDR_LSB > 2 && BYTE_PER_BEAT == (1 << ADDR_LSB)) begin : g_grouped_write_shift
-        (* keep = 1 *) logic [2*BUS_WIDTH-1:0] low_shifted_data;
-        (* keep = 1 *) logic [2*BYTE_PER_BEAT-1:0] low_shifted_mask;
+        logic [2*BUS_WIDTH-1:0] low_shifted_data;
+        logic [2*BYTE_PER_BEAT-1:0] low_shifted_mask;
+        (* keep = 1 *) logic [2*BUS_WIDTH-1:8] low_shifted_upper_data;
+        (* keep = 1 *) logic [2*BYTE_PER_BEAT-1:1] low_shifted_upper_mask;
         logic [2*BUS_WIDTH-1:0] complete_shifted_data;
         logic [2*BYTE_PER_BEAT-1:0] complete_shifted_mask;
         // 低两位先选择四种字节偏移，高位只选择已经形成的部分结果。
         assign low_shifted_data = {{BUS_WIDTH{1'b0}}, src_wdata} << {wr_row_offset[1:0], 3'b000};
         assign low_shifted_mask = {{BYTE_PER_BEAT{1'b0}}, src_wmask} << wr_row_offset[1:0];
+        // 最低字节只经过置零选择，高字节保留两级移位之间的组合边界。
+        assign low_shifted_upper_data = low_shifted_data[2*BUS_WIDTH-1:8];
+        assign low_shifted_upper_mask = low_shifted_mask[2*BYTE_PER_BEAT-1:1];
         assign complete_shifted_data = low_shifted_data << {wr_row_offset[ADDR_LSB-1:2], 5'b00000};
         assign complete_shifted_mask = low_shifted_mask << {wr_row_offset[ADDR_LSB-1:2], 2'b00};
         always_comb begin
@@ -992,7 +1004,7 @@ module axi_linear_block_dma #(
     end
 
     assign m_axi_awsize  = 3'(AXI_SIZE_VALUE);
-    assign m_axi_awburst = 2'b01; // INCR
+    assign m_axi_awburst = 2'b01; // 地址递增突发
     assign m_axi_wdata   = wr_abort_hold_valid ? wr_abort_hold_data :
                           wr_abort ? '0 : wr_aligned_wdata;
     assign m_axi_wstrb   = wr_abort_hold_valid ? wr_abort_hold_mask :
@@ -1051,6 +1063,7 @@ module axi_linear_block_dma #(
             wr_data_row_cnt <= '0;
             wr_data_row_addr_cur <= '0;
             wr_beat_cnt   <= '0;
+            wr_cross_row_end_q <= 1'b0;
             wr_segment_beat_cnt <= '0;
             wr_segment_last_beat <= '0;
             wr_tail_data   <= '0;
@@ -1069,6 +1082,7 @@ module axi_linear_block_dma #(
             wr_data_row_cnt <= '0;
             wr_data_row_addr_cur <= wr_base_addr;
             wr_beat_cnt   <= '0;
+            wr_cross_row_end_q <= beat_count_t'(0) == (beat_count_t'(wr_burst_len_m1) + beat_count_t'(1));
             wr_segment_beat_cnt <= '0;
             wr_segment_last_beat <= '0;
             wr_tail_data   <= '0;
@@ -1108,8 +1122,7 @@ module axi_linear_block_dma #(
                     default: wr_outstanding_cnt <= wr_outstanding_cnt;
                 endcase
 
-                // Accepted physical addresses and completed W bursts are
-                // counted independently from logical row progress.
+                // 已接收物理写地址与已完成写数据突发分别计数，逻辑行进度独立保存。
                 unique case ({wr_aw_hs, wr_segment_done})
                     2'b10: wr_pending_data_cnt <= wr_pending_increment;
                     2'b01: wr_pending_data_cnt <= wr_pending_decrement;
@@ -1135,6 +1148,7 @@ module axi_linear_block_dma #(
                     end
                     if (wr_row_end) begin
                         wr_beat_cnt   <= '0;
+                        wr_cross_row_end_q <= beat_count_t'(0) == wr_cfg_cross_last;
                         wr_data_active <= 1'b0;
                         wr_data_row_cnt <= wr_data_row_cnt + write_row_count_t'(1);
                         wr_data_row_addr_cur <= wr_data_next_addr_sum[REG_WIDTH-1:0];
@@ -1142,6 +1156,7 @@ module axi_linear_block_dma #(
                         wr_tail_mask   <= '0;
                     end else begin
                         wr_beat_cnt <= wr_beat_cnt + beat_count_t'(1);
+                        wr_cross_row_end_q <= wr_cross_row_next;
                     end
                 end
 
@@ -1154,6 +1169,7 @@ module axi_linear_block_dma #(
             wr_data_row_cnt <= '0;
             wr_data_row_addr_cur <= '0;
             wr_beat_cnt   <= '0;
+            wr_cross_row_end_q <= beat_count_t'(0) == wr_cfg_cross_last;
             wr_segment_beat_cnt <= '0;
             wr_segment_last_beat <= '0;
             wr_tail_data   <= '0;

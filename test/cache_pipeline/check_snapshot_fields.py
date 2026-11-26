@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from rtl_source_view import read_sources, module_definition, request_module, controller_module, source_manifest
 import re
 import runpy
 import shlex
@@ -45,6 +46,7 @@ def expression(source: str, name: str) -> str:
 
 
 def model(name: str, source: str, retimed: bool) -> str:
+    source = request_module(source)
     start = source.index("  assign lookup_head_matches =")
     end = source.index("  if (DEMAND_DEPTH == 1) begin : g_direct_snapshot_fields", start) if retimed else \
         source.index("  // 地址范围结果随接收描述保存", start)
@@ -108,16 +110,9 @@ endmodule
 """
 
 
-def support(source: str) -> str:
-    result = ""
-    for name in ("conv_cache_snapshot_fields", "conv_cache_snapshot_equal"):
-        match = re.search(r'(?:\(\* keep_hierarchy = "yes" \*\)\s*)?module ' + name + r'\b', source)
-        if match is None:
-            raise RuntimeError("缺少生产快照模块：" + name)
-        start = match.start()
-        result += source[start:source.index("endmodule", start)+len("endmodule")] + "\n"
-    return result
-
+def support(source):
+    names = ('conv_cache_snapshot_fields', 'conv_cache_snapshot_equal', 'conv_cache_registered_equal')
+    return '\n'.join(module_definition(source, name) for name in names) + '\n'
 
 def bench() -> str:
     declarations = PORTS.replace("input logic", "logic").replace(",\n", ";\n") + ";\n"
@@ -186,9 +181,12 @@ def run(command: list, log: Path, cwd: Path) -> None:
 
 
 def fill_set_model(name: str, source: str, retimed: bool) -> str:
+    controller, request = controller_module(source), request_module(source)
+    retimed = bool(re.search(r"assign\s+lookup_fill_set_match_q\s*=", request))
     if retimed:
         blocks = []
         for signal in ("fill_set", "lookup_snapshot_set"):
+            source = controller if signal == "fill_set" else request
             writes = list(re.finditer(r"\b" + signal + r"\s*<=", source))
             if len(writes) != 1:
                 raise RuntimeError("组号寄存器的实际写入次数不符：" + signal)
@@ -200,7 +198,7 @@ def fill_set_model(name: str, source: str, retimed: bool) -> str:
                 return "selected_" + signal + " = " + match[1] + ";" if match else ""
 
             blocks.append(Statements(source[start:], select_assignment=selected).statement())
-        match = re.search(r"assign\s+lookup_fill_set_match_q\s*=\s*(.*?);", source, re.S)
+        match = re.search(r"assign\s+lookup_fill_set_match_q\s*=\s*(.*?);", request, re.S)
         if match is None:
             raise RuntimeError("缺少保存后组号比较表达式")
         comparison = match[1].replace("lookup_snapshot_set", "saved_lookup_set").replace(
@@ -218,6 +216,7 @@ def fill_set_model(name: str, source: str, retimed: bool) -> str:
   end
   assign observed=""" + comparison + ";\n"
     else:
+        source = request
         start = source.index("  if (DEMAND_DEPTH == 1) begin : g_saved_fill_match")
         start = source.index("always_comb begin", start) + len("always_comb ")
 
@@ -382,10 +381,10 @@ def main() -> None:
     args = parser.parse_args()
     root, out = args.source_root.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    current = (root / SOURCE).read_text()
-    original = ((args.reference_root.resolve() / SOURCE).read_text() if args.reference_root else
+    current = read_sources(root, SOURCE)
+    original = (read_sources(args.reference_root.resolve(), SOURCE) if args.reference_root else
         read_reference_file(ROOT, args.reference_ref, SOURCE, text=True))
-    modules = model("reference", original, False) + model("candidate", current, True) + support(current)
+    modules = model("reference", original, "g_direct_snapshot_fields" in request_module(original)) + model("candidate", current, True) + support(current)
     proof = out / "comparison.sv"
     connections = ",".join(f".{name}({name})" for name in ("clk",*NAMES))
     proof.write_text(modules + f"""module comparison #(parameter integer SI=4)(
@@ -425,7 +424,7 @@ endmodule
     if not matched or int(matched[1]) != 270912:
         raise RuntimeError("查询字段采样后的四态检查数量不符")
     fill_sets = check_fill_sets(root, out / "fill_sets", current, original)
-    if current != (root / SOURCE).read_text():
+    if current != read_sources(root, SOURCE):
         raise RuntimeError("字段检查期间生产源码发生变化")
     result = dict(passed=True,actual_rtl_expressions=True,external_inputs_constrained=False,
         source_sha256=digest(root / SOURCE),reference_sha256=hashlib.sha256(original.encode()).hexdigest(),
@@ -434,8 +433,9 @@ endmodule
         dependencies_sha256={str(path):digest(path) for path in sources},fill_sets=fill_sets)
     if args.map:
         result["mapping"] = map_fields(root,out,proof,sources)
-    if current != (root/SOURCE).read_text():
+    if current != read_sources(root, SOURCE):
         raise RuntimeError("快照映射期间生产源码发生变化")
+    result["dependency_sha256"] = source_manifest(root, SOURCE)
     (out / "summary.json").write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n")
     print(json.dumps(result,ensure_ascii=False))
 

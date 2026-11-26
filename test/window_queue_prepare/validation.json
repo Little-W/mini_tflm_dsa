@@ -1,0 +1,329 @@
+{
+  "passed": true,
+  "formal": {
+    "passed": true,
+    "reference_commit": "8a31b8559bec7e8ffec4ff33f7bfc052c09201f8",
+    "source_sha256": {
+      "rtl/npu/dma/conv_window_cols_candidates.sv": "7d62bad4ff7ad9d20fcfdb2af8898148608ef227c1e8e36d88f09b08e46396be",
+      "rtl/npu/dma/conv_window_cols_range.sv": "e20aa703ca12c424b43b425acb520ef703edbd311685d9b66a95fd3e504fb8d9",
+      "rtl/npu/dma/conv_window_cols_select.sv": "a686034e93a683b72e23a669a50ddc8ca2d28ff9a8f30258faa038c2b5e6ad66",
+      "rtl/npu/dma/conv_window_prepared_flag.sv": "5d91aa352ad95285fb9f530a074402e56678bd9c31a3bdc6fe2d188a34cf0a69",
+      "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+      "rtl/npu/dma/conv_window_data_enable.sv": "9b3fd16e2a068267909dac72a038a7fe9aec9950cb89f14f81a09641e83d2d12",
+      "rtl/npu/dma/conv_window_data_select.sv": "0426dd58e268a054e58fc1af614977ea5e3419af4243bb8d0aa25691814f5817",
+      "rtl/npu/dma/conv_window_queue.sv": "2a95468632a720afc2997cea5acc817d78d57719479fc96870cb1325069ed5a0",
+      "test/window_queue/run_formal.py": "3147f1199bbd22b3bfe27afda3d6b718595810accda0f451d7db24239ee7be1b"
+    },
+    "test_sha256": "99910cf766a0e29a45b307e468fa4a96c256073cef5a27da35266c6dd8a02de5",
+    "all_public_outputs_compared": true,
+    "external_inputs_constrained": false,
+    "independent_invariant_reset": "rst_n=0 at first sampled edge",
+    "equivalence_state_relation": "failed || launch || !descriptor_available || descriptor_prepared_data equals current storage entry",
+    "state_relation_proven_independently": true,
+    "unmatched_read_port_signals": [
+      "descriptor_i_rd_addr",
+      "descriptor_i_rd_en",
+      "g_descriptor[0].u_value.i_rd_addr",
+      "g_descriptor[0].u_value.i_rd_en",
+      "g_descriptor[0].u_value.o_rd_data",
+      "g_descriptor[0].u_value.read_accept",
+      "g_descriptor[1].u_value.i_rd_addr",
+      "g_descriptor[1].u_value.i_rd_en",
+      "g_descriptor[1].u_value.o_rd_data",
+      "g_descriptor[1].u_value.read_accept",
+      "g_descriptor[2].u_value.i_rd_addr",
+      "g_descriptor[2].u_value.i_rd_en",
+      "g_descriptor[2].u_value.o_rd_data",
+      "g_descriptor[2].u_value.read_accept"
+    ],
+    "profiles": [
+      {
+        "depth": 2,
+        "lanes": 4,
+        "outstanding": 1,
+        "synthesis": false,
+        "passed": true,
+        "proven_equivalent_nodes": 513,
+        "independent_invariant_proofs": 2,
+        "log_sha256": "133fef05bc1804a9bd31064330e061a1457af14ec327d88726f17fd8ad51597a"
+      },
+      {
+        "depth": 2,
+        "lanes": 4,
+        "outstanding": 1,
+        "synthesis": true,
+        "passed": true,
+        "proven_equivalent_nodes": 513,
+        "independent_invariant_proofs": 2,
+        "log_sha256": "60014b2fc7eac361221f36f366360291727b2f0f20396eef1d66f58e9190cfed"
+      },
+      {
+        "depth": 3,
+        "lanes": 8,
+        "outstanding": 2,
+        "synthesis": false,
+        "passed": true,
+        "proven_equivalent_nodes": 689,
+        "independent_invariant_proofs": 2,
+        "log_sha256": "06e40f64e24e25627d6908ecb24a78d0807ef21f0ef0fb04604deead9031bd43"
+      },
+      {
+        "depth": 3,
+        "lanes": 8,
+        "outstanding": 2,
+        "synthesis": true,
+        "passed": true,
+        "proven_equivalent_nodes": 689,
+        "independent_invariant_proofs": 2,
+        "log_sha256": "e32daf43328afa15d27ca18f6105f0899123a5dd7173edf428541ce6fd12b845"
+      },
+      {
+        "depth": 4,
+        "lanes": 8,
+        "outstanding": 3,
+        "synthesis": false,
+        "passed": true,
+        "proven_equivalent_nodes": 792,
+        "independent_invariant_proofs": 2,
+        "log_sha256": "f50f7493289d8c56512c23c67cb64598bbce0ecafe1e36b107d6a3ac7a6dfbea"
+      },
+      {
+        "depth": 4,
+        "lanes": 8,
+        "outstanding": 3,
+        "synthesis": true,
+        "passed": true,
+        "proven_equivalent_nodes": 792,
+        "independent_invariant_proofs": 2,
+        "log_sha256": "f64c48d601d05ece79898b63c21dfb9e3ef69e9273eae975dd75111f5a297303"
+      },
+      {
+        "depth": 7,
+        "lanes": 16,
+        "outstanding": 4,
+        "synthesis": false,
+        "passed": true,
+        "proven_equivalent_nodes": 1236,
+        "independent_invariant_proofs": 2,
+        "log_sha256": "e9d82492f161306e6c143b67fbc278f4d55e5d9947a8a93cad3550a5c5f922fb"
+      },
+      {
+        "depth": 7,
+        "lanes": 16,
+        "outstanding": 4,
+        "synthesis": true,
+        "passed": true,
+        "proven_equivalent_nodes": 1236,
+        "independent_invariant_proofs": 2,
+        "log_sha256": "097df65291a4d2cb5c0956e0d63333666196dd4f7198df4bea0d9c2a5393df4c"
+      }
+    ]
+  },
+  "four_state": {
+    "passed": true,
+    "reference_commit": "8a31b855",
+    "source_sha256": {
+      "rtl/npu/dma/conv_window_cols_candidates.sv": "7d62bad4ff7ad9d20fcfdb2af8898148608ef227c1e8e36d88f09b08e46396be",
+      "rtl/npu/dma/conv_window_cols_range.sv": "e20aa703ca12c424b43b425acb520ef703edbd311685d9b66a95fd3e504fb8d9",
+      "rtl/npu/dma/conv_window_cols_select.sv": "a686034e93a683b72e23a669a50ddc8ca2d28ff9a8f30258faa038c2b5e6ad66",
+      "rtl/npu/dma/conv_window_prepared_flag.sv": "5d91aa352ad95285fb9f530a074402e56678bd9c31a3bdc6fe2d188a34cf0a69",
+      "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+      "rtl/npu/dma/conv_window_data_enable.sv": "9b3fd16e2a068267909dac72a038a7fe9aec9950cb89f14f81a09641e83d2d12",
+      "rtl/npu/dma/conv_window_data_select.sv": "0426dd58e268a054e58fc1af614977ea5e3419af4243bb8d0aa25691814f5817",
+      "rtl/npu/dma/conv_window_queue.sv": "2a95468632a720afc2997cea5acc817d78d57719479fc96870cb1325069ed5a0"
+    },
+    "test_sha256": "1a4b979c6a974193a22d357f9210a3446b1b2a6634bf136b261361b9b95bf090",
+    "profiles": [
+      {
+        "synthesis": false,
+        "passed": true,
+        "cycles": 65536,
+        "observations": 131072,
+        "log_sha256": "f33bc2b73037abb873e8ca2bdbc34751581d455663935a2623a194def80db594"
+      },
+      {
+        "synthesis": true,
+        "passed": true,
+        "cycles": 65536,
+        "observations": 131072,
+        "log_sha256": "f33bc2b73037abb873e8ca2bdbc34751581d455663935a2623a194def80db594"
+      }
+    ]
+  },
+  "protocol": {
+    "passed": true,
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_queue.sv": "2a95468632a720afc2997cea5acc817d78d57719479fc96870cb1325069ed5a0",
+      "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_candidates.sv": "7d62bad4ff7ad9d20fcfdb2af8898148608ef227c1e8e36d88f09b08e46396be",
+      "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_range.sv": "e20aa703ca12c424b43b425acb520ef703edbd311685d9b66a95fd3e504fb8d9",
+      "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_select.sv": "a686034e93a683b72e23a669a50ddc8ca2d28ff9a8f30258faa038c2b5e6ad66",
+      "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_data_enable.sv": "9b3fd16e2a068267909dac72a038a7fe9aec9950cb89f14f81a09641e83d2d12",
+      "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_data_select.sv": "0426dd58e268a054e58fc1af614977ea5e3419af4243bb8d0aa25691814f5817",
+      "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_prepared_flag.sv": "5d91aa352ad95285fb9f530a074402e56678bd9c31a3bdc6fe2d188a34cf0a69",
+      "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+      "/workspace/scratch/5bfa47658687/work_vector_queue/test/window_queue/main.cpp": "272ec8300ac9e54b2a4373a31bb64453b15f1475e4c53c03cbfaccbdcc22f889"
+    },
+    "cases": [
+      {
+        "depth": 2,
+        "lanes": 4,
+        "outstanding": 1,
+        "passed": true,
+        "results": [
+          "WINDOW_QUEUE_PASS depth=2 lanes=4 outstanding=1 random=0 accepted=512 retired=512 launches=512 consecutive=495 peak=1 idle=1 finish=511 stalls=63 errors=0 cycles=577",
+          "WINDOW_QUEUE_PASS depth=2 lanes=4 outstanding=1 random=1 accepted=4000 retired=4000 launches=3994 consecutive=113 peak=1 idle=78 finish=3916 stalls=12291 errors=8 cycles=21837"
+        ],
+        "command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--timing",
+          "--assert",
+          "-DNPU_SIM_ASSERT",
+          "-Wno-fatal",
+          "--top-module",
+          "conv_window_queue",
+          "-GDEPTH=2",
+          "-GWINDOW_LANES=4",
+          "-Gp_frontend_outstanding=1",
+          "--Mdir",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/build/window_queue_prepare_protocol/depth2_lanes4_outstanding1/obj",
+          "-j",
+          "2",
+          "-CFLAGS",
+          "-std=c++20 -O1 -DTEST_DEPTH=2 -DTEST_LANES=4 -DTEST_OUTSTANDING=1",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_queue.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_candidates.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_range.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_select.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_data_enable.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_data_select.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_prepared_flag.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/common/regfile.v",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/test/window_queue/main.cpp"
+        ]
+      },
+      {
+        "depth": 3,
+        "lanes": 8,
+        "outstanding": 2,
+        "passed": true,
+        "results": [
+          "WINDOW_QUEUE_PASS depth=3 lanes=8 outstanding=2 random=0 accepted=512 retired=512 launches=512 consecutive=503 peak=2 idle=1 finish=510 stalls=31 errors=0 cycles=546",
+          "WINDOW_QUEUE_PASS depth=3 lanes=8 outstanding=2 random=1 accepted=4000 retired=4000 launches=3992 consecutive=435 peak=2 idle=17 finish=3778 stalls=8388 errors=8 cycles=16496"
+        ],
+        "command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--timing",
+          "--assert",
+          "-DNPU_SIM_ASSERT",
+          "-Wno-fatal",
+          "--top-module",
+          "conv_window_queue",
+          "-GDEPTH=3",
+          "-GWINDOW_LANES=8",
+          "-Gp_frontend_outstanding=2",
+          "--Mdir",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/build/window_queue_prepare_protocol/depth3_lanes8_outstanding2/obj",
+          "-j",
+          "2",
+          "-CFLAGS",
+          "-std=c++20 -O1 -DTEST_DEPTH=3 -DTEST_LANES=8 -DTEST_OUTSTANDING=2",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_queue.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_candidates.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_range.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_select.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_data_enable.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_data_select.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_prepared_flag.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/common/regfile.v",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/test/window_queue/main.cpp"
+        ]
+      },
+      {
+        "depth": 4,
+        "lanes": 8,
+        "outstanding": 3,
+        "passed": true,
+        "results": [
+          "WINDOW_QUEUE_PASS depth=4 lanes=8 outstanding=3 random=0 accepted=512 retired=512 launches=512 consecutive=505 peak=3 idle=1 finish=509 stalls=21 errors=0 cycles=537",
+          "WINDOW_QUEUE_PASS depth=4 lanes=8 outstanding=3 random=1 accepted=4000 retired=4000 launches=3993 consecutive=460 peak=3 idle=9 finish=3784 stalls=8131 errors=8 cycles=16200"
+        ],
+        "command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--timing",
+          "--assert",
+          "-DNPU_SIM_ASSERT",
+          "-Wno-fatal",
+          "--top-module",
+          "conv_window_queue",
+          "-GDEPTH=4",
+          "-GWINDOW_LANES=8",
+          "-Gp_frontend_outstanding=3",
+          "--Mdir",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/build/window_queue_prepare_protocol/depth4_lanes8_outstanding3/obj",
+          "-j",
+          "2",
+          "-CFLAGS",
+          "-std=c++20 -O1 -DTEST_DEPTH=4 -DTEST_LANES=8 -DTEST_OUTSTANDING=3",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_queue.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_candidates.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_range.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_select.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_data_enable.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_data_select.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_prepared_flag.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/common/regfile.v",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/test/window_queue/main.cpp"
+        ]
+      },
+      {
+        "depth": 7,
+        "lanes": 16,
+        "outstanding": 4,
+        "passed": true,
+        "results": [
+          "WINDOW_QUEUE_PASS depth=7 lanes=16 outstanding=4 random=0 accepted=512 retired=512 launches=512 consecutive=511 peak=4 idle=1 finish=508 stalls=13 errors=0 cycles=532",
+          "WINDOW_QUEUE_PASS depth=7 lanes=16 outstanding=4 random=1 accepted=4000 retired=4000 launches=3976 consecutive=635 peak=4 idle=9 finish=3934 stalls=7684 errors=8 cycles=15677"
+        ],
+        "command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--timing",
+          "--assert",
+          "-DNPU_SIM_ASSERT",
+          "-Wno-fatal",
+          "--top-module",
+          "conv_window_queue",
+          "-GDEPTH=7",
+          "-GWINDOW_LANES=16",
+          "-Gp_frontend_outstanding=4",
+          "--Mdir",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/build/window_queue_prepare_protocol/depth7_lanes16_outstanding4/obj",
+          "-j",
+          "2",
+          "-CFLAGS",
+          "-std=c++20 -O1 -DTEST_DEPTH=7 -DTEST_LANES=16 -DTEST_OUTSTANDING=4",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_queue.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_candidates.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_range.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_cols_select.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_data_enable.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_data_select.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/npu/dma/conv_window_prepared_flag.sv",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/common/regfile.v",
+          "/workspace/scratch/5bfa47658687/work_vector_queue/test/window_queue/main.cpp"
+        ]
+      }
+    ]
+  }
+}

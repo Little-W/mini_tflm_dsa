@@ -1,0 +1,56 @@
+{
+  "passed": true,
+  "source_sha256": "9cdc93c0b9977f1c8812cc75ff9a3018579cfaf37652b19841736821e05640d7",
+  "reference_commit": "d485d636",
+  "cases": [
+    {
+      "mode": "generic",
+      "sets": 2,
+      "formal_passed": true,
+      "four_state_checks": 87712,
+      "log_sha256": "ecb500a4fbb89b68ccbd0e95a9ffce395ec0e4faed472cfbf1aad7e761295e59",
+      "four_state_log_sha256": "89604085203315141c4532aea1ec4d709f9230c3465c77b880d3dfc104a1caa1"
+    },
+    {
+      "mode": "fpga",
+      "sets": 2,
+      "formal_passed": true,
+      "four_state_checks": 87712,
+      "log_sha256": "c55d45653ddb494cbcb2c8def31db0ce45f7005fab720766c37612f5fb9e082c",
+      "four_state_log_sha256": "89604085203315141c4532aea1ec4d709f9230c3465c77b880d3dfc104a1caa1"
+    },
+    {
+      "mode": "generic",
+      "sets": 16,
+      "formal_passed": true,
+      "four_state_checks": 92192,
+      "log_sha256": "77ed59c303219b96e783ccf9b6dce6d2d9699067c8e02c072933c95c3c9a2b9b",
+      "four_state_log_sha256": "18f0d5b1a161061e6599e50f13f1fca1a95320d410a1a911de7cf5dc771a07e9"
+    },
+    {
+      "mode": "fpga",
+      "sets": 16,
+      "formal_passed": true,
+      "four_state_checks": 92192,
+      "log_sha256": "71c4e1eb2e4905428b552d4aec8f2056e02df17ed11e7f676a19b468aed10c5c",
+      "four_state_log_sha256": "18f0d5b1a161061e6599e50f13f1fca1a95320d410a1a911de7cf5dc771a07e9"
+    },
+    {
+      "mode": "generic",
+      "sets": 256,
+      "formal_passed": true,
+      "four_state_checks": 126496,
+      "log_sha256": "df1d32594793610decb156c60b4ecf44e1c20d856f3aa27ccc4b7d88aaaa305b",
+      "four_state_log_sha256": "f6777f855d297ebdbce74293bffbb625f244278538826aa4dbafedc0d807fc7f"
+    },
+    {
+      "mode": "fpga",
+      "sets": 256,
+      "formal_passed": true,
+      "four_state_checks": 126496,
+      "log_sha256": "2f74daba5b7dd19a8fc768e22a851fd467d1a3ab1cf89a8ca76d3223b11d5287",
+      "four_state_log_sha256": "f6777f855d297ebdbce74293bffbb625f244278538826aa4dbafedc0d807fc7f"
+    }
+  ],
+  "input_constraints": []
+}

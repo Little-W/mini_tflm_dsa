@@ -6,14 +6,14 @@
 module dma_register_buffer #(
     parameter int unsigned p_width = 1
 ) (
-    input wire logic clk,
-    input wire logic rst_n,
-    input wire logic i_valid,
-    output logic o_ready,
-    input wire logic [p_width-1:0] i_data,
-    output logic o_valid,
-    input wire logic i_ready,
-    output logic [p_width-1:0] o_data
+    input wire logic clk /* 工作时钟 */,
+    input wire logic rst_n /* 低有效复位 */,
+    input wire logic i_valid /* 上游待缓存的传输数据有效 */,
+    output logic o_ready /* 寄存缓冲区可接收上游数据 */,
+    input wire logic [p_width-1:0] i_data /* 上游提供的完整传输字段 */,
+    output logic o_valid /* 缓冲区向下游提供有效传输 */,
+    input wire logic i_ready /* 下游可接收当前缓存数据 */,
+    output logic [p_width-1:0] o_data /* 当前向下游提供的完整传输字段 */
 );
     logic head_valid, tail_valid;
     logic [p_width-1:0] head_data, tail_data;

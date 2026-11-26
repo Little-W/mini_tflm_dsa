@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -36,14 +37,17 @@ def main():
                ROOT/'test/linear_dma_4k/main.cpp', Path(__file__).resolve()]
     source_root = args.source_root.resolve()
     sources = [source_root / p.relative_to(ROOT) if p.is_relative_to(ROOT / 'rtl') else p for p in sources]
+    resolver = runpy.run_path(str(ROOT/'scripts/rtl/source_files.py'))['with_dependencies']
+    compile_sources = resolver(sources[:5], source_root)
+    sources = [*compile_sources, Path(__file__).resolve()]
     hashes = {str(p): sha(p) for p in sources}
     generate = [args.verilator, '--cc', '--exe', '--assert', '-Wno-fatal',
                 '--top-module', 'linear_dma_4k_top', '--Mdir', str(out/'obj'),
                 '--output-groups', '0', '--output-split', '12000',
                 f'-GREAD_OUTSTANDING={args.outstanding}',
                 f'-GBUS_WIDTH={args.bus_width}', f'-GDMA_MAX_BYTES={args.dma_max_bytes}',
-                '-CFLAGS', f'-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_DMA_MAX_BYTES={args.dma_max_bytes} -DTEST_BUS_WIDTH={args.bus_width}',
-                *[str(p) for p in sources[:5]]]
+                '-CFLAGS', f'-std=c++20 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_DMA_MAX_BYTES={args.dma_max_bytes} -DTEST_BUS_WIDTH={args.bus_width}',
+                *map(str, compile_sources)]
     compile_args = ['make', '-C', str(out/'obj'), '-f', 'Vlinear_dma_4k_top.mk', '-j', '1',
                     'OPT_FAST=-O1', 'OPT_SLOW=-O0', 'OPT_GLOBAL=-O1',
                     'VK_PCH_I_FAST=', 'VK_PCH_I_SLOW=', 'CFG_CXXFLAGS_PCH=-E']

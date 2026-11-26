@@ -6,15 +6,15 @@ module conv_cache_rank_table #(
   parameter int p_depth = 128,
   parameter int p_addr_width = $clog2(p_depth)
 ) (
-  input wire logic clk,
-  input wire logic i_clear_en,
-  input wire logic [p_addr_width-1:0] i_clear_addr,
-  input wire logic i_write_en,
-  input wire logic i_fill_valid, i_hint_valid, i_hit_valid,
-  input wire logic [p_addr_width-1:0] i_fill_addr, i_hint_addr, i_hit_addr,
-  input wire logic i_read_en,
-  input wire logic [p_addr_width-1:0] i_read_addr,
-  output logic [1:0] o_read_data
+  input wire logic clk, // 工作时钟
+  input wire logic i_clear_en, // 当前周期清除替换来源
+  input wire logic [p_addr_width-1:0] i_clear_addr, // 清除组号
+  input wire logic i_write_en, // 允许写入替换来源
+  input wire logic i_fill_valid /* 当前周期使用填充事件更新替换来源 */, i_hint_valid /* 当前周期使用下一次使用提示更新替换来源 */, i_hit_valid /* 当前周期使用命中事件更新替换来源 */ , // 填充、提示与命中更新事件
+  input wire logic [p_addr_width-1:0] i_fill_addr /* 填充事件对应的缓存组号 */, i_hint_addr /* 下一次使用提示对应的缓存组号 */, i_hit_addr /* 当前命中事件对应的缓存组号 */ , // 填充、提示与命中的写入组号
+  input wire logic i_read_en, // 允许更新同步读出结果
+  input wire logic [p_addr_width-1:0] i_read_addr, // 候选读取组号
+  output logic [1:0] o_read_data // 保存的替换来源编号
 );
   logic [2:0] bank_i_wr_en;
   logic [2:0][p_addr_width-1:0] bank_i_wr_addr;
@@ -72,15 +72,6 @@ module conv_cache_rank_table #(
     if (i_read_en)
       o_read_data <= bank_o_rd_data[0][0] ^ bank_o_rd_data[1][0] ^ bank_o_rd_data[2][0];
   end
-endmodule
-
-// 运行资格与命中事件独立计算，清除保持所有来源的最高写入优先级。
-(* keep_hierarchy = "yes" *)
-module conv_cache_rank_hit_write (
-  input wire logic i_clear, i_eligible, i_hit,
-  output logic o_write
-);
-  assign o_write = i_clear || (i_eligible && i_hit);
 endmodule
 
 `default_nettype wire

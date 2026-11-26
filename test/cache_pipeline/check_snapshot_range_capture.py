@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from rtl_source_view import read_sources, request_module, source_manifest
 import re
 import shlex
 import subprocess
@@ -28,8 +29,11 @@ def between(text, start, stop):
 
 
 def context(name, text):
-    declaration = between(text, "  typedef struct packed {\n    logic [31:0] address, epoch",
-                          "  demand_t request_queue")
+    text = request_module(text)
+    match = re.search(r"  typedef struct packed \{\s*logic \[31:0\] address, epoch.*?\} demand_t;", text, re.S)
+    if match is None:
+        raise RuntimeError("未找到完整请求类型声明")
+    declaration = match[0]
     cache_set = between(text, "  function automatic logic [SI-1:0] cache_set", "  endfunction") + "  endfunction\n"
     preview = between(text, "  unsigned_compare #(.p_width(32)) u_preview_base",
                       "  // 读取数据来源只依赖")
@@ -139,7 +143,7 @@ def main():
     sources = [root / SOURCE, reference / SOURCE, root / "rtl/common/onehot_mux.sv",
                root / "rtl/common/unsigned_compare.sv", root / "rtl/common/parallel_unsigned_compare.sv"]
     hashes = {str(path): digest(path) for path in sources}
-    current, original = sources[0].read_text(), sources[1].read_text()
+    current, original = read_sources(root, SOURCE), read_sources(reference, SOURCE)
     text = "\n".join((support(original, "reference_"), support(current, "candidate_"),
                        context("reference", original), context("candidate", current)))
     text += """module comparison #(parameter integer SI=4,RW=131+SI,W=2*RW+201+SI)(
@@ -178,6 +182,7 @@ def main():
     result = {"passed": True, "actual_read_source_selection": True, "external_inputs_constrained": False,
               "formal_profiles": profiles, "four_state_cases": int(matched[1]),
               "source_sha256": hashes, "model_sha256": digest(model), "checker_sha256": digest(__file__)}
+    result["dependency_sha256"] = source_manifest(root, SOURCE)
     (out / "summary.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
     print("SNAPSHOT_RANGE_CAPTURE_PASS", out / "summary.json", flush=True)
 

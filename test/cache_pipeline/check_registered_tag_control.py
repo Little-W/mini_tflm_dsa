@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from rtl_source_view import read_sources, module_definition, request_module, controller_module, source_manifest
 import re
 import shlex
 import subprocess
@@ -42,9 +43,15 @@ def assign(source, name):
 
 
 def model(name, source):
+    request = request_module(source)
+    source = controller_module(source)
     start = source.index("  logic [WAYS-1:0] demand_selected_victim;")
-    end = source.index('  (* keep = 1 *) logic select_launch_eligible;', start)
+    marker = re.search(r"^  (?:\(\*[^\n]*\*\)\s*)?logic select_launch_eligible;", source[start:], re.M)
+    if marker is None:
+        raise RuntimeError("未找到替换选择资格声明")
+    end = start + marker.start()
     victim = source[start:end]
+    source = request
     start = source.index("  end else begin : g_single_response")
     start = source.index("\n", source.index("    // 单个在途名额", start)) + 1
     endings = [source.find(marker, start) for marker in
@@ -70,14 +77,7 @@ endmodule
 
 
 def support(source):
-    result = ""
-    for name in ("conv_cache_direct_response", "conv_cache_snapshot_response", "conv_cache_victim_qualification",
-                 "conv_cache_metadata_eligibility"):
-        declaration = source.index("module " + name)
-        start = source.rfind('(* keep_hierarchy = "yes" *)', 0, declaration)
-        result += source[start:source.index("endmodule", declaration)+len("endmodule")] + "\n"
-    return result
-
+    return '\n'.join(module_definition(source, name) for name in ('conv_cache_direct_response', 'conv_cache_snapshot_response', 'conv_cache_victim_qualification', 'conv_cache_metadata_eligibility')) + '\n'
 
 def bench():
     declarations = PORTS.replace("input logic", "logic").replace(",\n", ";\n") + ";\n"
@@ -152,8 +152,8 @@ def main():
     args = parser.parse_args()
     root, out = args.source_root.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    current = (root / SOURCE).read_text()
-    original = ((args.reference_root.resolve() / SOURCE).read_text() if args.reference_root else
+    current = read_sources(root, SOURCE)
+    original = (read_sources(args.reference_root.resolve(), SOURCE) if args.reference_root else
         read_reference_file(ROOT, args.reference_ref, SOURCE, text=True))
     modules = model("reference", original) + model("candidate", current) + support(current)
     connections = ",".join(f".{name}({name})" for name in NAMES)
@@ -184,12 +184,13 @@ endmodule
     matched = re.search(r"TAG_CONTROL_FOUR_STATE_PASS checks=(\d+)",(out / "four_state.log").read_text())
     if not matched or int(matched[1]) != 263760:
         raise RuntimeError("保存标签控制的四态检查数量不符")
-    if current != (root / SOURCE).read_text():
+    if current != read_sources(root, SOURCE):
         raise RuntimeError("控制检查期间生产源码发生变化")
     result = dict(passed=True,actual_rtl_expressions=True,external_inputs_constrained=False,
         source_sha256=digest(root / SOURCE),reference_sha256=hashlib.sha256(original.encode()).hexdigest(),
         sat_profiles=profiles,four_state_cases=int(matched[1]),proof_sha256=digest(proof),
         four_state_log_sha256=digest(out / "four_state.log"))
+    result["dependency_sha256"] = source_manifest(root, SOURCE)
     (out / "summary.json").write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n")
     print(json.dumps(result,ensure_ascii=False))
 

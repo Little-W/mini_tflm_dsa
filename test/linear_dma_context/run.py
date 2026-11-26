@@ -38,7 +38,10 @@ def main():
                source_root/'rtl/common/regfile.v',
                source_root/'rtl/common/add_equal.sv',
                ROOT/'test/linear_dma_context/linear_dma_4k_top.sv',
-               ROOT/'test/linear_dma_context/main.cpp', Path(__file__).resolve()]
+               ROOT/'test/linear_dma_context/main.cpp', Path(__file__).resolve(),
+               source_root/'rtl/common/zero_reduce.sv',
+               source_root/'rtl/common/add_equal_bit.sv',
+               source_root/'rtl/common/add_equal_reduce.sv']
     hashes = {str(p): sha(p) for p in sources}
     primitive_library_sha256 = None
     primitive_args = []
@@ -57,7 +60,7 @@ def main():
                 f'-GBUS_WIDTH={args.bus_width}', f'-GDMA_MAX_BYTES={args.dma_max_bytes}',
                 '-CFLAGS', f'-std=c++20 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -fsanitize=undefined -fno-sanitize-recover=undefined -DTEST_DMA_MAX_BYTES={args.dma_max_bytes} -DTEST_BUS_WIDTH={args.bus_width} -DTEST_SIZE={args.size} -DTEST_CACHE_BLOCKS={args.cache_blocks}',
                 '-LDFLAGS', '-fsanitize=undefined',
-                *primitive_args, *[str(p) for p in sources[:5]]]
+                *primitive_args, *[str(p) for p in sources[:5]], *map(str, sources[6:])]
     compile_args = ['make', '-C', str(out/'obj'), '-f', 'Vlinear_dma_4k_top.mk', '-j', '1',
                     'OPT_FAST=-O1', 'OPT_SLOW=-O0', 'OPT_GLOBAL=-O1',
                     'VK_PCH_I_FAST=', 'VK_PCH_I_SLOW=', 'CFG_CXXFLAGS_PCH=-E']

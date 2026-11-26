@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from rtl_source_view import read_sources, module_definition, request_module, controller_module, source_manifest
 import re
 import runpy
 import shlex
@@ -48,6 +49,9 @@ def assignment(source, name):
 
 
 def model(name, cache, metadata):
+    controller = controller_module(cache)
+    cache = request_module(cache)
+    metadata = module_definition(metadata, "conv_cache_metadata_way")
     raw = "o_lookup_source_tags" in metadata
     count = 4 if raw else 3
     tag_name = "lookup_source_tags" if raw else "lookup_candidate_tags"
@@ -58,6 +62,11 @@ def model(name, cache, metadata):
     start = cache.index("\n", start) + 1
     end = cache.index("  if (DEMAND_DEPTH == 1) begin : g_direct_response_lookup", start)
     direct = cache[start:end].rsplit("  end", 1)[0]
+    if "logic [WAYS-1:0] lookup_valid_next;" not in direct:
+        direct = ("    logic [WAYS-1:0] lookup_valid_next;\n"
+                  "    logic [WAYS-1:0][31:LB] lookup_tag_raw;\n"
+                  "    logic [WAYS-1:0][3:0][31:LB] lookup_source_tags;\n"
+                  "    logic [WAYS-1:0][3:0] lookup_source_valid_next;\n" + direct)
     registered_tags = "lookup_forwarded_valid_q" in direct
     first = direct.index("    // 配置接收")
     last = direct.index("    // 单个在途请求", first)
@@ -92,7 +101,8 @@ def model(name, cache, metadata):
     lookup = lookup.replace("request_queue[DQ_AW'(request_head + DQ_AW'(1))]", "head_request")
     lookup = lookup.replace("request_queue[request_head]", "head_request")
     # 单名额队列的计数宽度为一位，下一队列位置分支不会被选择。
-    assert "localparam int DQ_CW=$clog2(DEMAND_DEPTH+1);" in cache
+    assert ("localparam int DQ_CW=$clog2(DEMAND_DEPTH+1);" in cache or
+            "localparam int p_queue_count_width = $clog2(p_demand_depth+1)" in cache)
 
     start = metadata.index("      assign valid_i_rd_addr[0]", metadata.index("g_saved_lookup_valid"))
     end = metadata.index("      always_ff", start)
@@ -183,6 +193,17 @@ def model(name, cache, metadata):
   assign observed={{work_tag_hits[0],demand_tag_hits[0]}};
 endmodule
 """
+    if "conv_cache_lookup_valid_select u_valid_select" in controller:
+        ports = ports.replace("    lookup_valid_next[0]=lookup_valid_raw;", "")
+        ports = ports.replace("        lookup_valid_next[0]=lookup_valid_saved;", "")
+        capture = f"""  conv_cache_lookup_valid_select u_valid_select (
+    .rst_n(rst_n),.i_cfg_accept(cfg_accept),.i_foreground_state(fg_state),
+    .i_request_occupied(request_count),.i_request_fire(req_fire),
+    .i_input_valid(lookup_input_valid),.i_preview_selected(preview_source_select),
+    .i_source_valid({metadata_valid}),.i_address_valid(lookup_valid_raw),
+    .i_saved_valid(lookup_valid_saved),.o_valid(lookup_valid_next[0]));
+"""
+        ports = ports.replace("  assign observed=", capture + "  assign observed=")
     return ports
 
 
@@ -315,21 +336,16 @@ def main():
     original = args.reference_root.resolve() if args.reference_root else None
     out.mkdir(parents=True, exist_ok=True)
     sources = {str(p): digest(root / p) for p in (CACHE, METADATA, SELECTOR)}
-    reference_sources = {path: (original / path).read_text() if original else
+    reference_sources = {path: read_sources(original, path) if original else
         read_reference_file(ROOT, args.reference_ref, path, text=True)
         for path in (CACHE, METADATA)}
     models = {"reference": model("reference", reference_sources[CACHE], reference_sources[METADATA]),
-              "candidate": model("candidate", (root / CACHE).read_text(), (root / METADATA).read_text())}
-    metadata = (root / METADATA).read_text()
-    support = ""
-    if "module conv_cache_valid_forward" in metadata:
-        start = metadata.index('(* keep_hierarchy = "yes" *)', metadata.index("endmodule"))
-        support = metadata[start:metadata.index("endmodule", start) + len("endmodule")] + "\n"
-    cache_text = (root / CACHE).read_text()
-    if "module conv_cache_tag_qualification" in cache_text:
-        declaration = cache_text.index("module conv_cache_tag_qualification")
-        start = cache_text.rfind('(* keep_hierarchy = "yes" *)', 0, declaration)
-        support += cache_text[start:cache_text.index("endmodule", declaration) + len("endmodule")] + "\n"
+              "candidate": model("candidate", read_sources(root, CACHE), read_sources(root, METADATA))}
+    combined_sources = read_sources(root, CACHE) + "\n" + read_sources(root, METADATA)
+    support_names = ["conv_cache_valid_forward", "conv_cache_tag_qualification", "conv_cache_snapshot_equal"]
+    if "conv_cache_lookup_valid_select u_valid_select" in controller_module(combined_sources):
+        support_names.append("conv_cache_lookup_valid_select")
+    support = "\n".join(module_definition(combined_sources, name) for name in support_names) + "\n"
     connection = ",".join(f".{name}({name})" for name in NAMES)
     comparison = "\n".join(models.values()) + support + f"""module comparison #(
   parameter integer SETS=4,SI=$clog2(SETS),LB=7)(
@@ -344,7 +360,7 @@ endmodule
     proof.write_text(comparison)
     script = out / "formal.ys"
     script.write_text("read_slang --top comparison " + shlex.join([str(proof), str(root / SELECTOR)]) +
-        "\nprep -top comparison -flatten\n"
+        "\nprep -top comparison -flatten\nopt -full\n"
         "sat -seq 2 -prove-skip 1 -set-init-zero -verify -prove equivalent 1 -show-inputs -show-outputs\n")
     run([sys.executable, ROOT / "scripts/fpga/open_fpga_synth.py", "--worker", script],
         out / "formal.log", root)
@@ -374,6 +390,7 @@ endmodule
         result["mapping"] = measure_cases(root, out, models, support)
     if sources != {str(p): digest(root / p) for p in (CACHE, METADATA, SELECTOR)}:
         raise RuntimeError("验证期间生产源码发生变化")
+    result["dependency_sha256"] = source_manifest(root, CACHE)
     (out / "summary.json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result))
 

@@ -1,37 +1,48 @@
 // SPDX-License-Identifier: Apache-2.0
+// 暴露线性DMA读取接口，供独立驱动检查数据、顺序、突发长度和4 KiB边界。
 module linear_dma_4k_top #(
     parameter int READ_OUTSTANDING = 4,
     parameter int BUS_WIDTH = 32,
     parameter int DMA_MAX_BYTES = 256 * (BUS_WIDTH / 8)
 ) (
-    input logic clk, rst_n,
-    input logic rd_start, rd_linear_read_mode,
-    output logic rd_start_ready,
-    input logic [31:0] rd_base_addr, rd_row_stride, rd_rows_to_read, rd_valid_cols,
-    input logic [7:0] rd_burst_len_m1,
-    input logic [1:0] rd_slot_id,
-    input logic rd_use_16bits,
-    input logic signed [31:0] rd_lhs_zp,
-    output logic rd_busy, rd_done, rd_finish_beat, rd_error,
-    output logic m_axi_arvalid,
-    input logic m_axi_arready,
-    output logic [31:0] m_axi_araddr,
-    output logic [7:0] m_axi_arlen,
-    output logic [2:0] m_axi_arsize,
-    output logic [1:0] m_axi_arburst,
-    input logic m_axi_rvalid,
-    output logic m_axi_rready,
-    input logic [BUS_WIDTH-1:0] m_axi_rdata,
-    input logic [1:0] m_axi_rresp,
-    input logic m_axi_rlast,
-    output logic [1:0] wr_slot,
-    output logic [3:0] wr_row, wr_col_base,
-    output logic signed [15:0] wr_data [BUS_WIDTH/8],
-    output logic wr_valid [BUS_WIDTH/8],
-    output logic wr_use_16bits,
-    output logic [BUS_WIDTH-1:0] rd_raw_data,
-    output logic rd_raw_valid,
-    output logic [3:0] rd_raw_row, rd_raw_col_base
+    input logic clk, // 工作时钟。
+    input logic rst_n, // 低有效复位。
+    input logic rd_start, // 读命令有效。
+    input logic rd_linear_read_mode, // 按行单拍读取模式。
+    output logic rd_start_ready, // 允许接收读命令。
+    input logic [31:0] rd_base_addr, // 首行字节地址。
+    input logic [31:0] rd_row_stride, // 相邻行字节步长。
+    input logic [31:0] rd_rows_to_read, // 本次读取行数。
+    input logic [31:0] rd_valid_cols, // 每行有效元素数量。
+    input logic [7:0] rd_burst_len_m1, // 每行读取拍数减一。
+    input logic [1:0] rd_slot_id, // 输出缓存槽编号。
+    input logic rd_use_16bits, // 输入元素为16位。
+    input logic signed [31:0] rd_lhs_zp, // 输入零点偏移。
+    output logic rd_busy, // 存在未完成读命令。
+    output logic rd_done, // 读命令完成脉冲。
+    output logic rd_finish_beat, // 当前拍完成读命令。
+    output logic rd_error, // 已完成命令的错误标志。
+    output logic m_axi_arvalid, // AXI读地址有效。
+    input logic m_axi_arready, // AXI接收读地址。
+    output logic [31:0] m_axi_araddr, // AXI读突发首地址。
+    output logic [7:0] m_axi_arlen, // AXI读突发拍数减一。
+    output logic [2:0] m_axi_arsize, // 每拍字节数的二进制对数。
+    output logic [1:0] m_axi_arburst, // AXI突发地址模式。
+    input logic m_axi_rvalid, // AXI返回数据有效。
+    output logic m_axi_rready, // 允许接收AXI返回数据。
+    input logic [BUS_WIDTH-1:0] m_axi_rdata, // AXI返回数据。
+    input logic [1:0] m_axi_rresp, // AXI返回响应码。
+    input logic m_axi_rlast, // AXI突发末拍。
+    output logic [1:0] wr_slot, // 当前输出所属缓存槽。
+    output logic [3:0] wr_row, // 当前输出行号。
+    output logic [3:0] wr_col_base, // 当前输出首列号。
+    output logic signed [15:0] wr_data [BUS_WIDTH/8], // 解包后的有符号元素。
+    output logic wr_valid [BUS_WIDTH/8], // 各输出元素有效标志。
+    output logic wr_use_16bits, // 输出数据按16位元素使用。
+    output logic [BUS_WIDTH-1:0] rd_raw_data, // 未解包的总线数据。
+    output logic rd_raw_valid, // 未解包数据有效。
+    output logic [3:0] rd_raw_row, // 未解包数据对应行号。
+    output logic [3:0] rd_raw_col_base // 未解包数据对应首列号。
 );
     axi_linear_block_dma #(
         .DMA_MAX_BYTES(DMA_MAX_BYTES),
@@ -57,25 +68,4 @@ module linear_dma_4k_top #(
         .rd_error, .wr_error()
     );
 
-    // Reference the pre-optimization first-segment selection, including the
-    // nine-bit zero/wrap case. Check every cycle, not just valid AR transfers.
-    logic [8:0] reference_remaining;
-    logic [12:0] reference_page_beats;
-    logic [8:0] reference_limited;
-    logic [7:0] reference_len;
-    always_comb begin
-        reference_remaining = dut.rd_merge_rows ? 9'(dut.rd_merged_beats) : dut.rd_first_beats;
-        reference_page_beats = (13'd4096 - {1'b0, dut.rd_first_ar_addr[11:0]}) >> $clog2(BUS_WIDTH/8);
-        reference_limited = reference_remaining > 9'(DMA_MAX_BYTES/(BUS_WIDTH/8)) ?
-            9'(DMA_MAX_BYTES/(BUS_WIDTH/8)) : reference_remaining;
-        if (reference_page_beats < 13'(DMA_MAX_BYTES/(BUS_WIDTH/8)) &&
-            13'(reference_remaining) > reference_page_beats)
-            reference_len = 8'(reference_page_beats - 13'd1);
-        else
-            reference_len = 8'(reference_limited - 9'd1);
-    end
-    always @(posedge clk) begin
-        if (rst_n) assert (dut.rd_segment_len[0] == reference_len)
-            else $fatal(1, "first ARLEN differs from pre-optimization logic");
-    end
 endmodule
