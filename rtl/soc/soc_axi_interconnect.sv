@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
-
+// 仲裁两个 AXI 主设备的访问，并按地址分发至共享存储器与三个 AXI-Lite 外设。
 module soc_axi_interconnect #(
     parameter int unsigned ADDR_WIDTH = 32,
     parameter int unsigned DATA_WIDTH = 32,
@@ -11,170 +11,172 @@ module soc_axi_interconnect #(
     parameter bit p_cpu_read_overlap = 1'b1,
     // 关闭时，CPU RAM 写数据使用已接收并保存的地址。
     parameter bit p_cpu_ram_write_overlap = 1'b1,
+    parameter bit p_cpu_aw_predecoded = 1'b0, // 写地址缓存已经保存目的端口译码。
     parameter logic [31:0] CPU_RAM_BASE  = 32'h0000_0000,
     parameter logic [31:0] NPU_AXIL_BASE = 32'h1000_0000,
     parameter logic [31:0] UART_BASE     = 32'h0200_0000,
     parameter logic [31:0] SOC_CTRL_BASE = 32'h2000_0000
 ) (
-    input  wire                         clk,
-    input  wire                         rst_n,
-    input  wire                         npu_bus_lock,
+    input  wire                         clk /* 模块工作时钟。 */,
+    input  wire                         rst_n /* 低电平有效复位。 */,
+    input  wire                         npu_bus_lock /* NPU 事务对共享存储端口的独占请求。 */,
 
-    input  wire                         s0_axi_arvalid,
-    output logic                        s0_axi_arready,
-    input  wire [ADDR_WIDTH-1:0]        s0_axi_araddr,
-    input  wire [3:0]                   s0_axi_arcache,
-    input  wire [2:0]                   s0_axi_arprot,
-    input  wire [1:0]                   s0_axi_arlock,
-    input  wire [1:0]                   s0_axi_arburst,
-    input  wire [7:0]                   s0_axi_arlen,
-    input  wire [2:0]                   s0_axi_arsize,
-    output logic                        s0_axi_rvalid,
-    input  wire                         s0_axi_rready,
-    output logic [31:0]                 s0_axi_rdata,
-    output logic [1:0]                  s0_axi_rresp,
-    output logic                        s0_axi_rlast,
-    input  wire                         s0_axi_awvalid,
-    output logic                        s0_axi_awready,
-    input  wire [ADDR_WIDTH-1:0]        s0_axi_awaddr,
-    input  wire [3:0]                   s0_axi_awcache,
-    input  wire [2:0]                   s0_axi_awprot,
-    input  wire [1:0]                   s0_axi_awlock,
-    input  wire [1:0]                   s0_axi_awburst,
-    input  wire [7:0]                   s0_axi_awlen,
-    input  wire [2:0]                   s0_axi_awsize,
-    input  wire                         s0_axi_wvalid,
-    output logic                        s0_axi_wready,
-    input  wire [31:0]                  s0_axi_wdata,
-    input  wire [3:0]                   s0_axi_wstrb,
-    input  wire                         s0_axi_wlast,
-    output logic                        s0_axi_bvalid,
-    input  wire                         s0_axi_bready,
-    output logic [1:0]                  s0_axi_bresp,
+    input  wire                         s0_axi_arvalid /* 第零个 AXI 输入接口的读地址有效。 */,
+    output logic                        s0_axi_arready /* 第零个 AXI 输入接口的可接收读地址。 */,
+    input  wire [ADDR_WIDTH-1:0]        s0_axi_araddr /* 第零个 AXI 输入接口的读地址。 */,
+    input  wire [3:0]                   s0_axi_arcache /* 第零个 AXI 输入接口的读事务缓存属性。 */,
+    input  wire [2:0]                   s0_axi_arprot /* 第零个 AXI 输入接口的读访问保护属性。 */,
+    input  wire [1:0]                   s0_axi_arlock /* 第零个 AXI 输入接口的读事务锁定属性。 */,
+    input  wire [1:0]                   s0_axi_arburst /* 第零个 AXI 输入接口的读突发地址模式。 */,
+    input  wire [7:0]                   s0_axi_arlen /* 第零个 AXI 输入接口的读突发拍数减一。 */,
+    input  wire [2:0]                   s0_axi_arsize /* 第零个 AXI 输入接口的读取每拍字节数的以二为底对数。 */,
+    output logic                        s0_axi_rvalid /* 第零个 AXI 输入接口的读响应有效。 */,
+    input  wire                         s0_axi_rready /* 第零个 AXI 输入接口的可接收读响应。 */,
+    output logic [31:0]                 s0_axi_rdata /* 第零个 AXI 输入接口的读取数据。 */,
+    output logic [1:0]                  s0_axi_rresp /* 第零个 AXI 输入接口的读响应状态。 */,
+    output logic                        s0_axi_rlast /* 第零个 AXI 输入接口的读突发的最后一拍。 */,
+    input  wire                         s0_axi_awvalid /* 第零个 AXI 输入接口的写地址有效。 */,
+    output logic                        s0_axi_awready /* 第零个 AXI 输入接口的可接收写地址。 */,
+    input  wire [ADDR_WIDTH-1:0]        s0_axi_awaddr /* 第零个 AXI 输入接口的写地址。 */,
+    input wire [4:0] i_cpu_aw_dest_flags = 5'b0 /* 已与第零个写地址同步保存的目的端口标志。 */,
+    input  wire [3:0]                   s0_axi_awcache /* 第零个 AXI 输入接口的写事务缓存属性。 */,
+    input  wire [2:0]                   s0_axi_awprot /* 第零个 AXI 输入接口的写访问保护属性。 */,
+    input  wire [1:0]                   s0_axi_awlock /* 第零个 AXI 输入接口的写事务锁定属性。 */,
+    input  wire [1:0]                   s0_axi_awburst /* 第零个 AXI 输入接口的写突发地址模式。 */,
+    input  wire [7:0]                   s0_axi_awlen /* 第零个 AXI 输入接口的写突发拍数减一。 */,
+    input  wire [2:0]                   s0_axi_awsize /* 第零个 AXI 输入接口的写入每拍字节数的以二为底对数。 */,
+    input  wire                         s0_axi_wvalid /* 第零个 AXI 输入接口的写数据有效。 */,
+    output logic                        s0_axi_wready /* 第零个 AXI 输入接口的可接收写数据。 */,
+    input  wire [31:0]                  s0_axi_wdata /* 第零个 AXI 输入接口的写入数据。 */,
+    input  wire [3:0]                   s0_axi_wstrb /* 第零个 AXI 输入接口的写入字节使能。 */,
+    input  wire                         s0_axi_wlast /* 第零个 AXI 输入接口的写突发的最后一拍。 */,
+    output logic                        s0_axi_bvalid /* 第零个 AXI 输入接口的写响应有效。 */,
+    input  wire                         s0_axi_bready /* 第零个 AXI 输入接口的可接收写响应。 */,
+    output logic [1:0]                  s0_axi_bresp /* 第零个 AXI 输入接口的写响应状态。 */,
 
-    input  wire                         s1_axi_arvalid,
-    output logic                        s1_axi_arready,
-    input  wire [ADDR_WIDTH-1:0]        s1_axi_araddr,
-    input  wire [3:0]                   s1_axi_arcache,
-    input  wire [2:0]                   s1_axi_arprot,
-    input  wire [1:0]                   s1_axi_arlock,
-    input  wire [1:0]                   s1_axi_arburst,
-    input  wire [7:0]                   s1_axi_arlen,
-    input  wire [2:0]                   s1_axi_arsize,
-    output logic                        s1_axi_rvalid,
-    input  wire                         s1_axi_rready,
-    output logic [DATA_WIDTH-1:0]       s1_axi_rdata,
-    output logic [1:0]                  s1_axi_rresp,
-    output logic                        s1_axi_rlast,
-    input  wire                         s1_axi_awvalid,
-    output logic                        s1_axi_awready,
-    input  wire [ADDR_WIDTH-1:0]        s1_axi_awaddr,
-    input  wire [3:0]                   s1_axi_awcache,
-    input  wire [2:0]                   s1_axi_awprot,
-    input  wire [1:0]                   s1_axi_awlock,
-    input  wire [1:0]                   s1_axi_awburst,
-    input  wire [7:0]                   s1_axi_awlen,
-    input  wire [2:0]                   s1_axi_awsize,
-    input  wire                         s1_axi_wvalid,
-    output logic                        s1_axi_wready,
-    input  wire [DATA_WIDTH-1:0]        s1_axi_wdata,
-    input  wire [DATA_WIDTH/8-1:0]      s1_axi_wstrb,
-    input  wire                         s1_axi_wlast,
-    output logic                        s1_axi_bvalid,
-    input  wire                         s1_axi_bready,
-    output logic [1:0]                  s1_axi_bresp,
+    input  wire                         s1_axi_arvalid /* 第一个 AXI 输入接口的读地址有效。 */,
+    output logic                        s1_axi_arready /* 第一个 AXI 输入接口的可接收读地址。 */,
+    input  wire [ADDR_WIDTH-1:0]        s1_axi_araddr /* 第一个 AXI 输入接口的读地址。 */,
+    input  wire [3:0]                   s1_axi_arcache /* 第一个 AXI 输入接口的读事务缓存属性。 */,
+    input  wire [2:0]                   s1_axi_arprot /* 第一个 AXI 输入接口的读访问保护属性。 */,
+    input  wire [1:0]                   s1_axi_arlock /* 第一个 AXI 输入接口的读事务锁定属性。 */,
+    input  wire [1:0]                   s1_axi_arburst /* 第一个 AXI 输入接口的读突发地址模式。 */,
+    input  wire [7:0]                   s1_axi_arlen /* 第一个 AXI 输入接口的读突发拍数减一。 */,
+    input  wire [2:0]                   s1_axi_arsize /* 第一个 AXI 输入接口的读取每拍字节数的以二为底对数。 */,
+    output logic                        s1_axi_rvalid /* 第一个 AXI 输入接口的读响应有效。 */,
+    input  wire                         s1_axi_rready /* 第一个 AXI 输入接口的可接收读响应。 */,
+    output logic [DATA_WIDTH-1:0]       s1_axi_rdata /* 第一个 AXI 输入接口的读取数据。 */,
+    output logic [1:0]                  s1_axi_rresp /* 第一个 AXI 输入接口的读响应状态。 */,
+    output logic                        s1_axi_rlast /* 第一个 AXI 输入接口的读突发的最后一拍。 */,
+    input  wire                         s1_axi_awvalid /* 第一个 AXI 输入接口的写地址有效。 */,
+    output logic                        s1_axi_awready /* 第一个 AXI 输入接口的可接收写地址。 */,
+    input  wire [ADDR_WIDTH-1:0]        s1_axi_awaddr /* 第一个 AXI 输入接口的写地址。 */,
+    input  wire [3:0]                   s1_axi_awcache /* 第一个 AXI 输入接口的写事务缓存属性。 */,
+    input  wire [2:0]                   s1_axi_awprot /* 第一个 AXI 输入接口的写访问保护属性。 */,
+    input  wire [1:0]                   s1_axi_awlock /* 第一个 AXI 输入接口的写事务锁定属性。 */,
+    input  wire [1:0]                   s1_axi_awburst /* 第一个 AXI 输入接口的写突发地址模式。 */,
+    input  wire [7:0]                   s1_axi_awlen /* 第一个 AXI 输入接口的写突发拍数减一。 */,
+    input  wire [2:0]                   s1_axi_awsize /* 第一个 AXI 输入接口的写入每拍字节数的以二为底对数。 */,
+    input  wire                         s1_axi_wvalid /* 第一个 AXI 输入接口的写数据有效。 */,
+    output logic                        s1_axi_wready /* 第一个 AXI 输入接口的可接收写数据。 */,
+    input  wire [DATA_WIDTH-1:0]        s1_axi_wdata /* 第一个 AXI 输入接口的写入数据。 */,
+    input  wire [DATA_WIDTH/8-1:0]      s1_axi_wstrb /* 第一个 AXI 输入接口的写入字节使能。 */,
+    input  wire                         s1_axi_wlast /* 第一个 AXI 输入接口的写突发的最后一拍。 */,
+    output logic                        s1_axi_bvalid /* 第一个 AXI 输入接口的写响应有效。 */,
+    input  wire                         s1_axi_bready /* 第一个 AXI 输入接口的可接收写响应。 */,
+    output logic [1:0]                  s1_axi_bresp /* 第一个 AXI 输入接口的写响应状态。 */,
 
-    output logic                        m_ram_arvalid,
-    input  wire                         m_ram_arready,
-    output logic [ADDR_WIDTH-1:0]       m_ram_araddr,
-    output logic [3:0]                  m_ram_arcache,
-    output logic [2:0]                  m_ram_arprot,
-    output logic [1:0]                  m_ram_arlock,
-    output logic [1:0]                  m_ram_arburst,
-    output logic [7:0]                  m_ram_arlen,
-    output logic [2:0]                  m_ram_arsize,
-    input  wire                         m_ram_rvalid,
-    output logic                        m_ram_rready,
-    input  wire [DATA_WIDTH-1:0]        m_ram_rdata,
-    input  wire [1:0]                   m_ram_rresp,
-    input  wire                         m_ram_rlast,
-    output logic                        m_ram_awvalid,
-    input  wire                         m_ram_awready,
-    output logic [ADDR_WIDTH-1:0]       m_ram_awaddr,
-    output logic [3:0]                  m_ram_awcache,
-    output logic [2:0]                  m_ram_awprot,
-    output logic [1:0]                  m_ram_awlock,
-    output logic [1:0]                  m_ram_awburst,
-    output logic [7:0]                  m_ram_awlen,
-    output logic [2:0]                  m_ram_awsize,
-    output logic                        m_ram_wvalid,
-    input  wire                         m_ram_wready,
-    output logic [DATA_WIDTH-1:0]       m_ram_wdata,
-    output logic [DATA_WIDTH/8-1:0]     m_ram_wstrb,
-    output logic                        m_ram_wlast,
-    input  wire                         m_ram_bvalid,
-    output logic                        m_ram_bready,
-    input  wire [1:0]                   m_ram_bresp,
+    output logic                        m_ram_arvalid /* 共享存储器 AXI 接口的读地址有效。 */,
+    input  wire                         m_ram_arready /* 共享存储器 AXI 接口的可接收读地址。 */,
+    output logic [ADDR_WIDTH-1:0]       m_ram_araddr /* 共享存储器 AXI 接口的读地址。 */,
+    output logic [3:0]                  m_ram_arcache /* 共享存储器 AXI 接口的读事务缓存属性。 */,
+    output logic [2:0]                  m_ram_arprot /* 共享存储器 AXI 接口的读访问保护属性。 */,
+    output logic [1:0]                  m_ram_arlock /* 共享存储器 AXI 接口的读事务锁定属性。 */,
+    output logic [1:0]                  m_ram_arburst /* 共享存储器 AXI 接口的读突发地址模式。 */,
+    output logic [7:0]                  m_ram_arlen /* 共享存储器 AXI 接口的读突发拍数减一。 */,
+    output logic [2:0]                  m_ram_arsize /* 共享存储器 AXI 接口的读取每拍字节数的以二为底对数。 */,
+    input  wire                         m_ram_rvalid /* 共享存储器 AXI 接口的读响应有效。 */,
+    output logic                        m_ram_rready /* 共享存储器 AXI 接口的可接收读响应。 */,
+    input  wire [DATA_WIDTH-1:0]        m_ram_rdata /* 共享存储器 AXI 接口的读取数据。 */,
+    input  wire [1:0]                   m_ram_rresp /* 共享存储器 AXI 接口的读响应状态。 */,
+    input  wire                         m_ram_rlast /* 共享存储器 AXI 接口的读突发的最后一拍。 */,
+    output logic                        m_ram_awvalid /* 共享存储器 AXI 接口的写地址有效。 */,
+    input  wire                         m_ram_awready /* 共享存储器 AXI 接口的可接收写地址。 */,
+    output logic [ADDR_WIDTH-1:0]       m_ram_awaddr /* 共享存储器 AXI 接口的写地址。 */,
+    output logic [3:0]                  m_ram_awcache /* 共享存储器 AXI 接口的写事务缓存属性。 */,
+    output logic [2:0]                  m_ram_awprot /* 共享存储器 AXI 接口的写访问保护属性。 */,
+    output logic [1:0]                  m_ram_awlock /* 共享存储器 AXI 接口的写事务锁定属性。 */,
+    output logic [1:0]                  m_ram_awburst /* 共享存储器 AXI 接口的写突发地址模式。 */,
+    output logic [7:0]                  m_ram_awlen /* 共享存储器 AXI 接口的写突发拍数减一。 */,
+    output logic [2:0]                  m_ram_awsize /* 共享存储器 AXI 接口的写入每拍字节数的以二为底对数。 */,
+    output logic                        m_ram_wvalid /* 共享存储器 AXI 接口的写数据有效。 */,
+    input  wire                         m_ram_wready /* 共享存储器 AXI 接口的可接收写数据。 */,
+    output logic [DATA_WIDTH-1:0]       m_ram_wdata /* 共享存储器 AXI 接口的写入数据。 */,
+    output logic [DATA_WIDTH/8-1:0]     m_ram_wstrb /* 共享存储器 AXI 接口的写入字节使能。 */,
+    output logic                        m_ram_wlast /* 共享存储器 AXI 接口的写突发的最后一拍。 */,
+    input  wire                         m_ram_bvalid /* 共享存储器 AXI 接口的写响应有效。 */,
+    output logic                        m_ram_bready /* 共享存储器 AXI 接口的可接收写响应。 */,
+    input  wire [1:0]                   m_ram_bresp /* 共享存储器 AXI 接口的写响应状态。 */,
 
-    output wire [15:0]                  m_npu_awaddr,
-    output wire [2:0]                   m_npu_awprot,
-    output wire                         m_npu_awvalid,
-    input  wire                         m_npu_awready,
-    output wire [31:0]                  m_npu_wdata,
-    output wire [3:0]                   m_npu_wstrb,
-    output wire                         m_npu_wvalid,
-    input  wire                         m_npu_wready,
-    input  wire [1:0]                   m_npu_bresp,
-    input  wire                         m_npu_bvalid,
-    output wire                         m_npu_bready,
-    output wire [15:0]                  m_npu_araddr,
-    output wire [2:0]                   m_npu_arprot,
-    output wire                         m_npu_arvalid,
-    input  wire                         m_npu_arready,
-    input  wire [31:0]                  m_npu_rdata,
-    input  wire [1:0]                   m_npu_rresp,
-    input  wire                         m_npu_rvalid,
-    output wire                         m_npu_rready,
+    output wire [15:0]                  m_npu_awaddr /* NPU 控制寄存器 AXI-Lite 接口的写地址。 */,
+    output wire [2:0]                   m_npu_awprot /* NPU 控制寄存器 AXI-Lite 接口的写访问保护属性。 */,
+    output wire                         m_npu_awvalid /* NPU 控制寄存器 AXI-Lite 接口的写地址有效。 */,
+    input  wire                         m_npu_awready /* NPU 控制寄存器 AXI-Lite 接口的可接收写地址。 */,
+    output wire [31:0]                  m_npu_wdata /* NPU 控制寄存器 AXI-Lite 接口的写入数据。 */,
+    output wire [3:0]                   m_npu_wstrb /* NPU 控制寄存器 AXI-Lite 接口的写入字节使能。 */,
+    output wire                         m_npu_wvalid /* NPU 控制寄存器 AXI-Lite 接口的写数据有效。 */,
+    input  wire                         m_npu_wready /* NPU 控制寄存器 AXI-Lite 接口的可接收写数据。 */,
+    input  wire [1:0]                   m_npu_bresp /* NPU 控制寄存器 AXI-Lite 接口的写响应状态。 */,
+    input  wire                         m_npu_bvalid /* NPU 控制寄存器 AXI-Lite 接口的写响应有效。 */,
+    output wire                         m_npu_bready /* NPU 控制寄存器 AXI-Lite 接口的可接收写响应。 */,
+    output wire [15:0]                  m_npu_araddr /* NPU 控制寄存器 AXI-Lite 接口的读地址。 */,
+    output wire [2:0]                   m_npu_arprot /* NPU 控制寄存器 AXI-Lite 接口的读访问保护属性。 */,
+    output wire                         m_npu_arvalid /* NPU 控制寄存器 AXI-Lite 接口的读地址有效。 */,
+    input  wire                         m_npu_arready /* NPU 控制寄存器 AXI-Lite 接口的可接收读地址。 */,
+    input  wire [31:0]                  m_npu_rdata /* NPU 控制寄存器 AXI-Lite 接口的读取数据。 */,
+    input  wire [1:0]                   m_npu_rresp /* NPU 控制寄存器 AXI-Lite 接口的读响应状态。 */,
+    input  wire                         m_npu_rvalid /* NPU 控制寄存器 AXI-Lite 接口的读响应有效。 */,
+    output wire                         m_npu_rready /* NPU 控制寄存器 AXI-Lite 接口的可接收读响应。 */,
 
-    output wire [31:0]                  m_uart_awaddr,
-    output wire [2:0]                   m_uart_awprot,
-    output wire                         m_uart_awvalid,
-    input  wire                         m_uart_awready,
-    output wire [31:0]                  m_uart_wdata,
-    output wire [3:0]                   m_uart_wstrb,
-    output wire                         m_uart_wvalid,
-    input  wire                         m_uart_wready,
-    input  wire [1:0]                   m_uart_bresp,
-    input  wire                         m_uart_bvalid,
-    output wire                         m_uart_bready,
-    output wire [31:0]                  m_uart_araddr,
-    output wire [2:0]                   m_uart_arprot,
-    output wire                         m_uart_arvalid,
-    input  wire                         m_uart_arready,
-    input  wire [31:0]                  m_uart_rdata,
-    input  wire [1:0]                   m_uart_rresp,
-    input  wire                         m_uart_rvalid,
-    output wire                         m_uart_rready,
+    output wire [31:0]                  m_uart_awaddr /* UART 寄存器 AXI-Lite 接口的写地址。 */,
+    output wire [2:0]                   m_uart_awprot /* UART 寄存器 AXI-Lite 接口的写访问保护属性。 */,
+    output wire                         m_uart_awvalid /* UART 寄存器 AXI-Lite 接口的写地址有效。 */,
+    input  wire                         m_uart_awready /* UART 寄存器 AXI-Lite 接口的可接收写地址。 */,
+    output wire [31:0]                  m_uart_wdata /* UART 寄存器 AXI-Lite 接口的写入数据。 */,
+    output wire [3:0]                   m_uart_wstrb /* UART 寄存器 AXI-Lite 接口的写入字节使能。 */,
+    output wire                         m_uart_wvalid /* UART 寄存器 AXI-Lite 接口的写数据有效。 */,
+    input  wire                         m_uart_wready /* UART 寄存器 AXI-Lite 接口的可接收写数据。 */,
+    input  wire [1:0]                   m_uart_bresp /* UART 寄存器 AXI-Lite 接口的写响应状态。 */,
+    input  wire                         m_uart_bvalid /* UART 寄存器 AXI-Lite 接口的写响应有效。 */,
+    output wire                         m_uart_bready /* UART 寄存器 AXI-Lite 接口的可接收写响应。 */,
+    output wire [31:0]                  m_uart_araddr /* UART 寄存器 AXI-Lite 接口的读地址。 */,
+    output wire [2:0]                   m_uart_arprot /* UART 寄存器 AXI-Lite 接口的读访问保护属性。 */,
+    output wire                         m_uart_arvalid /* UART 寄存器 AXI-Lite 接口的读地址有效。 */,
+    input  wire                         m_uart_arready /* UART 寄存器 AXI-Lite 接口的可接收读地址。 */,
+    input  wire [31:0]                  m_uart_rdata /* UART 寄存器 AXI-Lite 接口的读取数据。 */,
+    input  wire [1:0]                   m_uart_rresp /* UART 寄存器 AXI-Lite 接口的读响应状态。 */,
+    input  wire                         m_uart_rvalid /* UART 寄存器 AXI-Lite 接口的读响应有效。 */,
+    output wire                         m_uart_rready /* UART 寄存器 AXI-Lite 接口的可接收读响应。 */,
 
-    output wire [31:0]                  m_ctrl_awaddr,
-    output wire [2:0]                   m_ctrl_awprot,
-    output wire                         m_ctrl_awvalid,
-    input  wire                         m_ctrl_awready,
-    output wire [31:0]                  m_ctrl_wdata,
-    output wire [3:0]                   m_ctrl_wstrb,
-    output wire                         m_ctrl_wvalid,
-    input  wire                         m_ctrl_wready,
-    input  wire [1:0]                   m_ctrl_bresp,
-    input  wire                         m_ctrl_bvalid,
-    output wire                         m_ctrl_bready,
-    output wire [31:0]                  m_ctrl_araddr,
-    output wire [2:0]                   m_ctrl_arprot,
-    output wire                         m_ctrl_arvalid,
-    input  wire                         m_ctrl_arready,
-    input  wire [31:0]                  m_ctrl_rdata,
-    input  wire [1:0]                   m_ctrl_rresp,
-    input  wire                         m_ctrl_rvalid,
-    output wire                         m_ctrl_rready
+    output wire [31:0]                  m_ctrl_awaddr /* SoC 控制寄存器 AXI-Lite 接口的写地址。 */,
+    output wire [2:0]                   m_ctrl_awprot /* SoC 控制寄存器 AXI-Lite 接口的写访问保护属性。 */,
+    output wire                         m_ctrl_awvalid /* SoC 控制寄存器 AXI-Lite 接口的写地址有效。 */,
+    input  wire                         m_ctrl_awready /* SoC 控制寄存器 AXI-Lite 接口的可接收写地址。 */,
+    output wire [31:0]                  m_ctrl_wdata /* SoC 控制寄存器 AXI-Lite 接口的写入数据。 */,
+    output wire [3:0]                   m_ctrl_wstrb /* SoC 控制寄存器 AXI-Lite 接口的写入字节使能。 */,
+    output wire                         m_ctrl_wvalid /* SoC 控制寄存器 AXI-Lite 接口的写数据有效。 */,
+    input  wire                         m_ctrl_wready /* SoC 控制寄存器 AXI-Lite 接口的可接收写数据。 */,
+    input  wire [1:0]                   m_ctrl_bresp /* SoC 控制寄存器 AXI-Lite 接口的写响应状态。 */,
+    input  wire                         m_ctrl_bvalid /* SoC 控制寄存器 AXI-Lite 接口的写响应有效。 */,
+    output wire                         m_ctrl_bready /* SoC 控制寄存器 AXI-Lite 接口的可接收写响应。 */,
+    output wire [31:0]                  m_ctrl_araddr /* SoC 控制寄存器 AXI-Lite 接口的读地址。 */,
+    output wire [2:0]                   m_ctrl_arprot /* SoC 控制寄存器 AXI-Lite 接口的读访问保护属性。 */,
+    output wire                         m_ctrl_arvalid /* SoC 控制寄存器 AXI-Lite 接口的读地址有效。 */,
+    input  wire                         m_ctrl_arready /* SoC 控制寄存器 AXI-Lite 接口的可接收读地址。 */,
+    input  wire [31:0]                  m_ctrl_rdata /* SoC 控制寄存器 AXI-Lite 接口的读取数据。 */,
+    input  wire [1:0]                   m_ctrl_rresp /* SoC 控制寄存器 AXI-Lite 接口的读响应状态。 */,
+    input  wire                         m_ctrl_rvalid /* SoC 控制寄存器 AXI-Lite 接口的读响应有效。 */,
+    output wire                         m_ctrl_rready /* SoC 控制寄存器 AXI-Lite 接口的可接收读响应。 */
 );
 
     typedef enum logic [2:0] {
@@ -332,7 +334,7 @@ module soc_axi_interconnect #(
     dest_e cpu_w_dest;
     (* keep = 1 *) logic [4:0] cpu_aw_dest_flags;
     logic [4:0] cpu_wr_dest_flags, cpu_w_dest_flags;
-    assign cpu_aw_dest_flags = decode_cpu_flags(s0_axi_awaddr);
+    assign cpu_aw_dest_flags = p_cpu_aw_predecoded ? i_cpu_aw_dest_flags : decode_cpu_flags(s0_axi_awaddr);
     assign cpu_wr_dest_flags = {cpu_wr_dest_q == D_ERR, cpu_wr_dest_q == D_CTRL,
         cpu_wr_dest_q == D_UART, cpu_wr_dest_q == D_NPU, cpu_wr_dest_q == D_RAM};
 `ifdef SYNTHESIS
@@ -347,6 +349,16 @@ module soc_axi_interconnect #(
     always_comb begin
         cpu_ar_dest = decode_cpu_addr(s0_axi_araddr);
         cpu_aw_dest = decode_cpu_addr(s0_axi_awaddr);
+        if (p_cpu_aw_predecoded) begin
+            cpu_aw_dest = D_ERR;
+            case (1'b1)
+                cpu_aw_dest_flags[0]: cpu_aw_dest = D_RAM;
+                cpu_aw_dest_flags[1]: cpu_aw_dest = D_NPU;
+                cpu_aw_dest_flags[2]: cpu_aw_dest = D_UART;
+                cpu_aw_dest_flags[3]: cpu_aw_dest = D_CTRL;
+                default: begin end
+            endcase
+        end
         cpu_w_dest  = cpu_wr_active_q ? cpu_wr_dest_q : cpu_aw_dest;
     end
 
@@ -478,6 +490,50 @@ module soc_axi_interconnect #(
     wire cpu_ar_hs = cpu_ram_ar_hs || cpu_npu_ar_hs || cpu_uart_ar_hs ||
                      cpu_ctrl_ar_hs || cpu_err_ar_hs;
     wire cpu_arq_pop = cpu_ar_hs;
+    logic cpu_w_ready_four_state;
+    logic cpu_w_ready_parallel;
+
+    // 外设选择分别与对应接收信号组合，最后统一归并各目标的接收条件。
+    if (p_cpu_ram_write_overlap) begin : g_parallel_overlap_ready
+        logic mmio_ready, mmio_selected, ram_ready;
+        assign mmio_ready =
+            (cpu_w_dest_flags[1] && m_npu_wready) ||
+            (cpu_w_dest_flags[2] && m_uart_wready) ||
+            (cpu_w_dest_flags[3] && m_ctrl_wready) ||
+            (cpu_w_dest_flags[4] && !err_bvalid_q);
+        assign mmio_selected = cpu_issue_w_allowed && (|cpu_w_dest_flags[4:1]);
+        assign ram_ready = !ram_w_from_npu && ram_w_from_cpu && m_ram_wready;
+        assign cpu_w_ready_parallel =
+            (cpu_issue_w_allowed && mmio_ready) || (!mmio_selected && ram_ready);
+    end else begin : g_parallel_saved_ready
+        logic saved_mmio_ready, incoming_mmio_ready;
+        logic saved_ready, incoming_ready;
+        assign saved_mmio_ready =
+            (cpu_wr_dest_flags[1] && m_npu_wready) ||
+            (cpu_wr_dest_flags[2] && m_uart_wready) ||
+            (cpu_wr_dest_flags[3] && m_ctrl_wready) ||
+            (cpu_wr_dest_flags[4] && !err_bvalid_q);
+        assign incoming_mmio_ready =
+            (cpu_aw_dest_flags[1] && m_npu_wready) ||
+            (cpu_aw_dest_flags[2] && m_uart_wready) ||
+            (cpu_aw_dest_flags[3] && m_ctrl_wready) ||
+            (cpu_aw_dest_flags[4] && !err_bvalid_q);
+        assign saved_ready = saved_mmio_ready ||
+            (!(|cpu_wr_dest_flags[4:1]) && ram_wr_active_q &&
+             (ram_wr_owner_q == OWNER_CPU) && m_ram_wready);
+        assign incoming_ready = !cpu_block_new_req && incoming_mmio_ready;
+        // 当前写地址与已保存写目标分别完成接收条件，事务状态仅控制最终选择。
+        assign cpu_w_ready_parallel = cpu_wr_active_q ? saved_ready : incoming_ready;
+    end
+    always_comb begin
+        case (^{cpu_wr_active_q, cpu_wr_dest_q, ram_wr_active_q, ram_wr_owner_q,
+                npu_bus_lock, s0_axi_awvalid, s1_axi_awvalid, cpu_aw_dest_flags,
+                m_ram_wready, m_npu_wready, m_uart_wready, m_ctrl_wready, err_bvalid_q})
+            1'b0, 1'b1: s0_axi_wready = cpu_w_ready_parallel;
+            default: s0_axi_wready = cpu_w_ready_four_state;
+        endcase
+    end
+
     wire cpu_aw_hs = s0_axi_awvalid && s0_axi_awready;
     wire cpu_w_hs = s0_axi_wvalid && s0_axi_wready;
     wire cpu_b_hs = s0_axi_bvalid && s0_axi_bready;
@@ -578,7 +634,7 @@ module soc_axi_interconnect #(
 
     always_comb begin
         s0_axi_awready = 1'b0;
-        s0_axi_wready  = 1'b0;
+        cpu_w_ready_four_state  = 1'b0;
         s0_axi_bvalid  = 1'b0;
         s0_axi_bresp   = 2'b00;
         s1_axi_awready = 1'b0;
@@ -633,7 +689,7 @@ module soc_axi_interconnect #(
             m_ram_wdata  = DATA_WIDTH'(s0_axi_wdata) << (8*cpu_write_lane);
             m_ram_wstrb  = (DATA_WIDTH/8)'(s0_axi_wstrb) << cpu_write_lane;
             m_ram_wlast  = s0_axi_wlast;
-            s0_axi_wready = m_ram_wready;
+            cpu_w_ready_four_state = m_ram_wready;
         end
 
         if (ram_wr_active_q && (ram_wr_owner_q == OWNER_NPU)) begin
@@ -656,10 +712,10 @@ module soc_axi_interconnect #(
 
         if (cpu_issue_w_allowed) begin
             unique case (1'b1)
-                cpu_w_dest_flags[1]:  s0_axi_wready = m_npu_wready;
-                cpu_w_dest_flags[2]: s0_axi_wready = m_uart_wready;
-                cpu_w_dest_flags[3]: s0_axi_wready = m_ctrl_wready;
-                cpu_w_dest_flags[4]:  s0_axi_wready = !err_bvalid_q;
+                cpu_w_dest_flags[1]:  cpu_w_ready_four_state = m_npu_wready;
+                cpu_w_dest_flags[2]: cpu_w_ready_four_state = m_uart_wready;
+                cpu_w_dest_flags[3]: cpu_w_ready_four_state = m_ctrl_wready;
+                cpu_w_dest_flags[4]:  cpu_w_ready_four_state = !err_bvalid_q;
                 default: begin
                 end
             endcase

@@ -1,0 +1,210 @@
+{
+  "reference": "ce47de48",
+  "source_sha256": "c4b81c64b742e9f00c5c206fc6cb0fbfcdc91f08fad0a0c4ed9630febe01a50d",
+  "reference_sha256": "6b34fb8c1373062563119895ce37d3aa78224a1be62e130a943a0c8700f91ef3",
+  "initial_reset_cycle": 1,
+  "functional_inputs_constrained": false,
+  "all_public_outputs_compared": true,
+  "invalid_data_compared": true,
+  "logical_storage_and_positions_compared": true,
+  "formal": [
+    {
+      "mode": "generic",
+      "width": 1,
+      "passed": true,
+      "compared_bits": 9,
+      "log_sha256": "7a6b51653402c10124dab42ed25db1caefa85b2427f20e4a2ba38e0954daab51"
+    },
+    {
+      "mode": "generic",
+      "width": 2,
+      "passed": true,
+      "compared_bits": 12,
+      "log_sha256": "2866ae99669fcbb496e7442d2984138365c38cade17920675423a4ddf31ac2a4"
+    },
+    {
+      "mode": "generic",
+      "width": 23,
+      "passed": true,
+      "compared_bits": 75,
+      "log_sha256": "2ff267c03e633353c8c8541cd6d2001f029e48e2678e48bcfbf90ba29204bbde"
+    },
+    {
+      "mode": "generic",
+      "width": 24,
+      "passed": true,
+      "compared_bits": 78,
+      "log_sha256": "428b233ad6f50fae0ef9c66b25a63f32539c42d0716e9ccff84d72b542ff40df"
+    },
+    {
+      "mode": "generic",
+      "width": 34,
+      "passed": true,
+      "compared_bits": 108,
+      "log_sha256": "f0ac42ab4a009b7c47408eefe2e2d2ac56a03eceda44ff191091ad5b1b58119a"
+    },
+    {
+      "mode": "generic",
+      "width": 35,
+      "passed": true,
+      "compared_bits": 111,
+      "log_sha256": "bfef7b620df5af61b7ada947faa70d864478315ac1b94fa968ddeaf84d66b4d4"
+    },
+    {
+      "mode": "generic",
+      "width": 36,
+      "passed": true,
+      "compared_bits": 114,
+      "log_sha256": "3f0425cc54fdba93dad94f29d6787d30cb1ff99b7c8e4dfe82ad77b736fe8cf9"
+    },
+    {
+      "mode": "generic",
+      "width": 54,
+      "passed": true,
+      "compared_bits": 168,
+      "log_sha256": "0e25f095705e978d78cfc1c4887252a386c62d6400196ff0c395591a8a744526"
+    },
+    {
+      "mode": "generic",
+      "width": 64,
+      "passed": true,
+      "compared_bits": 198,
+      "log_sha256": "9b68f574c7e395b508cfb1fd9e46796ebf7afde438c35c4dec4d53fafe17838a"
+    },
+    {
+      "mode": "generic",
+      "width": 67,
+      "passed": true,
+      "compared_bits": 207,
+      "log_sha256": "1237718a5812bfef7a1aa5c41c25302e43292311c2c6a2638b6983a27def80a0"
+    },
+    {
+      "mode": "generic",
+      "width": 73,
+      "passed": true,
+      "compared_bits": 225,
+      "log_sha256": "c3dc81bbcf6014a786b105196788f50cc0775f153e3ed7abb435c798c6d043b9"
+    },
+    {
+      "mode": "generic",
+      "width": 128,
+      "passed": true,
+      "compared_bits": 390,
+      "log_sha256": "95686289b1052b1cc0b57411faa0883ece73f49bbf84f6a99fe1d393071a69ba"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 1,
+      "passed": true,
+      "compared_bits": 9,
+      "log_sha256": "d2755c074f016a6c5d7466a5c8990db660f5947b96c3e35361d11dc365a1d118"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 2,
+      "passed": true,
+      "compared_bits": 12,
+      "log_sha256": "75bb66ed27e51d781ad9b3ad672a476c6d6aa083f8d1ea79cd30d09cfff74d49"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 23,
+      "passed": true,
+      "compared_bits": 75,
+      "log_sha256": "0a559654b3e7a4d59e040cc2b68a6c9fb888dd1ec742afc32ffceacd38c89b19"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 24,
+      "passed": true,
+      "compared_bits": 78,
+      "log_sha256": "2662ae9e8b3c1ee0a26dccb146d006a00466c0486019758ab0e1ad429336175b"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 34,
+      "passed": true,
+      "compared_bits": 108,
+      "log_sha256": "4ed85c652399df3fc42aa995283de35b7f4bfdbbb3a02f24cd348a09f91220a2"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 35,
+      "passed": true,
+      "compared_bits": 111,
+      "log_sha256": "2d286cc8de0fe2b2fcc9335894a7ce79a050b1bb4466b26020435ee9bfbd9e06"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 36,
+      "passed": true,
+      "compared_bits": 114,
+      "log_sha256": "10330337c3958cbed0f8e947d8926e45c148a046012a33ed9f5a5d2d054dbddf"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 54,
+      "passed": true,
+      "compared_bits": 168,
+      "log_sha256": "84033791af2faef9d89280d4d861789004a49313fbca31a9c771ecbfb4a0dc66"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 64,
+      "passed": true,
+      "compared_bits": 198,
+      "log_sha256": "6ea0bf027832591b5bca9dacaa1653af5c831bf69eb3756f0b7c242e82ef3808"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 67,
+      "passed": true,
+      "compared_bits": 207,
+      "log_sha256": "88a14a19cbe9683431f3d46a65b4bed368f4ed521b5a9ff2d2f448e932ea2e6e"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 73,
+      "passed": true,
+      "compared_bits": 225,
+      "log_sha256": "67b51a4a76f437ba55e8fced3efe46e74f0968f87418cec456d8d2f410441078"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 128,
+      "passed": true,
+      "compared_bits": 390,
+      "log_sha256": "866accd146bb81c66d180d8bae40baa8912d8cc7e9683fe336fcee43f55a2e2b"
+    }
+  ],
+  "four_state": [
+    {
+      "mode": "generic",
+      "cycles": 100000,
+      "comparisons": 2400012,
+      "unknown_controls": true,
+      "unknown_payload": true,
+      "passed": true,
+      "log_sha256": "c4d3ad28eeb1045ff100142dc497d78f4d6bc93dfa923aa37e8ae61bbb7153dc"
+    },
+    {
+      "mode": "fpga",
+      "cycles": 100000,
+      "comparisons": 2400012,
+      "unknown_controls": true,
+      "unknown_payload": true,
+      "passed": true,
+      "log_sha256": "c4d3ad28eeb1045ff100142dc497d78f4d6bc93dfa923aa37e8ae61bbb7153dc"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "cycles": 100000,
+      "comparisons": 2400012,
+      "unknown_controls": true,
+      "unknown_payload": true,
+      "passed": true,
+      "log_sha256": "c4d3ad28eeb1045ff100142dc497d78f4d6bc93dfa923aa37e8ae61bbb7153dc"
+    }
+  ],
+  "passed": true
+}

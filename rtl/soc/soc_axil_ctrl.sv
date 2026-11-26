@@ -1,34 +1,34 @@
-module soc_axil_ctrl #(
+/* 提供程序完成、状态和进度寄存器，并通过 AXI-Lite 接收软件访问。 */ module soc_axil_ctrl #(
     parameter int unsigned AXIL_ADDR_WIDTH = 32,
     parameter int unsigned AXIL_DATA_WIDTH = 32
 ) (
-    input  wire                         clk,
-    input  wire                         rst_n,
+    input  wire                         clk /* 模块工作时钟。 */,
+    input  wire                         rst_n /* 低电平有效复位。 */,
 
-    input  wire [AXIL_ADDR_WIDTH-1:0]   s_axil_awaddr,
-    input  wire [2:0]                   s_axil_awprot,
-    input  wire                         s_axil_awvalid,
-    output wire                         s_axil_awready,
-    input  wire [AXIL_DATA_WIDTH-1:0]   s_axil_wdata,
-    input  wire [AXIL_DATA_WIDTH/8-1:0] s_axil_wstrb,
-    input  wire                         s_axil_wvalid,
-    output wire                         s_axil_wready,
-    output logic [1:0]                  s_axil_bresp,
-    output logic                        s_axil_bvalid,
-    input  wire                         s_axil_bready,
-    input  wire [AXIL_ADDR_WIDTH-1:0]   s_axil_araddr,
-    input  wire [2:0]                   s_axil_arprot,
-    input  wire                         s_axil_arvalid,
-    output wire                         s_axil_arready,
-    output logic [AXIL_DATA_WIDTH-1:0]  s_axil_rdata,
-    output logic [1:0]                  s_axil_rresp,
-    output logic                        s_axil_rvalid,
-    input  wire                         s_axil_rready,
+    input  wire [AXIL_ADDR_WIDTH-1:0]   s_axil_awaddr /* AXI-Lite 从接口的写地址。 */,
+    input  wire [2:0]                   s_axil_awprot /* AXI-Lite 从接口的写访问保护属性。 */,
+    input  wire                         s_axil_awvalid /* AXI-Lite 从接口的写地址有效。 */,
+    output wire                         s_axil_awready /* AXI-Lite 从接口的可接收写地址。 */,
+    input  wire [AXIL_DATA_WIDTH-1:0]   s_axil_wdata /* AXI-Lite 从接口的写入数据。 */,
+    input  wire [AXIL_DATA_WIDTH/8-1:0] s_axil_wstrb /* AXI-Lite 从接口的写入字节使能。 */,
+    input  wire                         s_axil_wvalid /* AXI-Lite 从接口的写数据有效。 */,
+    output wire                         s_axil_wready /* AXI-Lite 从接口的可接收写数据。 */,
+    output logic [1:0]                  s_axil_bresp /* AXI-Lite 从接口的写响应状态。 */,
+    output logic                        s_axil_bvalid /* AXI-Lite 从接口的写响应有效。 */,
+    input  wire                         s_axil_bready /* AXI-Lite 从接口的可接收写响应。 */,
+    input  wire [AXIL_ADDR_WIDTH-1:0]   s_axil_araddr /* AXI-Lite 从接口的读地址。 */,
+    input  wire [2:0]                   s_axil_arprot /* AXI-Lite 从接口的读访问保护属性。 */,
+    input  wire                         s_axil_arvalid /* AXI-Lite 从接口的读地址有效。 */,
+    output wire                         s_axil_arready /* AXI-Lite 从接口的可接收读地址。 */,
+    output logic [AXIL_DATA_WIDTH-1:0]  s_axil_rdata /* AXI-Lite 从接口的读取数据。 */,
+    output logic [1:0]                  s_axil_rresp /* AXI-Lite 从接口的读响应状态。 */,
+    output logic                        s_axil_rvalid /* AXI-Lite 从接口的读响应有效。 */,
+    input  wire                         s_axil_rready /* AXI-Lite 从接口的可接收读响应。 */,
 
-    input  wire                         cpu_trap,
-    output logic                        soc_finish,
-    output logic [31:0]                 soc_status,
-    output logic [31:0]                 soc_progress
+    input  wire                         cpu_trap /* 处理器异常停止指示。 */,
+    output logic                        soc_finish /* 程序完成状态。 */,
+    output logic [31:0]                 soc_status /* 软件可读写的程序状态码。 */,
+    output logic [31:0]                 soc_progress /* 软件可读写的程序进度值。 */
 );
 
     logic [AXIL_ADDR_WIDTH-1:0] awaddr_q;

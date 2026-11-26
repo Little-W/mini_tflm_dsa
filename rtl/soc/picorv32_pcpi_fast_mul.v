@@ -17,7 +17,7 @@
  *
  */
 
-// PicoRV32 处理器的独立功能模块。
+// 通过 PCPI 接口采用并行乘法计算整数乘积的高位或低位。
 `timescale 1 ns / 1 ps
 /* verilator lint_off WIDTH */
 /* verilator lint_off PINMISSING */
@@ -29,16 +29,16 @@ module picorv32_pcpi_fast_mul #(
 	parameter EXTRA_INSN_FFS = 0,
 	parameter MUL_CLKGATE = 0
 ) (
-	input clk, resetn,
+	input clk /* 模块工作时钟。 */, resetn /* 低电平有效复位。 */,
 
-	input             pcpi_valid,
-	input      [31:0] pcpi_insn,
-	input      [31:0] pcpi_rs1,
-	input      [31:0] pcpi_rs2,
-	output            pcpi_wr,
-	output     [31:0] pcpi_rd,
-	output            pcpi_wait,
-	output            pcpi_ready
+	input             pcpi_valid /* 协处理器指令请求有效。 */,
+	input      [31:0] pcpi_insn /* 待执行的协处理器指令编码。 */,
+	input      [31:0] pcpi_rs1 /* 协处理器第一源操作数。 */,
+	input      [31:0] pcpi_rs2 /* 协处理器第二源操作数。 */,
+	output            pcpi_wr /* 协处理器结果需写回目标寄存器。 */,
+	output     [31:0] pcpi_rd /* 协处理器返回的目标寄存器数据。 */,
+	output            pcpi_wait /* 协处理器正在处理请求。 */,
+	output            pcpi_ready /* 协处理器指令已完成。 */
 );
 	reg instr_mul, instr_mulh, instr_mulhsu, instr_mulhu;
 	wire instr_any_mul = |{instr_mul, instr_mulh, instr_mulhsu, instr_mulhu};

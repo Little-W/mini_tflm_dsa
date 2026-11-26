@@ -1,4 +1,4 @@
-module axil_top_with_ram #(
+/* 连接 NPU 控制寄存器与本地 AXI 存储器，提供独立的 AXI-Lite 任务接口。 */ module axil_top_with_ram #(
     parameter AXIL_DATA_WIDTH = 32,
     parameter AXIL_ADDR_WIDTH = 16,
     parameter WEIGHT_WIDTH    = 16,
@@ -29,34 +29,34 @@ module axil_top_with_ram #(
     parameter MEM_WORD_WIDTH  = 32,
     parameter MEM_INIT_EN     = 0
 ) (
-    input  wire clk,
-    input  wire rst_n,
+    input  wire clk /* 模块工作时钟。 */,
+    input  wire rst_n /* 低电平有效复位。 */,
 
     // AXI-Lite slave interface to configure NPU
-    input  wire [AXIL_ADDR_WIDTH-1:0]     s_axil_awaddr,
-    input  wire [2:0]                     s_axil_awprot,
-    input  wire                           s_axil_awvalid,
-    output wire                           s_axil_awready,
-    input  wire [AXIL_DATA_WIDTH-1:0]     s_axil_wdata,
-    input  wire [AXIL_DATA_WIDTH/8-1:0]   s_axil_wstrb,
-    input  wire                           s_axil_wvalid,
-    output wire                           s_axil_wready,
-    output wire [1:0]                     s_axil_bresp,
-    output wire                           s_axil_bvalid,
-    input  wire                           s_axil_bready,
-    input  wire [AXIL_ADDR_WIDTH-1:0]     s_axil_araddr,
-    input  wire [2:0]                     s_axil_arprot,
-    input  wire                           s_axil_arvalid,
-    output wire                           s_axil_arready,
-    output wire [AXIL_DATA_WIDTH-1:0]     s_axil_rdata,
-    output wire [1:0]                     s_axil_rresp,
-    output wire                           s_axil_rvalid,
-    input  wire                           s_axil_rready,
+    input  wire [AXIL_ADDR_WIDTH-1:0]     s_axil_awaddr /* AXI-Lite 从接口的写地址。 */,
+    input  wire [2:0]                     s_axil_awprot /* AXI-Lite 从接口的写访问保护属性。 */,
+    input  wire                           s_axil_awvalid /* AXI-Lite 从接口的写地址有效。 */,
+    output wire                           s_axil_awready /* AXI-Lite 从接口的可接收写地址。 */,
+    input  wire [AXIL_DATA_WIDTH-1:0]     s_axil_wdata /* AXI-Lite 从接口的写入数据。 */,
+    input  wire [AXIL_DATA_WIDTH/8-1:0]   s_axil_wstrb /* AXI-Lite 从接口的写入字节使能。 */,
+    input  wire                           s_axil_wvalid /* AXI-Lite 从接口的写数据有效。 */,
+    output wire                           s_axil_wready /* AXI-Lite 从接口的可接收写数据。 */,
+    output wire [1:0]                     s_axil_bresp /* AXI-Lite 从接口的写响应状态。 */,
+    output wire                           s_axil_bvalid /* AXI-Lite 从接口的写响应有效。 */,
+    input  wire                           s_axil_bready /* AXI-Lite 从接口的可接收写响应。 */,
+    input  wire [AXIL_ADDR_WIDTH-1:0]     s_axil_araddr /* AXI-Lite 从接口的读地址。 */,
+    input  wire [2:0]                     s_axil_arprot /* AXI-Lite 从接口的读访问保护属性。 */,
+    input  wire                           s_axil_arvalid /* AXI-Lite 从接口的读地址有效。 */,
+    output wire                           s_axil_arready /* AXI-Lite 从接口的可接收读地址。 */,
+    output wire [AXIL_DATA_WIDTH-1:0]     s_axil_rdata /* AXI-Lite 从接口的读取数据。 */,
+    output wire [1:0]                     s_axil_rresp /* AXI-Lite 从接口的读响应状态。 */,
+    output wire                           s_axil_rvalid /* AXI-Lite 从接口的读响应有效。 */,
+    input  wire                           s_axil_rready /* AXI-Lite 从接口的可接收读响应。 */,
 
-    output wire                           irq,
+    output wire                           irq /* NPU 中断请求。 */,
 
-    input  wire                           mem_reload_req,
-    output wire                           npu_busy
+    input  wire                           mem_reload_req /* 仿真存储初始化数据的重载请求。 */,
+    output wire                           npu_busy /* NPU 正在执行任务。 */
 );
 
     // AXI master interconnect between npu_axil_top and axi_sim_ram

@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import runpy
 import subprocess
 import sys
 
@@ -29,10 +30,13 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=False)
     sources, hashes = {}, {}
+    resolve = runpy.run_path(str(ROOT / 'scripts/rtl/source_files.py'))['with_dependencies']
+    current_sources = [path.relative_to(ROOT) for path in resolve(
+        [ROOT / path for path in SOURCES], ROOT)]
     for label in ('reference', 'current'):
         contents = {}
         folder = out / 'inputs' / label
-        for path in SOURCES:
+        for path in SOURCES if label == 'reference' else current_sources:
             data = (subprocess.check_output(['git', 'show', f'{args.reference}:{path}'], cwd=ROOT)
                     if label == 'reference' else (ROOT / path).read_bytes())
             destination = folder / path
@@ -93,7 +97,7 @@ def main():
                 'register_path_requirement': measured['register_path_requirement'],
                 'metrics_sha256': digest(path.read_bytes())}
         report['stages']['mapping'] = mapped
-    if any(digest((ROOT / p).read_bytes()) != hashes['current'][str(p)] for p in SOURCES):
+    if any(digest((ROOT / p).read_bytes()) != hashes['current'][str(p)] for p in current_sources):
         raise RuntimeError('验证期间 CPU 源文件发生变化')
     report['passed'] = True
     (out / 'summary.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')

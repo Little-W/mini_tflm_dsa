@@ -34,6 +34,7 @@ def main():
     harness = out/'main.cpp'
     shutil.copyfile(Path(__file__).with_name('main.cpp'),harness)
     header = read_rtl_text(frozen).split('\n);',1)[0]
+    header = re.sub(r'/\*[\s\S]*?\*/|//[^\n]*', '', header)
     inputs = re.findall(r'^\s*input\s+(?:(?:wire|logic)\s+)*(?:\[[^\]]+\]\s*)?(\w+)\s*[,\n]',header+'\n',re.M)
     (out/'initialize.hpp').write_text('static void initialize(Vsoc_axi_interconnect &dut) {\n'+
         ''.join(f'    dut.{name}=0;\n' for name in inputs)+'}\n')

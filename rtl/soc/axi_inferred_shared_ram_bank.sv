@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
-
+// 以六十四位双端口存储字承载两个三十二位访问接口，支持逐字节写入和两拍读取。
 module axi_inferred_shared_ram_bank #(
     parameter RAM_STYLE = "ultra",
     parameter integer ADDR_WIDTH = 14,
     parameter integer DEPTH_WORDS = 16384
 ) (
-    input wire clk,
-    input wire rsta,
-    input wire ena,
-    input wire [3:0] wea,
-    input wire [ADDR_WIDTH-1:0] addra,
-    input wire addra_hi,
-    input wire [31:0] dina,
-    output wire [31:0] douta,
-    input wire rstb,
-    input wire enb,
-    input wire [3:0] web,
-    input wire [ADDR_WIDTH-1:0] addrb,
-    input wire addrb_hi,
-    input wire [31:0] dinb,
-    output wire [31:0] doutb
+    input wire clk /* 模块工作时钟。 */,
+    input wire rsta /* A 端口读输出的高电平有效复位。 */,
+    input wire ena /* A 端口访问使能。 */,
+    input wire [3:0] wea /* A 端口写入字节使能。 */,
+    input wire [ADDR_WIDTH-1:0] addra /* A 端口六十四位存储字地址。 */,
+    input wire addra_hi /* A 端口选择六十四位存储字的高半字。 */,
+    input wire [31:0] dina /* A 端口写入数据。 */,
+    output wire [31:0] douta /* A 端口读取数据。 */,
+    input wire rstb /* B 端口读输出的高电平有效复位。 */,
+    input wire enb /* B 端口访问使能。 */,
+    input wire [3:0] web /* B 端口写入字节使能。 */,
+    input wire [ADDR_WIDTH-1:0] addrb /* B 端口六十四位存储字地址。 */,
+    input wire addrb_hi /* B 端口选择六十四位存储字的高半字。 */,
+    input wire [31:0] dinb /* B 端口写入数据。 */,
+    output wire [31:0] doutb /* B 端口读取数据。 */
 );
     wire [63:0] douta_wide, doutb_wide;
     reg addra_hi_q, addrb_hi_q;

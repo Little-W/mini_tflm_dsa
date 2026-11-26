@@ -17,7 +17,7 @@
  *
  */
 
-// PicoRV32 处理器的独立功能模块。
+// 通过 PCPI 接口逐步计算有符号或无符号除法及余数。
 `timescale 1 ns / 1 ps
 /* verilator lint_off WIDTH */
 /* verilator lint_off PINMISSING */
@@ -25,16 +25,16 @@
 /* verilator lint_off CASEINCOMPLETE */
 
 module picorv32_pcpi_div (
-	input clk, resetn,
+	input clk /* 模块工作时钟。 */, resetn /* 低电平有效复位。 */,
 
-	input             pcpi_valid,
-	input      [31:0] pcpi_insn,
-	input      [31:0] pcpi_rs1,
-	input      [31:0] pcpi_rs2,
-	output reg        pcpi_wr,
-	output reg [31:0] pcpi_rd,
-	output reg        pcpi_wait,
-	output reg        pcpi_ready
+	input             pcpi_valid /* 协处理器指令请求有效。 */,
+	input      [31:0] pcpi_insn /* 待执行的协处理器指令编码。 */,
+	input      [31:0] pcpi_rs1 /* 协处理器第一源操作数。 */,
+	input      [31:0] pcpi_rs2 /* 协处理器第二源操作数。 */,
+	output reg        pcpi_wr /* 协处理器结果需写回目标寄存器。 */,
+	output reg [31:0] pcpi_rd /* 协处理器返回的目标寄存器数据。 */,
+	output reg        pcpi_wait /* 协处理器正在处理请求。 */,
+	output reg        pcpi_ready /* 协处理器指令已完成。 */
 );
 	reg instr_div, instr_divu, instr_rem, instr_remu;
 	wire instr_any_div_rem = |{instr_div, instr_divu, instr_rem, instr_remu};
@@ -139,38 +139,4 @@ module picorv32_pcpi_div (
 `endif
 		end
 	end
-endmodule
-
-// 二进制补码由当前位和低位非零条件形成，四位分组控制归并深度。
-(* keep_hierarchy = "yes" *)
-module pico_result_negation (
-    input wire logic [31:0] i_value,
-    output logic [31:0] o_value
-);
-    (* keep = 1 *) logic [6:0] group_nonzero;
-    logic [31:0] negated_value;
-    for (genvar group_index = 0; group_index < 7; group_index++) begin : g_group
-        assign group_nonzero[group_index] = |i_value[group_index*4+:4];
-    end
-    assign negated_value[0] = i_value[0];
-    for (genvar bit_index = 1; bit_index < 32; bit_index++) begin : g_bit
-        localparam int p_groups = bit_index/4;
-        localparam int p_local = bit_index%4;
-        logic lower_nonzero;
-        if (p_groups == 0) begin : g_first
-            assign lower_nonzero = |i_value[bit_index-1:0];
-        end else if (p_local == 0) begin : g_boundary
-            assign lower_nonzero = |group_nonzero[p_groups-1:0];
-        end else begin : g_partial
-            assign lower_nonzero = (|group_nonzero[p_groups-1:0]) ||
-                (|i_value[p_groups*4+:p_local]);
-        end
-        assign negated_value[bit_index] = i_value[bit_index] ^ lower_nonzero;
-    end
-    always_comb begin
-        case (^i_value)
-            1'b0, 1'b1: o_value = negated_value;
-            default: o_value = 32'd0 - i_value;
-        endcase
-    end
 endmodule

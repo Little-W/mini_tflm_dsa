@@ -1,4 +1,4 @@
-module soc_axi_ram #(
+/* 实现 AXI 突发读写存储器，处理字节使能、返回状态及仿真数据初始化。 */ module soc_axi_ram #(
     parameter int unsigned DP = 512,
     parameter int unsigned DW = 32,
     parameter int unsigned AW = 32,
@@ -9,46 +9,46 @@ module soc_axi_ram #(
     parameter int unsigned WRITE_OUTSTANDING = READ_OUTSTANDING,
     parameter int unsigned READ_FIRST_LATENCY = 2
 ) (
-    input  wire             clk,
-    input  wire             rst_n,
+    input  wire             clk /* 模块工作时钟。 */,
+    input  wire             rst_n /* 低电平有效复位。 */,
 
-    input  wire             s_axi_awvalid,
-    output wire             s_axi_awready,
-    input  wire [AW-1:0]    s_axi_awaddr,
-    input  wire [3:0]       s_axi_awcache,
-    input  wire [2:0]       s_axi_awprot,
-    input  wire [1:0]       s_axi_awlock,
-    input  wire [1:0]       s_axi_awburst,
-    input  wire [7:0]       s_axi_awlen,
-    input  wire [2:0]       s_axi_awsize,
+    input  wire             s_axi_awvalid /* AXI 从接口的写地址有效。 */,
+    output wire             s_axi_awready /* AXI 从接口的可接收写地址。 */,
+    input  wire [AW-1:0]    s_axi_awaddr /* AXI 从接口的写地址。 */,
+    input  wire [3:0]       s_axi_awcache /* AXI 从接口的写事务缓存属性。 */,
+    input  wire [2:0]       s_axi_awprot /* AXI 从接口的写访问保护属性。 */,
+    input  wire [1:0]       s_axi_awlock /* AXI 从接口的写事务锁定属性。 */,
+    input  wire [1:0]       s_axi_awburst /* AXI 从接口的写突发地址模式。 */,
+    input  wire [7:0]       s_axi_awlen /* AXI 从接口的写突发拍数减一。 */,
+    input  wire [2:0]       s_axi_awsize /* AXI 从接口的写入每拍字节数的以二为底对数。 */,
 
-    input  wire             s_axi_wvalid,
-    output wire             s_axi_wready,
-    input  wire [DW-1:0]    s_axi_wdata,
-    input  wire [DW/8-1:0]  s_axi_wstrb,
-    input  wire             s_axi_wlast,
+    input  wire             s_axi_wvalid /* AXI 从接口的写数据有效。 */,
+    output wire             s_axi_wready /* AXI 从接口的可接收写数据。 */,
+    input  wire [DW-1:0]    s_axi_wdata /* AXI 从接口的写入数据。 */,
+    input  wire [DW/8-1:0]  s_axi_wstrb /* AXI 从接口的写入字节使能。 */,
+    input  wire             s_axi_wlast /* AXI 从接口的写突发的最后一拍。 */,
 
-    output logic            s_axi_bvalid,
-    input  wire             s_axi_bready,
-    output logic [1:0]      s_axi_bresp,
+    output logic            s_axi_bvalid /* AXI 从接口的写响应有效。 */,
+    input  wire             s_axi_bready /* AXI 从接口的可接收写响应。 */,
+    output logic [1:0]      s_axi_bresp /* AXI 从接口的写响应状态。 */,
 
-    input  wire             s_axi_arvalid,
-    output wire             s_axi_arready,
-    input  wire [AW-1:0]    s_axi_araddr,
-    input  wire [3:0]       s_axi_arcache,
-    input  wire [2:0]       s_axi_arprot,
-    input  wire [1:0]       s_axi_arlock,
-    input  wire [1:0]       s_axi_arburst,
-    input  wire [7:0]       s_axi_arlen,
-    input  wire [2:0]       s_axi_arsize,
+    input  wire             s_axi_arvalid /* AXI 从接口的读地址有效。 */,
+    output wire             s_axi_arready /* AXI 从接口的可接收读地址。 */,
+    input  wire [AW-1:0]    s_axi_araddr /* AXI 从接口的读地址。 */,
+    input  wire [3:0]       s_axi_arcache /* AXI 从接口的读事务缓存属性。 */,
+    input  wire [2:0]       s_axi_arprot /* AXI 从接口的读访问保护属性。 */,
+    input  wire [1:0]       s_axi_arlock /* AXI 从接口的读事务锁定属性。 */,
+    input  wire [1:0]       s_axi_arburst /* AXI 从接口的读突发地址模式。 */,
+    input  wire [7:0]       s_axi_arlen /* AXI 从接口的读突发拍数减一。 */,
+    input  wire [2:0]       s_axi_arsize /* AXI 从接口的读取每拍字节数的以二为底对数。 */,
 
-    output logic            s_axi_rvalid,
-    input  wire             s_axi_rready,
-    output logic [DW-1:0]   s_axi_rdata,
-    output logic [1:0]      s_axi_rresp,
-    output logic            s_axi_rlast,
+    output logic            s_axi_rvalid /* AXI 从接口的读响应有效。 */,
+    input  wire             s_axi_rready /* AXI 从接口的可接收读响应。 */,
+    output logic [DW-1:0]   s_axi_rdata /* AXI 从接口的读取数据。 */,
+    output logic [1:0]      s_axi_rresp /* AXI 从接口的读响应状态。 */,
+    output logic            s_axi_rlast /* AXI 从接口的读突发的最后一拍。 */,
 
-    input  wire             mem_reload_req
+    input  wire             mem_reload_req /* 仿真存储初始化数据的重载请求。 */
 );
 
     localparam int unsigned BYTEW = DW / 8;
@@ -184,7 +184,12 @@ module soc_axi_ram #(
         logic [7:0] low_prefix_mask;
         logic [7:0] low_next;
         logic [AW:0] incremented_addr;
-        logic [AW:0] high_prefix_mask;
+        localparam int p_high_groups = (AW > 7) ? (AW-2)/6 : 1;
+        localparam int p_high_bytes = (AW >= 8) ? AW/8 : 1;
+`ifdef SYNTHESIS
+        (* keep = 1 *)
+`endif
+        logic [p_high_bytes*p_high_groups-1:0] high_prefix_groups;
         logic [7:0] high_byte_address;
         logic high_byte_carry;
         begin
@@ -198,13 +203,20 @@ module soc_axi_ram #(
                     (low_address[bit_index] ^ (&(low_carry_bits | ~low_prefix_mask)));
             end
             incremented_addr = (AW+1)'(low_next);
-            // 高位各字节预先递增，低位前缀进位只选择保持值或递增值。
+            // 每个高位字节的进位前缀按六位并行归并，再选择保持值或递增值。
+            high_prefix_groups = '1;
             for (int byte_start=8; byte_start<=AW; byte_start+=8) begin
-                high_prefix_mask = ((AW+1)'(1) << byte_start) - (AW+1)'(256);
+                for (int group=0; group<p_high_groups; group++) begin
+                    for (int group_bit=0; group_bit<6; group_bit++) begin
+                        if (8+group*6+group_bit < byte_start)
+                            high_prefix_groups[(byte_start/8-1)*p_high_groups+group] &=
+                                byte_addr[8+group*6+group_bit];
+                    end
+                end
                 // 异或零保持高位地址经过逻辑运算时的四态传播。
                 high_byte_address = 8'(byte_addr >> byte_start) ^ 8'h00;
                 high_byte_carry = (&low_carry_bits) &&
-                    ((byte_addr & high_prefix_mask) == high_prefix_mask);
+                    (&high_prefix_groups[(byte_start/8-1)*p_high_groups+:p_high_groups]);
                 for (int bit_index=0; bit_index<8; bit_index++) begin
                     if (byte_start+bit_index <= AW)
                         incremented_addr[byte_start+bit_index] = high_byte_carry ?
@@ -219,40 +231,44 @@ module soc_axi_ram #(
         input logic [AW-1:0] byte_addr, input logic [7:0] len,
         input logic [2:0] size, input logic [1:0] burst);
         logic [11:0] page_address;
-        logic [7:0] page_word_low;
         logic page_word_high_full;
         logic [8:0] page_last_word;
+`ifdef SYNTHESIS
+        (* keep = 1 *)
+`endif
+        logic [4:0] page_carry;
         logic [31:0] step, page_start, page_end;
         begin
             if (ADDR_LSB <= 4) begin
-                // 末拍字序号超过页容量时才跨页，长度比较只需要低八位与页内高位。
+                // 各传输宽度分别计算末拍进位，尺寸字段只选择已经形成的跨页条件。
                 page_address = 12'(byte_addr);
-                page_word_low = '0;
+                for (int byte_shift=0; byte_shift<5; byte_shift++)
+                    page_carry[byte_shift] = 1'(({1'b0, 8'(page_address >> byte_shift)} + {1'b0, len}) >> 8);
+                page_last_word = '0;
                 page_word_high_full = 1'b0;
                 case (size)
                     3'd0: begin
-                        page_word_low = page_address[7:0];
+                        page_last_word[8] = page_carry[0];
                         page_word_high_full = &page_address[11:8];
                     end
                     3'd1: begin
-                        page_word_low = page_address[8:1];
+                        page_last_word[8] = page_carry[1];
                         page_word_high_full = &page_address[11:9];
                     end
                     3'd2: begin
-                        page_word_low = page_address[9:2];
+                        page_last_word[8] = page_carry[2];
                         page_word_high_full = &page_address[11:10];
                     end
                     3'd3: begin
-                        page_word_low = page_address[10:3];
+                        page_last_word[8] = page_carry[3];
                         page_word_high_full = page_address[11];
                     end
                     3'd4: begin
-                        page_word_low = page_address[11:4];
+                        page_last_word[8] = page_carry[4];
                         page_word_high_full = 1'b1;
                     end
                     default: begin end
                 endcase
-                page_last_word = {1'b0, page_word_low} + {1'b0, len};
                 axi_command_bad = (32'(size) > ADDR_LSB) || (burst > 2'b01) ||
                     ((burst == 2'b00) && len > 8'd15) ||
                     ((burst == 2'b01) && page_word_high_full && page_last_word[8]);

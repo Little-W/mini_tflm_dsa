@@ -10,6 +10,7 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from rtl_reference import read_current_source as read_rtl_text
+from rtl_reference import read_rtl_source_group
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/soc/soc_axi_interconnect.sv')
@@ -41,6 +42,8 @@ def main():
     parser.add_argument('--reference-root', type=Path)
     parser.add_argument('--reference-ref', default='aa0a169c')
     parser.add_argument('--write-overlap', type=int, choices=(0, 1), default=1)
+    parser.add_argument('--synthesis', action='store_true')
+    parser.add_argument('--predecoded', action='store_true')
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
     out = args.out.resolve()
@@ -52,17 +55,22 @@ def main():
         reference = subprocess.check_output(['git', 'rev-parse', args.reference_ref],
                                             cwd=ROOT, text=True).strip()
         reference_path = out / 'reference_input.sv'
-        reference_path.write_bytes(subprocess.check_output(
-            ['git', 'show', f'{reference}:{SOURCE}'], cwd=ROOT))
+        reference_path.write_bytes(read_rtl_source_group(f'{reference}:{SOURCE}', cwd=ROOT))
     originals = {'reference': reference_path,
                  'current': args.source_root.resolve() / SOURCE}
     hashes = {name: digest(path) for name, path in originals.items()}
     sources = []
     for label, source in originals.items():
         target = out / (label + '.sv')
-        target.write_text(simulation_source(read_rtl_text(source), label))
+        source_text = read_rtl_text(source)
+        if label == 'current' and args.predecoded:
+            import runpy
+            bind = runpy.run_path(str(ROOT / 'test/soc_write_ready/run.py'))['bind_predecoded_snapshot']
+            source_text = bind(source_text)
+        target.write_text(simulation_source(source_text, label))
         sources.append(target)
     header = read_rtl_text(originals['reference']).split('\n);', 1)[0]
+    header = re.sub(r'/\*[\s\S]*?\*/|//[^\n]*', '', header)
     ports = re.findall(r'^\s*(input|output)\s+(?:(?:wire|logic)\s+)*(\[[^\]]+\]\s*)?(\w+)\s*[,\n]',
                        header + '\n', re.M)
     assert len(ports) > 130 and len({p[2] for p in ports}) == len(ports)
@@ -79,10 +87,11 @@ def main():
             declarations += [f'  wire {width}old_{name};', f'  wire {width}new_{name};']
     instances = []
     for label, prefix in [('reference', 'old'), ('current', 'new')]:
+        metadata_parameter = ',.p_cpu_aw_predecoded(1)' if label == 'current' and args.predecoded else ''
         connections = ',\n'.join(f'    .{name}({name if direction == "input" else prefix + "_" + name})'
                                   for direction, _, name in ports)
         instances.append(f'''  {label} #(.ADDR_WIDTH(ADDR_WIDTH),.DATA_WIDTH(DATA_WIDTH),.CPU_MEM_DP(65536),
-    .READ_OUTSTANDING(4),.WRITE_OUTSTANDING(4),.p_cpu_ram_write_overlap({args.write_overlap})) u_{prefix}(
+    .READ_OUTSTANDING(4),.WRITE_OUTSTANDING(4),.p_cpu_ram_write_overlap({args.write_overlap}){metadata_parameter}) u_{prefix}(
 {connections});''')
     joined_inputs = ','.join(inputs)
     joined_old = ','.join('old_' + name for name in outputs)
@@ -136,6 +145,8 @@ endmodule
 ''')
     executable = out / 'simulation.vvp'
     command = ['iverilog', '-g2012', '-s', 'tb', '-o', str(executable), *map(str, sources), str(tb)]
+    if args.synthesis:
+        command[1:1] = ['-D', 'SYNTHESIS=1']
     with (out / 'build.log').open('w') as stream:
         subprocess.run(command, stdout=stream, stderr=subprocess.STDOUT, check=True)
     result = subprocess.run(['vvp', str(executable)], text=True, capture_output=True, timeout=120)
@@ -144,6 +155,7 @@ endmodule
     assert result.returncode == 0 and match, result.stdout + result.stderr
     assert hashes == {name: digest(path) for name, path in originals.items()}
     summary = dict(passed=True, reference_revision=reference, cycles=int(match[1]), public_outputs=outputs,
+        synthesis=args.synthesis,
         write_overlap=args.write_overlap,
         source_sha256=hashes, strict_four_state_comparison=True,
         simulator_type_conversion='枚举类型转换为相同位宽逻辑及同值常量；所有表达式和时序块保持',

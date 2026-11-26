@@ -17,7 +17,7 @@
  *
  */
 
-// PicoRV32 处理器的独立功能模块。
+// 将 PicoRV32 本地存储握手转换为 AXI 的独立地址、数据和响应握手。
 `timescale 1 ns / 1 ps
 /* verilator lint_off WIDTH */
 /* verilator lint_off PINMISSING */
@@ -25,41 +25,41 @@
 /* verilator lint_off CASEINCOMPLETE */
 
 module picorv32_axi_adapter (
-	input clk, resetn,
+	input clk /* 模块工作时钟。 */, resetn /* 低电平有效复位。 */,
 
 	// AXI4-lite master memory interface
 
-	output        mem_axi_awvalid,
-	input         mem_axi_awready,
-	output [31:0] mem_axi_awaddr,
-	output [ 2:0] mem_axi_awprot,
+	output        mem_axi_awvalid /* 处理器 AXI 主接口的写地址有效。 */,
+	input         mem_axi_awready /* 处理器 AXI 主接口的可接收写地址。 */,
+	output [31:0] mem_axi_awaddr /* 处理器 AXI 主接口的写地址。 */,
+	output [ 2:0] mem_axi_awprot /* 处理器 AXI 主接口的写访问保护属性。 */,
 
-	output        mem_axi_wvalid,
-	input         mem_axi_wready,
-	output [31:0] mem_axi_wdata,
-	output [ 3:0] mem_axi_wstrb,
+	output        mem_axi_wvalid /* 处理器 AXI 主接口的写数据有效。 */,
+	input         mem_axi_wready /* 处理器 AXI 主接口的可接收写数据。 */,
+	output [31:0] mem_axi_wdata /* 处理器 AXI 主接口的写入数据。 */,
+	output [ 3:0] mem_axi_wstrb /* 处理器 AXI 主接口的写入字节使能。 */,
 
-	input         mem_axi_bvalid,
-	output        mem_axi_bready,
+	input         mem_axi_bvalid /* 处理器 AXI 主接口的写响应有效。 */,
+	output        mem_axi_bready /* 处理器 AXI 主接口的可接收写响应。 */,
 
-	output        mem_axi_arvalid,
-	input         mem_axi_arready,
-	output [31:0] mem_axi_araddr,
-	output [ 2:0] mem_axi_arprot,
+	output        mem_axi_arvalid /* 处理器 AXI 主接口的读地址有效。 */,
+	input         mem_axi_arready /* 处理器 AXI 主接口的可接收读地址。 */,
+	output [31:0] mem_axi_araddr /* 处理器 AXI 主接口的读地址。 */,
+	output [ 2:0] mem_axi_arprot /* 处理器 AXI 主接口的读访问保护属性。 */,
 
-	input         mem_axi_rvalid,
-	output        mem_axi_rready,
-	input  [31:0] mem_axi_rdata,
+	input         mem_axi_rvalid /* 处理器 AXI 主接口的读响应有效。 */,
+	output        mem_axi_rready /* 处理器 AXI 主接口的可接收读响应。 */,
+	input  [31:0] mem_axi_rdata /* 处理器 AXI 主接口的读取数据。 */,
 
 	// Native PicoRV32 memory interface
 
-	input         mem_valid,
-	input         mem_instr,
-	output        mem_ready,
-	input  [31:0] mem_addr,
-	input  [31:0] mem_wdata,
-	input  [ 3:0] mem_wstrb,
-	output [31:0] mem_rdata
+	input         mem_valid /* 处理器存储访问请求有效。 */,
+	input         mem_instr /* 当前存储请求为取指访问。 */,
+	output        mem_ready /* 处理器当前存储请求完成。 */,
+	input  [31:0] mem_addr /* 处理器存储访问字节地址。 */,
+	input  [31:0] mem_wdata /* 处理器写入数据。 */,
+	input  [ 3:0] mem_wstrb /* 处理器写入字节使能，全零表示读取。 */,
+	output [31:0] mem_rdata /* 返回处理器的读取数据。 */
 );
 	reg ack_awvalid;
 	reg ack_arvalid;

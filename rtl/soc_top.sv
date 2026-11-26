@@ -1,4 +1,4 @@
-module soc_top #(
+/* 连接 RISC-V 处理器、NPU、共享存储器、UART 和控制寄存器，构成完整计算系统。 */ module soc_top #(
     parameter AXIL_DATA_WIDTH = 32,
     parameter AXIL_ADDR_WIDTH = 16,
     parameter WEIGHT_WIDTH    = 16,
@@ -52,16 +52,16 @@ module soc_top #(
     parameter [31:0] UART_BASE      = 32'h0200_0000,
     parameter [31:0] SOC_CTRL_BASE  = 32'h2000_0000
 ) (
-    input  wire        clk,
-    input  wire        rst_n,
-    input  wire        mem_reload_req,
-    output wire        npu_busy,
-    output wire        npu_irq,
-    output wire        uart_tx,
-    input  wire        uart_rx,
-    output wire        soc_finish,
-    output wire [31:0] soc_status,
-    output wire        cpu_trap
+    input  wire        clk /* 模块工作时钟。 */,
+    input  wire        rst_n /* 低电平有效复位。 */,
+    input  wire        mem_reload_req /* 仿真存储初始化数据的重载请求。 */,
+    output wire        npu_busy /* NPU 正在执行任务。 */,
+    output wire        npu_irq /* NPU 中断请求。 */,
+    output wire        uart_tx /* UART 串行发送数据。 */,
+    input  wire        uart_rx /* UART 串行接收数据。 */,
+    output wire        soc_finish /* 程序完成状态。 */,
+    output wire [31:0] soc_status /* 软件可读写的程序状态码。 */,
+    output wire        cpu_trap /* 处理器异常停止指示。 */
 );
 
     wire        pico_mem_valid;
@@ -516,6 +516,7 @@ module soc_top #(
         end
     endgenerate
 
+    logic [4:0] cpu_bus_aw_dest_flags;
     generate
         if (CPU_AXI_WRITE_TIMING_BUFFER) begin : g_cpu_axi_write_timing_buffer
             soc_axi_write_pingpong_buffer #(
@@ -559,7 +560,18 @@ module soc_top #(
                 .m_axi_bready(cpu_bus_axi_bready),
                 .m_axi_bresp(cpu_bus_axi_bresp)
             );
+            soc_cpu_write_address_metadata #(
+                .ADDR_WIDTH(REG_WIDTH), .CPU_MEM_DP(CPU_MEM_DP),
+                .CPU_RAM_BASE(CPU_RAM_BASE), .NPU_AXIL_BASE(NPU_AXIL_BASE),
+                .UART_BASE(UART_BASE), .SOC_CTRL_BASE(SOC_CTRL_BASE)
+            ) u_write_destination (
+                .clk(clk), .rst_n(rst_n), .i_addr(cpu_axi_awaddr),
+                .i_push(cpu_axi_awvalid && cpu_axi_awready),
+                .i_pop(cpu_bus_axi_awvalid && cpu_bus_axi_awready),
+                .o_input_dest_flags(), .o_dest_flags(cpu_bus_aw_dest_flags)
+            );
         end else begin : g_bypass_cpu_axi_write_timing_buffer
+            assign cpu_bus_aw_dest_flags = '0;
             assign cpu_bus_axi_awvalid = cpu_axi_awvalid;
             assign cpu_axi_awready     = cpu_bus_axi_awready;
             assign cpu_bus_axi_awaddr  = cpu_axi_awaddr;
@@ -586,6 +598,7 @@ module soc_top #(
         .CPU_MEM_DP(CPU_MEM_DP),
         .p_cpu_read_overlap(1'b0),
         .p_cpu_ram_write_overlap(1'b0),
+        .p_cpu_aw_predecoded(CPU_AXI_WRITE_TIMING_BUFFER),
         .READ_OUTSTANDING(AXI_READ_OUTSTANDING),
         .WRITE_OUTSTANDING(AXI_WRITE_OUTSTANDING),
         .CPU_RAM_BASE(CPU_RAM_BASE),
@@ -613,6 +626,7 @@ module soc_top #(
         .s0_axi_awvalid(cpu_bus_axi_awvalid),
         .s0_axi_awready(cpu_bus_axi_awready),
         .s0_axi_awaddr(cpu_bus_axi_awaddr),
+        .i_cpu_aw_dest_flags(cpu_bus_aw_dest_flags),
         .s0_axi_awcache(cpu_bus_axi_awcache),
         .s0_axi_awprot(cpu_bus_axi_awprot),
         .s0_axi_awlock(cpu_bus_axi_awlock),

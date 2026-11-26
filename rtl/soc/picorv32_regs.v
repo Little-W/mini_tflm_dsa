@@ -17,7 +17,7 @@
  *
  */
 
-// PicoRV32 处理器的独立功能模块。
+// 为 PicoRV32 提供一个同步写端口和两个组合读端口的通用寄存器存储。
 `timescale 1 ns / 1 ps
 /* verilator lint_off WIDTH */
 /* verilator lint_off PINMISSING */
@@ -25,13 +25,13 @@
 /* verilator lint_off CASEINCOMPLETE */
 
 module picorv32_regs (
-	input clk, wen,
-	input [5:0] waddr,
-	input [5:0] raddr1,
-	input [5:0] raddr2,
-	input [31:0] wdata,
-	output [31:0] rdata1,
-	output [31:0] rdata2
+	input clk /* 模块工作时钟。 */, wen /* 寄存器写入使能。 */,
+	input [5:0] waddr /* 目标寄存器地址。 */,
+	input [5:0] raddr1 /* 第一源寄存器地址。 */,
+	input [5:0] raddr2 /* 第二源寄存器地址。 */,
+	input [31:0] wdata /* 目标寄存器写入数据。 */,
+	output [31:0] rdata1 /* 第一源寄存器读取数据。 */,
+	output [31:0] rdata2 /* 第二源寄存器读取数据。 */
 );
 	reg [31:0] regs [0:30];
 

@@ -1,0 +1,1890 @@
+{
+  "passed": true,
+  "checks": {
+    "formal": {
+      "passed": true,
+      "inputs": {
+        "reference_commit": "07a199ac",
+        "sources": [
+          {
+            "source": "rtl/soc/soc_axi_ram.sv",
+            "reference_sha256": "8b9a64fbdd38d5591de1828de934d305491dc953a436350b53b38954e022b4bd",
+            "current_sha256": "df0127b6bcc6666b3df1ca6cbb450869fdcc07e5b4145f8c85d34552e9ba3beb",
+            "only_combinational_address_and_lane_logic_changed": true
+          },
+          {
+            "source": "test/models/soc_axi_ram.sv",
+            "reference_sha256": "e408c35bcdeb830709775df4b2afd9b3e464e77a53e0507314e53084189f4b1e",
+            "current_sha256": "54f0ab18a5bf58ff5fdb933c4622017679da5d9b1476c376b2c6f0f9bd2c6e0b",
+            "only_combinational_address_and_lane_logic_changed": true
+          }
+        ],
+        "production_and_model_functions_identical": true
+      },
+      "domain": "all two-state inputs",
+      "input_assumptions": [],
+      "all_size_and_burst_encodings": true,
+      "extended_overflow_address_bit_compared": true,
+      "miter_sha256": "5b1419cb16e051f87c82a49e3aa334273d8673aef5d4e0d875f856a251a364a3",
+      "profiles": [
+        {
+          "address_width": 1,
+          "result_width": 2,
+          "passed": true,
+          "log_sha256": "1a7dc8ca68552940d352f1f0dc7c2dfeb3f80a5b976a5391a9e5d3f4694336a1"
+        },
+        {
+          "address_width": 3,
+          "result_width": 4,
+          "passed": true,
+          "log_sha256": "f374e3e81d5c2b79f2a79a7e6db3fa0c5d152b129b6cf36f78e36c8ace0cb725"
+        },
+        {
+          "address_width": 7,
+          "result_width": 8,
+          "passed": true,
+          "log_sha256": "7912ec4d9122e9c364eac996e56644bafae5f171161c2aeaff45a0b4f1e421e6"
+        },
+        {
+          "address_width": 8,
+          "result_width": 9,
+          "passed": true,
+          "log_sha256": "69791ed339b8edbbf74ea7d0af4bd994411b0a26b5591d4243eca6ab4e87cf45"
+        },
+        {
+          "address_width": 9,
+          "result_width": 10,
+          "passed": true,
+          "log_sha256": "32101614f999ce12ccc7324c4a6ebefb0d5a8075e8c97816980f029e42562d8c"
+        },
+        {
+          "address_width": 16,
+          "result_width": 17,
+          "passed": true,
+          "log_sha256": "d56be50a8c8160afa247e2ecb8c82cd8fd2d2f84bef65bb35ce67cfd7cc17fea"
+        },
+        {
+          "address_width": 24,
+          "result_width": 25,
+          "passed": true,
+          "log_sha256": "bb88553fffb5a075b810b68e1a7b71f8b8a63f533cec7251e82664bb297d9516"
+        },
+        {
+          "address_width": 32,
+          "result_width": 33,
+          "passed": true,
+          "log_sha256": "1908b3d5a68703c9ba4e6acc9ecb81ed81dc8a818b1ecad547d63962fea35076"
+        },
+        {
+          "address_width": 40,
+          "result_width": 41,
+          "passed": true,
+          "log_sha256": "550ce53a215712083cfe282aca3174d86c75706f0667fbeb1ee5b9d95cae5aa9"
+        },
+        {
+          "address_width": 65,
+          "result_width": 66,
+          "passed": true,
+          "log_sha256": "e1b1b51a0654ae11a289e92b600dc02aaa2b9fbde537a0f71b9b20d6761ebf05"
+        }
+      ],
+      "helper_miter_sha256": "37642630b4b3757a0d605dd3da73594813c54216b20e9d96b830764044ace1e9",
+      "helper_profiles": [
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 1,
+          "passed": true,
+          "log_sha256": "0948972c2f03d4437253f9e25bcfa78d9e16c1bd92c8453c16817a21cdcf81cf"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 2,
+          "passed": true,
+          "log_sha256": "7c0844096616afbeb7d2fc2c35caefee5c365872e7af061c33d8d82a18927886"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 3,
+          "passed": true,
+          "log_sha256": "835c5b838bbe2f94bc534661cc094d9fa7286e19c90b02f7727613fbec7ad019"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 7,
+          "passed": true,
+          "log_sha256": "7e5dbf477b13cbddfb96d5b657f25c1f23d373509872d170760098f4f10bcdc5"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 8,
+          "passed": true,
+          "log_sha256": "b66713e5de517ebdac54ae9af4502484158607b1fb06f38559ea203dd12843ab"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 15,
+          "passed": true,
+          "log_sha256": "792ac284260cf3ad9d9e728b048dfa59e2c01f3df24e2f8ca7bb8e5a9eef921b"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 16,
+          "passed": true,
+          "log_sha256": "33b1a8aa5c7f0d6863a556580af9717eb02997cb921c540376aeaf69fbce655d"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 31,
+          "passed": true,
+          "log_sha256": "e06bdb3afc1a516eab26823e055e900874e975ccb406b6e6c27a32b914d6781c"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 32,
+          "passed": true,
+          "log_sha256": "16cca25fb9f83df28e435b40bed308ee929f40fb052deb950f1edbc591b6ecb4"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 63,
+          "passed": true,
+          "log_sha256": "bac26d0d7525a15c082862f4f156d2789b05e5b3c529c93ea299f83349eb792a"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 64,
+          "passed": true,
+          "log_sha256": "dde5a03520aeade177177249efd4ac274759fb1b03ec852cdae98b16cee46ff8"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 65,
+          "passed": true,
+          "log_sha256": "c5cbeed1c3e751f38de218226bca014a3e9a8ca2bd4dc278c4c2430eda468c53"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 1024,
+          "passed": true,
+          "log_sha256": "30966769c2ab57d080659d142eef85b1d9064314d3b249945302fba397b0df60"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 1031,
+          "passed": true,
+          "log_sha256": "0de0a6c3ee9af43b0444ed7ad4fe3fd6f3afc47c676cf4ee086baf95a1a9ebb5"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 32768,
+          "passed": true,
+          "log_sha256": "38c2b72649eabe632ad3917132178275f7fdaf34b770c53aa56aa8514c076649"
+        },
+        {
+          "address_width": 8,
+          "data_width": 8,
+          "memory_words": 32769,
+          "passed": true,
+          "log_sha256": "4f637b7f789e022211d2cca55b6c5a6344b74509a0b17d7cce36fad55901c671"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 1,
+          "passed": true,
+          "log_sha256": "36419ab7fc645bfdc7525b61c64d975eb0fc06023a1a6daeaeeab04fa8a7c88c"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 2,
+          "passed": true,
+          "log_sha256": "7a47079b637aceda4edfa77985d1a1c54b8721072e39bdf6fcbdf4574235f039"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 3,
+          "passed": true,
+          "log_sha256": "2d058a59bcb60d7d2c34dc553e44f03a854867604094da47cc1e6467e87ee3e9"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 7,
+          "passed": true,
+          "log_sha256": "dea670a6a9895960c51979ebcc9d8eba271795a1350292c6c140e18ce01a7392"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 8,
+          "passed": true,
+          "log_sha256": "33e8248424bd12cfd47a7c6a473aae6aedcba926e81b270918ce5f6e701acb5d"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 15,
+          "passed": true,
+          "log_sha256": "14a50ef56a71c59e23e4d2fd766573c7f553eb28f53c450341d912003c534256"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 16,
+          "passed": true,
+          "log_sha256": "6117b02fbcb59426871f3324f7a95767cd2d7d2a12b372ae9386dd6b6dcd24a5"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 31,
+          "passed": true,
+          "log_sha256": "c61a5e0a8febc57c3fce4194af19dae0c6c210e44c350f28c65da607f122e05e"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 32,
+          "passed": true,
+          "log_sha256": "aac2828c94f6af58d607ce5828f7a9196815985729de4e1ffc25904be28e527a"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 63,
+          "passed": true,
+          "log_sha256": "7aac95c1a1e5d983deee29cdb94c90e76b6960fa92f1428fc17bc8befeb33570"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 64,
+          "passed": true,
+          "log_sha256": "e7ae2244907fb86ffe89404a7bbb09136b23e011da7c065b125e09a4dc34f9e3"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 65,
+          "passed": true,
+          "log_sha256": "f15b8d85cfdd8ca6c4bb465bd47066fe42030136c3cbf9a8b253651533bced41"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 1024,
+          "passed": true,
+          "log_sha256": "056f0f3bee5645e2401b056cdcc99c102596909d64409a2667f74b0da32f4d73"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 1031,
+          "passed": true,
+          "log_sha256": "1bc1edf4e8fa168aae72bd3b043419ded37ae21f588818d3abcfb63ffa7950be"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 32768,
+          "passed": true,
+          "log_sha256": "f331680ad18d3a61280caf357bf6284cdf5a80562810bd2bf6435f0689737c03"
+        },
+        {
+          "address_width": 8,
+          "data_width": 32,
+          "memory_words": 32769,
+          "passed": true,
+          "log_sha256": "da67cc3f8bd4e0cb2ef6fb6145de9e4609d8e9f957cc39f4fe9549b9fc5c3bf9"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 1,
+          "passed": true,
+          "log_sha256": "3fa341885627455c6d99eadf65d20b216aa08bee644f53199962dd903c9341bb"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 2,
+          "passed": true,
+          "log_sha256": "8f400d818f248190e2c403db20f54e3250331585c58e220261159e378fac995e"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 3,
+          "passed": true,
+          "log_sha256": "528991037b158b200f9a35a9569fc23f767449583c97ff9b7a25224f1619d134"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 7,
+          "passed": true,
+          "log_sha256": "f03f672e9762d1e5f87e44cbb146c8ab691f8f905e09f85d929fcfe320763347"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 8,
+          "passed": true,
+          "log_sha256": "ac7b7fe10305cf66293dbee6957ff2fdd964a1a13d46feb28beca0d3dd091184"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 15,
+          "passed": true,
+          "log_sha256": "ffc9d169dc2b068167aab2ac28c5c51b3ad0b6966c46faa1c3084dfa2f633333"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 16,
+          "passed": true,
+          "log_sha256": "9bc365ab830a228f757c13be5088b253d3d6d48d193f0df311e1f1e75c37058b"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 31,
+          "passed": true,
+          "log_sha256": "4f82fbef56c0d0b8b4805a9e7edcdb6a2abb96356e44b8d9702a42d95dbbbf67"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 32,
+          "passed": true,
+          "log_sha256": "99cb1255f24c698924f0cbf60b667afa68e7b5f10a4f0bd491de1dabdb215c6d"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 63,
+          "passed": true,
+          "log_sha256": "f84078d511c4a6507d29740a4b2ce5b368ef031dafcb1aa2049dadd77fa97bfc"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 64,
+          "passed": true,
+          "log_sha256": "475f45ed2ee2bce0aa91d945d7cd1e1184a30de3e729e3aef0268599afd3c4c7"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 65,
+          "passed": true,
+          "log_sha256": "b52e9d4a8f2e4ffdad77c514cc0ffdd675782c328f285eff07d5dcf13d088b82"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 1024,
+          "passed": true,
+          "log_sha256": "b89f55beefd45ba2ae6086f8522bc9df463ce3b1511adac547315f80b0a49f56"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 1031,
+          "passed": true,
+          "log_sha256": "429f56831755939093b600cfabff3f13ed7a4f67478679e15c9c074480687a5c"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 32768,
+          "passed": true,
+          "log_sha256": "dc8b1b8cd493121caedaf232e611c55f0b1039059bcf0c1e90d81ca440876aa0"
+        },
+        {
+          "address_width": 8,
+          "data_width": 64,
+          "memory_words": 32769,
+          "passed": true,
+          "log_sha256": "326371205f58cba7f9c6a1b66c07a499363114d0bbf18da6c879219a10b06a91"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 1,
+          "passed": true,
+          "log_sha256": "0aeeafa7dade6603adaeb05521462578cd4aea64e9f6d7f13988863eb0ee61f6"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 2,
+          "passed": true,
+          "log_sha256": "6c85eabdb2eb8867712972db41378234f8c1ffed986bf1341decb150e260fed0"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 3,
+          "passed": true,
+          "log_sha256": "574268ce0a404b3b344cf927cd511b9c90b6045198726cd4ec3c5d6cff122517"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 7,
+          "passed": true,
+          "log_sha256": "79138e108d78b8977c2289b5ba300cdab14cd3a4b703a0536a58cfdeaf7a7e92"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 8,
+          "passed": true,
+          "log_sha256": "3a628e50c85468e11c44b60bbe80f164a513376a7197325296043cff91b66a26"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 15,
+          "passed": true,
+          "log_sha256": "c06d958760739c024b667b0eaf2a2eed2fae172c794b9fad9ed1149135e1767f"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 16,
+          "passed": true,
+          "log_sha256": "6b51c85a9179aad475aa54c22b79c7a446b759e58f9030ad155baa33b6acb292"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 31,
+          "passed": true,
+          "log_sha256": "9c66b6a8f43a5036f547d64cfcc8373e38fdac3edb25f7fcf60e7ce9ec313796"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 32,
+          "passed": true,
+          "log_sha256": "41d7c68178203bc6929f26dbc44c5055480a450e1af352530181b02569ba3232"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 63,
+          "passed": true,
+          "log_sha256": "6abe72ad062975f4a4717b34c4e14a1e73cff534cad3fe4a4b2b1034e64d9667"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 64,
+          "passed": true,
+          "log_sha256": "7b8faf2d1725f248ae1dcb56f1f09e45c3967143320b3695c13d863e55578741"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 65,
+          "passed": true,
+          "log_sha256": "05108bdf7c5b175d4f52b2c4bbe0a00a585c50c039e369ed3a9013ef7146428b"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 1024,
+          "passed": true,
+          "log_sha256": "6b60710e3bba4d804ebe30b659442e8ab3986ac2667201923a294f8509af1f83"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 1031,
+          "passed": true,
+          "log_sha256": "52db90e5e393711446486a7ffe427193472235e5466f1707fb8f136c4a3c9eed"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 32768,
+          "passed": true,
+          "log_sha256": "258efc4d57e3fc5db86d86ef9d24003e44f0291cbfdb5ecea644d57d46f4c374"
+        },
+        {
+          "address_width": 16,
+          "data_width": 24,
+          "memory_words": 32769,
+          "passed": true,
+          "log_sha256": "a7202784265a0fa13077af1a381913c9d0fff5dc52358f9800339b7824a26f7a"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 1,
+          "passed": true,
+          "log_sha256": "7ebcee1ef46baa5626d8e2a6152ca43d394a74a63dc86649925a7a071f9ae895"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 2,
+          "passed": true,
+          "log_sha256": "7db97e8ce2b2222b6d82418840dff900b0a93b5f39b9bc7b5667d3262b0290be"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 3,
+          "passed": true,
+          "log_sha256": "6b3f81b6887af24e0ba8ac82307327490e84ec95f477051f1056c13f62a54fa0"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 7,
+          "passed": true,
+          "log_sha256": "5dc875388ffeb6b1076c5a0d7630cbb18ab2f598f12140f8fed7e9e9c265f01e"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 8,
+          "passed": true,
+          "log_sha256": "b0e0c23b7a993d1279368793cc796380a24dbf594e421ce70e68bea67e515bd3"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 15,
+          "passed": true,
+          "log_sha256": "6d0dff1ace549dc9c5879636387c916a6a930d07b1dc74676514151fd7dceb5f"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 16,
+          "passed": true,
+          "log_sha256": "47b704306c8e855bef7d16e7abad4e78391e477b6c20b4abe58fa0d72c1fb8ea"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 31,
+          "passed": true,
+          "log_sha256": "ae39904b67f53bab098e16ef4c8f32253b9520c31481b083a3db3519dea8c609"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 32,
+          "passed": true,
+          "log_sha256": "8a5dc04464eeba8e5c26026491051789060e2d87b5d145089f7815b952518c04"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 63,
+          "passed": true,
+          "log_sha256": "fc510ced17066b2337ce16f1a096113731f9db41425187fba9a89c8907432d8d"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 64,
+          "passed": true,
+          "log_sha256": "a763569a9a0ec3af9e5bae4e328cca73118f5092efeb1327bddead008d013798"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 65,
+          "passed": true,
+          "log_sha256": "67f67bdc80d71452c28a4a2aed711f284a58b7ce6cd2c6822c291cc94244a01c"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 1024,
+          "passed": true,
+          "log_sha256": "403cacfe834d698c307fe2248f343e727a0ba346a7914e0471a9cc09412e76e8"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 1031,
+          "passed": true,
+          "log_sha256": "0cd8e443207952bc55847fe811dbb4d022a65854d9774aefb7ea2ff46a8a54ef"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 32768,
+          "passed": true,
+          "log_sha256": "191243f25474bfeba973de3f623aae394809405ed8ab31cb88fd5faddd7fc7cf"
+        },
+        {
+          "address_width": 16,
+          "data_width": 128,
+          "memory_words": 32769,
+          "passed": true,
+          "log_sha256": "c04505b67bbea4bc0f3e1cfb57f30f970c4ba4c26a844f588f0418dae2b458d2"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 1,
+          "passed": true,
+          "log_sha256": "d312178d5266c9ba7f7030c349581094339643c810b67a02db995faa1c39c285"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 2,
+          "passed": true,
+          "log_sha256": "46f60053b475a9aa4b551bb5545b7f10b95227b52f0a18abde8c0840ac6fc29c"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 3,
+          "passed": true,
+          "log_sha256": "ce778751362395455e0d47474b79638d39c6a99dd7fa95ad0cb53a11618125a9"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 7,
+          "passed": true,
+          "log_sha256": "e5027884e7b72c4a1ca92a14d8d1d6e282d36b5962536cbfdba091aaf1602195"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 8,
+          "passed": true,
+          "log_sha256": "382ce9c087afacaf204bcb6777529744feac64a73cf90b65187265095ec7f48c"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 15,
+          "passed": true,
+          "log_sha256": "512289e93136648bacf0f1318c9e364a1eba4d6db2ff2b661729d99abb89b15b"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 16,
+          "passed": true,
+          "log_sha256": "ef2a9cc36151170b6cdd927630743de70ba2f9c2ac13b985c5e1b1d93857a055"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 31,
+          "passed": true,
+          "log_sha256": "927013f39a299c8b120360fe7e02bd1755b3c11fdb204e40208e04fe098bdac5"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 32,
+          "passed": true,
+          "log_sha256": "a7e401e7bf9139330ffecbedbbbb58cfba47196361b0027c05220be04f8c4313"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 63,
+          "passed": true,
+          "log_sha256": "552021b4d378784375a03df0225fc9e408f7ceb9865a6bcfd48143e14053d108"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 64,
+          "passed": true,
+          "log_sha256": "a992b432f37d8667cdf78a1f67e02907a76c31f153097b71e811868972b9902b"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 65,
+          "passed": true,
+          "log_sha256": "b7e80cc2bab2e776260796e43c7ee9383063a1c9e30a1ec3c8ac5d5c06ba72be"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 1024,
+          "passed": true,
+          "log_sha256": "d9be273f7786edd3a3016aca4bad2ea85f40d8799044a310e6e01405a9e6ada7"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 1031,
+          "passed": true,
+          "log_sha256": "c1780e4a60117d3f5a7c024de9e0a235fe1af9cd68122628cea991fe8c4d4575"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 32768,
+          "passed": true,
+          "log_sha256": "6c9fa427eb93ea0e5fbc9703d4d2a3b3e95a4e8ca10a4147d7b1cb1f9f1d0dbd"
+        },
+        {
+          "address_width": 32,
+          "data_width": 32,
+          "memory_words": 32769,
+          "passed": true,
+          "log_sha256": "59cc4c63070c4844274a0483c884b484ea13cf50941cc13dd8d612660004df47"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 1,
+          "passed": true,
+          "log_sha256": "920d03300873d045020cb5e9ac562ce39251ca2c0b257794b6719d668c82e834"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 2,
+          "passed": true,
+          "log_sha256": "d5148192a837185667bee9e0e268e516c5706f59a34c12d4ce7b49db8be5562c"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 3,
+          "passed": true,
+          "log_sha256": "3265dc5c30ab24b04042ae249f73fbadcbf85a91023f7f4685571d0576c1aba9"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 7,
+          "passed": true,
+          "log_sha256": "5c70cc03f58273b9a4dda9511a8cd227c91c865f3c86030bbadd03467cca9d3f"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 8,
+          "passed": true,
+          "log_sha256": "b699311634baa77bb9049b9ea04dbab6aa7b33a05bed259c3bf3aab50941c30a"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 15,
+          "passed": true,
+          "log_sha256": "110c191a6ab35ade64465e36fbb4a567e70642c968a730d0b6c79c77ff1c0a72"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 16,
+          "passed": true,
+          "log_sha256": "25538819c7dd0d487afeb7b2afa1df399ee11a41c383dad8fa25180ab30f86cc"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 31,
+          "passed": true,
+          "log_sha256": "d5545e64e4f86fea75fcf283077a9294fe43db5be5efe2487532b96316752a4f"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 32,
+          "passed": true,
+          "log_sha256": "16201c3c32079713f7b83c86fe67ab78219799e5a179baaefd31e0a4792cd666"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 63,
+          "passed": true,
+          "log_sha256": "d82b2a0da8ed34c265f339db65e293d6707cd9565025fb7fc3f5f7a872202dd6"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 64,
+          "passed": true,
+          "log_sha256": "fb34923119d09a2c4fa63b9ce2dab82c23e6a684d0de6a1af668b190e0348da1"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 65,
+          "passed": true,
+          "log_sha256": "a4e5957f91e6daa1f7f068cb1da76be5bbeebdb215c54c21871a3d1ff41bfb37"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 1024,
+          "passed": true,
+          "log_sha256": "c18d4c97d22fdffa19cb3053586100cac0804d525765657871249cd78d486799"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 1031,
+          "passed": true,
+          "log_sha256": "a30dc717f5e2f91f60ebb731a72c4879bb9e5e00d2150275ef736c668bb14b69"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 32768,
+          "passed": true,
+          "log_sha256": "8b369936c6ffa54a53ffcb1d9138c52b90e59bf5a643fe0cf05275f089ca224a"
+        },
+        {
+          "address_width": 32,
+          "data_width": 64,
+          "memory_words": 32769,
+          "passed": true,
+          "log_sha256": "279573f750b9b0ff8f7049406458021bd5d5b0470712f908ba237ae8584d9bd9"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 1,
+          "passed": true,
+          "log_sha256": "d3590308e0274524e3c8f59263df7b5b7d71914a9e7f2f0542c61e1e8edbeaac"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 2,
+          "passed": true,
+          "log_sha256": "e85191d7a73a8e0d22bbe51d381057799bac675f3599b2d3f3c97df96573b45a"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 3,
+          "passed": true,
+          "log_sha256": "9f3c8ce0da64919ffbe5ddcf3c626a56c04c05bf6180f7aa07ed80b5bfc67d6b"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 7,
+          "passed": true,
+          "log_sha256": "da7722ef4ca08d85a9703c396e0b011bcb33fa0cbb9ce7f5d05b9d97304fc8b8"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 8,
+          "passed": true,
+          "log_sha256": "6e87a2b5e3d97d0c99193819970950319b221b1b23a3a63fc1028f676ec91f2d"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 15,
+          "passed": true,
+          "log_sha256": "c4e7a5d3542b5f885bedb1530e8bd119f24092a20873d83c1f694b759d733e1f"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 16,
+          "passed": true,
+          "log_sha256": "e22fbbf8f182bff6b37af3baf71ab42762a66a64029c5e38660789512891be85"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 31,
+          "passed": true,
+          "log_sha256": "32ea9cbd72b4cee539ae25d76d0235e4deee22788745d5cdb3ced1e674052365"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 32,
+          "passed": true,
+          "log_sha256": "55cd5479dce4371e34d973c81c83f8c9abc74c1e9d088255538af5aa913ad81e"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 63,
+          "passed": true,
+          "log_sha256": "282a30f7e626018abff88a97c9933f720cca85aa1e42697cf4458d1353d7beb2"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 64,
+          "passed": true,
+          "log_sha256": "baf9796577afc11043bc18681dc36003c7e74bc779e0d34f0709439f042d19f5"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 65,
+          "passed": true,
+          "log_sha256": "1af63fc9764606de691f283c4b790499bacc2c0025afd613252d86842da40506"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 1024,
+          "passed": true,
+          "log_sha256": "bf70a465766c2e792118f51294031f8c4bbf44a4c1e1a62c8b1c96f3d02d372c"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 1031,
+          "passed": true,
+          "log_sha256": "23019b611d80eab81ef1709b66ebfafef2edd2d0cf7520be94884546cc316cb0"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 32768,
+          "passed": true,
+          "log_sha256": "bdc4d07d68bfcbb2405266480c583b8de5af289aa170ded8964690c442f1434d"
+        },
+        {
+          "address_width": 40,
+          "data_width": 1024,
+          "memory_words": 32769,
+          "passed": true,
+          "log_sha256": "82e8dee027116188823e8a6be9260b6785711e368ff977816ac5fde955718332"
+        }
+      ]
+    },
+    "four_state": {
+      "passed": true,
+      "inputs": {
+        "reference_commit": "07a199ac",
+        "sources": [
+          {
+            "source": "rtl/soc/soc_axi_ram.sv",
+            "reference_sha256": "8b9a64fbdd38d5591de1828de934d305491dc953a436350b53b38954e022b4bd",
+            "current_sha256": "df0127b6bcc6666b3df1ca6cbb450869fdcc07e5b4145f8c85d34552e9ba3beb",
+            "only_combinational_address_and_lane_logic_changed": true
+          },
+          {
+            "source": "test/models/soc_axi_ram.sv",
+            "reference_sha256": "e408c35bcdeb830709775df4b2afd9b3e464e77a53e0507314e53084189f4b1e",
+            "current_sha256": "54f0ab18a5bf58ff5fdb933c4622017679da5d9b1476c376b2c6f0f9bd2c6e0b",
+            "only_combinational_address_and_lane_logic_changed": true
+          }
+        ],
+        "production_and_model_functions_identical": true
+      },
+      "profiles": [
+        {
+          "address_width": 1,
+          "samples": 65536,
+          "equal_results": 65536,
+          "unknown_to_known_bits": 0,
+          "known_to_unknown_bits": 0,
+          "known_bit_conflicts": 0
+        },
+        {
+          "address_width": 3,
+          "samples": 65536,
+          "equal_results": 65536,
+          "unknown_to_known_bits": 0,
+          "known_to_unknown_bits": 0,
+          "known_bit_conflicts": 0
+        },
+        {
+          "address_width": 7,
+          "samples": 65536,
+          "equal_results": 65536,
+          "unknown_to_known_bits": 0,
+          "known_to_unknown_bits": 0,
+          "known_bit_conflicts": 0
+        },
+        {
+          "address_width": 8,
+          "samples": 65536,
+          "equal_results": 65536,
+          "unknown_to_known_bits": 0,
+          "known_to_unknown_bits": 0,
+          "known_bit_conflicts": 0
+        },
+        {
+          "address_width": 9,
+          "samples": 65536,
+          "equal_results": 65536,
+          "unknown_to_known_bits": 0,
+          "known_to_unknown_bits": 0,
+          "known_bit_conflicts": 0
+        },
+        {
+          "address_width": 16,
+          "samples": 65536,
+          "equal_results": 65536,
+          "unknown_to_known_bits": 0,
+          "known_to_unknown_bits": 0,
+          "known_bit_conflicts": 0
+        },
+        {
+          "address_width": 24,
+          "samples": 65536,
+          "equal_results": 65536,
+          "unknown_to_known_bits": 0,
+          "known_to_unknown_bits": 0,
+          "known_bit_conflicts": 0
+        },
+        {
+          "address_width": 32,
+          "samples": 65536,
+          "equal_results": 65536,
+          "unknown_to_known_bits": 0,
+          "known_to_unknown_bits": 0,
+          "known_bit_conflicts": 0
+        },
+        {
+          "address_width": 40,
+          "samples": 65536,
+          "equal_results": 65536,
+          "unknown_to_known_bits": 0,
+          "known_to_unknown_bits": 0,
+          "known_bit_conflicts": 0
+        },
+        {
+          "address_width": 65,
+          "samples": 65536,
+          "equal_results": 65536,
+          "unknown_to_known_bits": 0,
+          "known_to_unknown_bits": 0,
+          "known_bit_conflicts": 0
+        }
+      ],
+      "four_state_equivalent": true,
+      "defined_binary_input_behavior": "proven equal separately by complete-input SAT",
+      "total_samples": 655360,
+      "total_known_bit_conflicts": 0,
+      "total_unknown_to_known_bits": 0,
+      "total_known_to_unknown_bits": 0,
+      "miter_sha256": "5b1419cb16e051f87c82a49e3aa334273d8673aef5d4e0d875f856a251a364a3",
+      "testbench_sha256": "a5b230908871fb1d7bf7b064272e57bc2949ffca043a186fc9e4d320b3d20118",
+      "log_sha256": "a32920eb706eec11db81209258e8506b243609a31379c19675f37d5011869e3f"
+    },
+    "protocol": {
+      "scope": "SoC AXI memory protocol",
+      "simulator": "rev vUNKNOWN-built20260516-4e853d8",
+      "defines": [
+        "SYNTHESIS=1"
+      ],
+      "runs": [
+        {
+          "first_read_latency": 2,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "log": "modified_dw32_dp1031_o4_l2_random0.log",
+          "warnings": [
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:55:28: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:57:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:58:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:65:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:81: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:73:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:74:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:75:22: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:76:20: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:79:11: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:87:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:91:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:92:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:101:15: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:108:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:109:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:110:33: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:111:12: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:116:43: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:24: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:50: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:73: Blocking assignment '=' in sequential logic process",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:25: Procedural assignment to declaration with initial value: 'first_latency_min'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:56: Procedural assignment to declaration with initial value: 'first_latency_max'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:12: Procedural assignment to declaration with initial value: 'head'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:19: Procedural assignment to declaration with initial value: 'tail'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:28: Procedural assignment to declaration with initial value: 'cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:36: Procedural assignment to declaration with initial value: 'beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:45: Procedural assignment to declaration with initial value: 'errors'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:54: Procedural assignment to declaration with initial value: 'writes'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:40:32: Procedural assignment to declaration with initial value: 'random_state'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:23: Procedural assignment to declaration with initial value: 'last_perf_cycle'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:37: Procedural assignment to declaration with initial value: 'perf_beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:51: Procedural assignment to declaration with initial value: 'perf_cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:42:39: Procedural assignment to declaration with initial value: 'last_perf_was_last'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:60: Bits of function variable are not used: 'size'[31:3]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:91: Bits of function variable are not used: 'burst'[31:2]",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:6:28: Parameter is not used: 'MEM_WORD_WIDTH'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:51:29: Signal is not used: 'mem_reload_req'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:117:20: Parameter is not used: 'ddr_cmd_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:118:20: Parameter is not used: 'ddr_w_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:119:20: Parameter is not used: 'ddr_rsp_max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:152:63: Function variable is not used: 'max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:235:21: Bits of function variable are not used: 'page_last_word'[7:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:285:60: Bits of function variable are not used: 'byte_addr'[12:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:293:76: Bits of function variable are not used: 'byte_addr'[31:13,1:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:320:16: Signal is not used: 'rd_issue_beat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:322:16: Signal is not used: 'rd_issue_len'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:323:17: Bits of signal are not used: 'rd_issue_byte_addr'[1:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:429:10: Signal is not used: 'wr_b_queue_full'"
+          ],
+          "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6632 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 2,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "log": "modified_dw32_dp1031_o4_l2_random1.log",
+          "warnings": [
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:55:28: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:57:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:58:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:65:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:81: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:73:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:74:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:75:22: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:76:20: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:79:11: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:87:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:91:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:92:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:101:15: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:108:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:109:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:110:33: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:111:12: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:116:43: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:24: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:50: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:73: Blocking assignment '=' in sequential logic process",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:25: Procedural assignment to declaration with initial value: 'first_latency_min'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:56: Procedural assignment to declaration with initial value: 'first_latency_max'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:12: Procedural assignment to declaration with initial value: 'head'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:19: Procedural assignment to declaration with initial value: 'tail'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:28: Procedural assignment to declaration with initial value: 'cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:36: Procedural assignment to declaration with initial value: 'beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:45: Procedural assignment to declaration with initial value: 'errors'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:54: Procedural assignment to declaration with initial value: 'writes'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:40:32: Procedural assignment to declaration with initial value: 'random_state'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:23: Procedural assignment to declaration with initial value: 'last_perf_cycle'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:37: Procedural assignment to declaration with initial value: 'perf_beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:51: Procedural assignment to declaration with initial value: 'perf_cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:42:39: Procedural assignment to declaration with initial value: 'last_perf_was_last'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:60: Bits of function variable are not used: 'size'[31:3]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:91: Bits of function variable are not used: 'burst'[31:2]",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:6:28: Parameter is not used: 'MEM_WORD_WIDTH'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:51:29: Signal is not used: 'mem_reload_req'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:117:20: Parameter is not used: 'ddr_cmd_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:118:20: Parameter is not used: 'ddr_w_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:119:20: Parameter is not used: 'ddr_rsp_max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:152:63: Function variable is not used: 'max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:235:21: Bits of function variable are not used: 'page_last_word'[7:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:285:60: Bits of function variable are not used: 'byte_addr'[12:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:293:76: Bits of function variable are not used: 'byte_addr'[31:13,1:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:320:16: Signal is not used: 'rd_issue_beat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:322:16: Signal is not used: 'rd_issue_len'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:323:17: Bits of signal are not used: 'rd_issue_byte_addr'[1:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:429:10: Signal is not used: 'wr_b_queue_full'"
+          ],
+          "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=878 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7324 perf_beats=256 perf_intervals=292 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1024,
+          "outstanding": 1,
+          "random": false,
+          "status": "PASS",
+          "log": "modified_dw32_dp1024_o1_l8_random0.log",
+          "warnings": [
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:55:28: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:57:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:58:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:65:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:81: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:73:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:74:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:75:22: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:76:20: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:79:11: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:87:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:91:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:92:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:101:15: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:108:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:109:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:110:33: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:111:12: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:116:43: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:24: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:50: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:73: Blocking assignment '=' in sequential logic process",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:25: Procedural assignment to declaration with initial value: 'first_latency_min'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:56: Procedural assignment to declaration with initial value: 'first_latency_max'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:12: Procedural assignment to declaration with initial value: 'head'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:19: Procedural assignment to declaration with initial value: 'tail'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:28: Procedural assignment to declaration with initial value: 'cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:36: Procedural assignment to declaration with initial value: 'beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:45: Procedural assignment to declaration with initial value: 'errors'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:54: Procedural assignment to declaration with initial value: 'writes'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:40:32: Procedural assignment to declaration with initial value: 'random_state'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:23: Procedural assignment to declaration with initial value: 'last_perf_cycle'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:37: Procedural assignment to declaration with initial value: 'perf_beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:51: Procedural assignment to declaration with initial value: 'perf_cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:42:39: Procedural assignment to declaration with initial value: 'last_perf_was_last'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:60: Bits of function variable are not used: 'size'[31:3]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:91: Bits of function variable are not used: 'burst'[31:2]",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:6:28: Parameter is not used: 'MEM_WORD_WIDTH'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:51:29: Signal is not used: 'mem_reload_req'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:117:20: Parameter is not used: 'ddr_cmd_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:118:20: Parameter is not used: 'ddr_w_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:119:20: Parameter is not used: 'ddr_rsp_max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:152:63: Function variable is not used: 'max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:235:21: Bits of function variable are not used: 'page_last_word'[7:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:285:60: Bits of function variable are not used: 'byte_addr'[11:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:293:76: Bits of function variable are not used: 'byte_addr'[31:12,1:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:320:16: Signal is not used: 'rd_issue_beat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:322:16: Signal is not used: 'rd_issue_len'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:323:17: Bits of signal are not used: 'rd_issue_byte_addr'[1:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:325:29: Bits of signal are not used: 'rd_issue_word_addr'[30:10]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:429:10: Signal is not used: 'wr_b_queue_full'"
+          ],
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=8 data_bits=32 dp=1024 outstanding=1 commands=275 beats=4834 error_beats=201 writes=1579 cycles=8805 perf_beats=256 perf_intervals=375 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1024,
+          "outstanding": 1,
+          "random": true,
+          "status": "PASS",
+          "log": "modified_dw32_dp1024_o1_l8_random1.log",
+          "warnings": [
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:55:28: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:57:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:58:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:65:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:81: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:73:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:74:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:75:22: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:76:20: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:79:11: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:87:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:91:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:92:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:101:15: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:108:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:109:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:110:33: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:111:12: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:116:43: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:24: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:50: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:73: Blocking assignment '=' in sequential logic process",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:25: Procedural assignment to declaration with initial value: 'first_latency_min'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:56: Procedural assignment to declaration with initial value: 'first_latency_max'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:12: Procedural assignment to declaration with initial value: 'head'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:19: Procedural assignment to declaration with initial value: 'tail'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:28: Procedural assignment to declaration with initial value: 'cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:36: Procedural assignment to declaration with initial value: 'beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:45: Procedural assignment to declaration with initial value: 'errors'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:54: Procedural assignment to declaration with initial value: 'writes'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:40:32: Procedural assignment to declaration with initial value: 'random_state'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:23: Procedural assignment to declaration with initial value: 'last_perf_cycle'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:37: Procedural assignment to declaration with initial value: 'perf_beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:51: Procedural assignment to declaration with initial value: 'perf_cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:42:39: Procedural assignment to declaration with initial value: 'last_perf_was_last'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:60: Bits of function variable are not used: 'size'[31:3]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:91: Bits of function variable are not used: 'burst'[31:2]",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:6:28: Parameter is not used: 'MEM_WORD_WIDTH'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:51:29: Signal is not used: 'mem_reload_req'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:117:20: Parameter is not used: 'ddr_cmd_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:118:20: Parameter is not used: 'ddr_w_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:119:20: Parameter is not used: 'ddr_rsp_max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:152:63: Function variable is not used: 'max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:235:21: Bits of function variable are not used: 'page_last_word'[7:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:285:60: Bits of function variable are not used: 'byte_addr'[11:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:293:76: Bits of function variable are not used: 'byte_addr'[31:12,1:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:320:16: Signal is not used: 'rd_issue_beat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:322:16: Signal is not used: 'rd_issue_len'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:323:17: Bits of signal are not used: 'rd_issue_byte_addr'[1:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:325:29: Bits of signal are not used: 'rd_issue_word_addr'[30:10]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:429:10: Signal is not used: 'wr_b_queue_full'"
+          ],
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=9 data_bits=32 dp=1024 outstanding=1 commands=275 beats=4834 error_beats=201 writes=1579 cycles=9496 perf_beats=256 perf_intervals=412 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 3,
+          "random": false,
+          "status": "PASS",
+          "log": "modified_dw32_dp1031_o3_l8_random0.log",
+          "warnings": [
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:55:28: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:57:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:58:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:65:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:81: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:73:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:74:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:75:22: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:76:20: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:79:11: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:87:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:91:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:92:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:101:15: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:108:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:109:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:110:33: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:111:12: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:116:43: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:24: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:50: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:73: Blocking assignment '=' in sequential logic process",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:25: Procedural assignment to declaration with initial value: 'first_latency_min'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:56: Procedural assignment to declaration with initial value: 'first_latency_max'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:12: Procedural assignment to declaration with initial value: 'head'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:19: Procedural assignment to declaration with initial value: 'tail'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:28: Procedural assignment to declaration with initial value: 'cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:36: Procedural assignment to declaration with initial value: 'beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:45: Procedural assignment to declaration with initial value: 'errors'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:54: Procedural assignment to declaration with initial value: 'writes'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:40:32: Procedural assignment to declaration with initial value: 'random_state'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:23: Procedural assignment to declaration with initial value: 'last_perf_cycle'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:37: Procedural assignment to declaration with initial value: 'perf_beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:51: Procedural assignment to declaration with initial value: 'perf_cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:42:39: Procedural assignment to declaration with initial value: 'last_perf_was_last'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:60: Bits of function variable are not used: 'size'[31:3]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:91: Bits of function variable are not used: 'burst'[31:2]",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:6:28: Parameter is not used: 'MEM_WORD_WIDTH'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:51:29: Signal is not used: 'mem_reload_req'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:117:20: Parameter is not used: 'ddr_cmd_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:118:20: Parameter is not used: 'ddr_w_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:119:20: Parameter is not used: 'ddr_rsp_max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:152:63: Function variable is not used: 'max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:235:21: Bits of function variable are not used: 'page_last_word'[7:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:285:60: Bits of function variable are not used: 'byte_addr'[12:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:293:76: Bits of function variable are not used: 'byte_addr'[31:13,1:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:320:16: Signal is not used: 'rd_issue_beat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:322:16: Signal is not used: 'rd_issue_len'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:323:17: Bits of signal are not used: 'rd_issue_byte_addr'[1:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:429:10: Signal is not used: 'wr_b_queue_full'"
+          ],
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=516 data_bits=32 dp=1031 outstanding=3 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6736 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 3,
+          "random": true,
+          "status": "PASS",
+          "log": "modified_dw32_dp1031_o3_l8_random1.log",
+          "warnings": [
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:55:28: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:57:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:58:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:65:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:81: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:73:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:74:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:75:22: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:76:20: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:79:11: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:87:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:91:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:92:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:101:15: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:108:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:109:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:110:33: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:111:12: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:116:43: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:24: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:50: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:73: Blocking assignment '=' in sequential logic process",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:25: Procedural assignment to declaration with initial value: 'first_latency_min'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:56: Procedural assignment to declaration with initial value: 'first_latency_max'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:12: Procedural assignment to declaration with initial value: 'head'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:19: Procedural assignment to declaration with initial value: 'tail'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:28: Procedural assignment to declaration with initial value: 'cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:36: Procedural assignment to declaration with initial value: 'beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:45: Procedural assignment to declaration with initial value: 'errors'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:54: Procedural assignment to declaration with initial value: 'writes'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:40:32: Procedural assignment to declaration with initial value: 'random_state'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:23: Procedural assignment to declaration with initial value: 'last_perf_cycle'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:37: Procedural assignment to declaration with initial value: 'perf_beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:51: Procedural assignment to declaration with initial value: 'perf_cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:42:39: Procedural assignment to declaration with initial value: 'last_perf_was_last'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:60: Bits of function variable are not used: 'size'[31:3]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:91: Bits of function variable are not used: 'burst'[31:2]",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:6:28: Parameter is not used: 'MEM_WORD_WIDTH'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:51:29: Signal is not used: 'mem_reload_req'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:117:20: Parameter is not used: 'ddr_cmd_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:118:20: Parameter is not used: 'ddr_w_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:119:20: Parameter is not used: 'ddr_rsp_max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:152:63: Function variable is not used: 'max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:235:21: Bits of function variable are not used: 'page_last_word'[7:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:285:60: Bits of function variable are not used: 'byte_addr'[12:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:293:76: Bits of function variable are not used: 'byte_addr'[31:13,1:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:320:16: Signal is not used: 'rd_issue_beat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:322:16: Signal is not used: 'rd_issue_len'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:323:17: Bits of signal are not used: 'rd_issue_byte_addr'[1:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:429:10: Signal is not used: 'wr_b_queue_full'"
+          ],
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=589 data_bits=32 dp=1031 outstanding=3 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7411 perf_beats=256 perf_intervals=291 no_random=0"
+        },
+        {
+          "first_read_latency": 2,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "log": "modified_dw64_dp1031_o4_l2_random0.log",
+          "warnings": [
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:55:28: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:57:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:58:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:65:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:81: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:73:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:74:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:75:22: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:76:20: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:79:11: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:87:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:91:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:92:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:101:15: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:108:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:109:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:110:33: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:111:12: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:116:43: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:24: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:50: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:73: Blocking assignment '=' in sequential logic process",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:25: Procedural assignment to declaration with initial value: 'first_latency_min'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:56: Procedural assignment to declaration with initial value: 'first_latency_max'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:12: Procedural assignment to declaration with initial value: 'head'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:19: Procedural assignment to declaration with initial value: 'tail'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:28: Procedural assignment to declaration with initial value: 'cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:36: Procedural assignment to declaration with initial value: 'beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:45: Procedural assignment to declaration with initial value: 'errors'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:54: Procedural assignment to declaration with initial value: 'writes'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:40:32: Procedural assignment to declaration with initial value: 'random_state'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:23: Procedural assignment to declaration with initial value: 'last_perf_cycle'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:37: Procedural assignment to declaration with initial value: 'perf_beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:51: Procedural assignment to declaration with initial value: 'perf_cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:42:39: Procedural assignment to declaration with initial value: 'last_perf_was_last'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:60: Bits of function variable are not used: 'size'[31:3]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:91: Bits of function variable are not used: 'burst'[31:2]",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:6:28: Parameter is not used: 'MEM_WORD_WIDTH'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:51:29: Signal is not used: 'mem_reload_req'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:117:20: Parameter is not used: 'ddr_cmd_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:118:20: Parameter is not used: 'ddr_w_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:119:20: Parameter is not used: 'ddr_rsp_max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:152:63: Function variable is not used: 'max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:235:21: Bits of function variable are not used: 'page_last_word'[7:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:285:60: Bits of function variable are not used: 'byte_addr'[13:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:293:76: Bits of function variable are not used: 'byte_addr'[31:14,2:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:320:16: Signal is not used: 'rd_issue_beat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:322:16: Signal is not used: 'rd_issue_len'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:323:17: Bits of signal are not used: 'rd_issue_byte_addr'[2:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:429:10: Signal is not used: 'wr_b_queue_full'"
+          ],
+          "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7792 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 2,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "log": "modified_dw64_dp1031_o4_l2_random1.log",
+          "warnings": [
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:55:28: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:57:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:58:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:65:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:81: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:73:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:74:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:75:22: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:76:20: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:79:11: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:87:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:91:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:92:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:101:15: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:108:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:109:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:110:33: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:111:12: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:116:43: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:24: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:50: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:73: Blocking assignment '=' in sequential logic process",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:25: Procedural assignment to declaration with initial value: 'first_latency_min'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:56: Procedural assignment to declaration with initial value: 'first_latency_max'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:12: Procedural assignment to declaration with initial value: 'head'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:19: Procedural assignment to declaration with initial value: 'tail'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:28: Procedural assignment to declaration with initial value: 'cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:36: Procedural assignment to declaration with initial value: 'beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:45: Procedural assignment to declaration with initial value: 'errors'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:54: Procedural assignment to declaration with initial value: 'writes'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:40:32: Procedural assignment to declaration with initial value: 'random_state'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:23: Procedural assignment to declaration with initial value: 'last_perf_cycle'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:37: Procedural assignment to declaration with initial value: 'perf_beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:51: Procedural assignment to declaration with initial value: 'perf_cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:42:39: Procedural assignment to declaration with initial value: 'last_perf_was_last'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:60: Bits of function variable are not used: 'size'[31:3]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:91: Bits of function variable are not used: 'burst'[31:2]",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:6:28: Parameter is not used: 'MEM_WORD_WIDTH'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:51:29: Signal is not used: 'mem_reload_req'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:117:20: Parameter is not used: 'ddr_cmd_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:118:20: Parameter is not used: 'ddr_w_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:119:20: Parameter is not used: 'ddr_rsp_max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:152:63: Function variable is not used: 'max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:235:21: Bits of function variable are not used: 'page_last_word'[7:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:285:60: Bits of function variable are not used: 'byte_addr'[13:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:293:76: Bits of function variable are not used: 'byte_addr'[31:14,2:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:320:16: Signal is not used: 'rd_issue_beat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:322:16: Signal is not used: 'rd_issue_len'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:323:17: Bits of signal are not used: 'rd_issue_byte_addr'[2:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:429:10: Signal is not used: 'wr_b_queue_full'"
+          ],
+          "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=878 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8550 perf_beats=256 perf_intervals=292 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1024,
+          "outstanding": 1,
+          "random": false,
+          "status": "PASS",
+          "log": "modified_dw64_dp1024_o1_l8_random0.log",
+          "warnings": [
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:55:28: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:57:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:58:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:65:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:81: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:73:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:74:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:75:22: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:76:20: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:79:11: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:87:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:91:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:92:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:101:15: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:108:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:109:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:110:33: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:111:12: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:116:43: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:24: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:50: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:73: Blocking assignment '=' in sequential logic process",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:25: Procedural assignment to declaration with initial value: 'first_latency_min'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:56: Procedural assignment to declaration with initial value: 'first_latency_max'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:12: Procedural assignment to declaration with initial value: 'head'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:19: Procedural assignment to declaration with initial value: 'tail'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:28: Procedural assignment to declaration with initial value: 'cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:36: Procedural assignment to declaration with initial value: 'beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:45: Procedural assignment to declaration with initial value: 'errors'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:54: Procedural assignment to declaration with initial value: 'writes'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:40:32: Procedural assignment to declaration with initial value: 'random_state'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:23: Procedural assignment to declaration with initial value: 'last_perf_cycle'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:37: Procedural assignment to declaration with initial value: 'perf_beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:51: Procedural assignment to declaration with initial value: 'perf_cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:42:39: Procedural assignment to declaration with initial value: 'last_perf_was_last'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:60: Bits of function variable are not used: 'size'[31:3]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:91: Bits of function variable are not used: 'burst'[31:2]",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:6:28: Parameter is not used: 'MEM_WORD_WIDTH'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:51:29: Signal is not used: 'mem_reload_req'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:117:20: Parameter is not used: 'ddr_cmd_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:118:20: Parameter is not used: 'ddr_w_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:119:20: Parameter is not used: 'ddr_rsp_max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:152:63: Function variable is not used: 'max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:235:21: Bits of function variable are not used: 'page_last_word'[7:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:285:60: Bits of function variable are not used: 'byte_addr'[12:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:293:76: Bits of function variable are not used: 'byte_addr'[31:13,2:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:320:16: Signal is not used: 'rd_issue_beat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:322:16: Signal is not used: 'rd_issue_len'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:323:17: Bits of signal are not used: 'rd_issue_byte_addr'[2:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:325:29: Bits of signal are not used: 'rd_issue_word_addr'[29:10]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:429:10: Signal is not used: 'wr_b_queue_full'"
+          ],
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=8 data_bits=64 dp=1024 outstanding=1 commands=335 beats=5294 error_beats=134 writes=2039 cycles=10445 perf_beats=256 perf_intervals=375 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1024,
+          "outstanding": 1,
+          "random": true,
+          "status": "PASS",
+          "log": "modified_dw64_dp1024_o1_l8_random1.log",
+          "warnings": [
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:55:28: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:57:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:58:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:65:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:81: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:73:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:74:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:75:22: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:76:20: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:79:11: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:87:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:91:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:92:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:101:15: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:108:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:109:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:110:33: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:111:12: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:116:43: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:24: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:50: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:73: Blocking assignment '=' in sequential logic process",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:25: Procedural assignment to declaration with initial value: 'first_latency_min'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:56: Procedural assignment to declaration with initial value: 'first_latency_max'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:12: Procedural assignment to declaration with initial value: 'head'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:19: Procedural assignment to declaration with initial value: 'tail'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:28: Procedural assignment to declaration with initial value: 'cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:36: Procedural assignment to declaration with initial value: 'beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:45: Procedural assignment to declaration with initial value: 'errors'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:54: Procedural assignment to declaration with initial value: 'writes'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:40:32: Procedural assignment to declaration with initial value: 'random_state'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:23: Procedural assignment to declaration with initial value: 'last_perf_cycle'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:37: Procedural assignment to declaration with initial value: 'perf_beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:51: Procedural assignment to declaration with initial value: 'perf_cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:42:39: Procedural assignment to declaration with initial value: 'last_perf_was_last'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:60: Bits of function variable are not used: 'size'[31:3]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:91: Bits of function variable are not used: 'burst'[31:2]",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:6:28: Parameter is not used: 'MEM_WORD_WIDTH'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:51:29: Signal is not used: 'mem_reload_req'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:117:20: Parameter is not used: 'ddr_cmd_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:118:20: Parameter is not used: 'ddr_w_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:119:20: Parameter is not used: 'ddr_rsp_max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:152:63: Function variable is not used: 'max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:235:21: Bits of function variable are not used: 'page_last_word'[7:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:285:60: Bits of function variable are not used: 'byte_addr'[12:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:293:76: Bits of function variable are not used: 'byte_addr'[31:13,2:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:320:16: Signal is not used: 'rd_issue_beat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:322:16: Signal is not used: 'rd_issue_len'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:323:17: Bits of signal are not used: 'rd_issue_byte_addr'[2:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:325:29: Bits of signal are not used: 'rd_issue_word_addr'[29:10]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:429:10: Signal is not used: 'wr_b_queue_full'"
+          ],
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=9 data_bits=64 dp=1024 outstanding=1 commands=335 beats=5294 error_beats=134 writes=2039 cycles=11203 perf_beats=256 perf_intervals=412 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 3,
+          "random": false,
+          "status": "PASS",
+          "log": "modified_dw64_dp1031_o3_l8_random0.log",
+          "warnings": [
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:55:28: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:57:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:58:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:65:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:81: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:73:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:74:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:75:22: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:76:20: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:79:11: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:87:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:91:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:92:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:101:15: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:108:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:109:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:110:33: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:111:12: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:116:43: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:24: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:50: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:73: Blocking assignment '=' in sequential logic process",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:25: Procedural assignment to declaration with initial value: 'first_latency_min'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:56: Procedural assignment to declaration with initial value: 'first_latency_max'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:12: Procedural assignment to declaration with initial value: 'head'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:19: Procedural assignment to declaration with initial value: 'tail'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:28: Procedural assignment to declaration with initial value: 'cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:36: Procedural assignment to declaration with initial value: 'beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:45: Procedural assignment to declaration with initial value: 'errors'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:54: Procedural assignment to declaration with initial value: 'writes'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:40:32: Procedural assignment to declaration with initial value: 'random_state'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:23: Procedural assignment to declaration with initial value: 'last_perf_cycle'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:37: Procedural assignment to declaration with initial value: 'perf_beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:51: Procedural assignment to declaration with initial value: 'perf_cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:42:39: Procedural assignment to declaration with initial value: 'last_perf_was_last'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:60: Bits of function variable are not used: 'size'[31:3]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:91: Bits of function variable are not used: 'burst'[31:2]",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:6:28: Parameter is not used: 'MEM_WORD_WIDTH'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:51:29: Signal is not used: 'mem_reload_req'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:117:20: Parameter is not used: 'ddr_cmd_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:118:20: Parameter is not used: 'ddr_w_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:119:20: Parameter is not used: 'ddr_rsp_max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:152:63: Function variable is not used: 'max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:235:21: Bits of function variable are not used: 'page_last_word'[7:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:285:60: Bits of function variable are not used: 'byte_addr'[13:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:293:76: Bits of function variable are not used: 'byte_addr'[31:14,2:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:320:16: Signal is not used: 'rd_issue_beat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:322:16: Signal is not used: 'rd_issue_len'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:323:17: Bits of signal are not used: 'rd_issue_byte_addr'[2:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:429:10: Signal is not used: 'wr_b_queue_full'"
+          ],
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=516 data_bits=64 dp=1031 outstanding=3 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7936 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 3,
+          "random": true,
+          "status": "PASS",
+          "log": "modified_dw64_dp1031_o3_l8_random1.log",
+          "warnings": [
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:55:28: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:57:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:58:19: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:65:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:72:81: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:73:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:74:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:75:22: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:76:20: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:79:11: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:87:58: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:91:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:92:56: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:101:15: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:108:21: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:109:44: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:110:33: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:111:12: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:116:43: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:24: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:50: Blocking assignment '=' in sequential logic process",
+            "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:117:73: Blocking assignment '=' in sequential logic process",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:25: Procedural assignment to declaration with initial value: 'first_latency_min'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:37:56: Procedural assignment to declaration with initial value: 'first_latency_max'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:12: Procedural assignment to declaration with initial value: 'head'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:19: Procedural assignment to declaration with initial value: 'tail'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:28: Procedural assignment to declaration with initial value: 'cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:36: Procedural assignment to declaration with initial value: 'beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:45: Procedural assignment to declaration with initial value: 'errors'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:39:54: Procedural assignment to declaration with initial value: 'writes'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:40:32: Procedural assignment to declaration with initial value: 'random_state'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:23: Procedural assignment to declaration with initial value: 'last_perf_cycle'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:37: Procedural assignment to declaration with initial value: 'perf_beats'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:41:51: Procedural assignment to declaration with initial value: 'perf_cycles'",
+            "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:42:39: Procedural assignment to declaration with initial value: 'last_perf_was_last'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:60: Bits of function variable are not used: 'size'[31:3]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_soc_ram/tb_soc_axi_ram_narrow.sv:125:91: Bits of function variable are not used: 'burst'[31:2]",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:6:28: Parameter is not used: 'MEM_WORD_WIDTH'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:51:29: Signal is not used: 'mem_reload_req'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:117:20: Parameter is not used: 'ddr_cmd_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:118:20: Parameter is not used: 'ddr_w_max_lat'",
+            "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:119:20: Parameter is not used: 'ddr_rsp_max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:152:63: Function variable is not used: 'max_lat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:235:21: Bits of function variable are not used: 'page_last_word'[7:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:285:60: Bits of function variable are not used: 'byte_addr'[13:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:293:76: Bits of function variable are not used: 'byte_addr'[31:14,2:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:320:16: Signal is not used: 'rd_issue_beat'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:322:16: Signal is not used: 'rd_issue_len'",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:323:17: Bits of signal are not used: 'rd_issue_byte_addr'[2:0]",
+            "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/experiments/soc_ram_prefix_groups/protocol/source/soc_axi_ram.sv:429:10: Signal is not used: 'wr_b_queue_full'"
+          ],
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=589 data_bits=64 dp=1031 outstanding=3 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8660 perf_beats=256 perf_intervals=291 no_random=0"
+        }
+      ],
+      "source_sha256": "df0127b6bcc6666b3df1ca6cbb450869fdcc07e5b4145f8c85d34552e9ba3beb",
+      "source_file": "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/soc/soc_axi_ram.sv",
+      "testbench_sha256": "d8337493b8fe8dd02aabd227c647e42c23ad4a1ff3dcf297352a19e634f02d20",
+      "compile_jobs": 2,
+      "passed": true
+    }
+  }
+}

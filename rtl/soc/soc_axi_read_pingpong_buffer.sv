@@ -1,42 +1,42 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
-
+// 缓存 AXI 读地址与读响应，保持背压期间的地址、数据和突发结束标志。
 module soc_axi_read_pingpong_buffer #(
     parameter int unsigned ADDR_WIDTH = 32,
     parameter int unsigned DATA_WIDTH = 32
 ) (
-    input  wire                         clk,
-    input  wire                         rst_n,
+    input  wire                         clk /* 模块工作时钟。 */,
+    input  wire                         rst_n /* 低电平有效复位。 */,
 
-    input  wire                         s_axi_arvalid,
-    output wire                         s_axi_arready,
-    input  wire [ADDR_WIDTH-1:0]        s_axi_araddr,
-    input  wire [3:0]                   s_axi_arcache,
-    input  wire [2:0]                   s_axi_arprot,
-    input  wire [1:0]                   s_axi_arlock,
-    input  wire [1:0]                   s_axi_arburst,
-    input  wire [7:0]                   s_axi_arlen,
-    input  wire [2:0]                   s_axi_arsize,
-    output wire                         s_axi_rvalid,
-    input  wire                         s_axi_rready,
-    output wire [DATA_WIDTH-1:0]        s_axi_rdata,
-    output wire [1:0]                   s_axi_rresp,
-    output wire                         s_axi_rlast,
+    input  wire                         s_axi_arvalid /* AXI 从接口的读地址有效。 */,
+    output wire                         s_axi_arready /* AXI 从接口的可接收读地址。 */,
+    input  wire [ADDR_WIDTH-1:0]        s_axi_araddr /* AXI 从接口的读地址。 */,
+    input  wire [3:0]                   s_axi_arcache /* AXI 从接口的读事务缓存属性。 */,
+    input  wire [2:0]                   s_axi_arprot /* AXI 从接口的读访问保护属性。 */,
+    input  wire [1:0]                   s_axi_arlock /* AXI 从接口的读事务锁定属性。 */,
+    input  wire [1:0]                   s_axi_arburst /* AXI 从接口的读突发地址模式。 */,
+    input  wire [7:0]                   s_axi_arlen /* AXI 从接口的读突发拍数减一。 */,
+    input  wire [2:0]                   s_axi_arsize /* AXI 从接口的读取每拍字节数的以二为底对数。 */,
+    output wire                         s_axi_rvalid /* AXI 从接口的读响应有效。 */,
+    input  wire                         s_axi_rready /* AXI 从接口的可接收读响应。 */,
+    output wire [DATA_WIDTH-1:0]        s_axi_rdata /* AXI 从接口的读取数据。 */,
+    output wire [1:0]                   s_axi_rresp /* AXI 从接口的读响应状态。 */,
+    output wire                         s_axi_rlast /* AXI 从接口的读突发的最后一拍。 */,
 
-    output wire                         m_axi_arvalid,
-    input  wire                         m_axi_arready,
-    output wire [ADDR_WIDTH-1:0]        m_axi_araddr,
-    output wire [3:0]                   m_axi_arcache,
-    output wire [2:0]                   m_axi_arprot,
-    output wire [1:0]                   m_axi_arlock,
-    output wire [1:0]                   m_axi_arburst,
-    output wire [7:0]                   m_axi_arlen,
-    output wire [2:0]                   m_axi_arsize,
-    input  wire                         m_axi_rvalid,
-    output wire                         m_axi_rready,
-    input  wire [DATA_WIDTH-1:0]        m_axi_rdata,
-    input  wire [1:0]                   m_axi_rresp,
-    input  wire                         m_axi_rlast
+    output wire                         m_axi_arvalid /* AXI 主接口的读地址有效。 */,
+    input  wire                         m_axi_arready /* AXI 主接口的可接收读地址。 */,
+    output wire [ADDR_WIDTH-1:0]        m_axi_araddr /* AXI 主接口的读地址。 */,
+    output wire [3:0]                   m_axi_arcache /* AXI 主接口的读事务缓存属性。 */,
+    output wire [2:0]                   m_axi_arprot /* AXI 主接口的读访问保护属性。 */,
+    output wire [1:0]                   m_axi_arlock /* AXI 主接口的读事务锁定属性。 */,
+    output wire [1:0]                   m_axi_arburst /* AXI 主接口的读突发地址模式。 */,
+    output wire [7:0]                   m_axi_arlen /* AXI 主接口的读突发拍数减一。 */,
+    output wire [2:0]                   m_axi_arsize /* AXI 主接口的读取每拍字节数的以二为底对数。 */,
+    input  wire                         m_axi_rvalid /* AXI 主接口的读响应有效。 */,
+    output wire                         m_axi_rready /* AXI 主接口的可接收读响应。 */,
+    input  wire [DATA_WIDTH-1:0]        m_axi_rdata /* AXI 主接口的读取数据。 */,
+    input  wire [1:0]                   m_axi_rresp /* AXI 主接口的读响应状态。 */,
+    input  wire                         m_axi_rlast /* AXI 主接口的读突发的最后一拍。 */
 );
 
     localparam int unsigned AR_WIDTH = ADDR_WIDTH + 4 + 3 + 2 + 2 + 8 + 3;

@@ -17,7 +17,7 @@
  *
  */
 
-// PicoRV32 处理器的独立功能模块。
+// 连接 PicoRV32 处理器与 AXI 存储接口，并提供协处理器、中断和执行记录接口。
 `timescale 1 ns / 1 ps
 /* verilator lint_off WIDTH */
 /* verilator lint_off PINMISSING */
@@ -51,72 +51,72 @@ module picorv32_axi #(
 	parameter [31:0] PROGADDR_IRQ = 32'h 0000_0010,
 	parameter [31:0] STACKADDR = 32'h ffff_ffff
 ) (
-	input clk, resetn,
-	output trap,
+	input clk /* 模块工作时钟。 */, resetn /* 低电平有效复位。 */,
+	output trap /* 处理器异常停止指示。 */,
 
 	// AXI4-lite master memory interface
 
-	output        mem_axi_awvalid,
-	input         mem_axi_awready,
-	output [31:0] mem_axi_awaddr,
-	output [ 2:0] mem_axi_awprot,
+	output        mem_axi_awvalid /* 处理器 AXI 主接口的写地址有效。 */,
+	input         mem_axi_awready /* 处理器 AXI 主接口的可接收写地址。 */,
+	output [31:0] mem_axi_awaddr /* 处理器 AXI 主接口的写地址。 */,
+	output [ 2:0] mem_axi_awprot /* 处理器 AXI 主接口的写访问保护属性。 */,
 
-	output        mem_axi_wvalid,
-	input         mem_axi_wready,
-	output [31:0] mem_axi_wdata,
-	output [ 3:0] mem_axi_wstrb,
+	output        mem_axi_wvalid /* 处理器 AXI 主接口的写数据有效。 */,
+	input         mem_axi_wready /* 处理器 AXI 主接口的可接收写数据。 */,
+	output [31:0] mem_axi_wdata /* 处理器 AXI 主接口的写入数据。 */,
+	output [ 3:0] mem_axi_wstrb /* 处理器 AXI 主接口的写入字节使能。 */,
 
-	input         mem_axi_bvalid,
-	output        mem_axi_bready,
+	input         mem_axi_bvalid /* 处理器 AXI 主接口的写响应有效。 */,
+	output        mem_axi_bready /* 处理器 AXI 主接口的可接收写响应。 */,
 
-	output        mem_axi_arvalid,
-	input         mem_axi_arready,
-	output [31:0] mem_axi_araddr,
-	output [ 2:0] mem_axi_arprot,
+	output        mem_axi_arvalid /* 处理器 AXI 主接口的读地址有效。 */,
+	input         mem_axi_arready /* 处理器 AXI 主接口的可接收读地址。 */,
+	output [31:0] mem_axi_araddr /* 处理器 AXI 主接口的读地址。 */,
+	output [ 2:0] mem_axi_arprot /* 处理器 AXI 主接口的读访问保护属性。 */,
 
-	input         mem_axi_rvalid,
-	output        mem_axi_rready,
-	input  [31:0] mem_axi_rdata,
+	input         mem_axi_rvalid /* 处理器 AXI 主接口的读响应有效。 */,
+	output        mem_axi_rready /* 处理器 AXI 主接口的可接收读响应。 */,
+	input  [31:0] mem_axi_rdata /* 处理器 AXI 主接口的读取数据。 */,
 
 	// Pico Co-Processor Interface (PCPI)
-	output        pcpi_valid,
-	output [31:0] pcpi_insn,
-	output [31:0] pcpi_rs1,
-	output [31:0] pcpi_rs2,
-	input         pcpi_wr,
-	input  [31:0] pcpi_rd,
-	input         pcpi_wait,
-	input         pcpi_ready,
+	output        pcpi_valid /* 协处理器指令请求有效。 */,
+	output [31:0] pcpi_insn /* 待执行的协处理器指令编码。 */,
+	output [31:0] pcpi_rs1 /* 协处理器第一源操作数。 */,
+	output [31:0] pcpi_rs2 /* 协处理器第二源操作数。 */,
+	input         pcpi_wr /* 协处理器结果需写回目标寄存器。 */,
+	input  [31:0] pcpi_rd /* 协处理器返回的目标寄存器数据。 */,
+	input         pcpi_wait /* 协处理器正在处理请求。 */,
+	input         pcpi_ready /* 协处理器指令已完成。 */,
 
 	// IRQ interface
-	input  [31:0] irq,
-	output [31:0] eoi,
+	input  [31:0] irq /* 处理器中断请求向量。 */,
+	output [31:0] eoi /* 已响应的中断请求位。 */,
 
 `ifdef RISCV_FORMAL
-	output        rvfi_valid,
-	output [63:0] rvfi_order,
-	output [31:0] rvfi_insn,
-	output        rvfi_trap,
-	output        rvfi_halt,
-	output        rvfi_intr,
-	output [ 4:0] rvfi_rs1_addr,
-	output [ 4:0] rvfi_rs2_addr,
-	output [31:0] rvfi_rs1_rdata,
-	output [31:0] rvfi_rs2_rdata,
-	output [ 4:0] rvfi_rd_addr,
-	output [31:0] rvfi_rd_wdata,
-	output [31:0] rvfi_pc_rdata,
-	output [31:0] rvfi_pc_wdata,
-	output [31:0] rvfi_mem_addr,
-	output [ 3:0] rvfi_mem_rmask,
-	output [ 3:0] rvfi_mem_wmask,
-	output [31:0] rvfi_mem_rdata,
-	output [31:0] rvfi_mem_wdata,
+	output        rvfi_valid /* RVFI 当前指令提交记录有效。 */,
+	output [63:0] rvfi_order /* RVFI 已提交指令的顺序编号。 */,
+	output [31:0] rvfi_insn /* RVFI 已提交指令编码。 */,
+	output        rvfi_trap /* RVFI 当前指令触发异常。 */,
+	output        rvfi_halt /* RVFI 当前指令使处理器停止执行。 */,
+	output        rvfi_intr /* RVFI 当前指令进入中断或异常处理。 */,
+	output [ 4:0] rvfi_rs1_addr /* RVFI 第一源寄存器编号。 */,
+	output [ 4:0] rvfi_rs2_addr /* RVFI 第二源寄存器编号。 */,
+	output [31:0] rvfi_rs1_rdata /* RVFI 第一源寄存器读取值。 */,
+	output [31:0] rvfi_rs2_rdata /* RVFI 第二源寄存器读取值。 */,
+	output [ 4:0] rvfi_rd_addr /* RVFI 目标寄存器编号。 */,
+	output [31:0] rvfi_rd_wdata /* RVFI 目标寄存器写入值。 */,
+	output [31:0] rvfi_pc_rdata /* RVFI 执行指令前的程序计数器。 */,
+	output [31:0] rvfi_pc_wdata /* RVFI 执行指令后的程序计数器。 */,
+	output [31:0] rvfi_mem_addr /* RVFI 指令访问的存储字节地址。 */,
+	output [ 3:0] rvfi_mem_rmask /* RVFI 存储读取的字节掩码。 */,
+	output [ 3:0] rvfi_mem_wmask /* RVFI 存储写入的字节掩码。 */,
+	output [31:0] rvfi_mem_rdata /* RVFI 存储读取值。 */,
+	output [31:0] rvfi_mem_wdata /* RVFI 存储写入值。 */,
 `endif
 
 	// Trace Interface
-	output        trace_valid,
-	output [35:0] trace_data
+	output        trace_valid /* 指令执行记录有效。 */,
+	output [35:0] trace_data /* 指令执行记录的类型和数据。 */
 );
 	wire        mem_valid;
 	wire [31:0] mem_addr;

@@ -1,0 +1,268 @@
+{
+  "tool": "Pyosys 0.71.post40 / ABC9",
+  "reference_commit": "8b3728c008e6093095c8ade34aa4516145bc6005",
+  "mapping_options": {
+    "mode": "physical-cost",
+    "delay_target_ps": 6667,
+    "wire_delay_ps": 300,
+    "max_lut_inputs": 8,
+    "native_combinational_helpers": false
+  },
+  "cases": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 1643,
+        "distributed_ram_lut_sites_nominal": 48,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1691,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 1003,
+        "dsp48e1": 1,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 120,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 120,
+          "DSP48E1": 1,
+          "FDRE": 987,
+          "FDSE": 16,
+          "INV": 84,
+          "LUT1": 3,
+          "LUT2": 421,
+          "LUT3": 257,
+          "LUT4": 223,
+          "LUT5": 387,
+          "LUT6": 352,
+          "MUXF7": 18,
+          "RAM32M": 12
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 10,
+        "observed_combinational_cells": 11,
+        "graph_complete": true,
+        "met": false,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      },
+      "graph_complete": true,
+      "longest_register_path_cells": 11,
+      "functional_mapping_verification": true,
+      "metrics_sha256": "61cfa9f7d3c2f08b1130228bd4378096b4e089d1eee9d8d1c11d3064f8132617",
+      "source_manifest": {
+        "top": "picorv32",
+        "configuration": "生产 CPU，16/32 位指令按配置，迭代乘除法",
+        "parameters": {},
+        "sources_sha256": {
+          "rtl/soc/picorv32_npu.v": "24f34b890ae4159310cd435ea884426379d6da38501fcbacfc8167b2c178feda",
+          "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+          "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+          "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+          "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+          "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+          "rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+          "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+          "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+          "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+          "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+          "rtl/common/parallel_prefix_add.sv": "3455a8c3373eda8aef1c05d6d3b3c236ae3c970dde8fd725d7b8437ad83eaf0a",
+          "rtl/common/parallel_prefix_high_group.sv": "f37805622ff8cfac2cec15d31c4bf4ceef1d73e986559d6e81f2c13a5870c70a",
+          "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+          "rtl/common/parallel_unsigned_compare.sv": "b9c7a195baefca188edd03f160d0519515f0ed2a0fb5acbba82a495aa7bfa5fe",
+          "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+          "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+          "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+          "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+          "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+          "rtl/common/unsigned_compare.sv": "c359f6a6267d0170d7bdf3137485c990abce0876eff71bd4ad3f814f49e6721e",
+          "rtl/soc/pico_operand_comparison.sv": "16aa42b4522209c365f147fcf838ab85008ef28e25d86306c52d68f529e06923",
+          "rtl/soc/pico_sequential_address.sv": "a797d3f75d98a753185fd411d8e48065490498569f7e5e2d41e2af93fdacf52f",
+          "rtl/soc/picorv32_pcpi_div.v": "091df1766910168769d3c179cdafbfa5d7386eb2cf9312a86b046d4f96001a3f",
+          "rtl/soc/picorv32_pcpi_fast_mul.v": "4bfd766728a2725c34f26c77efb07959c72e4280f719303657927c121c7de93d",
+          "rtl/soc/picorv32_pcpi_mul.v": "7f133dd0a80f7420114993bd29e6139b034fdb99be0abc398ce1320c87581124",
+          "rtl/soc/pico_result_negation.sv": "a9b5e4c4e2ac6aa3e3ab50c5d295b833a7d7d2a880b91fc3dfcbb80026fbb277"
+        },
+        "options": [
+          "-D",
+          "SYNTHESIS=1",
+          "-D",
+          "XILINX_FPGA=1",
+          "-GENABLE_COUNTERS=1",
+          "-GENABLE_COUNTERS64=0",
+          "-GENABLE_REGS_16_31=1",
+          "-GENABLE_REGS_DUALPORT=1",
+          "-GTWO_STAGE_SHIFT=1",
+          "-GBARREL_SHIFTER=0",
+          "-GCOMPRESSED_ISA=0",
+          "-GCATCH_MISALIGN=1",
+          "-GCATCH_ILLINSN=1",
+          "-GENABLE_MUL=1",
+          "-GENABLE_FAST_MUL=0",
+          "-GENABLE_DIV=1",
+          "-GENABLE_IRQ=0",
+          "-GPROGADDR_RESET=0",
+          "-GSTACKADDR=262144",
+          "-GTWO_CYCLE_ALU=0",
+          "-GTWO_CYCLE_COMPARE=0"
+        ],
+        "build_configuration": null,
+        "primitive_models": {
+          "library_sha256": {
+            "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+            "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+          },
+          "primitives": [],
+          "model_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        },
+        "part": "xc7a200tfbg484-3",
+        "clock_period_ns": 6.666666666666667,
+        "lut_mapping": {
+          "mode": "physical-cost",
+          "wire_delay_ps": 300,
+          "delay_target_ps": 6667,
+          "max_lut_inputs": 8,
+          "functional_verification_required": true
+        },
+        "pre_lut_origin": {
+          "directory": "/workspace/scratch/5bfa47658687/cpu_work/plain_mapping/reference",
+          "sha256": "dc000720d06be444a02c6b012618ed08f4540c107dfc14a477123d6dbe6943c7",
+          "manifest_sha256": "02905707e37534b6e8c7a1931e694b02ddf1d8dc07b97a0e3e19c6e7323c3d3d"
+        },
+        "mapping_tools_sha256": {
+          "libyosys.so": "63ccae89cf9cc2ab2e29b2aa4087291b18d475eb8e02365432bf88fa743bd1c2",
+          "yosys-abc": "b5d3ee6db5cc8ce5bacffea17cd86e746067b84a16a616313a3c23c16a04a9f3"
+        }
+      }
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 1635,
+        "distributed_ram_lut_sites_nominal": 48,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1683,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 1003,
+        "dsp48e1": 1,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 120,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 120,
+          "DSP48E1": 1,
+          "FDRE": 987,
+          "FDSE": 16,
+          "INV": 84,
+          "LUT2": 404,
+          "LUT3": 245,
+          "LUT4": 227,
+          "LUT5": 338,
+          "LUT6": 421,
+          "MUXF7": 27,
+          "RAM32M": 12
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 10,
+        "observed_combinational_cells": 10,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      },
+      "graph_complete": true,
+      "longest_register_path_cells": 10,
+      "functional_mapping_verification": true,
+      "metrics_sha256": "b4ed04f935f19b2880bcc7aaa97928b72146d8df087b74c32045dc861bf84166",
+      "source_manifest": {
+        "top": "picorv32",
+        "configuration": "生产 CPU，16/32 位指令按配置，迭代乘除法",
+        "parameters": {},
+        "sources_sha256": {
+          "rtl/soc/picorv32_frontend_pkg.sv": "913f72f2884b505aec541d821348d6a3d985b08960272e2e91949a4a5919e4c4",
+          "rtl/soc/picorv32_npu.v": "c75c1af1a5e89d22196dd366061e3150156bc76563b0021ee3e60f2e807d2375",
+          "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+          "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+          "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+          "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+          "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+          "rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+          "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+          "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+          "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+          "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+          "rtl/common/parallel_prefix_add.sv": "3455a8c3373eda8aef1c05d6d3b3c236ae3c970dde8fd725d7b8437ad83eaf0a",
+          "rtl/common/parallel_prefix_high_group.sv": "f37805622ff8cfac2cec15d31c4bf4ceef1d73e986559d6e81f2c13a5870c70a",
+          "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+          "rtl/common/parallel_unsigned_compare.sv": "b9c7a195baefca188edd03f160d0519515f0ed2a0fb5acbba82a495aa7bfa5fe",
+          "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+          "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+          "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+          "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+          "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+          "rtl/common/unsigned_compare.sv": "c359f6a6267d0170d7bdf3137485c990abce0876eff71bd4ad3f814f49e6721e",
+          "rtl/soc/pico_operand_comparison.sv": "16aa42b4522209c365f147fcf838ab85008ef28e25d86306c52d68f529e06923",
+          "rtl/soc/pico_sequential_address.sv": "a797d3f75d98a753185fd411d8e48065490498569f7e5e2d41e2af93fdacf52f",
+          "rtl/soc/picorv32_frontend.sv": "e352231d91ec3957e15f4cd9998c2a5c523ec51fd3ddc078caa3b87ab23f4b59",
+          "rtl/soc/picorv32_pcpi_div.v": "091df1766910168769d3c179cdafbfa5d7386eb2cf9312a86b046d4f96001a3f",
+          "rtl/soc/picorv32_pcpi_fast_mul.v": "4bfd766728a2725c34f26c77efb07959c72e4280f719303657927c121c7de93d",
+          "rtl/soc/picorv32_pcpi_mul.v": "7f133dd0a80f7420114993bd29e6139b034fdb99be0abc398ce1320c87581124",
+          "rtl/soc/pico_result_negation.sv": "a9b5e4c4e2ac6aa3e3ab50c5d295b833a7d7d2a880b91fc3dfcbb80026fbb277"
+        },
+        "options": [
+          "-D",
+          "SYNTHESIS=1",
+          "-D",
+          "XILINX_FPGA=1",
+          "-GENABLE_COUNTERS=1",
+          "-GENABLE_COUNTERS64=0",
+          "-GENABLE_REGS_16_31=1",
+          "-GENABLE_REGS_DUALPORT=1",
+          "-GTWO_STAGE_SHIFT=1",
+          "-GBARREL_SHIFTER=0",
+          "-GCOMPRESSED_ISA=0",
+          "-GCATCH_MISALIGN=1",
+          "-GCATCH_ILLINSN=1",
+          "-GENABLE_MUL=1",
+          "-GENABLE_FAST_MUL=0",
+          "-GENABLE_DIV=1",
+          "-GENABLE_IRQ=0",
+          "-GPROGADDR_RESET=0",
+          "-GSTACKADDR=262144",
+          "-GTWO_CYCLE_ALU=0",
+          "-GTWO_CYCLE_COMPARE=0"
+        ],
+        "build_configuration": null,
+        "primitive_models": {
+          "library_sha256": {
+            "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+            "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+          },
+          "primitives": [],
+          "model_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        },
+        "part": "xc7a200tfbg484-3",
+        "clock_period_ns": 6.666666666666667,
+        "lut_mapping": {
+          "mode": "physical-cost",
+          "wire_delay_ps": 300,
+          "delay_target_ps": 6667,
+          "max_lut_inputs": 8,
+          "functional_verification_required": true
+        },
+        "pre_lut_origin": {
+          "directory": "/workspace/scratch/5bfa47658687/cpu_work/final_plain_mapping/current",
+          "sha256": "5b926ec897210bda96372687d7364458f0aeb55f567c47a442ab4ae727b48334",
+          "manifest_sha256": "735f6d53cccb22f669dfe9985e93c1fb21e0966abc4e07dc6a3e9d5305fa23e9"
+        },
+        "mapping_tools_sha256": {
+          "libyosys.so": "63ccae89cf9cc2ab2e29b2aa4087291b18d475eb8e02365432bf88fa743bd1c2",
+          "yosys-abc": "b5d3ee6db5cc8ce5bacffea17cd86e746067b84a16a616313a3c23c16a04a9f3"
+        }
+      }
+    }
+  }
+}

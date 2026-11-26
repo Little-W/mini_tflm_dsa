@@ -5,35 +5,35 @@
 module axi_inferred_shared_ram (
     (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME BRAM_PORTA, READ_LATENCY 2" *)
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM_PORTA CLK" *)
-    input  wire        clka,
+    input  wire        clka /* A 端口时钟，同时驱动共享存储体。 */,
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM_PORTA RST" *)
-    input  wire        rsta,
+    input  wire        rsta /* A 端口读输出的高电平有效复位。 */,
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM_PORTA EN" *)
-    input  wire        ena,
+    input  wire        ena /* A 端口访问使能。 */,
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM_PORTA WE" *)
-    input  wire [3:0]  wea,
+    input  wire [3:0]  wea /* A 端口写入字节使能。 */,
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM_PORTA ADDR" *)
-    input  wire [31:0] addra,
+    input  wire [31:0] addra /* A 端口访问字节地址。 */,
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM_PORTA DIN" *)
-    input  wire [31:0] dina,
+    input  wire [31:0] dina /* A 端口写入数据。 */,
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM_PORTA DOUT" *)
-    output wire [31:0] douta,
+    output wire [31:0] douta /* A 端口读取数据。 */,
 
     (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME BRAM_PORTB, READ_LATENCY 2" *)
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM_PORTB CLK" *)
-    input  wire        clkb,
+    input  wire        clkb /* B 端口时钟接口，当前存储体由 clka 共同驱动。 */,
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM_PORTB RST" *)
-    input  wire        rstb,
+    input  wire        rstb /* B 端口读输出的高电平有效复位。 */,
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM_PORTB EN" *)
-    input  wire        enb,
+    input  wire        enb /* B 端口访问使能。 */,
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM_PORTB WE" *)
-    input  wire [3:0]  web,
+    input  wire [3:0]  web /* B 端口写入字节使能。 */,
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM_PORTB ADDR" *)
-    input  wire [31:0] addrb,
+    input  wire [31:0] addrb /* B 端口访问字节地址。 */,
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM_PORTB DIN" *)
-    input  wire [31:0] dinb,
+    input  wire [31:0] dinb /* B 端口写入数据。 */,
     (* X_INTERFACE_INFO = "xilinx.com:interface:bram:1.0 BRAM_PORTB DOUT" *)
-    output wire [31:0] doutb
+    output wire [31:0] doutb /* B 端口读取数据。 */
 );
     localparam [31:0] BANK_BYTES = 32'h0002_0000; // 128 KiB
     localparam [31:0] TOTAL_BYTES = 32'h00BE_0000; // 11.875 MiB

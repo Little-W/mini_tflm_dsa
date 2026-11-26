@@ -1,0 +1,79 @@
+{
+  "passed": true,
+  "source_sha256": "8978eab68fe28adc74f6ff96ac0092394e64590598151b14773515a6d15230f7",
+  "inputs_constrained": false,
+  "formal": [
+    {
+      "parameters": {
+        "ADDR_WIDTH": 32,
+        "CPU_MEM_DP": 65536,
+        "CPU_RAM_BASE": 0,
+        "NPU_AXIL_BASE": 268435456
+      },
+      "passed": true,
+      "equivalent_bits": 12,
+      "log_sha256": "510dbeb2ffd9a43d41b5ce2a3057c2de6cf252a0869b4ab2e8c62d29efe8737d"
+    },
+    {
+      "parameters": {
+        "ADDR_WIDTH": 40,
+        "CPU_MEM_DP": 1031,
+        "CPU_RAM_BASE": 8195,
+        "NPU_AXIL_BASE": 268435456
+      },
+      "passed": true,
+      "equivalent_bits": 12,
+      "log_sha256": "6627549fe822b95da0ce41dfcb2c4287b9662aaf6018305de75267d2b034451f"
+    },
+    {
+      "parameters": {
+        "ADDR_WIDTH": 64,
+        "CPU_MEM_DP": 1,
+        "CPU_RAM_BASE": 0,
+        "NPU_AXIL_BASE": 0
+      },
+      "passed": true,
+      "equivalent_bits": 12,
+      "log_sha256": "3b0d5b48c6e493ce1f90155b23db2e2a5cad11cf068697c8e1aac32f749966fa"
+    },
+    {
+      "parameters": {
+        "ADDR_WIDTH": 32,
+        "CPU_MEM_DP": 524288,
+        "CPU_RAM_BASE": -1048576,
+        "NPU_AXIL_BASE": 268435456
+      },
+      "passed": true,
+      "equivalent_bits": 12,
+      "log_sha256": "5b42623888c8af74c7a4d48bddf2dc50d30d9eeb08df6fa058cfc1de03bba9b3"
+    },
+    {
+      "parameters": {
+        "ADDR_WIDTH": 32,
+        "CPU_MEM_DP": 1031,
+        "CPU_RAM_BASE": 33554432,
+        "NPU_AXIL_BASE": 33554432
+      },
+      "passed": true,
+      "equivalent_bits": 12,
+      "log_sha256": "85f66697dff01a485b7a5dc5241b112247d3c48efc2797104b5f75699e3392e9"
+    },
+    {
+      "parameters": {
+        "ADDR_WIDTH": 32,
+        "CPU_MEM_DP": 16,
+        "CPU_RAM_BASE": 268435456,
+        "NPU_AXIL_BASE": 268435456
+      },
+      "passed": true,
+      "equivalent_bits": 12,
+      "log_sha256": "626a771a55aff153b8b6be298f1563dbd47342a7c71762f5337ba8821f73e07d"
+    }
+  ],
+  "four_state": {
+    "cycles_per_profile": 50000,
+    "profiles": 6,
+    "compared_cycles": 300000,
+    "log_sha256": "2aaef582d4925291abe065b26a112fc111e3734e6db1bc1e82d75b5f00d95f33"
+  }
+}

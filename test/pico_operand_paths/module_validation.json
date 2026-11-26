@@ -1,0 +1,248 @@
+{
+  "passed": true,
+  "reference_commit": "685a48415e1848e108552f1bea5072636fe0b9ad",
+  "source_sha256": {
+    "reference": {
+      "rtl/soc/picorv32_npu.v": "df66ec82b1a193266b45c282ab476b62a5820ea85ab7283a4923c4e8bddeeee1",
+      "rtl/soc/picorv32_pcpi_mul.v": "e4725e5ac67848576144c61f3c48bb824e6bdbd92d3774d5fd3750e560455a55",
+      "rtl/soc/picorv32_pcpi_div.v": "f3d6e5106aaada0c3bca160061703c0f2cf0240dde28ee40f5d1cd9904864dbf",
+      "rtl/soc/picorv32_pcpi_fast_mul.v": "96e6b3f48cb3fb38367b42fd097dc8e544dd6beb7f7ecf71550fd86e244d9e74",
+      "rtl/soc/picorv32_regs.v": "14f430c48d16c4709cfc47e51f0b7761c10a9758b2ad7ea1d6489e17068bcfe3",
+      "rtl/common/unsigned_compare.sv": "2f8a56bf2356ab9ef3bbe1691290758e110f275409a55b2ebee2025cdefb74dc",
+      "rtl/common/parallel_prefix_add.sv": "ac8f2ff17a495e2ce1934d03641861178c4fa2cb4065ad02180cf4ecb670cba0"
+    },
+    "current": {
+      "rtl/soc/picorv32_npu.v": "7b05dfec163dae1dda0df5a17306404e3c12b668fff9cea54903c8af1a88a0dd",
+      "rtl/soc/picorv32_pcpi_mul.v": "e4725e5ac67848576144c61f3c48bb824e6bdbd92d3774d5fd3750e560455a55",
+      "rtl/soc/picorv32_pcpi_div.v": "ed0be39fea4b88c3998bd934e75fc0e8ded5ce5402552a8b80e8299cb986cc7e",
+      "rtl/soc/picorv32_pcpi_fast_mul.v": "96e6b3f48cb3fb38367b42fd097dc8e544dd6beb7f7ecf71550fd86e244d9e74",
+      "rtl/soc/picorv32_regs.v": "14f430c48d16c4709cfc47e51f0b7761c10a9758b2ad7ea1d6489e17068bcfe3",
+      "rtl/common/unsigned_compare.sv": "2f8a56bf2356ab9ef3bbe1691290758e110f275409a55b2ebee2025cdefb74dc",
+      "rtl/common/parallel_prefix_add.sv": "3241ee2772361c4c632ab98714eac3e39447bb47eae85f8c2b58799aa0783ccb",
+      "rtl/soc/pico_operand_comparison.sv": "16aa42b4522209c365f147fcf838ab85008ef28e25d86306c52d68f529e06923",
+      "rtl/soc/pico_sequential_address.sv": "a797d3f75d98a753185fd411d8e48065490498569f7e5e2d41e2af93fdacf52f",
+      "rtl/soc/pico_result_negation.sv": "a9b5e4c4e2ac6aa3e3ab50c5d295b833a7d7d2a880b91fc3dfcbb80026fbb277",
+      "rtl/common/parallel_prefix_high_group.sv": "f37805622ff8cfac2cec15d31c4bf4ceef1d73e986559d6e81f2c13a5870c70a",
+      "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+    }
+  },
+  "test_sha256": "aac8558a5bb47a9bbceb5cd9693f076e699c22daa489c409c25fa15bcfa2f9e7",
+  "stages": {
+    "formal": {
+      "passed": true,
+      "profiles": [
+        {
+          "passed": true,
+          "profile": 0,
+          "parameters": {
+            "ENABLE_COUNTERS": 1,
+            "ENABLE_COUNTERS64": 0,
+            "ENABLE_REGS_16_31": 1,
+            "ENABLE_REGS_DUALPORT": 1,
+            "TWO_STAGE_SHIFT": 1,
+            "BARREL_SHIFTER": 0,
+            "COMPRESSED_ISA": 0,
+            "CATCH_MISALIGN": 1,
+            "CATCH_ILLINSN": 1,
+            "ENABLE_MUL": 1,
+            "ENABLE_FAST_MUL": 0,
+            "ENABLE_DIV": 1,
+            "ENABLE_IRQ": 0,
+            "PROGADDR_RESET": 0,
+            "STACKADDR": 262144,
+            "TWO_CYCLE_ALU": 0,
+            "TWO_CYCLE_COMPARE": 0
+          },
+          "equivalent_bits": 3307,
+          "log_sha256": "fe46089a8f0254a5040826aa0a47043c89ece4189e4a462e3a3429db6992894d"
+        },
+        {
+          "passed": true,
+          "profile": 1,
+          "parameters": {
+            "ENABLE_COUNTERS": 1,
+            "ENABLE_COUNTERS64": 1,
+            "ENABLE_REGS_16_31": 1,
+            "ENABLE_REGS_DUALPORT": 1,
+            "TWO_STAGE_SHIFT": 1,
+            "BARREL_SHIFTER": 0,
+            "COMPRESSED_ISA": 1,
+            "CATCH_MISALIGN": 1,
+            "CATCH_ILLINSN": 1,
+            "ENABLE_MUL": 1,
+            "ENABLE_FAST_MUL": 0,
+            "ENABLE_DIV": 1,
+            "ENABLE_IRQ": 1,
+            "PROGADDR_RESET": 0,
+            "STACKADDR": 262144,
+            "TWO_CYCLE_ALU": 0,
+            "TWO_CYCLE_COMPARE": 0
+          },
+          "equivalent_bits": 3692,
+          "log_sha256": "97bef511aca92363a05ec7ab5a59df45fd0537d849143e91fafabc660d7afa87"
+        },
+        {
+          "passed": true,
+          "profile": 2,
+          "parameters": {
+            "ENABLE_COUNTERS": 1,
+            "ENABLE_COUNTERS64": 0,
+            "ENABLE_REGS_16_31": 1,
+            "ENABLE_REGS_DUALPORT": 1,
+            "TWO_STAGE_SHIFT": 1,
+            "BARREL_SHIFTER": 0,
+            "COMPRESSED_ISA": 0,
+            "CATCH_MISALIGN": 1,
+            "CATCH_ILLINSN": 1,
+            "ENABLE_MUL": 1,
+            "ENABLE_FAST_MUL": 0,
+            "ENABLE_DIV": 1,
+            "ENABLE_IRQ": 0,
+            "PROGADDR_RESET": 0,
+            "STACKADDR": 262144,
+            "TWO_CYCLE_ALU": 1,
+            "TWO_CYCLE_COMPARE": 1
+          },
+          "equivalent_bits": 3312,
+          "log_sha256": "86a4dbbc26600553e7934ebcb306419cca1118662bec996531f910aa68255699"
+        },
+        {
+          "passed": true,
+          "profile": 3,
+          "parameters": {
+            "ENABLE_COUNTERS": 0,
+            "ENABLE_COUNTERS64": 0,
+            "ENABLE_REGS_16_31": 0,
+            "ENABLE_REGS_DUALPORT": 0,
+            "TWO_STAGE_SHIFT": 1,
+            "BARREL_SHIFTER": 0,
+            "COMPRESSED_ISA": 0,
+            "CATCH_MISALIGN": 1,
+            "CATCH_ILLINSN": 1,
+            "ENABLE_MUL": 0,
+            "ENABLE_FAST_MUL": 0,
+            "ENABLE_DIV": 0,
+            "ENABLE_IRQ": 0,
+            "PROGADDR_RESET": 0,
+            "STACKADDR": 262144,
+            "TWO_CYCLE_ALU": 0,
+            "TWO_CYCLE_COMPARE": 0
+          },
+          "equivalent_bits": 1704,
+          "log_sha256": "be29cff8cbfe40572373d54986a8cc5fcd3d776a28c5794610230d639772d329"
+        }
+      ],
+      "input_constraints": []
+    },
+    "execution": {
+      "passed": true,
+      "strict_four_state": true,
+      "program": {
+        "words": 1538,
+        "loops": 100,
+        "expected_sum": 5050,
+        "expected_marker": 85,
+        "subroutine_offset": 6144,
+        "sha256": "96f063a78bfd9ccfa61862a9350bf08a65e48e20313e7f457876ef08cd3bb984"
+      },
+      "profiles": [
+        {
+          "passed": true,
+          "reset_address": 0,
+          "cycles": 4898,
+          "instruction_fetches": 717,
+          "transactions": 720,
+          "checks": 4898,
+          "stability_checks": 3258,
+          "sum": 5050,
+          "marker": 85,
+          "binary_sha256": "cfb4a28f7d8de4aa285a723d3f4867b9277a47558f9e66abb10b8bb2d3f501ca",
+          "log_sha256": "681c91b6471e67cd4e89a9969907dd4089393abee82cdc549afef30def57b703"
+        },
+        {
+          "passed": true,
+          "reset_address": 4294963200,
+          "cycles": 4898,
+          "instruction_fetches": 717,
+          "transactions": 720,
+          "checks": 4898,
+          "stability_checks": 3258,
+          "sum": 5050,
+          "marker": 85,
+          "binary_sha256": "ee77f95c6219512922736a415d7d835799f4be389c8649b317d39764c1076112",
+          "log_sha256": "d7f38499d488355766e3fe2ae4de3891b951a062cfc283292d73426b7480d950"
+        }
+      ],
+      "reference_modules_renamed": [
+        "parallel_prefix_add",
+        "parallel_prefix_high_group",
+        "parallel_prefix_native_sums",
+        "pico_operand_comparison",
+        "pico_result_negation",
+        "pico_sequential_address",
+        "picorv32",
+        "picorv32_pcpi_div",
+        "picorv32_pcpi_fast_mul",
+        "picorv32_pcpi_mul",
+        "picorv32_regs",
+        "unsigned_compare"
+      ],
+      "testbench_sha256": "b18c99e6c084a422d4f05eebf22146f3b28e7b61c796566acdfb477024b3eea7"
+    },
+    "synthesis_execution": {
+      "passed": true,
+      "strict_four_state": true,
+      "program": {
+        "words": 1538,
+        "loops": 100,
+        "expected_sum": 5050,
+        "expected_marker": 85,
+        "subroutine_offset": 6144,
+        "sha256": "96f063a78bfd9ccfa61862a9350bf08a65e48e20313e7f457876ef08cd3bb984"
+      },
+      "profiles": [
+        {
+          "passed": true,
+          "reset_address": 0,
+          "cycles": 4898,
+          "instruction_fetches": 717,
+          "transactions": 720,
+          "checks": 4898,
+          "stability_checks": 3258,
+          "sum": 5050,
+          "marker": 85,
+          "binary_sha256": "63464c94a2cab9e55ac49ced5de0e725c828bf150708d1147ead3cb31a606de0",
+          "log_sha256": "681c91b6471e67cd4e89a9969907dd4089393abee82cdc549afef30def57b703"
+        },
+        {
+          "passed": true,
+          "reset_address": 4294963200,
+          "cycles": 4898,
+          "instruction_fetches": 717,
+          "transactions": 720,
+          "checks": 4898,
+          "stability_checks": 3258,
+          "sum": 5050,
+          "marker": 85,
+          "binary_sha256": "b2f1dc35d0faadc967154eb0b7869d35e0104ec3fce0580c935194f0c971650e",
+          "log_sha256": "d7f38499d488355766e3fe2ae4de3891b951a062cfc283292d73426b7480d950"
+        }
+      ],
+      "reference_modules_renamed": [
+        "parallel_prefix_add",
+        "parallel_prefix_high_group",
+        "parallel_prefix_native_sums",
+        "pico_operand_comparison",
+        "pico_result_negation",
+        "pico_sequential_address",
+        "picorv32",
+        "picorv32_pcpi_div",
+        "picorv32_pcpi_fast_mul",
+        "picorv32_pcpi_mul",
+        "picorv32_regs",
+        "unsigned_compare"
+      ],
+      "testbench_sha256": "b18c99e6c084a422d4f05eebf22146f3b28e7b61c796566acdfb477024b3eea7"
+    }
+  }
+}
