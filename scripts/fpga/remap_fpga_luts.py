@@ -52,7 +52,8 @@ def physical_cost_library(source, output, maximum_width, small_lut_area_cost=1):
             'pin_delays_ps': delays, 'pin_delays_preserved': True}
 
 
-def mapping_commands(top, pre_lut, folder, mode, delay_target, wire_delay, library):
+def mapping_commands(top, pre_lut, folder, mode, delay_target, wire_delay, library,
+                     keep_abc9_temporaries=True):
     commands = [f'read_rtlil {shlex.quote(str(pre_lut))}',
                 'read_verilog -lib -specify -overwrite +/xilinx/cells_sim.v',
                 'read_verilog -lib -overwrite +/xilinx/cells_xtra.v',
@@ -62,7 +63,8 @@ def mapping_commands(top, pre_lut, folder, mode, delay_target, wire_delay, libra
     else:
         commands += ['read_verilog -icells -lib -specify +/xilinx/abc9_model.v',
                      'scratchpad -set abc9.xaiger 1', 'scratchpad -set abc9.verify 1',
-                     'scratchpad -set abc9.nocleanup 1', 'scratchpad -set abc9.showtmp 1']
+                     ('scratchpad -set abc9.nocleanup 1' if keep_abc9_temporaries else
+                      'scratchpad -unset abc9.nocleanup'), 'scratchpad -set abc9.showtmp 1']
         abc = f'abc9 -W {wire_delay}'
         if library is not None:
             abc += ' -lut ' + shlex.quote(str(library))
@@ -73,6 +75,8 @@ def mapping_commands(top, pre_lut, folder, mode, delay_target, wire_delay, libra
                  'techmap -map +/xilinx/lut_map.v -map +/xilinx/cells_map.v -D LUT_WIDTH=6',
                  'xilinx_dffopt', 'opt_lut_ins -tech xilinx',
                  f'synth_xilinx -top {top} -family xc7 -noiopad -noclkbuf -flatten -run finalize:',
+                 'setattr -mod -unset keep_hierarchy', 'setattr -unset keep_hierarchy',
+                 'flatten -noscopeinfo', 'opt_clean',
                  'check -assert', f'write_json {shlex.quote(str(folder / "mapped.json"))}',
                  'clkbufmap -buf BUFG O:I', 'iopadmap -bits -inpad IBUF O:I -outpad OBUF I:O',
                  'clean', 'check -assert', 'blackbox =A:whitebox',
@@ -128,6 +132,8 @@ def main():
                         help='一至五输入 LUT 的面积成本；六输入成本保持 1，七/八输入保持 2/4')
     parser.add_argument('--lock-file', type=Path)
     parser.add_argument('--resume', action='store_true')
+    parser.add_argument('--discard-abc9-temporaries', action='store_true',
+                        help='ABC9 完成每个网络的内置功能检查后清理该网络的临时文件')
     args = parser.parse_args()
     if args.delay_target_ps is not None and args.delay_target_ps <= 0:
         parser.error('--delay-target-ps must be positive')
@@ -139,6 +145,8 @@ def main():
         parser.error('--small-lut-area-cost is used with --mode physical-cost')
     if args.mode == 'legacy' and args.delay_target_ps is not None:
         parser.error('Legacy ABC uses unit LUT delay; use a native mode for a picosecond target')
+    if args.mode == 'legacy' and args.discard_abc9_temporaries:
+        parser.error('Legacy ABC keeps its temporary networks for the separate CEC check')
     if args.mode != 'physical-cost' and args.max_lut_inputs != 8:
         parser.error('--max-lut-inputs is used with --mode physical-cost')
     source, folder = args.source.resolve(), args.out.resolve()
@@ -166,6 +174,8 @@ def main():
                      'functional_verification_required': True}
     if args.small_lut_area_cost != 1:
         configuration['small_lut_area_cost'] = args.small_lut_area_cost
+    if args.discard_abc9_temporaries:
+        configuration['retain_abc9_temporaries'] = False
     manifest = {**original, 'lut_mapping': configuration,
                 'pre_lut_origin': {'directory': str(source), 'sha256': expected,
                                    'manifest_sha256': flow.digest(source / 'manifest.json')},
@@ -205,7 +215,8 @@ def main():
             write_json(folder / 'lut_library.json', library_metadata)
         script = folder / '03_map_lut.ys'
         script.write_text(mapping_commands(original['top'], pre_lut, folder, args.mode,
-                                           delay_target, args.wire_delay_ps, library))
+                                           delay_target, args.wire_delay_ps, library,
+                                           not args.discard_abc9_temporaries))
         state.update(state='mapping', command=[sys.executable, str(Path(flow.__file__)), '--worker', str(script)],
                      script_sha256=flow.digest(script))
         save_state()

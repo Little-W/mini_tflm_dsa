@@ -118,8 +118,9 @@ def main():
         from run_npu import packed_cases
         sys.path.insert(0, str(ROOT / "test/ps_compression"))
         from run_shared_npu import npu as numeric_runner
+        simulator_manifest = json.loads((sim / "build.json").read_text())
         results["packed"] = numeric_runner.run_suite(sim / "obj/Vtb_conv_npu", out, "packed",
-            packed_cases(out / "packed"), no_random=False, timeout=900)
+            packed_cases(out / "packed", simulator_manifest), no_random=False, timeout=900)
     coverage = []
     for path in sorted(out.rglob("*.log")):
         for line in path.read_text(errors="replace").splitlines():

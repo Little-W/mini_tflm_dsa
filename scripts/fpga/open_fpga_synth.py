@@ -82,6 +82,14 @@ NATIVE_COMBINATIONAL_HELPERS = {
         'conv_im2col_formatter_reduce', 'conv_im2col_formatter_mux'),
 }
 NATIVE_HELPER_FRAGMENTS = {'rtl/npu/conv/conv_im2col_stream.sv'}
+# 独立文件和历史组合文件使用同一组模块名称，保持两种源码组织的读取方式。
+for _source, _modules in tuple(NATIVE_COMBINATIONAL_HELPERS.items()):
+    for _module in _modules:
+        _separate = str(Path(_source).with_name(_module + '.sv'))
+        if _separate != _source:
+            NATIVE_COMBINATIONAL_HELPERS[_separate] = (_module,)
+            if _source in NATIVE_HELPER_FRAGMENTS:
+                NATIVE_HELPER_FRAGMENTS.add(_separate)
 NATIVE_TERMINAL_FUNCTION_SHA256 = {
     'combine': 'bbf2e7b872d159da8079ca33c2c39b9ada0b7c66c79cda70cce0bbc08107615e',
     'choose': '705e19fbe986f5a58a9f0e73e505ec51a70b8e591e6b7fd2033bd07336c8c84b',

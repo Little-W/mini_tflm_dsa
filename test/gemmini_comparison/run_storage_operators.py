@@ -71,6 +71,38 @@ def vector_configuration(args):
                                         bank_count=args.bank_count, bus_width=64)
 
 
+def frontend_register_configuration(repo):
+    """读取 DMA 中前端实例的寄存参数及响应容量，并与仿真实例逐项核对。"""
+    source = (Path(repo) / "rtl/npu/dma/axi_dual_block_dma.sv").read_text()
+    source = re.sub(r"//[^\n]*|/\*.*?\*/", "", source, flags=re.S)
+    instances = re.findall(r"\bconv_im2col_frontend\s*#\((.*?)\)\s+(\w+)\s*\(",
+                           source, flags=re.S)
+    if len(instances) != 1 or instances[0][1] != "u_frontend":
+        raise ValueError("DMA 必须包含唯一的 u_frontend 卷积前端实例")
+    profile = {}
+    for parameter, key in (
+        ("REGISTER_DESCRIPTOR", "conv_register_descriptor"),
+        ("REGISTER_ROW_ADDRESS", "conv_register_row_address"),
+        ("REGISTER_CACHE_REQUEST", "conv_register_cache_request"),
+    ):
+        values = re.findall(r"\." + parameter + r"\s*\(([^()]*)\)", instances[0][0])
+        value = re.sub(r"\s+", "", values[0]) if len(values) == 1 else ""
+        literal = re.fullmatch(r"(?:1'[bBdDhHoO])?([01])", value)
+        if literal is None:
+            raise ValueError(parameter + " 必须明确连接为单个布尔常量")
+        profile[key] = int(literal[1])
+    values = re.findall(r"\.CACHE_RESPONSE_DEPTH\s*\(([^()]*)\)", instances[0][0])
+    value = re.sub(r"\s+", "", values[0]) if len(values) == 1 else ""
+    literal = re.fullmatch(r"(?:[0-9]+'[dD])?([0-9]+)", value)
+    if literal is None:
+        raise ValueError("CACHE_RESPONSE_DEPTH 必须明确连接为单个十进制整数常量")
+    depth = int(literal[1])
+    if depth < 1 or depth & (depth - 1):
+        raise ValueError("CACHE_RESPONSE_DEPTH 必须为正的二次幂")
+    profile["conv_cache_demand_outstanding"] = depth
+    return profile
+
+
 def hardware_profile(args, normalize):
     profile = normalize(dict(size=16, bus_width=64, ps_compress=True,
         ia_cache_blocks=4, ps_frame_count=16, ps_storage_rows=0,
@@ -84,9 +116,7 @@ def hardware_profile(args, normalize):
     profile.update({key: vector[key] for key in (
         "vector_pe_count", "quantization_lanes", "window_lanes", "shared_quant_enable")})
     profile.update(resolve_cache_configuration(args.repo, args.cache_bytes))
-    profile['conv_cache_demand_outstanding'] = 1
-    profile['conv_register_descriptor'] = 0
-    profile['conv_register_cache_request'] = 1
+    profile.update(frontend_register_configuration(args.repo))
     profile['rtl_simulation_defines'] = [name for name, enabled in (
         ('SYNTHESIS', args.synthesis), ('XILINX_FPGA', args.fpga)) if enabled]
     return profile
@@ -352,10 +382,11 @@ def testbench(args):
                 u_dut.CONV_CACHE_SETS == `TB_CONV_CACHE_SETS &&
                 u_dut.CONV_LINE_BYTES * u_dut.CONV_CACHE_WAYS * u_dut.CONV_CACHE_SETS == `TB_IM2COL_CACHE_BYTES)
             else $fatal(1, "Cache geometry differs from the experiment");
-        $display("COMMON_CACHE cache_line_bytes=%0d cache_sets=%0d cache_ways=%0d conv_cache_demand_outstanding=%0d conv_register_descriptor=%0d conv_register_cache_request=%0d",
+        $display("COMMON_CACHE cache_line_bytes=%0d cache_sets=%0d cache_ways=%0d conv_cache_demand_outstanding=%0d conv_register_descriptor=%0d conv_register_row_address=%0d conv_register_cache_request=%0d",
             u_dut.CONV_LINE_BYTES, u_dut.CONV_CACHE_SETS, u_dut.CONV_CACHE_WAYS,
             u_dut.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.CACHE_RESPONSE_DEPTH,
             u_dut.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.REGISTER_DESCRIPTOR,
+            u_dut.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.REGISTER_ROW_ADDRESS,
             u_dut.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.REGISTER_CACHE_REQUEST);
 '''
     text = text.replace('        assert (sa_ready) else', cache_check + '        assert (sa_ready) else')
@@ -540,7 +571,8 @@ def main():
                         shared_quant_enable=profile["shared_quant_enable"])
                     passed = passed and actual_cache[0] == {key: profile[key] for key in (
                         "cache_line_bytes", "cache_sets", "cache_ways",
-                        "conv_cache_demand_outstanding", "conv_register_descriptor", "conv_register_cache_request")}
+                        "conv_cache_demand_outstanding", "conv_register_descriptor",
+                        "conv_register_row_address", "conv_register_cache_request")}
                     interval = actual_ar_interval[0]
                     passed = passed and interval['required'] == args.ar_min_interval
                     passed = passed and interval['accepted'] == timing[0]['read_commands']

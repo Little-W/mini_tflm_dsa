@@ -655,9 +655,9 @@ module vector_engine_invariants #(
     if (vector_engine.state == QUANT_INIT || vector_engine.state == AVG_START || vector_engine.state == AVG_POWER_STORE || vector_engine.state == AVG_WAIT)
       assert(vector_engine.avg_power_two == vector_engine.u_address.avg_power_two_next && vector_engine.avg_shift == vector_engine.u_address.avg_shift_next);
     if (vector_engine.q_valid[6]) begin
-      assert(vector_engine.q_minimum_before_offset == $signed({vector_engine.c.activation_min[7],vector_engine.c.activation_min[7:0]}) -
+      assert(vector_engine.u_activation.minimum_before_offset == $signed({vector_engine.c.activation_min[7],vector_engine.c.activation_min[7:0]}) -
           $signed({vector_engine.c.output_offset[7],vector_engine.c.output_offset[7:0]}));
-      assert(vector_engine.q_maximum_before_offset == $signed({vector_engine.c.activation_max[7],vector_engine.c.activation_max[7:0]}) -
+      assert(vector_engine.u_activation.maximum_before_offset == $signed({vector_engine.c.activation_max[7],vector_engine.c.activation_max[7:0]}) -
           $signed({vector_engine.c.output_offset[7],vector_engine.c.output_offset[7:0]}));
     end
     if (vector_engine.src_wvalid && !vector_engine.src_wready) begin

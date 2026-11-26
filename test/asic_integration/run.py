@@ -95,7 +95,7 @@ def main() -> None:
         sys.path.insert(0, str(ROOT / "test/ps_compression"))
         from run_shared_npu import npu
         results["packed"] = npu.run_suite(sim / "obj/Vtb_conv_npu", out, "packed",
-            packed_cases(out / "packed"), no_random=False, timeout=900)
+            packed_cases(out / "packed", build), no_random=False, timeout=900)
         if not all(results[name]["passed"] for name in ("functional", "capacity", "output", "packed")):
             raise RuntimeError("ASIC numerical comparison failed")
     if extra_hashes != {str(path): digest(path) for path in extra_sources}:

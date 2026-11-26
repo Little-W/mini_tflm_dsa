@@ -9,6 +9,7 @@
 ../../picorv32/picosoc/simpleuart.v
 -f ../flist/dut_axil.f
 ../../rtl/soc/pico_native_to_axi.sv
+../../rtl/soc/soc_cpu_write_address_metadata.sv
 ../../rtl/soc/soc_axi_interconnect.sv
 ../../rtl/soc/soc_axi_step_address.sv
 ../../rtl/soc/soc_axi_pingpong_chan.sv

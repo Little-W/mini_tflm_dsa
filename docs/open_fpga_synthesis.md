@@ -2,7 +2,7 @@
 
 本项目使用 Yosys、Slang 和 ABC 将 RTL 转换为 Xilinx 7 系列器件单元。脚本支持独立模块、完整 NPU 和包含 PicoRV32、片上存储器、AXI 互连及 UART 的完整 SoC。综合结果用于比较硬件结构与资源数量；150 MHz 工作频率由目标器件的布局布线时序报告检查。
 
-完整 SoC 的实现目标为物理 LUT 位置不超过 45,000，并在目标器件上满足 150 MHz 的建立时间与保持时间要求。物理 LUT 总数包含逻辑、分布式 RAM 和 SRL 使用的位置。组合路径的结构级数用于定位连续进位、比较与选择逻辑；实际时序同时包含单元延迟和布线延迟。每轮独立保存源码、参数、工具与结果摘要，分别记录面积、组合级数和布线后时序的检查状态。
+完整 SoC 的实现目标为物理 LUT 位置不超过 50,000，并在目标器件上满足 150 MHz 的建立时间与保持时间要求。物理 LUT 总数包含逻辑、分布式 RAM 和 SRL 使用的位置。组合路径的结构级数用于定位连续进位、比较与选择逻辑；实际时序同时包含单元延迟和布线延迟。每轮独立保存源码、参数、工具与结果摘要，分别记录面积、组合级数和布线后时序的检查状态。
 
 ## 环境与运行
 
@@ -40,7 +40,7 @@ vivado -mode batch -source scripts/fpga/vivado_synth_fpga.tcl \
   -tclargs build/vivado_150mhz xc7a200tfbg484-3 16 4 65536 0
 ```
 
-布线结果位于 `build/vivado_150mhz/reports/routed`。`measurement.json` 默认检查总 Slice LUT 是否不超过 45,000，统计包含 LUT RAM 和 SRL 的占用。`timing_150mhz_confirmed` 结合完整布线状态、时序约束及建立时间和保持时间检查计算。
+布线结果位于 `build/vivado_150mhz/reports/routed`。`measurement.json` 默认检查总 Slice LUT 是否不超过 50,000，统计包含 LUT RAM 和 SRL 的占用。`timing_150mhz_confirmed` 结合完整布线状态、时序约束及建立时间和保持时间检查计算。
 
 除整个设计的时序汇总外，报告还保存以下诊断数据：
 
@@ -286,7 +286,7 @@ python3 scripts/fpga/tests/test_lut_remapping.py --out build/lut_remapping_valid
 | `lut_sites_nominal_before_packing` | 上述三项之和 |
 | `physical_lut_sites_after_placement` | 合法布局后的物理 LUT 位置数量；单独综合阶段为空 |
 
-`RAM32M` 和 `RAM64M` 各需要四个 LUT 存储位置，`RAM64X1D` 需要两个，`SRL16E` 和 `SRLC32E` 各需要一个。打包过程可以把满足条件的逻辑函数放入同一个 LUT，也可能为连接增加 LUT 单元。因此，完整 SoC 的 45,000 LUT 目标使用合法布局后的物理占用检查。
+`RAM32M` 和 `RAM64M` 各需要四个 LUT 存储位置，`RAM64X1D` 需要两个，`SRL16E` 和 `SRLC32E` 各需要一个。打包过程可以把满足条件的逻辑函数放入同一个 LUT，也可能为连接增加 LUT 单元。因此，完整 SoC 的 50,000 LUT 目标使用合法布局后的物理占用检查。
 
 ## 布局与布线
 

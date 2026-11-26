@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import functools
 import json
 from pathlib import Path
 import re
@@ -11,12 +12,45 @@ import re
 from netlist_metrics import FF_PATTERN, LUT_PATTERN, RAM_LUT_SITES, SRL_TYPES, register_origins
 
 
+@functools.lru_cache(maxsize=1)
+def source_dependencies():
+    """根据工程模块引用确定展开来源中的父模块和功能模块。"""
+    root = Path(__file__).resolve().parents[2]
+    definitions, words = {}, {}
+    for path in sorted((root / 'rtl').rglob('*')):
+        if path.suffix not in ('.v', '.sv') or 'GV' in path.parts:
+            continue
+        name = str(path.relative_to(root))
+        code = re.sub(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"', ' ', path.read_text(), flags=re.S)
+        for module in re.findall(r'\bmodule\s+(\w+)', code):
+            definitions[module] = name
+        words[name] = set(re.findall(r'\b[A-Za-z_][A-Za-z_0-9]*\b', code))
+    direct = {name: {definitions[word] for word in tokens & definitions.keys()} - {name}
+              for name, tokens in words.items()}
+    result = {}
+    for name in direct:
+        descendants, pending = set(), list(direct[name])
+        while pending:
+            child = pending.pop()
+            if child not in descendants:
+                descendants.add(child)
+                pending.extend(direct.get(child, set()) - descendants)
+        result[name] = descendants
+    return result
+
+
 def rtl_source(cell):
+    candidates = set()
     for part in cell.get('attributes', {}).get('src', '').split('|'):
         match = re.search(r'((?:rtl|picorv32)/[^:]+\.(?:sv|v)):', part)
         if match:
-            return match.group(1)
-    return None
+            candidates.add(match.group(1))
+    if len(candidates) == 1:
+        return next(iter(candidates))
+    dependencies = source_dependencies() if candidates else {}
+    # 展开后的来源同时包含实例化位置和信号声明，选择不再包含其他候选的功能模块。
+    leaves = {name for name in candidates if not (dependencies.get(name, set()) & candidates)}
+    return next(iter(leaves)) if len(leaves) == 1 else None
 
 
 def register_sources(path, origins):

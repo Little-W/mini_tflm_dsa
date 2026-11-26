@@ -14,6 +14,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 COLLECTIONS = (('common36', 'workloads', 36), ('numeric26', 'numeric', 26))
 SEEDS = {'common36': 20261116, 'numeric26': 20261123}
+PREPARATION_FIELDS = frozenset(('conv_register_descriptor', 'conv_register_row_address'))
 
 
 def digest(path):
@@ -181,11 +182,14 @@ def collect(out, inputs):
     return result
 
 
-def compare(reference, current):
+def compare(reference, current, *, allow_preparation_stage_change=False,
+            allow_cache_response_depth_change=False):
+    """默认要求配置相同且周期不增加；指定流水参数实验单独报告周期变化。"""
     old = {row['name']: row for row in reference['cases']}
     new = {row['name']: row for row in current['cases']}
     checks = {'both_completed': reference['passed'] and current['passed'],
-              'same_cases': set(old) == set(new) and len(old) == 62,
+              'same_cases': set(old) == set(new) and len(old) ==
+                            len(reference['cases']) == len(current['cases']) == 62,
               'same_hardware_profile': reference['profile'] == current['profile'],
               'same_inputs': reference['input_manifest_sha256'] == current['input_manifest_sha256']}
     rows = []
@@ -198,9 +202,50 @@ def compare(reference, current):
             no_cycle_regression=b['cycles'] <= a['cycles']))
     checks['all_outputs_equal'] = all(row['equal_output'] for row in rows)
     checks['all_cycles_not_increased'] = all(row['no_cycle_regression'] for row in rows)
-    return dict(passed=all(checks.values()), checks=checks, cases=rows,
+    required = list(checks)
+    comparison_parameters = set()
+    if allow_preparation_stage_change:
+        comparison_parameters.update(PREPARATION_FIELDS)
+    if allow_cache_response_depth_change:
+        comparison_parameters.add('conv_cache_demand_outstanding')
+    if comparison_parameters:
+        # 仅忽略明确选择的流水参数，其余存储容量、并行度及仿真条件仍逐项相同。
+        profiles = [{key: value for key, value in item['profile'].items()
+                     if key not in comparison_parameters} for item in (reference, current)]
+        checks['hardware_changes_limited_to_selected_pipeline_parameters'] = profiles[0] == profiles[1]
+        required.remove('same_hardware_profile')
+        required.remove('all_cycles_not_increased')
+        required.append('hardware_changes_limited_to_selected_pipeline_parameters')
+    if allow_preparation_stage_change:
+        checks['preparation_parameters_are_boolean'] = (
+            all(current['profile'].get(key) in (0, 1) for key in PREPARATION_FIELDS)
+            and all(value in (0, 1) for item in (reference, current)
+                    for key, value in item['profile'].items() if key in PREPARATION_FIELDS))
+        required.append('preparation_parameters_are_boolean')
+    if allow_cache_response_depth_change:
+        depths = [item['profile'].get('conv_cache_demand_outstanding') for item in (reference, current)]
+        checks['cache_response_depths_are_powers_of_two'] = all(
+            type(depth) is int and depth >= 1 and not depth & (depth - 1) for depth in depths)
+        required.append('cache_response_depths_are_powers_of_two')
+    profile_changes = {
+        key: dict(reference=reference['profile'].get(key), current=current['profile'].get(key),
+                  reference_recorded=key in reference['profile'], current_recorded=key in current['profile'])
+        for key in sorted(reference['profile'].keys() | current['profile'].keys())
+        if reference['profile'].get(key) != current['profile'].get(key)
+        or (key in reference['profile']) != (key in current['profile'])}
+    return dict(passed=all(checks[key] for key in required), checks=checks, cases=rows,
+                comparison_mode=('selected_pipeline_changes' if allow_cache_response_depth_change else
+                                 'preparation_stage_change' if allow_preparation_stage_change else 'strict'),
+                permitted_profile_changes=sorted(comparison_parameters),
+                required_checks=required, hardware_profile_changes=profile_changes,
                 reference_total_cycles=reference['total_cycles'],
-                current_total_cycles=current['total_cycles'])
+                current_total_cycles=current['total_cycles'],
+                total_cycle_difference=current['total_cycles'] - reference['total_cycles'],
+                increased_case_count=sum(row['cycle_difference'] > 0 for row in rows),
+                decreased_case_count=sum(row['cycle_difference'] < 0 for row in rows),
+                unchanged_case_count=sum(row['cycle_difference'] == 0 for row in rows),
+                maximum_cycle_increase=max(0, max((row['cycle_difference'] for row in rows), default=0)),
+                timing_result='not_increased' if checks['all_cycles_not_increased'] else 'increased')
 
 
 def main():
@@ -209,11 +254,19 @@ def main():
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--inputs-from', type=Path)
     parser.add_argument('--compare-with', type=Path)
+    parser.add_argument('--allow-preparation-stage-change', action='store_true',
+                        help='仅允许描述符与行地址准备寄存配置变化，并逐项报告周期增减')
+    parser.add_argument('--allow-cache-response-depth-change', action='store_true',
+                        help='允许缓存响应容量变化，并逐项报告周期增减')
     parser.add_argument('--verilator', default='verilator')
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--prepare-only', action='store_true')
     parser.add_argument('--collect-only', action='store_true')
     args = parser.parse_args()
+    if args.allow_preparation_stage_change and not args.compare_with:
+        parser.error('--allow-preparation-stage-change 需要 --compare-with')
+    if args.allow_cache_response_depth_change and not args.compare_with:
+        parser.error('--allow-cache-response-depth-change 需要 --compare-with')
     repo, out = args.repo.resolve(), args.out.resolve()
     inputs = args.inputs_from.resolve() if args.inputs_from else out / 'inputs'
     if not args.inputs_from and not args.collect_only:
@@ -242,7 +295,9 @@ def main():
         reference = args.compare_with.resolve()
         if reference.is_dir():
             reference /= 'all_cases.json'
-        comparison = compare(read(reference), result)
+        comparison = compare(read(reference), result,
+                             allow_preparation_stage_change=args.allow_preparation_stage_change,
+                             allow_cache_response_depth_change=args.allow_cache_response_depth_change)
         write(out / 'comparison.json', comparison)
         if not comparison['passed']:
             print(json.dumps(comparison['checks'], ensure_ascii=False))

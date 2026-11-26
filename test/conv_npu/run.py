@@ -317,7 +317,8 @@ def conv_window_cases(out,size,ref,pool_bytes,force_raw):
     return cases
 
 def source_files(source_root=None):
-    filelist=ROOT/'veri/flist/dut_axil.f'
+    source_root = ROOT if source_root is None else Path(source_root).resolve()
+    filelist=source_root/'veri/flist/dut_axil.f'
     sources=[]
     includes=[]
     for line in filelist.read_text().splitlines():
@@ -510,7 +511,7 @@ def main():
             if any(manifest.get(key)!=value for key,value in requested.items()):
                 raise RuntimeError('stale executable parameters: size/cache sets/ways/line/policy differ; omit --skip-build')
             for name,digest in manifest['source_sha256'].items():
-                source_path = x.source_root / name if name.startswith(('rtl/','include/')) else ROOT / name
+                source_path = x.source_root / name if name.startswith(('rtl/','include/','veri/flist/')) else ROOT / name
                 if hashlib.sha256(source_path.read_bytes()).hexdigest()!=digest:
                     raise RuntimeError(f'stale executable: {name} changed; omit --skip-build')
             binary=sd/'obj/Vtb_conv_npu'

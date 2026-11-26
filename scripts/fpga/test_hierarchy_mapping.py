@@ -169,6 +169,17 @@ endmodule
             self.assertEqual(result["cell_counts"], {"FDRE": 11, "LUT4": 3})
             self.assertEqual(batches["batch_count"], 4)
             self.restart_from_first_batch(folder, result)
+            remapped = folder / "remapped"
+            with (folder / "remapped.log").open("w") as log:
+                subprocess.run([sys.executable, str(ROOT / "scripts/fpga/remap_fpga_luts.py"),
+                    "--source", str(folder / "reference/connected"), "--out", str(remapped)],
+                    stdout=log, stderr=subprocess.STDOUT, check=True, timeout=180)
+            metrics = json.loads((remapped / "metrics.json").read_text())
+            self.assertTrue(metrics["paths"]["graph_complete"])
+            self.assertEqual(metrics["paths"]["longest_register_path_cells"], 3)
+            self.assertEqual(metrics["resources"]["logic_lut_cells"], 3)
+            mapped = json.loads((remapped / "mapped.json").read_text())
+            prove_mapped_equivalence(remapped, result["mapped"], mapped, "hierarchy_top", True)
 
     def test_production_descriptor_selection_in_complete_batches(self):
         with output_folder("descriptor_selection") as folder:

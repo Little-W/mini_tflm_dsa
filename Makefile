@@ -41,7 +41,7 @@ COMMON_RTL := $(sort $(wildcard $(ROOT)/rtl/common/*.v $(ROOT)/rtl/common/*.sv))
 COMPUTE_RTL := $(ROOT)/rtl/npu/compute
 BUFFER_RTL := $(ROOT)/rtl/npu/buffers
 DMA_RTL := $(ROOT)/rtl/npu/dma
-PS_CODEC_RTL := $(ROOT)/rtl/npu/ps_compact/ps_raw_address.sv $(ROOT)/rtl/npu/ps_compact/ps_frame_store_capacity.sv $(ROOT)/rtl/npu/ps_compact/ps_adaptive_encoder.sv $(ROOT)/rtl/npu/ps_compact/ps_adaptive_decoder.sv $(ROOT)/rtl/npu/ps_compact/ps_frame_store.sv
+PS_CODEC_RTL := $(sort $(wildcard $(ROOT)/rtl/npu/ps_compact/*.sv))
 
 UNIT_DMA_PACKAGES := rtl/npu/conv/conv_im2col_pkg.sv rtl/npu/conv/conv_im2col_frontend_pkg.sv rtl/npu/conv/vector_engine_pkg.sv rtl/npu/conv/vector_engine_control_pkg.sv
 UNIT_DMA_RTL := $(UNIT_DMA_PACKAGES) $(filter-out $(UNIT_DMA_PACKAGES),$(sort $(wildcard rtl/npu/conv/*.sv rtl/npu/dma/cache/*.sv))) rtl/npu/dma/conv_window_queue.sv rtl/npu/dma/axi_linear_block_dma.sv rtl/npu/dma/dma_register_buffer.sv rtl/npu/dma/axi_write_page_guard.sv rtl/npu/dma/axi_dual_block_dma.sv $(COMMON_RTL)

@@ -42,6 +42,7 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_root conv vector_quant_params.sv] \
         [file join $npu_root conv vector_engine.sv] \
         [file join $npu_root conv vector_engine_control.sv] \
+        [file join $npu_root conv vector_tap_update_select.sv] \
         [file join $npu_root conv vector_engine_address.sv] \
         [file join $npu_root conv vector_engine_operand_store.sv] \
         [file join $npu_root conv conv_axi_read_guard.sv] \
@@ -92,6 +93,7 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_top_root frame_address_prepare.sv] \
         [file join $npu_top_root npu_task_configuration.sv] \
         [file join $npu_top_root npu_output_pipeline.sv] \
+        [file join $npu_top_root npu_bias_execution_address.sv] \
         [file join $npu_top_root npu_matrix_engine.sv] \
         [file join $npu_top_root npu_operand_cache_bridge.sv] \
         [file join $npu_top_root npu_top.sv] \
@@ -166,10 +168,10 @@ proc require_files {files label} {
     }
 }
 
-# 公共存储封装沿用 .v 文件名，并显式采用 SystemVerilog 解析。
+# 存储封装和 CPU 主模块沿用 .v 文件名，并显式采用 SystemVerilog 解析。
 proc set_common_systemverilog {files} {
     foreach source $files {
-        if {[file tail $source] in {regfile.v pseudo_dual_port_ram.v}} {
+        if {[file tail $source] in {regfile.v pseudo_dual_port_ram.v picorv32_npu.v}} {
             set_property file_type SystemVerilog [get_files $source]
         }
     }

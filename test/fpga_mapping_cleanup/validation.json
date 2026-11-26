@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "reference_mapped_sha256": "57ba960ca4bbe4a4591e4696f9e07e015fa3c5962ecade86a66543f43592a256",
+  "current_mapped_sha256": "57ba960ca4bbe4a4591e4696f9e07e015fa3c5962ecade86a66543f43592a256",
+  "abc_verified": {
+    "passed": true,
+    "method": "ABC9 &verify",
+    "log_sha256": "34951bf69cf62bda3610173892cae46c88c28042f21d7bf54a52576a556654f1"
+  },
+  "remaining_temporary_directories": 0
+}

@@ -240,7 +240,12 @@ module soc_axi_ram #(
         logic [7:0] low_prefix_mask;
         logic [7:0] low_next;
         logic [AW:0] incremented_addr;
-        logic [AW:0] high_prefix_mask;
+        localparam int p_high_groups = (AW > 7) ? (AW-2)/6 : 1;
+        localparam int p_high_bytes = (AW >= 8) ? AW/8 : 1;
+`ifdef SYNTHESIS
+        (* keep = 1 *)
+`endif
+        logic [p_high_bytes*p_high_groups-1:0] high_prefix_groups;
         logic [7:0] high_byte_address;
         logic high_byte_carry;
         begin
@@ -254,13 +259,20 @@ module soc_axi_ram #(
                     (low_address[bit_index] ^ (&(low_carry_bits | ~low_prefix_mask)));
             end
             incremented_addr = (AW+1)'(low_next);
-            // 高位各字节预先递增，低位前缀进位只选择保持值或递增值。
+            // 每个高位字节的进位前缀按六位并行归并，再选择保持值或递增值。
+            high_prefix_groups = '1;
             for (int byte_start=8; byte_start<=AW; byte_start+=8) begin
-                high_prefix_mask = ((AW+1)'(1) << byte_start) - (AW+1)'(256);
+                for (int group=0; group<p_high_groups; group++) begin
+                    for (int group_bit=0; group_bit<6; group_bit++) begin
+                        if (8+group*6+group_bit < byte_start)
+                            high_prefix_groups[(byte_start/8-1)*p_high_groups+group] &=
+                                byte_addr[8+group*6+group_bit];
+                    end
+                end
                 // 异或零保持高位地址经过逻辑运算时的四态传播。
                 high_byte_address = 8'(byte_addr >> byte_start) ^ 8'h00;
                 high_byte_carry = (&low_carry_bits) &&
-                    ((byte_addr & high_prefix_mask) == high_prefix_mask);
+                    (&high_prefix_groups[(byte_start/8-1)*p_high_groups+:p_high_groups]);
                 for (int bit_index=0; bit_index<8; bit_index++) begin
                     if (byte_start+bit_index <= AW)
                         incremented_addr[byte_start+bit_index] = high_byte_carry ?
