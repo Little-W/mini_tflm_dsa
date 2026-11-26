@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-module vec_s8_to_fifo #(
+/* 缓存八位结果行，并按参数选择线性或支持转置和行合并的输出结构。 */ module vec_s8_to_fifo #(
     parameter integer VLEN  = 16,
     parameter integer BANKS = 16,
     parameter integer BUS_WIDTH = 32,
@@ -10,27 +10,27 @@ module vec_s8_to_fifo #(
     parameter bit p_cyclic_storage = 1'b0,
     parameter bit p_precomputed_watermark = 1'b0
 ) (
-    input  wire                 clk,
-    input  wire                 rst_n,
-    input  wire                 in_valid,
-    input  wire                 in_tile_done,
-    input  wire [   VLEN*8-1:0] in_vec_s8,
-    output wire                 oa_fifo_req,
-    input  wire                 transpose_mode,
-    input  wire                 coalesce_enable,
-    input  wire                 coalesce_group_start,
-    input  wire [31:0]          coalesce_rows,
-    input  wire [31:0]          coalesce_cols,
-    input  wire [          31:0] reserve_banks,
-    input  wire [31:0] i_ready_bank_threshold,
-    input  wire [$clog2(VLEN)-1:0] vec_valid_num_col,
-    input  wire [$clog2(VLEN)-1:0] vec_valid_num_row,
-    output wire                 output_valid,
-    input  wire                 output_ready,
-    output wire                 output_row_switch,
-    output wire [BUS_WIDTH/8-1:0] output_mask,
-    output wire [BUS_WIDTH-1:0] output_data,
-    output wire                 fifo_full_flag
+    input  wire                 clk /* 工作时钟 */,
+    input  wire                 rst_n /* 低有效复位 */,
+    input  wire                 in_valid /* 当前输入结果行有效 */,
+    input  wire                 in_tile_done /* 当前输入结果行结束一个矩阵块 */,
+    input  wire [   VLEN*8-1:0] in_vec_s8 /* 当前行的8 位有符号结果向量 */,
+    output wire                 oa_fifo_req /* 已有完整结果块可供写回 */,
+    input  wire                 transpose_mode /* 按转置顺序输出矩阵块 */,
+    input  wire                 coalesce_enable /* 启用多矩阵块连续行合并输出 */,
+    input  wire                 coalesce_group_start /* 启动一次输出分组合并 */,
+    input  wire [31:0]          coalesce_rows /* 合并输出分组的有效行数 */,
+    input  wire [31:0]          coalesce_cols /* 合并输出分组的有效列数 */,
+    input  wire [          31:0] reserve_banks /* 当前计算分组需要预留的结果存储体数 */,
+    input  wire [31:0] i_ready_bank_threshold /* 允许接收下一计算组的已完成存储体数量阈值 */,
+    input  wire [$clog2(VLEN)-1:0] vec_valid_num_col /* 当前矩阵块最后一个有效列的编号 */,
+    input  wire [$clog2(VLEN)-1:0] vec_valid_num_row /* 当前矩阵块最后一个有效行的编号 */,
+    output wire                 output_valid /* 当前输出数据拍有效 */,
+    input  wire                 output_ready /* 下游可接收当前输出数据拍 */,
+    output wire                 output_row_switch /* 当前输出数据拍结束一行 */,
+    output wire [BUS_WIDTH/8-1:0] output_mask /* 当前输出拍的有效字节掩码 */,
+    output wire [BUS_WIDTH-1:0] output_data /* 当前输出拍的总线数据 */,
+    output wire                 fifo_full_flag /* 结果存储余量不足以接收下一计算组 */
 );
 
   generate

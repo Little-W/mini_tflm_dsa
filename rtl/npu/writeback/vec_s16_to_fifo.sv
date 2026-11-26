@@ -7,21 +7,21 @@ module vec_s16_to_fifo #(
     parameter int unsigned BUS_WIDTH = 32,
     parameter bit p_precomputed_watermark = 1'b0
 ) (
-    input  wire logic                         clk,
-    input  wire logic                         rst_n,
-    input  wire logic                         in_valid,
-    input  wire logic                         in_tile_done,
-    input  wire logic [VLEN*16-1:0]           in_vec_s16,
-    output logic                         oa_fifo_req,
-    input  wire logic [31:0]                  reserve_banks,
-    input  wire logic [31:0]                  i_ready_bank_threshold,
-    input  wire logic [$clog2(VLEN)-1:0]      vec_valid_num_col,
-    output logic                         output_valid,
-    input  wire logic                         output_ready,
-    output logic                         output_row_switch,
-    output logic [BUS_WIDTH/8-1:0]       output_mask,
-    output logic [BUS_WIDTH-1:0]         output_data,
-    output logic                         fifo_full_flag
+    input  wire logic                         clk /* 工作时钟 */,
+    input  wire logic                         rst_n /* 低有效复位 */,
+    input  wire logic                         in_valid /* 当前输入结果行有效 */,
+    input  wire logic                         in_tile_done /* 当前输入结果行结束一个矩阵块 */,
+    input  wire logic [VLEN*16-1:0]           in_vec_s16 /* 当前行的16 位有符号结果向量 */,
+    output logic                         oa_fifo_req /* 已有完整结果块可供写回 */,
+    input  wire logic [31:0]                  reserve_banks /* 当前计算分组需要预留的结果存储体数 */,
+    input  wire logic [31:0]                  i_ready_bank_threshold /* 允许接收下一计算组的已完成存储体数量阈值 */,
+    input  wire logic [$clog2(VLEN)-1:0]      vec_valid_num_col /* 当前矩阵块最后一个有效列的编号 */,
+    output logic                         output_valid /* 当前输出数据拍有效 */,
+    input  wire logic                         output_ready /* 下游可接收当前输出数据拍 */,
+    output logic                         output_row_switch /* 当前输出数据拍结束一行 */,
+    output logic [BUS_WIDTH/8-1:0]       output_mask /* 当前输出拍的有效字节掩码 */,
+    output logic [BUS_WIDTH-1:0]         output_data /* 当前输出拍的总线数据 */,
+    output logic                         fifo_full_flag /* 结果存储余量不足以接收下一计算组 */
 );
 
     localparam int PTR_WIDTH = (VLEN <= 1) ? 1 : $clog2(VLEN);

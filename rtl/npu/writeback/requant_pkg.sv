@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
-
+// 定义量化流水延迟，并按输出精度准备乘数和移位量。
 package requant_pkg;
     localparam int unsigned REQUANT_LATENCY = 7;
   // INT16 乘数采用最近偶数舍入，两个字节并行递增并保留正向饱和。

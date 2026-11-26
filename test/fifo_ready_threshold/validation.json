@@ -1,0 +1,55 @@
+{
+  "passed": true,
+  "reference_commit": "07a199acd1276a566edb01440430bc932368d6de",
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/experiments/fifo_ready_threshold/validation/reference.sv": "917a8ffaf0b9377921084987771583e9ee1d5981e1aef571f43974d69c1865b4",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/writeback/fifo_bank_watermark.sv": "fa62eca6677d9fcd5a55aad42bcc4bf6e353e12f0bfa0235748f28ec27b89edb",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/writeback/fifo_ready_threshold.sv": "4877e56c7f70e83c4a29e3c470d10d09e2317574cd3c0c1543d632de2a8ba6d5",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e"
+  },
+  "input_assumptions": [],
+  "cases": [
+    {
+      "mode": "generic",
+      "widths": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9,
+        12,
+        16,
+        32,
+        64
+      ],
+      "passed": true,
+      "checks": 491544,
+      "formal_log_sha256": "8644c47cf9d93c9706581ecd6df2f9dd43efb6dd8a55957729164873fa65b1b9",
+      "four_state_log_sha256": "8c5f8a994c349acbe97bea2288f7e7f4a36e0435bc33929a171ed2364563c7d4"
+    },
+    {
+      "mode": "fpga",
+      "widths": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9,
+        12,
+        16,
+        32,
+        64
+      ],
+      "passed": true,
+      "checks": 491544,
+      "formal_log_sha256": "dcff12768197f8e6c097cf7c86c7a8c56029d18185b7dcbbcbe5eebb29ca14b2",
+      "four_state_log_sha256": "8c5f8a994c349acbe97bea2288f7e7f4a36e0435bc33929a171ed2364563c7d4"
+    }
+  ]
+}

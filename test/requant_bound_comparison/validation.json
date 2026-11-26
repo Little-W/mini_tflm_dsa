@@ -1,0 +1,159 @@
+{
+  "passed": true,
+  "reference_commit": "a235227e2f74f7743c7b0b44186aa1a7978c699b",
+  "source_sha256": {
+    "rtl/npu/writeback/requant_pkg.sv": "77ec518f9076adc63ef754b6d23e0aa1d866c304cacf376da98ed9b58d5eed1f",
+    "rtl/npu/writeback/requant_compute_lane.sv": "0191ad315639416ad625333f0b4ee59115b218af21e354fee0f2a8c14d351455",
+    "rtl/npu/writeback/vec_requant.sv": "2cc1cb932b439797d67ba33b3719fd3a47bb7ffffd812d685a9725cd073fe5d7",
+    "rtl/npu/conv/registered_multiplier_s32.sv": "3de17088b04b4071c2d948cf1e29389b586a0f63e4b71954f46c6bd87328ac70",
+    "rtl/npu/writeback/requant_round_add.sv": "6c12c38307b67f2dab38a044c952eefadb42466c646afc7f31b2fa40f699d584",
+    "rtl/npu/writeback/requant_shift_pipeline.sv": "a667dce15a23081783a6f76c65dc02554271dcfcc20f01729dccac11f4f059d6",
+    "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+    "rtl/common/parallel_prefix_add.sv": "556a1e5163a7bb2da066d7cfc243b0a9406cce2c5f7e3b3d43f4c6d3b557e490",
+    "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+    "rtl/npu/writeback/requant_group_buffer.sv": "5c4250e8e09f2b976c1c3bbec57d3831ceaf2154c994c3d9b307722bc464b7a4",
+    "rtl/npu/writeback/requant_group_difference.sv": "e9bbd127ed9f0dd3f6584b3b85cfaaeaf4e30818155e342059f94f4d7532f3b3",
+    "rtl/npu/writeback/requant_group_last.sv": "e5fc5d72de98dd84e4dc69577d7063d4028b2c1e87f7fff3baf4883cde1cfc10",
+    "rtl/npu/writeback/requant_load_advance.sv": "45e343d568eb8c11d068a489a13e32d758d3d11f81c74fb966d57afbd9194e5c",
+    "rtl/npu/writeback/requant_parameter_last.sv": "d4fcf2bf1c4120a9ee2f83348fbdb6fe762f93627305a89401885e1b5c9c73b1",
+    "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+    "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+    "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f"
+  },
+  "parents": [
+    {
+      "mode": "generic",
+      "delayed_parameters": 0,
+      "passed": true,
+      "proven_equivalent_nodes": 935,
+      "external_inputs_constrained": false,
+      "all_public_outputs_compared": true,
+      "formal_log_sha256": "9be309348f494b9ea786f3a72c0edd2ba7efdb312860df218ca182db09d6a5c7"
+    },
+    {
+      "mode": "generic",
+      "delayed_parameters": 1,
+      "passed": true,
+      "proven_equivalent_nodes": 896,
+      "external_inputs_constrained": false,
+      "all_public_outputs_compared": true,
+      "formal_log_sha256": "6aa4008680da607b65d1c6e4d8b2e65b7581e4df54256cd66963c20be1f519bc"
+    },
+    {
+      "mode": "synthesis",
+      "delayed_parameters": 0,
+      "passed": true,
+      "proven_equivalent_nodes": 935,
+      "external_inputs_constrained": false,
+      "all_public_outputs_compared": true,
+      "formal_log_sha256": "7edcd8aaa241f873d14c2296de7a340af493194e8975f0bf38365c2c0b0280a4"
+    },
+    {
+      "mode": "synthesis",
+      "delayed_parameters": 1,
+      "passed": true,
+      "proven_equivalent_nodes": 896,
+      "external_inputs_constrained": false,
+      "all_public_outputs_compared": true,
+      "formal_log_sha256": "d1cf9ebb07a2cee6cca71e4e661f7da022b4c63d7259721128c7ca9e5b6507eb"
+    },
+    {
+      "mode": "fpga",
+      "delayed_parameters": 0,
+      "passed": true,
+      "proven_equivalent_nodes": 935,
+      "external_inputs_constrained": false,
+      "all_public_outputs_compared": true,
+      "formal_log_sha256": "d1781af32090d8ca3296169e1979bc9b94352c7178462dd87a79e48ea3445af7"
+    },
+    {
+      "mode": "fpga",
+      "delayed_parameters": 1,
+      "passed": true,
+      "proven_equivalent_nodes": 896,
+      "external_inputs_constrained": false,
+      "all_public_outputs_compared": true,
+      "formal_log_sha256": "6031ad92664414faecdc79000ba69717b5b715180d5145541d188f0278399400"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "delayed_parameters": 0,
+      "passed": true,
+      "proven_equivalent_nodes": 935,
+      "external_inputs_constrained": false,
+      "all_public_outputs_compared": true,
+      "formal_log_sha256": "f8dca6a74a52554c16c699b25123efdd66e9cca7e7d681fa0696b36cbd4fccbf"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "delayed_parameters": 1,
+      "passed": true,
+      "proven_equivalent_nodes": 896,
+      "external_inputs_constrained": false,
+      "all_public_outputs_compared": true,
+      "formal_log_sha256": "2d9a12166e6a1efecb9f59fe13d93a94d72e89d666825cb21f93aa2ef5404ba4"
+    }
+  ],
+  "four_state": [
+    {
+      "mode": "generic",
+      "passed": true,
+      "comparisons": 131072,
+      "log_sha256": "c2d8700c4260132c68f818a0b5c7004c089bb202291d2ddd3bd2495af80a6784"
+    },
+    {
+      "mode": "synthesis",
+      "passed": true,
+      "comparisons": 131072,
+      "log_sha256": "c2d8700c4260132c68f818a0b5c7004c089bb202291d2ddd3bd2495af80a6784"
+    },
+    {
+      "mode": "fpga",
+      "passed": true,
+      "comparisons": 131072,
+      "log_sha256": "c2d8700c4260132c68f818a0b5c7004c089bb202291d2ddd3bd2495af80a6784"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "passed": true,
+      "comparisons": 131072,
+      "log_sha256": "c2d8700c4260132c68f818a0b5c7004c089bb202291d2ddd3bd2495af80a6784"
+    }
+  ],
+  "four_state_comparisons": 524288,
+  "production_composition": {
+    "passed": true,
+    "method": "interface_equivalence_and_combinational_substitution",
+    "unchanged_dependency_sha256": {
+      "rtl/npu/writeback/requant_pkg.sv": "77ec518f9076adc63ef754b6d23e0aa1d866c304cacf376da98ed9b58d5eed1f",
+      "rtl/npu/conv/registered_multiplier_s32.sv": "3de17088b04b4071c2d948cf1e29389b586a0f63e4b71954f46c6bd87328ac70",
+      "rtl/npu/writeback/requant_round_add.sv": "6c12c38307b67f2dab38a044c952eefadb42466c646afc7f31b2fa40f699d584",
+      "rtl/npu/writeback/requant_shift_pipeline.sv": "a667dce15a23081783a6f76c65dc02554271dcfcc20f01729dccac11f4f059d6",
+      "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+      "rtl/common/parallel_prefix_add.sv": "556a1e5163a7bb2da066d7cfc243b0a9406cce2c5f7e3b3d43f4c6d3b557e490",
+      "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+      "rtl/npu/writeback/requant_group_buffer.sv": "5c4250e8e09f2b976c1c3bbec57d3831ceaf2154c994c3d9b307722bc464b7a4",
+      "rtl/npu/writeback/requant_group_difference.sv": "e9bbd127ed9f0dd3f6584b3b85cfaaeaf4e30818155e342059f94f4d7532f3b3",
+      "rtl/npu/writeback/requant_group_last.sv": "e5fc5d72de98dd84e4dc69577d7063d4028b2c1e87f7fff3baf4883cde1cfc10",
+      "rtl/npu/writeback/requant_load_advance.sv": "45e343d568eb8c11d068a489a13e32d758d3d11f81c74fb966d57afbd9194e5c",
+      "rtl/npu/writeback/requant_parameter_last.sv": "d4fcf2bf1c4120a9ee2f83348fbdb6fe762f93627305a89401885e1b5c9c73b1",
+      "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+      "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+      "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+      "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+      "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f"
+    },
+    "unchanged_parent_after_column_substitution": true,
+    "column_helper": "requant_group_last(p_tile_width=16), o_last_tile",
+    "column_proof_sha256": "97bf908c456280aa5c4423e58d518ce2d898551942d94120e8146a4963843b30",
+    "arithmetic_delayed_parameters_proven": [
+      0,
+      1
+    ],
+    "external_inputs_constrained": false,
+    "all_public_cycle_behaviors_preserved": true
+  },
+  "test_sha256": "0acac2235c963bebc3124e3673bbf828934759366c773df2549006009951864b"
+}

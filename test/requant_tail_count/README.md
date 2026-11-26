@@ -13,4 +13,6 @@ python test/requant_tail_count/check_group_last.py --out build/requant_group_las
 
 `--source-root` 可指定固定源码目录。参考源码默认使用提交 `2297cb12`，可用 `--reference-rev` 指定其他提交，或使用 `--reference-root` 读取独立目录。每次检查都保存源码摘要、参数配置和日志摘要。
 
-`check_group_last.py` 读取完整的 `requant_group_last`，逐个比较行结束和复用组结束两个输出。1、4、8、16 位坐标分别包含随机值、全零、全一、相等行及掩码边界，并注入 `X` 和 `Z`。固定种子为 `20261125`，共完成 160,000 次四态比较。
+`check_group_last.py` 读取独立的 `requant_group_last.sv` 及其完整模块依赖，逐个比较行结束和复用组结束两个输出。1、4、8、16 位坐标分别包含随机值、全零、全一、相等行及掩码边界，并注入 `X` 和 `Z`。固定种子为 `20261125`，共完成 160,000 次四态比较。
+
+当前四种位宽的检查结果与输入文件摘要见 [group_last_validation.json](group_last_validation.json)。

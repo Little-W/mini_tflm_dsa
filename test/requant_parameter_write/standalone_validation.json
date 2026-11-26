@@ -1,0 +1,213 @@
+{
+  "passed": true,
+  "source_sha256": "2cc1cb932b439797d67ba33b3719fd3a47bb7ffffd812d685a9725cd073fe5d7",
+  "reference": "584233d8564344715d90936ba25afbabef03b897",
+  "reference_source_sha256": "2cc1cb932b439797d67ba33b3719fd3a47bb7ffffd812d685a9725cd073fe5d7",
+  "helper_sha256": "d4fcf2bf1c4120a9ee2f83348fbdb6fe762f93627305a89401885e1b5c9c73b1",
+  "control_updates_unchanged": true,
+  "input_assumptions": [],
+  "random_seed": 20261125,
+  "profiles": [
+    {
+      "index_width": 1,
+      "banks": 1,
+      "word": 0,
+      "passed": true,
+      "input_bits": 33,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "aff3cccace51f0cb88ebc67251b8337449bf9f971b39c86ac9ac319ce1a4df9c",
+      "simulation_log_sha256": "6489776c9b2fd4ecfb9a92c6f8025a92b8f9083bb0d3885ee0580075d38c69d2"
+    },
+    {
+      "index_width": 1,
+      "banks": 2,
+      "word": 0,
+      "passed": true,
+      "input_bits": 33,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "fbe4fcf049870a51330a45a04ba0e310fc50387d44bc0f4c7c8488c390211789",
+      "simulation_log_sha256": "eb718329b23ac9ca85c76498ca46b31c500b86598a11f345aad3d9f2c4403611"
+    },
+    {
+      "index_width": 1,
+      "banks": 2,
+      "word": 1,
+      "passed": true,
+      "input_bits": 33,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "c1ca5f5435d7205d0be1cde3eb215a276b0349fe9dc95e18eca93736c7e97040",
+      "simulation_log_sha256": "01406f04b9c71d62779d978c7018faa8aef7ccd1d9efca5bac71e7b282fee1ab"
+    },
+    {
+      "index_width": 3,
+      "banks": 3,
+      "word": 0,
+      "passed": true,
+      "input_bits": 35,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "23d296fb155f2f5c16ad06e4fe3d5f107739cb29e51146585950c5c02cc41a71",
+      "simulation_log_sha256": "b15801f2f71ef9bb8167747d84ab52382c36831999df5e89702d2a98c5d6b489"
+    },
+    {
+      "index_width": 3,
+      "banks": 3,
+      "word": 1,
+      "passed": true,
+      "input_bits": 35,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "fdf12ed92a1fbcb06a31b06620c46f4134f7fb820671650747154062a3a5895e",
+      "simulation_log_sha256": "fdf158fcfa4cafcfbde66e42b49b6bfc24bbe6cb523bee971a4edb4470cfa0ea"
+    },
+    {
+      "index_width": 3,
+      "banks": 3,
+      "word": 2,
+      "passed": true,
+      "input_bits": 35,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "18bc5c0140de33739a7391597057af49e355c9f3d173fff63a335c3eba1f7fd1",
+      "simulation_log_sha256": "dd6f0c4f9f961a0e90689ac5a60ed460370bb1025edc2c4ec0766a1219bb077a"
+    },
+    {
+      "index_width": 8,
+      "banks": 2,
+      "word": 0,
+      "passed": true,
+      "input_bits": 40,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "5c0970227e4c7f2431cb05710f0d4490ca0a6981f38824a464f62750333573bd",
+      "simulation_log_sha256": "9ad15dae8b55a5bdac957a9a19890540feacb365e29f044097f25361c36d7699"
+    },
+    {
+      "index_width": 8,
+      "banks": 2,
+      "word": 1,
+      "passed": true,
+      "input_bits": 40,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "220343ea22a09e96268726cfa801d48060eb49be272ca7f390f7e273f24631de",
+      "simulation_log_sha256": "2b65d8b0303d39a240e33c085e670b94045325e49a4d937e8a690358e0b90bc4"
+    },
+    {
+      "index_width": 9,
+      "banks": 2,
+      "word": 0,
+      "passed": true,
+      "input_bits": 41,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "d0b1507a078eb0d12b1577a218889f7c0ba2c7b03f192fafed5eb1afc8270ea4",
+      "simulation_log_sha256": "49a39e89ab403e9061d6e549e0449fd81695408c78bf4d45cd10fc3e34e49df7"
+    },
+    {
+      "index_width": 9,
+      "banks": 2,
+      "word": 1,
+      "passed": true,
+      "input_bits": 41,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "75590e99a8d1a63d7dd3cb7114d7832ed90c983445f70f73b799374f9d305bb8",
+      "simulation_log_sha256": "edb45a3654fa66a57db3c276b9daab06b8489882474943c2180be306988c85ac"
+    },
+    {
+      "index_width": 16,
+      "banks": 8,
+      "word": 0,
+      "passed": true,
+      "input_bits": 48,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "7a6476c02ddde07ec2bcbffa59387cede6ad1571bdb39319ad55309bed348b82",
+      "simulation_log_sha256": "24aa943d2305ea428e0bd6f6675e03cdfb5480c474e998a8c52d68ae51018056"
+    },
+    {
+      "index_width": 16,
+      "banks": 8,
+      "word": 7,
+      "passed": true,
+      "input_bits": 48,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "a72a448af8feccd065f188e602307bbbe582e0e37f533c97460b850990bb3cda",
+      "simulation_log_sha256": "59b551c24df77f3cd61bd66648fc09c871a772cde2a166df0696619bba5ed294"
+    },
+    {
+      "index_width": 31,
+      "banks": 2,
+      "word": 0,
+      "passed": true,
+      "input_bits": 63,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "be87b3ed16e8561a9ac675afb4119785d76169a3899547a7d91cb130ca096028",
+      "simulation_log_sha256": "84ecd1186a1df53f814e2cd0255003ed38ea4a58a5239dd7eb7f08d13ec58b4e"
+    },
+    {
+      "index_width": 31,
+      "banks": 2,
+      "word": 1,
+      "passed": true,
+      "input_bits": 63,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "a93eb5e0050d3b643449236073a4c23a641ff9c37444860166e5912f65879105",
+      "simulation_log_sha256": "3282e32428da39b78f41fb7d6290c5610eb937437671591d5df1262eb586dd4d"
+    },
+    {
+      "index_width": 32,
+      "banks": 2,
+      "word": 0,
+      "passed": true,
+      "input_bits": 64,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "bc670c0dd60dba89ad90c609a08dd33e2a18bc8e1c8ec7a2ec9e26529bd27e7a",
+      "simulation_log_sha256": "0c2fcbf10d86fffc2b2d60db5c0fa08b56228f549d2a14246285cc0cabc9fb04"
+    },
+    {
+      "index_width": 32,
+      "banks": 2,
+      "word": 1,
+      "passed": true,
+      "input_bits": 64,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "2f7316c810bbfcc32015191bb73d7935b312187835d4acb1fd785d9f6a9606c2",
+      "simulation_log_sha256": "b8d414021a77e09a845aa067a10a0ee9d0494e660209ac40c465e0f9696c7a84"
+    },
+    {
+      "index_width": 32,
+      "banks": 4,
+      "word": 3,
+      "passed": true,
+      "input_bits": 64,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "97e5bf86f7fd71dd048d0847d316a340c068f010b1178a3492d6b74850ece795",
+      "simulation_log_sha256": "f817bd1774858ad2f0fa468d6072819f605c48149ca6c1acc64b2b51d767e0bf"
+    },
+    {
+      "index_width": 36,
+      "banks": 2,
+      "word": 0,
+      "passed": true,
+      "input_bits": 68,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "069c6dabcffdc61716e8ffba0cf648452952e34f7cdafe17fd915cbed68992ee",
+      "simulation_log_sha256": "5bf6b01c38dce085616388261d9374970a15dc17ad36d655823c6b66c0a92b4e"
+    },
+    {
+      "index_width": 36,
+      "banks": 2,
+      "word": 1,
+      "passed": true,
+      "input_bits": 68,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "00f73062b5c350cfa809cae1a5fe81096ee906cb4e2a60f62be8f337e6dcc956",
+      "simulation_log_sha256": "0016106e0c2c709889df89537d35b1a59522b55ecf17269a3bcc86ebb043148f"
+    },
+    {
+      "index_width": 36,
+      "banks": 3,
+      "word": 2,
+      "passed": true,
+      "input_bits": 68,
+      "four_state_comparisons": 30000,
+      "formal_log_sha256": "954f054cf47167d68b2926978abaef2aab6d87c8b51cef190b01a04ef44c5571",
+      "simulation_log_sha256": "b96fbeab2740c2ce7f9e7bbf36ac611613a7f03cad6851685647239ea0483081"
+    }
+  ],
+  "four_state_comparisons": 600000
+}

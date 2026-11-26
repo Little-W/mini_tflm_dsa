@@ -8,13 +8,13 @@ module vec_s8_fifo_row_ram #(
     parameter int unsigned ADDR_WIDTH = 4,
     parameter [8*16-1:0] p_ram_style = "auto"
 ) (
-    input  wire logic                  clk,
-    input  wire logic                  wr_en,
-    input  wire logic [ADDR_WIDTH-1:0] wr_addr,
-    input  wire logic [DATA_WIDTH-1:0] wr_data,
-    input  wire logic                  rd_en,
-    input  wire logic [ADDR_WIDTH-1:0] rd_addr,
-    output logic [DATA_WIDTH-1:0] rd_data
+    input  wire logic                  clk /* 工作时钟 */,
+    input  wire logic                  wr_en /* 使能当前结果行存储字写入 */,
+    input  wire logic [ADDR_WIDTH-1:0] wr_addr /* 当前写入结果行的存储地址 */,
+    input  wire logic [DATA_WIDTH-1:0] wr_data /* 当前写入的结果行数据字 */,
+    input  wire logic                  rd_en /* 使能结果行同步读取 */,
+    input  wire logic [ADDR_WIDTH-1:0] rd_addr /* 当前读取结果行的存储地址 */,
+    output logic [DATA_WIDTH-1:0] rd_data /* 同步返回的结果行数据字 */
 );
 
     // 两种存储实现共用读写地址、数据和使能，整行写掩码始终有效。

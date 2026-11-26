@@ -1,0 +1,38 @@
+{
+  "passed": true,
+  "source_sha256": "e5fc5d72de98dd84e4dc69577d7063d4028b2c1e87f7fff3baf4883cde1cfc10",
+  "source_path": "rtl/npu/writeback/requant_group_last.sv",
+  "dependencies_sha256": {
+    "/workspace/scratch/5bfa47658687/experiments/requant_standalone_checks/group/requant_group_last.sv": "010a4cbc7d42ed3b3e894d614b08228c065574556788f2f680058477bd3e9052",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f"
+  },
+  "helper_sha256": "010a4cbc7d42ed3b3e894d614b08228c065574556788f2f680058477bd3e9052",
+  "random_seed": 20261125,
+  "profiles": [
+    {
+      "tile_width": 1,
+      "passed": true,
+      "four_state_comparisons": 40000,
+      "simulation_log_sha256": "35e5ff66f1f75ff5f49c4e943a5c8485647b80784a1daf8da0af6ef7f598b597"
+    },
+    {
+      "tile_width": 4,
+      "passed": true,
+      "four_state_comparisons": 40000,
+      "simulation_log_sha256": "1c01fd2aa839fadcdb08ea3566ec11e14acc0d06c74d2f72a75bab1177b9b78e"
+    },
+    {
+      "tile_width": 8,
+      "passed": true,
+      "four_state_comparisons": 40000,
+      "simulation_log_sha256": "44284ec4244b0e3cfad0e4ec3d7a6f45361c36f4e7e622e5e68ed67b7c2ffdbe"
+    },
+    {
+      "tile_width": 16,
+      "passed": true,
+      "four_state_comparisons": 40000,
+      "simulation_log_sha256": "8c64a1e165731651e85d49c8644270e82370ccb87f07c43d765198c9e7e60b83"
+    }
+  ],
+  "four_state_comparisons": 160000
+}

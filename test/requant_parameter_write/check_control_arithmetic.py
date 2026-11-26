@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import shlex
 import subprocess
 import sys
@@ -36,17 +37,29 @@ def main():
     paths = [source_root / "rtl/npu/writeback/vec_requant.sv",
              source_root / "rtl/npu/top/npu_output_pipeline.sv",
              source_root / "rtl/common/parallel_prefix_add.sv"]
-    hashes = {str(path.relative_to(source_root)): digest(path) for path in paths}
     content = paths[0].read_text()
     start = content.rfind("`ifdef SYNTHESIS", 0, content.index("requant_load_advance u_load_next_offset"))
     load = content[start:content.index("  assign dma_base_addr_cur", start)]
     match = re.search(r"^module requant_load_advance\b.*?^endmodule", content, re.M | re.S)
+    load_helper = match[0] if match is not None else ""
+    helper_paths = [paths[2]]
     if match is None:
-        raise RuntimeError("缺少完整装载偏移加法模块")
-    load_helper = match[0]
+        helper_paths.append(source_root / "rtl/npu/writeback/requant_load_advance.sv")
     content = paths[1].read_text()
-    start = content.index("        logic unused_bias_advance_carry;")
-    bias = content[start:content.index("        assign is_bias_group_base_plus", start)]
+    advance = re.search(r"^\s*npu_output_bias_advance\s*#\(.*?\)\s*u_bias_advance\s*\(.*?\);",
+                        content, re.M | re.S)
+    if advance is not None:
+        bias = """wire [p_reg_width-1:0] is_bias_last_group_base='0;
+                  wire is_bias_next_less,is_bias_next_equal;
+               """ + advance[0]
+        helper_paths.append(source_root / "rtl/npu/top/npu_output_bias_advance.sv")
+    else:
+        start = content.index("        logic unused_bias_advance_carry;")
+        bias = content[start:content.index("        assign is_bias_group_base_plus", start)]
+    reader = runpy.run_path(str(ROOT / "scripts/rtl/source_files.py"))
+    helper_paths = reader['with_dependencies'](helper_paths, source_root)
+    paths = list(dict.fromkeys(paths + helper_paths))
+    hashes = {str(path.relative_to(source_root)): digest(path) for path in paths}
     reports = []
     profiles = [("load", 32, 1), ("load", 16, 5), ("load", 32, 5),
                 ("load", 8, 17), ("load", 36, 32), ("load", 64, 36),
@@ -89,7 +102,7 @@ endmodule
 """)
         script = folder / "proof.ys"
         script.write_text("read_slang -D SYNTHESIS=1 --top arithmetic " +
-                          " ".join(shlex.quote(str(path)) for path in [paths[2], source]) +
+                          " ".join(shlex.quote(str(path)) for path in helper_paths+[source]) +
                           "\nsetattr -mod -unset keep_hierarchy\nsetattr -unset keep_hierarchy\n"
                           "prep -top arithmetic -flatten\n"
                           "sat -verify -prove equal 1 -show-inputs -show-outputs\n")
@@ -133,7 +146,7 @@ endmodule
                                       ("four_state", [], 30000)]:
             binary = folder / mode
             execute(["iverilog", "-g2012", *defines, "-s", "tb", "-o", binary,
-                     paths[2], source, bench], folder / f"{mode}_compile.log")
+                     *helper_paths, source, bench], folder / f"{mode}_compile.log")
             execute(["vvp", binary], folder / f"{mode}.log")
             if f"CONTROL_ARITHMETIC_PASS checks={count}" not in (folder / f"{mode}.log").read_text():
                 raise RuntimeError("控制算术比较未完成")

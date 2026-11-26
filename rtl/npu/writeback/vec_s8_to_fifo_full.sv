@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-module vec_s8_to_fifo_full #(
+/* 保存八位矩阵结果，支持转置、多矩阵块行合并及循环分组读取。 */ module vec_s8_to_fifo_full #(
     parameter integer VLEN  = 16,
     parameter integer BANKS = 16,
     parameter integer BUS_WIDTH = 32,
@@ -10,28 +10,28 @@ module vec_s8_to_fifo_full #(
     parameter bit p_cyclic_storage = 1'b0,
     parameter bit p_precomputed_watermark = 1'b0
 ) (
-    input  wire                 clk,
-    input  wire                 rst_n,
-    input  wire                 start_permitted,
-    input  wire                 in_valid,
-    input  wire                 in_tile_done,
-    input  wire [   VLEN*8-1:0] in_vec_s8,
-    output reg                  oa_fifo_req,
-    input  wire                 transpose_mode,
-    input  wire                 coalesce_enable,
-    input  wire                 coalesce_group_start,
-    input  wire [31:0]          coalesce_rows,
-    input  wire [31:0]          coalesce_cols,
-    input  wire [          31:0] reserve_banks,
-    input  wire [31:0] i_ready_bank_threshold,
-    input  wire [$clog2(VLEN)-1:0] vec_valid_num_col,
-    input  wire [$clog2(VLEN)-1:0] vec_valid_num_row,
-    output wire                 output_valid,
-    input  wire                 output_ready,
-    output wire                 output_row_switch,
-    output reg  [BUS_WIDTH/8-1:0] output_mask,
-    output reg  [BUS_WIDTH-1:0] output_data,
-    output wire                 fifo_full_flag
+    input  wire                 clk /* 工作时钟 */,
+    input  wire                 rst_n /* 低有效复位 */,
+    input  wire                 start_permitted /* 允许启动下一结果块的输出 */,
+    input  wire                 in_valid /* 当前输入结果行有效 */,
+    input  wire                 in_tile_done /* 当前输入结果行结束一个矩阵块 */,
+    input  wire [   VLEN*8-1:0] in_vec_s8 /* 当前行的8 位有符号结果向量 */,
+    output reg                  oa_fifo_req /* 已有完整结果块可供写回 */,
+    input  wire                 transpose_mode /* 按转置顺序输出矩阵块 */,
+    input  wire                 coalesce_enable /* 启用多矩阵块连续行合并输出 */,
+    input  wire                 coalesce_group_start /* 启动一次输出分组合并 */,
+    input  wire [31:0]          coalesce_rows /* 合并输出分组的有效行数 */,
+    input  wire [31:0]          coalesce_cols /* 合并输出分组的有效列数 */,
+    input  wire [          31:0] reserve_banks /* 当前计算分组需要预留的结果存储体数 */,
+    input  wire [31:0] i_ready_bank_threshold /* 允许接收下一计算组的已完成存储体数量阈值 */,
+    input  wire [$clog2(VLEN)-1:0] vec_valid_num_col /* 当前矩阵块最后一个有效列的编号 */,
+    input  wire [$clog2(VLEN)-1:0] vec_valid_num_row /* 当前矩阵块最后一个有效行的编号 */,
+    output wire                 output_valid /* 当前输出数据拍有效 */,
+    input  wire                 output_ready /* 下游可接收当前输出数据拍 */,
+    output wire                 output_row_switch /* 当前输出数据拍结束一行 */,
+    output reg  [BUS_WIDTH/8-1:0] output_mask /* 当前输出拍的有效字节掩码 */,
+    output reg  [BUS_WIDTH-1:0] output_data /* 当前输出拍的总线数据 */,
+    output wire                 fifo_full_flag /* 结果存储余量不足以接收下一计算组 */
 );
 
   localparam integer PTR_WIDTH   = (VLEN <= 1) ? 1 : $clog2(VLEN);
@@ -97,7 +97,7 @@ module vec_s8_to_fifo_full #(
   logic [BANK_COUNT_WIDTH-1:0] co_tile_sum [0:2];
   logic [BANK_COUNT_WIDTH-1:0] co_tile_carry [0:2];
   logic [BANK_COUNT_WIDTH-1:0] co_tile_product;
-  // 部分积在银行计数宽度内保留，进位保存归并只在最后一步传播进位。
+  // 部分积在存储体计数宽度内保留，进位保存归并只在最后一步传播进位。
   for (genvar term = 0; term < 5; term++) begin : g_co_tile_partial
     assign co_tile_partial[term] =
         (BANK_COUNT_WIDTH'(coalesce_cols[4:0]) << term) &
@@ -183,7 +183,7 @@ module vec_s8_to_fifo_full #(
   wire [BANK_WIDTH-1:0] co_bank_after = BANK_WIDTH'((int'(read_bank) + int'(co_tiles)) % BANKS);
   wire co_load_waiting = coalesce_enable && co_active && !co_data_valid && bank_ready[co_current_bank];
   logic co_continue_bank_ready;
-  // 继续输出时依据拍号选择银行，组启动条件独立控制首拍。
+  // 继续输出时依据拍号选择存储体，组启动条件独立控制首拍。
   assign co_continue_bank_ready = (co_beat == BEAT_WIDTH'(ROW_BEATS - 1)) ?
       bank_ready[co_following_bank] : bank_ready[co_current_bank];
   logic [BANK_WIDTH-1:0] co_issue_bank;
@@ -242,7 +242,7 @@ module vec_s8_to_fifo_full #(
   end else begin : g_multiple_write_banks
     assign next_write_bank_mask = {write_bank_mask_q[BANKS-2:0], write_bank_mask_q[BANKS-1]};
   end
-  // 写入银行同时保存独热位置，相邻银行的阻塞判断只需并行选择与归并。
+  // 写入存储体同时保存独热位置，相邻存储体的阻塞判断只需并行选择与归并。
   logic [BANKS-1:0] bank_ready_next, write_bank_mask_next, next_bank_mask_next;
   logic write_bank_blocked_q, next_write_bank_blocked_q;
   wire write_bank_blocked = write_bank_blocked_q;
@@ -302,7 +302,7 @@ module vec_s8_to_fifo_full #(
     else if (finish_write_bank && !write_bank_blocked)
       write_bank_mask_q <= next_write_bank_mask;
   end
-  // 银行状态和写入位置共同更新时保存阻塞资格，外部控制直接读取寄存结果。
+  // 存储体状态和写入位置共同更新时保存阻塞资格，外部控制直接读取寄存结果。
   always_comb begin
     write_bank_mask_next = write_bank_mask_q;
     if (finish_write_bank && !write_bank_blocked) begin
@@ -319,7 +319,7 @@ module vec_s8_to_fifo_full #(
   assign co_selected_row_last = co_row_limit_q >= co_bank_count;
   logic selected_read_bank_ready;
   if (p_count_storage) begin : g_read_bank_selection
-    // 每层完成四选一，所保存的组合边界限制银行有效位选择的深度。
+    // 每层完成四选一，所保存的组合边界限制存储体有效位选择的深度。
     localparam integer p_select_levels = (BANK_WIDTH + 1) / 2;
     wire [BANKS-1:0] ready_level [0:p_select_levels];
     assign ready_level[0] = bank_ready;
@@ -344,7 +344,7 @@ module vec_s8_to_fifo_full #(
   end
 
   if (p_count_storage) begin : g_count_memory
-    // 计数只在银行完成写入时保存；有效位同时管理复位和银行释放。
+    // 计数只在存储体完成写入时保存；有效位同时管理复位和存储体释放。
     // 两个异步读端口分别服务普通输出和合并输出，读取周期保持不变。
     assign bank_count_i_wr_en = rst_n && finish_write_bank && !write_bank_blocked;
     assign bank_count_i_wr_addr = write_bank;
@@ -668,7 +668,7 @@ module vec_s8_to_fifo_full #(
     end
   end
 
-  // 各银行独立计算写入与释放条件，释放在同周期写入完成时保持较高优先级。
+  // 各存储体独立计算写入与释放条件，释放在同周期写入完成时保持较高优先级。
   for (genvar bank = 0; bank < BANKS; bank++) begin : g_bank_state
     logic write_complete, group_release, stream_release;
     assign write_complete = finish_write_bank && !write_bank_blocked &&

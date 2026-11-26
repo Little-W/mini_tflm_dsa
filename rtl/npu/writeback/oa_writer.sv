@@ -1,6 +1,6 @@
 `default_nettype none
 
-module oa_writer #(
+/* 按输出矩阵的行列布局读取结果 FIFO，生成带字节掩码的 DMA 写回命令。 */ module oa_writer #(
     parameter int unsigned VLEN       = 16,
     parameter int unsigned DATA_WIDTH = 8,
     parameter int unsigned REG_WIDTH  = 32,
@@ -8,54 +8,54 @@ module oa_writer #(
     parameter int unsigned COUNT_WIDTH = REG_WIDTH,
     parameter int unsigned ENABLE_IS_MODE = 1
 ) (
-    input wire logic clk,
-    input wire logic rst_n,
+    input wire logic clk /* 工作时钟 */,
+    input wire logic rst_n /* 低有效复位 */,
 
-    input  wire logic init_cfg,
-    output logic write_oa_req,
-    input  wire logic write_oa_granted,
+    input  wire logic init_cfg /* 接收任务参数并初始化当前模块 */,
+    output logic write_oa_req /* 请求共享 DMA 执行输出结果写回 */,
+    input  wire logic write_oa_granted /* 输出写回请求已获得共享 DMA 授予 */,
 
-    input wire logic [REG_WIDTH-1:0] dst_base,
-    input wire logic [REG_WIDTH-1:0] dst_row_stride_b,
-    input wire logic [REG_WIDTH-1:0] k,
-    input wire logic [REG_WIDTH-1:0] m,
-    input wire logic [REG_WIDTH-1:0] ia_reuse_num,
-    input wire logic                 is_mode,
-    input wire logic                 output_16bits,
-    input wire logic                 coalesce_enable,
-    input wire logic [4:0]           coalesce_cols,
-    output logic                coalesce_group_start,
-    output logic [4:0]          coalesce_row_tiles,
+    input wire logic [REG_WIDTH-1:0] dst_base /* 输出矩阵的首字节地址 */,
+    input wire logic [REG_WIDTH-1:0] dst_row_stride_b /* 输出矩阵相邻行的字节步长 */,
+    input wire logic [REG_WIDTH-1:0] k /* 输出矩阵行数 */,
+    input wire logic [REG_WIDTH-1:0] m /* 输出矩阵列数 */,
+    input wire logic [REG_WIDTH-1:0] ia_reuse_num /* 一组输入缓存的复用矩阵块数 */,
+    input wire logic                 is_mode /* 选择输入驻留数据流 */,
+    input wire logic                 output_16bits /* 写回结果采用16 位有符号格式 */,
+    input wire logic                 coalesce_enable /* 启用相邻矩阵块的连续行合并写回 */,
+    input wire logic [4:0]           coalesce_cols /* 当前合并分组包含的列矩阵块数 */,
+    output logic                coalesce_group_start /* 启动当前矩阵块分组的合并读取 */,
+    output logic [4:0]          coalesce_row_tiles /* 当前合并分组包含的行矩阵块数 */,
 
-    input  wire logic                    oa_fifo_req,
-    output logic [$clog2(VLEN)-1:0] vec_valid_num_col,
-    output logic [$clog2(VLEN)-1:0] vec_valid_num_row,
+    input  wire logic                    oa_fifo_req /* 已有完整结果块可供写回 */,
+    output logic [$clog2(VLEN)-1:0] vec_valid_num_col /* 当前矩阵块最后一个有效列的编号 */,
+    output logic [$clog2(VLEN)-1:0] vec_valid_num_row /* 当前矩阵块最后一个有效行的编号 */,
 
-    input  wire logic                   output_valid,
-    input  wire logic                   switch_row,
-    output logic                   output_ready,
-    input  wire logic [BUS_WIDTH/8-1:0] output_mask,
-    input  wire logic [BUS_WIDTH-1:0]   output_data,
+    input  wire logic                   output_valid /* 当前输出数据拍有效 */,
+    input  wire logic                   switch_row /* 结果 FIFO 的当前数据拍结束一行 */,
+    output logic                   output_ready /* 下游可接收当前输出数据拍 */,
+    input  wire logic [BUS_WIDTH/8-1:0] output_mask /* 当前输出拍的有效字节掩码 */,
+    input  wire logic [BUS_WIDTH-1:0]   output_data /* 当前输出拍的总线数据 */,
 
-    output logic                        dma_start,
-    output logic                        dma_is_write,
-    output logic                        dma_linear_read_mode,
-    output logic [REG_WIDTH-1:0]        dma_base_addr,
-    output logic [REG_WIDTH-1:0]        dma_row_stride,
-    output logic [REG_WIDTH-1:0]        dma_rows_to_read,
-    output logic [7:0]                  dma_burst_len_m1,
-    output logic                        dma_slot_id,
-    output logic                        dma_use_16bits,
-    output logic signed [REG_WIDTH-1:0] dma_lhs_zp,
-    output logic [BUS_WIDTH-1:0]        dma_src_wdata,
-    output logic [BUS_WIDTH/8-1:0]      dma_src_wmask,
-    output logic                        dma_src_wvalid,
-    input  wire logic                        dma_src_wready,
-    input  wire logic                        dma_busy,
-    input  wire logic                        dma_done,
+    output logic                        dma_start /* DMA 接口：启动本次块传输 */,
+    output logic                        dma_is_write /* DMA 接口：块传输方向选择，置位表示写入 */,
+    output logic                        dma_linear_read_mode /* DMA 接口：启用逐行单拍读取模式 */,
+    output logic [REG_WIDTH-1:0]        dma_base_addr /* 本次输出写回的首字节地址 */,
+    output logic [REG_WIDTH-1:0]        dma_row_stride /* DMA 接口：相邻传输行的字节步长 */,
+    output logic [REG_WIDTH-1:0]        dma_rows_to_read /* 本次输出写回命令的行数 */,
+    output logic [7:0]                  dma_burst_len_m1 /* DMA 接口：每行突发传输拍数减一 */,
+    output logic                        dma_slot_id /* DMA 接口：读取结果写入的缓存槽号 */,
+    output logic                        dma_use_16bits /* 写回 DMA 接口的元素精度选择 */,
+    output logic signed [REG_WIDTH-1:0] dma_lhs_zp /* 写回 DMA 通用接口的零点字段 */,
+    output logic [BUS_WIDTH-1:0]        dma_src_wdata /* DMA 接口：发送到写引擎的总线数据 */,
+    output logic [BUS_WIDTH/8-1:0]      dma_src_wmask /* DMA 接口：发送到写引擎的逐字节使能 */,
+    output logic                        dma_src_wvalid /* DMA 接口：待发送写数据有效 */,
+    input  wire logic                        dma_src_wready /* DMA 接口：写引擎可接收当前数据拍 */,
+    input  wire logic                        dma_busy /* DMA 接口：块传输正在执行 */,
+    input  wire logic                        dma_done /* DMA 接口：本次块传输完成 */,
 
-    output logic write_done,
-    output logic oa_calc_over
+    output logic write_done /* 当前输出写回命令已经完成 */,
+    output logic oa_calc_over /* 当前任务的全部输出结果已经写回 */
 );
 
     localparam int unsigned BYTE_PER_BEAT = BUS_WIDTH / 8;
@@ -225,9 +225,9 @@ module oa_writer #(
     count_t tile_col_inc;
     count_t row_group_next_sum;
     count_t tile_row_inc_q, tile_col_inc_q;
-    logic [CNT_W:0] row_total_difference, row_group_difference;
-    logic [CNT_W:0] column_total_difference, group_total_difference;
     logic row_inc_in_range_q, col_inc_in_range_q, group_inc_in_range_q;
+    logic row_total_less, row_group_less, column_total_less, group_total_less;
+    logic co_next_column_less;
     logic row_inc_is_last_q, col_inc_is_last_q;
     logic group_base_is_last_q, group_next_is_last_q;
     count_t reuse_group_base_cur;
@@ -255,6 +255,7 @@ module oa_writer #(
     logic [VCOL_W:0]      vec_valid_num_col_next_w;
     logic [VCOL_W:0]      vec_valid_num_row_next_w;
     count_t               init_reuse_num_eff;
+    logic                 init_reuse_is_zero;
     logic [REG_WIDTH-1:0] init_tile_linear_step;
     logic [REG_WIDTH-1:0] init_tile_stride_step;
     logic [REG_WIDTH-1:0] init_row_addr_step;
@@ -348,8 +349,12 @@ module oa_writer #(
     end
 `endif
 
+    // 初始复用数量的零值条件独立比较，输出行数计算使用已经完成的一位结果。
+    (* keep_hierarchy = "yes" *) zero_reduce #(.p_width(REG_WIDTH)) u_initial_reuse_zero (
+        .i_value(ia_reuse_num), .o_zero(init_reuse_is_zero)
+    );
     always_comb begin
-        init_reuse_num_eff = (ia_reuse_num == '0) ? count_t'(1) : count_t'(ia_reuse_num);
+        init_reuse_num_eff = init_reuse_is_zero ? count_t'(1) : count_t'(ia_reuse_num);
         init_tile_linear_step = REG_WIDTH'(VLEN) << (output_16bits ? 1 : 0);
         init_tile_stride_step = dst_row_stride_b << VCOL_W;
         init_row_addr_step = is_mode_eff ? init_tile_linear_step : init_tile_stride_step;
@@ -449,19 +454,26 @@ module oa_writer #(
                                 ? k_last_index : (VLEN_COUNT - 1'b1);
     end
 
-    assign row_total_difference = {1'b0, tile_row_inc_q} - {1'b0, row_tiles_total};
-    assign row_group_difference = {1'b0, tile_row_inc_q} - {1'b0, row_group_next_base_idx};
-    assign column_total_difference = {1'b0, tile_col_inc_q} - {1'b0, col_tiles_total};
-    assign group_total_difference = {1'b0, row_group_next_base_idx} - {1'b0, row_tiles_total};
+    // 行、列和组上界各自分段比较，在原有准备周期保存一位范围结果。
+    oa_writer_compare #(.p_width(CNT_W)) u_row_total (
+        .i_value(tile_row_inc_q), .i_limit(row_tiles_total), .o_less(row_total_less));
+    oa_writer_compare #(.p_width(CNT_W)) u_row_group (
+        .i_value(tile_row_inc_q), .i_limit(row_group_next_base_idx), .o_less(row_group_less));
+    oa_writer_compare #(.p_width(CNT_W)) u_column_total (
+        .i_value(tile_col_inc_q), .i_limit(col_tiles_total), .o_less(column_total_less));
+    oa_writer_compare #(.p_width(CNT_W)) u_group_total (
+        .i_value(row_group_next_base_idx), .i_limit(row_tiles_total), .o_less(group_total_less));
+    oa_writer_compare #(.p_width(REG_WIDTH)) u_co_next_column (
+        .i_value(co_next_col_offset_q), .i_limit(cfg_m), .o_less(co_next_column_less));
 
     // 行列索引在请求准备期间保持，递增与范围判断分别使用已有周期。
     // S_START 才保存下一块控制，S_WRITE 的完成事件随后消费这些结果。
     always_ff @(posedge clk) begin
         tile_row_inc_q <= tile_row_inc;
         tile_col_inc_q <= tile_col_inc;
-        row_inc_in_range_q <= row_total_difference[CNT_W] && row_group_difference[CNT_W];
-        col_inc_in_range_q <= column_total_difference[CNT_W];
-        group_inc_in_range_q <= group_total_difference[CNT_W];
+        row_inc_in_range_q <= row_total_less && row_group_less;
+        col_inc_in_range_q <= column_total_less;
+        group_inc_in_range_q <= group_total_less;
         row_inc_is_last_q <= tile_row_inc_q == row_tiles_last_idx;
         col_inc_is_last_q <= tile_col_inc_q == col_tiles_last_idx;
         group_base_is_last_q <= row_group_base_idx == row_tiles_last_idx;
@@ -615,8 +627,8 @@ module oa_writer #(
             if ((state == S_REQ) && write_oa_granted) begin
                 co_next_rows_prepared <= co_next_rows_calc;
                 co_next_row_tiles_q <= cfg_is_mode ? 5'd1 : co_next_row_tiles_calc;
-                co_has_next_col <= co_next_col_offset_q < cfg_m;
-                co_has_next_group <= group_total_difference[CNT_W];
+                co_has_next_col <= co_next_column_less;
+                co_has_next_group <= group_total_less;
             end
             if (co_advance_group) begin
                 co_current_rows <= co_next_rows_prepared;

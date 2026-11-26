@@ -5,20 +5,20 @@ module requant_group_buffer #(
     parameter int unsigned p_lanes = 16,
     parameter int unsigned p_rows = 512
 ) (
-    input  wire logic clk,
-    input  wire logic rst_n,
-    input  wire logic i_clear,
-    input  wire logic i_group_start,
-    input  wire logic [31:0] i_group_rows,
-    output logic o_group_ready,
-    input  wire logic i_row_valid,
-    input  wire logic i_row_tile_done,
-    input  wire logic signed [31:0] i_row_data [p_lanes],
-    output logic o_row_valid,
-    output logic o_row_tile_done,
-    output logic signed [31:0] o_row_data [p_lanes],
-    input  wire logic i_row_ready,
-    input  wire logic i_output_valid
+    input  wire logic clk /* 工作时钟 */,
+    input  wire logic rst_n /* 低有效复位 */,
+    input  wire logic i_clear /* 清除当前缓存占用和分组预留状态 */,
+    input  wire logic i_group_start /* 为新的输出分组预留完整缓存空间 */,
+    input  wire logic [31:0] i_group_rows /* 新输出分组需要保存的结果行数 */,
+    output logic o_group_ready /* 缓存可为下一完整输出分组预留空间 */,
+    input  wire logic i_row_valid /* 阵列提供的当前结果行有效 */,
+    input  wire logic i_row_tile_done /* 当前输入结果行为矩阵块结束行 */,
+    input  wire logic signed [31:0] i_row_data [p_lanes] /* 阵列提供的完整32 位累加结果行 */,
+    output logic o_row_valid /* 缓存向量化通路提供有效结果行 */,
+    output logic o_row_tile_done /* 当前输出结果行为矩阵块结束行 */,
+    output logic signed [31:0] o_row_data [p_lanes] /* 缓存送入量化通路的完整结果行 */,
+    input  wire logic i_row_ready /* 量化通路可接收当前缓存结果行 */,
+    input  wire logic i_output_valid /* 一行结果已完成后续输出，可释放对应预留 */
 );
     localparam int p_addr_width = (p_rows <= 1) ? 1 : $clog2(p_rows);
     localparam int p_count_width = (p_rows <= 1) ? 1 : $clog2(p_rows + 1);

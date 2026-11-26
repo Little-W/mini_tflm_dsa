@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "source_sha256": "0191ad315639416ad625333f0b4ee59115b218af21e354fee0f2a8c14d351455",
+  "formal_input_value_bits": 99,
+  "formal_inputs_constrained": false,
+  "outputs_compared_bits": 25,
+  "four_state_control_bits": 5,
+  "four_state_cycles": 65536,
+  "four_state_comparisons": 131072,
+  "four_state_valid_checks": 12480,
+  "four_state_active_data_checks": 8456,
+  "latency_enabled_edges": 7,
+  "log_sha256": {
+    "proof.log": "f87553fd170fa7b75d339fec3802907f58fc3b2bfa1a9f079841ce2423479a8d",
+    "four_state.log": "3908e9b331012a5b3f283d52fac521f39f452a15fe83b6dff916f72df35bf5af"
+  }
+}

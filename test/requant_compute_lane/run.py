@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -43,7 +44,9 @@ def main():
     names = ['rtl/npu/writeback/requant_pkg.sv', 'rtl/npu/writeback/requant_shift_pipeline.sv',
              'rtl/npu/writeback/requant_compute_lane.sv', 'rtl/npu/writeback/requant_round_add.sv', 'rtl/npu/conv/registered_multiplier_s32.sv',
              'rtl/common/parallel_prefix_add.sv']
-    rtl = [ROOT / name for name in names]
+    resolve = runpy.run_path(str(ROOT / 'scripts/rtl/source_files.py'))['with_dependencies']
+    rtl = resolve([ROOT / name for name in names], ROOT)
+    names = [str(path.relative_to(ROOT)) for path in rtl]
     test_sources = [HERE / name for name in ('test_top.sv', 'main.cpp', 'run.py')]
     summary = {'passed': False, 'latency_enabled_edges': 7,
                'source_sha256': {name: digest(path) for name, path in zip(names, rtl)},

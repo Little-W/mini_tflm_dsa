@@ -12,10 +12,10 @@ from rtl_reference import read_current_source as read_rtl_text
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'test/ps_compression'))
-from run_shared_npu import configure,npu
+from run_shared_npu import configure,input_bank_count,npu
 
 
-def generate(folder):
+def generate(folder, manifest):
     folder.mkdir(parents=True,exist_ok=True)
     cases=[]
     bases=(0x1003,0x20003,0x40000,0x58000,0x48000,0x50000)
@@ -41,7 +41,8 @@ def generate(folder):
         make_error=0 if inject==2 else error
         directory=npu.precision_task(folder,16,name=name,dataflow=mode,rows=rows,reduction=red,
             columns=cols,lhs_s16=out16,output_s16=out16,expected_error=make_error,memory_bases=bases)
-        configure(directory,banks=2 if out16 else 1,r=r,w=w,control=control,bank_bytes=8192,bank_count=7)
+        banks=input_bank_count(manifest,mode=mode,lhs_s16=out16,requested_banks=2 if out16 else 1)
+        configure(directory,banks=banks,r=r,w=w,control=control,bank_bytes=8192,bank_count=7)
         config=directory/'config.mem'
         words=[int(value,16) for value in read_rtl_text(config).split()]
         words[52],words[53]=error,inject
@@ -73,12 +74,14 @@ def main():
     if hashlib.sha256(binary.read_bytes()).hexdigest()!=manifest['binary_sha256']:
         raise RuntimeError('Simulator binary differs from its manifest')
     if args.sim:
+        source_root=Path(manifest.get('source_root',ROOT)).resolve()
         for name in ('rtl/npu/writeback/vec_s8_to_fifo.sv',
                      'test/monitors/npu_top_observer.sv',
                      'test/monitors/npu_output_pipeline_observer.sv'):
-            if manifest['source_sha256'].get(name)!=hashlib.sha256((ROOT/name).read_bytes()).hexdigest():
+            source=source_root/name if name.startswith('rtl/') else ROOT/name
+            if manifest['source_sha256'].get(name)!=hashlib.sha256(source.read_bytes()).hexdigest():
                 raise RuntimeError('Simulator source differs: '+name)
-    cases=generate(out/'cases')
+    cases=generate(out/'cases',manifest)
     result=npu.run_suite(binary,out,'fifo_modes',cases,no_random=False)
     text=read_rtl_text(out/'fifo_modes.log')
     matches=re.findall(r'^NPU_FIFO_COMPARE_PASS (.*)$',text,re.M)
@@ -93,6 +96,7 @@ def main():
         'cases':len(cases),'completed_cases':len(measurements),'coverage':coverage,
         'coverage_passed':coverage_passed,'command_modes_passed':command_modes_passed,
         'int32_checks':sum(item['int32_checks'] for item in measurements),
+        'ia_compact_enable':manifest['ia_compact_enable'],
         'simulator_manifest':str(sim/'build.json'),'suite':result}
     (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
     print(json.dumps({k:v for k,v in summary.items() if k!='suite'},indent=2))

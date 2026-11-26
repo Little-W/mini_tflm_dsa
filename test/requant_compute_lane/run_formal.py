@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import re
+import runpy
 import shlex
 import subprocess
 import sys
@@ -13,7 +14,7 @@ ROOT=Path(__file__).resolve().parents[2]
 
 
 def actual_tail(source):
-    first=source.index('    // 各字节独立比较')
+    first=source.index('    for (genvar bound = 0; bound < 2; bound++)')
     return source[first:source.index('\nendmodule',first)]
 
 
@@ -86,7 +87,9 @@ def main():
     path=ROOT/'rtl/npu/writeback/requant_compute_lane.sv';source=path.read_text()
     model=out/'model.sv';model.write_text(unit(source))
     script=out/'proof.ys';log=out/'proof.log'
-    script.write_text('read_slang --top lane_tail_proof '+shlex.quote(str(model))+'\n'+
+    resolve=runpy.run_path(str(ROOT/'scripts/rtl/source_files.py'))['with_dependencies']
+    sources=resolve([model],ROOT)
+    script.write_text('read_slang --top lane_tail_proof '+shlex.join(map(str,sources))+'\n'+
         'prep -top lane_tail_proof -flatten\nasync2sync\nmemory_map\nchformal -lower\nopt -full\n'+
         'sat -seq 2 -tempinduct -maxsteps 10 -set-at 1 rst_n 0 -prove-asserts -verify -timeout 60\n')
     with log.open('w') as stream:
@@ -132,7 +135,7 @@ endmodule
 ''')
     simulation=out/'simulation';simlog=out/'four_state.log'
     with simlog.open('w') as stream:
-        subprocess.run(['iverilog','-g2012','-s','tb','-o',str(simulation),str(model),str(bench)],stdout=stream,stderr=subprocess.STDOUT,check=True)
+        subprocess.run(['iverilog','-g2012','-s','tb','-o',str(simulation),*map(str,sources),str(bench)],stdout=stream,stderr=subprocess.STDOUT,check=True)
         subprocess.run(['vvp',str(simulation)],stdout=stream,stderr=subprocess.STDOUT,check=True,timeout=120)
     assert 'PASS cycles=65536 comparisons=131072' in simlog.read_text()
     coverage=re.search(r'valid_checks=(\d+) data_checks=(\d+)',simlog.read_text())

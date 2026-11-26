@@ -1,6 +1,6 @@
 # 参数末次写入资格验证
 
-`check_word_index.py` 从 `vec_requant.sv` 读取完整的 `requant_parameter_last` 模块，对实际参数索引和末次写入条件执行形式证明，并使用 Icarus Verilog 检查四态传播。默认运行 20 种索引位宽、存储组数和 DMA 字位置组合。
+`check_word_index.py` 读取独立的 `requant_parameter_last.sv` 及其完整模块依赖，对实际参数索引和末次写入条件执行形式证明，并使用 Icarus Verilog 检查四态传播。默认运行 20 种索引位宽、存储组数和 DMA 字位置组合。
 
 ```bash
 python test/requant_parameter_write/check_word_index.py \
@@ -22,7 +22,7 @@ python test/requant_parameter_write/check_word_index.py \
 
 ## 控制与完整量化检查
 
-脚本同时检查参数装载状态机的更新语句与指定参考源码相同。默认参考提交为 `5adaa4c9`，可通过 `--reference` 指定提交，或使用 `--reference-root` 指定独立源码目录。
+脚本同时检查参数装载状态机的更新语句与指定参考源码相同。默认参考提交为 `584233d8`，可通过 `--reference` 指定提交，或使用 `--reference-root` 指定独立源码目录。
 
 完整参数控制器的时序等价与数值检查分别使用以下入口：
 
@@ -55,6 +55,8 @@ python test/requant_parameter_write/check_control_arithmetic.py \
 该检查覆盖 6 种装载位宽和 5 种偏置位宽配置。11 组形式证明均允许全部算术输入自由变化；仿真使用固定种子 `20261125`，共比较 110,000 次综合分支结果和 330,000 次四态结果。`summary.json` 记录生产源码摘要、参数配置、比较次数及各形式日志摘要。
 
 ## 验证结果文件
+
+当前独立模块入口的 20 项形式证明和 600,000 次四态比较均通过，结果见 [standalone_validation.json](standalone_validation.json)。
 
 `word_index_validation.json` 保存所测源码和测试脚本的 SHA256、完整参数配置、实际状态比较范围、形式证明及数值结果。输出配置输入的完整表达式与组合深度检查见 `test/output_configuration/README.md`。
 

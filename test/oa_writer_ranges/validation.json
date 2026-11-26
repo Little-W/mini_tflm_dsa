@@ -1,0 +1,416 @@
+{
+  "passed": true,
+  "reference": "016d9854cf0524b04e7a59f6df13a47b630e686b",
+  "reference_sha256": "54de8a52f440dd76446216b6f44152648f8281eededea5a14c40cc0fa4129ec4",
+  "source_sha256": {
+    "rtl/npu/writeback/oa_writer.sv": "b7407b25a19aab7d6a8f2670beefb698e48296211a9ef3025c5e9c2ef74faac0",
+    "rtl/npu/writeback/oa_writer_compare.sv": "a542ccd5a5e2c34a7ec443659668cc0396574529294a2b2e36b5ef550ea6d39d",
+    "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+    "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+    "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+    "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+  },
+  "runner_sha256": "6c18ef41aebce2ddd98f1b74e21ac348f98484ebc9e7fa9d2cc4c6a61ce92e83",
+  "formal_state_registers": [
+    "beats_in_row",
+    "beats_per_row_cur_tile",
+    "cfg_coalesce",
+    "cfg_coalesce_cols",
+    "cfg_dst_base",
+    "cfg_dst_row_stride_b",
+    "cfg_has_tiles",
+    "cfg_ia_reuse_num",
+    "cfg_is_mode",
+    "cfg_k",
+    "cfg_lat_tick",
+    "cfg_m",
+    "cfg_output_16bits",
+    "co_contiguous_q",
+    "co_current_row_tiles_q",
+    "co_current_rows",
+    "co_dma_len",
+    "co_dma_rows",
+    "co_dma_stride",
+    "co_has_next_col",
+    "co_has_next_group",
+    "co_initial_row_tiles_q",
+    "co_initial_rows",
+    "co_next_col_offset_q",
+    "co_next_row_tiles_q",
+    "co_next_rows_prepared",
+    "co_next_rows_remaining_q",
+    "co_row_div_shift_q",
+    "col_addr_step_cur",
+    "col_inc_in_range_q",
+    "col_inc_is_last_q",
+    "col_offset_addr_cur",
+    "col_tiles_last_idx",
+    "col_tiles_total",
+    "col_tiles_total_pre",
+    "column_base_addr",
+    "dma_done_q",
+    "group_base_is_last_q",
+    "group_inc_in_range_q",
+    "group_next_is_last_q",
+    "group_row_addr_step_cur",
+    "k_last_valid",
+    "m_last_valid",
+    "next_address_base",
+    "next_address_step",
+    "next_tile_col_advance_r",
+    "next_tile_col_is_last_r",
+    "next_tile_group_advance_r",
+    "next_tile_row_advance_r",
+    "next_tile_row_is_last_r",
+    "next_tile_wrap_r",
+    "oa_calc_over_r",
+    "row_addr_step_cur",
+    "row_group_base_addr_cur",
+    "row_group_base_idx",
+    "row_group_next_base_idx",
+    "row_in_tile",
+    "row_inc_in_range_q",
+    "row_inc_is_last_q",
+    "row_offset_addr_cur",
+    "row_tiles_last_idx",
+    "row_tiles_total",
+    "row_tiles_total_pre",
+    "rows_valid_cur_tile",
+    "state",
+    "tile_base_addr_cur",
+    "tile_col_idx",
+    "tile_col_inc_q",
+    "tile_col_is_last",
+    "tile_row_idx",
+    "tile_row_inc_q",
+    "tile_row_is_last",
+    "tiles_done",
+    "vec_valid_num_col_next_r",
+    "vec_valid_num_col_r",
+    "vec_valid_num_row_next_r",
+    "vec_valid_num_row_r"
+  ],
+  "all_public_outputs_and_common_state_compared": true,
+  "formal": [
+    {
+      "profile": [
+        4,
+        32,
+        4,
+        8
+      ],
+      "fpga": false,
+      "passed": true,
+      "proven_bits": 827,
+      "input_value_constraints": null,
+      "handshake_constraints": null,
+      "log_sha256": "6321bddbab3db443393c19a2d8686b7af9d727e53565990935f88b472e7ae624",
+      "script_sha256": "8b7b7922f96e020bc6565a4003edac5ac325e2f987478f9cdab64c97dc2ed37e"
+    },
+    {
+      "profile": [
+        4,
+        32,
+        4,
+        8
+      ],
+      "fpga": true,
+      "passed": true,
+      "proven_bits": 835,
+      "input_value_constraints": null,
+      "handshake_constraints": null,
+      "log_sha256": "3e937b880e2471d2dc1fe5a463b8296eb98a6d449517ddf4a492a2c3ff1e6492",
+      "script_sha256": "1313c26da2826f4dfaac4612b1fb66331bbe2eddb6b88b201f40eb5859878c77"
+    },
+    {
+      "profile": [
+        8,
+        64,
+        8,
+        8
+      ],
+      "fpga": false,
+      "passed": true,
+      "proven_bits": 993,
+      "input_value_constraints": null,
+      "handshake_constraints": null,
+      "log_sha256": "8ab386efa023140d2d88a83a5c7e261ace3de9c6a019f0ae46c398e28c2aa30f",
+      "script_sha256": "29540e0d6671405c44e8f15a0b66c28cc5c20ecae4d15139eca546e76ab1b61a"
+    },
+    {
+      "profile": [
+        8,
+        64,
+        8,
+        8
+      ],
+      "fpga": true,
+      "passed": true,
+      "proven_bits": 1009,
+      "input_value_constraints": null,
+      "handshake_constraints": null,
+      "log_sha256": "abe88754dd97fa079dba5f6e7b7f27f116d8d92afa6091f59fe26d577d7eb1e7",
+      "script_sha256": "3f0bfc0e4abf83f6fd852467c5d99f03e1f32253312065d6851b01048d48c5ef"
+    },
+    {
+      "profile": [
+        16,
+        32,
+        7,
+        32
+      ],
+      "fpga": false,
+      "passed": true,
+      "proven_bits": 2052,
+      "input_value_constraints": null,
+      "handshake_constraints": null,
+      "log_sha256": "5ca1ddef26a53d8475b25a4f4044a008977e4e0e1d1bdc7403efffafe9d6b6a5",
+      "script_sha256": "b13aca1b7509989e8cd4503ff6b6cc05afad88990cf50e88205ba8c68aa47348"
+    },
+    {
+      "profile": [
+        16,
+        32,
+        7,
+        32
+      ],
+      "fpga": true,
+      "passed": true,
+      "proven_bits": 2394,
+      "input_value_constraints": null,
+      "handshake_constraints": null,
+      "log_sha256": "8bf664d1fbfc9505ef138108b6671fc10955662718bb6d8c64cf4fc486c8a378",
+      "script_sha256": "a17b7504d432d82cc4ee9aa1f1d2eb457a59610a9e3511ea9c2bfa7315d85d21"
+    },
+    {
+      "profile": [
+        16,
+        64,
+        16,
+        32
+      ],
+      "fpga": false,
+      "passed": true,
+      "proven_bits": 2352,
+      "input_value_constraints": null,
+      "handshake_constraints": null,
+      "log_sha256": "c8a50cd4b514e9a1a8f677acf47ce8c1e99dc8f0b8656f30f81b80f58f30909c",
+      "script_sha256": "6cfc4039939b351587ab7b6869a2aa366f3b341d0c9c5e96e27481cadb4d810f"
+    },
+    {
+      "profile": [
+        16,
+        64,
+        16,
+        32
+      ],
+      "fpga": true,
+      "passed": true,
+      "proven_bits": 2712,
+      "input_value_constraints": null,
+      "handshake_constraints": null,
+      "log_sha256": "bc263845ab1a36a47ef786685e65bb451288b36f1c0821508e96a9931466d775",
+      "script_sha256": "192428b7637f6fd34b25d8e7a6dfe33c8fcf89e0e24da39ed881e2462103b7c4"
+    },
+    {
+      "profile": [
+        16,
+        64,
+        29,
+        32
+      ],
+      "fpga": false,
+      "passed": true,
+      "proven_bits": 2729,
+      "input_value_constraints": null,
+      "handshake_constraints": null,
+      "log_sha256": "febc839d13ad5abe2b0168254db33a8c7252258ec3f7faa2ba16cd7b35a7dd0a",
+      "script_sha256": "d9cd8459098213445f776a6e08696f884a50b230420df54a4c42a1d1c372217e"
+    },
+    {
+      "profile": [
+        16,
+        64,
+        29,
+        32
+      ],
+      "fpga": true,
+      "passed": true,
+      "proven_bits": 3294,
+      "input_value_constraints": null,
+      "handshake_constraints": null,
+      "log_sha256": "c288f5498299634a82a078928e46fcbd37fcf9bcb88da2de2e20f5106115e599",
+      "script_sha256": "65adb2e3022774c6217205c1d3e4589c33a1299151ca4cc9c0ee293ff9773c81"
+    },
+    {
+      "profile": [
+        16,
+        64,
+        32,
+        32
+      ],
+      "fpga": false,
+      "passed": true,
+      "proven_bits": 2804,
+      "input_value_constraints": null,
+      "handshake_constraints": null,
+      "log_sha256": "41b6cedc22481a8d72bea3437669cb52c76e06f8f264b252683b3621ce1de3cf",
+      "script_sha256": "1437ddbcb2fd5fda6c032ec01005236d0e2ddcec2dc709958d035d0b5cad5542"
+    },
+    {
+      "profile": [
+        16,
+        64,
+        32,
+        32
+      ],
+      "fpga": true,
+      "passed": true,
+      "proven_bits": 3393,
+      "input_value_constraints": null,
+      "handshake_constraints": null,
+      "log_sha256": "94a2027d19abba5db92f267c6716786f0ecf5c20c19dad9208843c94f393f296",
+      "script_sha256": "323dad56100e2382889a71ee083502efa5bb3fa72d10e0d5a445582d4573a54a"
+    },
+    {
+      "profile": [
+        32,
+        64,
+        32,
+        32
+      ],
+      "fpga": false,
+      "passed": true,
+      "proven_bits": 2822,
+      "input_value_constraints": null,
+      "handshake_constraints": null,
+      "log_sha256": "9ce0235cfd99e3e4495b69f00f84df5715e66c956e8c58601fa44dbc2b8fd4b6",
+      "script_sha256": "1208d01ae308b769ba02e1b94d711ebdc8889d176098340e0bcf3bea59d0a836"
+    },
+    {
+      "profile": [
+        32,
+        64,
+        32,
+        32
+      ],
+      "fpga": true,
+      "passed": true,
+      "proven_bits": 3411,
+      "input_value_constraints": null,
+      "handshake_constraints": null,
+      "log_sha256": "7f20457520ebb80d30225dd5de75991183b3c6ba2aa24042e6ba75cac40ce40b",
+      "script_sha256": "f57511f9208e8906748495102bb67cc1ddabfd0122bff011160ff447cfc5df5a"
+    }
+  ],
+  "four_state": [
+    {
+      "vlen": 4,
+      "bus_width": 32,
+      "count_width": 4,
+      "fpga": false,
+      "passed": true,
+      "scenarios": 1024,
+      "cycles": 25695,
+      "checks": 51389,
+      "outputs": 21,
+      "log_sha256": "3a6afecdf3519ef875d060c53971335c597e478f3b56dc4af7cb1a4751fc5d8c",
+      "binary_sha256": "40b8680bbcc1fff9fac566883e81936c6a90b1c04af7cd0f030714ec4f652788"
+    },
+    {
+      "vlen": 4,
+      "bus_width": 32,
+      "count_width": 4,
+      "fpga": true,
+      "passed": true,
+      "scenarios": 1024,
+      "cycles": 25695,
+      "checks": 51389,
+      "outputs": 21,
+      "log_sha256": "3a6afecdf3519ef875d060c53971335c597e478f3b56dc4af7cb1a4751fc5d8c",
+      "binary_sha256": "48c4b9e7c25bb1cd19f4bcfa37bf910ad00da1f5ace82256d3d69504249a24dc"
+    },
+    {
+      "vlen": 16,
+      "bus_width": 64,
+      "count_width": 29,
+      "fpga": false,
+      "passed": true,
+      "scenarios": 1024,
+      "cycles": 25695,
+      "checks": 51389,
+      "outputs": 21,
+      "log_sha256": "3a6afecdf3519ef875d060c53971335c597e478f3b56dc4af7cb1a4751fc5d8c",
+      "binary_sha256": "3eaa3d4e3b264fb47f4a59279e500a64a12bda403188da61d9fc3add06f8bbc5"
+    },
+    {
+      "vlen": 16,
+      "bus_width": 64,
+      "count_width": 29,
+      "fpga": true,
+      "passed": true,
+      "scenarios": 1024,
+      "cycles": 25695,
+      "checks": 51389,
+      "outputs": 21,
+      "log_sha256": "3a6afecdf3519ef875d060c53971335c597e478f3b56dc4af7cb1a4751fc5d8c",
+      "binary_sha256": "fef95e8e046eb1024c974caaf53893733afb1887de1e6296b3db2728103ebe79"
+    },
+    {
+      "vlen": 32,
+      "bus_width": 64,
+      "count_width": 32,
+      "fpga": false,
+      "passed": true,
+      "scenarios": 1024,
+      "cycles": 25695,
+      "checks": 51389,
+      "outputs": 21,
+      "log_sha256": "3a6afecdf3519ef875d060c53971335c597e478f3b56dc4af7cb1a4751fc5d8c",
+      "binary_sha256": "e7f26f8841e8ff5854cd920588c9dcd05caf55af5e24049f548d03b35c026c68"
+    },
+    {
+      "vlen": 32,
+      "bus_width": 64,
+      "count_width": 32,
+      "fpga": true,
+      "passed": true,
+      "scenarios": 1024,
+      "cycles": 25695,
+      "checks": 51389,
+      "outputs": 21,
+      "log_sha256": "3a6afecdf3519ef875d060c53971335c597e478f3b56dc4af7cb1a4751fc5d8c",
+      "binary_sha256": "6aaff578177459daec498cca3e7bf211af93030a296bf2767b7f31ffc32ed58e"
+    }
+  ],
+  "numeric": [
+    {
+      "fpga": false,
+      "passed": true,
+      "scenarios": 256,
+      "cycles": 147833,
+      "outputs": 21,
+      "commands": 4636,
+      "groups": 927,
+      "completions": 119,
+      "interrupted": 101,
+      "log_sha256": "97e5e72b7769312fac9377ada9684be826ae9bfb8b5f3f6315ebb043f637383c",
+      "binary_sha256": "1c1a3d5d09c8feccecea554a36c7c8f7187bf3a9d8d5e62ed419d975fa1965fa"
+    },
+    {
+      "fpga": true,
+      "passed": true,
+      "scenarios": 256,
+      "cycles": 147833,
+      "outputs": 21,
+      "commands": 4636,
+      "groups": 927,
+      "completions": 119,
+      "interrupted": 101,
+      "log_sha256": "4fea9543338137cde5b7a2005e1c4fb0b61c8928004d20adf0184409083d64ce",
+      "binary_sha256": "c836bccd873cbfb760650788468084e26efbcaa68783baaa839c5765f893aced"
+    }
+  ]
+}

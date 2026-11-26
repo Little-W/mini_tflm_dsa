@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
-
+// 装载整张量或逐通道参数，完成向量和深度卷积结果的量化、限幅及输出。
 module vec_requant #(
     parameter int BUS_WIDTH = 32,
     parameter int VLEN         = 16,
@@ -14,73 +14,73 @@ module vec_requant #(
     // 原始参数观察接口独立于量化计算，实例可按实际连接选择。
     parameter bit p_parameter_output = 1'b1
 ) (
-    input wire logic clk,
-    input wire logic rst_n,
+    input wire logic clk, // 量化计算与参数装载的工作时钟。
+    input wire logic rst_n, // 低有效异步复位。
 
     // 配置
-    input wire logic               init_cfg,
-    input wire logic               cfg_per_channel,
-    input wire logic               cfg_dataflow_mode,
-    input wire logic               cfg_s16 = 1'b0,
-    input wire logic signed [31:0] activation_min_in,
-    input wire logic signed [31:0] activation_max_in,
-    input wire logic signed [31:0] dst_offset_in,
+    input wire logic               init_cfg, // 保存量化配置并初始化参数和计算状态。
+    input wire logic               cfg_per_channel, // 启用逐通道乘数和移位参数。
+    input wire logic               cfg_dataflow_mode, // 量化参数排列方式，一表示输入驻留。
+    input wire logic               cfg_s16 = 1'b0, // 启用十六位量化输出。
+    input wire logic signed [31:0] activation_min_in, // 量化结果的有符号激活下限。
+    input wire logic signed [31:0] activation_max_in, // 量化结果的有符号激活上限。
+    input wire logic signed [31:0] dst_offset_in, // 量化结果需要加上的有符号输出零点。
     // 整张量模式使用常量，逐通道模式使用参数存储的基地址。
-    input wire logic signed [31:0] multiplier_in,
-    input wire logic signed [31:0] shift_in,
-    input wire logic        [31:0] k,                  // 行数
-    input wire logic        [31:0] m,                  // 列数
-    input wire logic        [31:0] ia_reuse_num_in,    // 输出分块的行复用顺序
+    input wire logic signed [31:0] multiplier_in, // 整张量量化乘数或逐通道乘数表首地址。
+    input wire logic signed [31:0] shift_in, // 整张量量化移位量或逐通道移位表首地址。
+    input wire logic        [31:0] k, // 量化输入对应的输出矩阵行数。
+    input wire logic        [31:0] m, // 量化输入对应的输出矩阵列数。
+    input wire logic        [31:0] ia_reuse_num_in, // 输出行分块按输入复用组推进的次数。
 
     // 量化参数装载请求与许可。
-    output logic load_quant_req,
-    input  wire logic load_quant_granted,
-    output logic quant_params_valid,
+    output logic load_quant_req, // 请求取得逐通道量化参数的装载资源。
+    input  wire logic load_quant_granted, // 当前量化参数装载请求取得资源授予。
+    output logic quant_params_valid, // 当前计算所需量化参数已经准备完成。
 
     // 逐通道量化参数的 DMA 读取接口。
-    output logic                        dma_start,
-    output logic                        dma_is_write,
-    output logic                        dma_linear_read_mode,
-    output logic [REG_WIDTH-1:0]        dma_base_addr,
-    output logic [REG_WIDTH-1:0]        dma_row_stride,
-    output logic [REG_WIDTH-1:0]        dma_rows_to_read,
-    output logic [7:0]                  dma_burst_len_m1,
-    output logic                        dma_slot_id,
-    output logic                        dma_use_16bits,
-    output logic signed [REG_WIDTH-1:0] dma_lhs_zp,
-    input  wire logic [BUS_WIDTH-1:0]        dma_raw_data,
-    input  wire logic                        dma_raw_valid,
+    output logic                        dma_start, // 启动当前量化参数 DMA 读取。
+    output logic                        dma_is_write, // DMA 方向标志，本模块固定为读取。
+    output logic                        dma_linear_read_mode, // DMA 线性读取标志，本模块使用逐行读取。
+    output logic [REG_WIDTH-1:0]        dma_base_addr, // 当前乘数表或移位表的读取字节地址。
+    output logic [REG_WIDTH-1:0]        dma_row_stride, // 量化参数 DMA 相邻行起点的字节跨度。
+    output logic [REG_WIDTH-1:0]        dma_rows_to_read, // 当前量化参数 DMA 需要读取的行数。
+    output logic [7:0]                  dma_burst_len_m1, // 当前量化参数 DMA 的传输拍数减一。
+    output logic                        dma_slot_id, // 量化参数 DMA 返回的目标槽号。
+    output logic                        dma_use_16bits, // 量化参数 DMA 的十六位元素方式标志。
+    output logic signed [REG_WIDTH-1:0] dma_lhs_zp, // 量化参数 DMA 的零点输入，固定为零。
+    input  wire logic [BUS_WIDTH-1:0]        dma_raw_data, // DMA 返回的原始量化参数数据拍。
+    input  wire logic                        dma_raw_valid, // DMA 返回的量化参数数据拍有效。
 
     // 组级预留在输入首行之前完成，分时运算在整组输出后恢复接收许可。
-    input wire logic i_group_start = 1'b0,
-    input wire logic [31:0] i_group_rows = 32'd0,
-    output logic o_group_ready,
+    input wire logic i_group_start = 1'b0, // 请求预留下一组输入的量化处理容量。
+    input wire logic [31:0] i_group_rows = 32'd0, // 当前请求预留的输入行数。
+    output logic o_group_ready, // 量化器可接受下一组输入。
 
     // 深度卷积输入在数据输入级采样，输出标签随有效信号传播。
-    input wire logic i_dw_enable = 1'b0,
-    input wire logic i_dw_valid = 1'b0,
-    output logic o_dw_ready,
-    input wire logic i_dw_tag = 1'b0,
-    input wire logic signed [31:0] i_dw_accumulator[VLEN] = '{default:32'sd0},
-    input wire logic signed [31:0] i_dw_multiplier[VLEN] = '{default:32'sd0},
-    input wire logic [5:0] i_dw_right[VLEN] = '{default:6'd0},
-    input wire logic [VLEN-1:0] i_dw_mask = '0,
-    input wire logic signed [31:0] i_dw_offset = 32'sd0,
-    input wire logic signed [31:0] i_dw_minimum = -32'sd128,
-    input wire logic signed [31:0] i_dw_maximum = 32'sd127,
-    output logic o_dw_valid,
-    output logic o_dw_tag,
+    input wire logic i_dw_enable = 1'b0, // 选择共享量化器处理深度卷积请求。
+    input wire logic i_dw_valid = 1'b0, // 深度卷积量化请求有效。
+    output logic o_dw_ready, // 共享量化器可接收深度卷积请求。
+    input wire logic i_dw_tag = 1'b0, // 随深度卷积结果传播的请求标签。
+    input wire logic signed [31:0] i_dw_accumulator[VLEN] = '{default:32'sd0}, // 深度卷积各通道的有符号累加结果。
+    input wire logic signed [31:0] i_dw_multiplier[VLEN] = '{default:32'sd0}, // 深度卷积各通道的有符号量化乘数。
+    input wire logic [5:0] i_dw_right[VLEN] = '{default:6'd0}, // 深度卷积各通道乘积的右移位数。
+    input wire logic [VLEN-1:0] i_dw_mask = '0, // 深度卷积请求的有效通道掩码。
+    input wire logic signed [31:0] i_dw_offset = 32'sd0, // 深度卷积量化结果需要加上的输出零点。
+    input wire logic signed [31:0] i_dw_minimum = -32'sd128, // 深度卷积量化结果的有符号下限。
+    input wire logic signed [31:0] i_dw_maximum = 32'sd127, // 深度卷积量化结果的有符号上限。
+    output logic o_dw_valid, // 深度卷积量化结果有效。
+    output logic o_dw_tag, // 当前深度卷积结果对应的请求标签。
 
     // 数据口
-    input  wire logic               in_valid,
-    input  wire logic               in_tile_done,
-    input  wire logic signed [31:0] in_vec_s32[VLEN],
-    output logic               out_valid,
-    output logic               out_tile_done,
-    output logic signed [ 7:0] out_vec_s8[VLEN],
-    output logic signed [15:0] out_vec_s16[VLEN],
-    output logic signed [31:0] quant_multiplier_lane[VLEN],
-    output logic signed [31:0] quant_shift_lane[VLEN]
+    input  wire logic               in_valid, // 常规输入累加结果向量有效。
+    input  wire logic               in_tile_done, // 当前常规输入为分块最后一行。
+    input  wire logic signed [31:0] in_vec_s32[VLEN], // 常规输入的三十二位有符号累加结果向量。
+    output logic               out_valid, // 常规量化输出向量有效。
+    output logic               out_tile_done, // 当前常规输出为分块最后一行。
+    output logic signed [ 7:0] out_vec_s8[VLEN], // 完成激活限幅的八位有符号量化向量。
+    output logic signed [15:0] out_vec_s16[VLEN], // 完成激活限幅的十六位有符号量化向量。
+    output logic signed [31:0] quant_multiplier_lane[VLEN], // 当前各通道使用的原始量化乘数观察值。
+    output logic signed [31:0] quant_shift_lane[VLEN] // 当前各通道使用的原始量化移位参数观察值。
 );
 
   // ----------------------------
@@ -267,6 +267,7 @@ module vec_requant #(
   (* keep = 1 *) logic next_same_quant_group_cur;
   logic        cur_last_row_tile;
   logic        cur_last_col_tile;
+  logic        unused_last_col_group;
   (* keep = 1 *) logic cur_last_row_in_group;
   logic        step_row_in_group;
   logic        step_col_in_group;
@@ -278,13 +279,19 @@ module vec_requant #(
       .o_last_tile(cur_last_row_tile), .o_last_group(cur_last_row_in_group)
   );
 
+  // 列坐标分段比较后归并，末列条件只参与后续状态选择。
+  requant_group_last #(.p_tile_width(TILE_CNT_W)) u_column_last (
+      .i_row(tile_col), .i_last_row(last_col_tile), .i_mask('0),
+      .o_last_tile(cur_last_col_tile), .o_last_group(unused_last_col_group)
+  );
+
   assign reuse_group_base_row = tile_row & ~ia_reuse_mask_tile_r;
   assign row_offset_in_group = tile_row & ia_reuse_mask_tile_r;
   assign reuse_group_row_start = REG_WIDTH'(reuse_group_base_row) << VLEN_SHIFT;
   assign reuse_group_capacity = ia_reuse_num_r << VLEN_SHIFT;
   assign group_rows_subtrahend = ~reuse_group_row_start;
   // 各四位分组独立求差，组间并行产生借位，保留完整三十二位行数。
-  requant_group_difference u_group_rows_difference (
+  requant_group_difference #(.p_keep_carry(1'b0)) u_group_rows_difference (
       .i_rows(k_r), .i_inverse_start(group_rows_subtrahend),
       .o_difference(group_rows_difference), .o_carry(unused_group_rows_carry)
   );
@@ -344,7 +351,6 @@ module vec_requant #(
 
     tile_row_inc = tile_row + tile_idx_t'(1);
     tile_col_inc = tile_col + tile_idx_t'(1);
-    cur_last_col_tile = (tile_col == last_col_tile);
     step_row_in_group = !cur_last_row_in_group;
     step_col_in_group = cur_last_row_in_group && !cur_last_col_tile;
     step_next_group   = cur_last_row_in_group && cur_last_col_tile && !cur_last_row_tile;
@@ -390,7 +396,7 @@ module vec_requant #(
   logic unused_remaining_words_carry;
   assign remaining_words_inverse = ~{1'b0, load_offset};
   parallel_prefix_add #(.p_width(33), .p_preserve_groups(1'b1),
-      .p_dsp_split_width(17)) u_remaining_words (
+      .p_dsp_split_width(17), .p_keep_carry(1'b0)) u_remaining_words (
       .i_a({1'b0, quant_need_load_r}), .i_b(remaining_words_inverse), .i_carry(1'b1),
       .o_sum(remaining_words), .o_carry(unused_remaining_words_carry)
   );
@@ -1349,114 +1355,6 @@ module vec_requant #(
     end
   end
 
-endmodule
-
-// 完整定宽差值独立完成进位修正，容量选择读取已经形成的结果。
-(* keep_hierarchy = "yes" *)
-module requant_group_difference (
-    input wire logic [31:0] i_rows,
-    input wire logic [31:0] i_inverse_start,
-    output logic [31:0] o_difference,
-    output logic o_carry
-);
-    parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1),
-        .p_dsp_split_width(16)) u_add (
-        .i_a(i_rows), .i_b(i_inverse_start), .i_carry(1'b1),
-        .o_sum(o_difference), .o_carry(o_carry)
-    );
-endmodule
-
-// 复用组边界采用完整行坐标与掩码，比较结果保持原四态逻辑语义。
-(* keep_hierarchy = "yes" *)
-module requant_group_last #(
-    parameter int unsigned p_tile_width = 16
-) (
-    input wire logic [p_tile_width-1:0] i_row,
-    input wire logic [p_tile_width-1:0] i_last_row,
-    input wire logic [p_tile_width-1:0] i_mask,
-    output logic o_last_tile,
-    output logic o_last_group
-);
-    assign o_last_tile = i_row == i_last_row;
-    assign o_last_group = o_last_tile || ((i_row & i_mask) == i_mask);
-endmodule
-
-// 固定零输入进位保留在完整加法内部，组合结果不增加保存周期。
-(* keep_hierarchy = "yes" *)
-module requant_load_advance (
-    input wire logic [31:0] i_offset,
-    input wire logic [31:0] i_increment,
-    output logic [31:0] o_offset
-);
-    logic unused_carry;
-    parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1),
-        .p_dsp_split_width(16)) u_add (
-        .i_a(i_offset), .i_b(i_increment), .i_carry(1'b0),
-        .o_sum(o_offset), .o_carry(unused_carry)
-    );
-endmodule
-
-// 完整末次写入比较保留索引截断、加一回绕及全部装载上限位。
-(* keep_hierarchy = "yes" *)
-module requant_parameter_last #(
-    parameter int unsigned p_index_width = 9,
-    parameter int unsigned p_banks = 2,
-    parameter int unsigned p_word = 0
-) (
-    input wire logic [p_index_width-1:0] i_index,
-    input wire logic [31:0] i_limit,
-    output logic o_last
-);
-    wire [p_index_width-1:0] word_index = i_index + p_index_width'(p_word);
-    localparam int p_last_step = (p_banks == 2 && p_word == 1) ? 3 : p_banks;
-    localparam int p_compare_index_width = p_index_width < 32 ? p_index_width : 32;
-    localparam int p_step_width = p_last_step <= 1 ? 1 : $clog2(p_last_step+1);
-    localparam int p_last_compare_width =
-        (p_compare_index_width > p_step_width ? p_compare_index_width : p_step_width) + 1;
-    logic [p_last_compare_width-1:0] parameter_index_extended, parameter_limit_inverse;
-    logic [p_last_compare_width-1:0] parameter_compare_sum, parameter_compare_carry;
-    logic [p_last_compare_width-1:0] unused_parameter_difference;
-    logic parameter_compare_reached, parameter_limit_in_range;
-    if (p_banks == 2 && p_word == 1) begin : g_next_word
-      // 加一回绕单独判断，正常写入的末次资格直接使用加一前的索引。
-      assign parameter_index_extended = p_last_compare_width'(32'(i_index));
-    end else begin : g_current_word
-      assign parameter_index_extended = p_last_compare_width'(32'(word_index));
-    end
-    // 索引和步长的静态位宽决定可达范围，上限的其余高位独立参与判断。
-    if (p_last_compare_width < 32) begin : g_limit_high
-      assign parameter_limit_in_range = !(|i_limit[31:p_last_compare_width]);
-    end else begin : g_limit_full
-      assign parameter_limit_in_range = 1'b1;
-    end
-    assign parameter_limit_inverse = ~p_last_compare_width'(i_limit);
-    // 三操作数先保存各位进位，最高进位直接表示末次写入资格。
-    assign parameter_compare_sum = parameter_index_extended ^ parameter_limit_inverse ^
-        p_last_compare_width'(p_last_step);
-    assign parameter_compare_carry = ((parameter_index_extended & parameter_limit_inverse) |
-        ((parameter_index_extended | parameter_limit_inverse) &
-        p_last_compare_width'(p_last_step))) << 1;
-    parallel_prefix_add #(
-        .p_width(p_last_compare_width), .p_group_width(4), .p_preserve_groups(1'b1)
-    ) u_parameter_reached (
-        .i_a(parameter_compare_sum), .i_b(parameter_compare_carry), .i_carry(1'b1),
-        .o_sum(unused_parameter_difference), .o_carry(parameter_compare_reached)
-    );
-    always_comb begin
-      o_last = parameter_limit_in_range && parameter_compare_reached;
-      if (p_banks == 2 && p_word == 1) begin
-        if (&i_index[p_compare_index_width-1:0])
-          o_last = i_limit <= 32'(p_banks);
-      end
-`ifndef SYNTHESIS
-      case (^{i_index, word_index, i_limit})
-        1'b0, 1'b1: begin end
-        default: o_last =
-            ({1'b0, 32'(word_index)} + 33'(p_banks)) >=
-            {1'b0, i_limit};
-      endcase
-`endif
-    end
 endmodule
 
 `default_nettype wire

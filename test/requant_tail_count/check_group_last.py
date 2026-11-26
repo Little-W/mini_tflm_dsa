@@ -7,10 +7,11 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
-RELATIVE = "rtl/npu/writeback/vec_requant.sv"
+RELATIVE = "rtl/npu/writeback/requant_group_last.sv"
 
 
 def sha(path):
@@ -28,7 +29,10 @@ def main():
     parser.add_argument("--source-root", type=Path, default=ROOT)
     parser.add_argument("--out", type=Path, default=ROOT / "build/requant_group_last")
     args = parser.parse_args()
-    path = args.source_root.resolve() / RELATIVE
+    source_root = args.source_root.resolve()
+    path = source_root / RELATIVE
+    if not path.is_file():
+        path = source_root / "rtl/npu/writeback/vec_requant.sv"
     content = path.read_text()
     match = re.search(r"^module requant_group_last\b.*?^endmodule\b", content, re.M | re.S)
     if match is None:
@@ -37,6 +41,9 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     helper = out / "requant_group_last.sv"
     helper.write_text(match[0] + "\n")
+    resolve = runpy.run_path(str(ROOT / "scripts/rtl/source_files.py"))["with_dependencies"]
+    sources = resolve([helper], source_root)
+    hashes = {str(item): sha(item) for item in sources}
     profiles = []
     for width in (1, 4, 8, 16):
         folder = out / f"width{width}"
@@ -82,7 +89,7 @@ def main():
 endmodule
 """)
         binary = folder / "simulation"
-        execute(["iverilog", "-g2012", "-s", "tb", "-o", binary, helper, bench],
+        execute(["iverilog", "-g2012", "-s", "tb", "-o", binary, *sources, bench],
                 folder / "compile.log")
         execute(["vvp", binary], folder / "simulation.log")
         if "GROUP_LAST_PASS checks=40000" not in (folder / "simulation.log").read_text():
@@ -90,9 +97,10 @@ endmodule
         profiles.append({"tile_width": width, "passed": True,
                          "four_state_comparisons": 40000,
                          "simulation_log_sha256": sha(folder / "simulation.log")})
-    if path.read_text() != content:
+    if path.read_text() != content or hashes != {str(item): sha(item) for item in sources}:
         raise RuntimeError("验证期间源文件发生变化")
     report = {"passed": True, "source_sha256": sha(path),
+              "source_path": str(path.relative_to(source_root)), "dependencies_sha256": hashes,
               "helper_sha256": sha(helper), "random_seed": 20261125,
               "profiles": profiles, "four_state_comparisons": 160000}
     (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")

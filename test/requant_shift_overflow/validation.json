@@ -1,0 +1,236 @@
+{
+  "passed": true,
+  "reference_commit": "548bda54a2b1260b49f52829d1025778a45099cb",
+  "formal": [
+    {
+      "mode": "generic",
+      "top": "requant_shift_pipeline",
+      "delayed_parameters": 0,
+      "passed": true,
+      "all_public_outputs_compared": true,
+      "external_inputs_constrained": false,
+      "formal_flags": [
+        "-USYNTHESIS"
+      ],
+      "log_sha256": "13ba2ef8f26345ba5e812fc24fbbf261ac2da5a9c1c582e8e01c5b01d3d21712"
+    },
+    {
+      "mode": "generic",
+      "top": "requant_compute_lane",
+      "delayed_parameters": 0,
+      "passed": true,
+      "all_public_outputs_compared": true,
+      "external_inputs_constrained": false,
+      "formal_flags": [
+        "-USYNTHESIS"
+      ],
+      "log_sha256": "337c60f5c554859fbb23040bb3537cfff54044be526715eaf7c2e4f1a5564edb"
+    },
+    {
+      "mode": "generic",
+      "top": "requant_compute_lane",
+      "delayed_parameters": 1,
+      "passed": true,
+      "all_public_outputs_compared": true,
+      "external_inputs_constrained": false,
+      "formal_flags": [
+        "-USYNTHESIS"
+      ],
+      "log_sha256": "978a6da1fe540565708e572ea57705fb5ecc6bf8423ca7aff16b6d09897f2030"
+    },
+    {
+      "mode": "synthesis",
+      "top": "requant_shift_pipeline",
+      "delayed_parameters": 0,
+      "passed": true,
+      "all_public_outputs_compared": true,
+      "external_inputs_constrained": false,
+      "formal_flags": [
+        "-DSYNTHESIS=1"
+      ],
+      "log_sha256": "954ecbe5a84062b89449b1a61ee7293ba42063414a442261bf834601d7fd981a"
+    },
+    {
+      "mode": "synthesis",
+      "top": "requant_compute_lane",
+      "delayed_parameters": 0,
+      "passed": true,
+      "all_public_outputs_compared": true,
+      "external_inputs_constrained": false,
+      "formal_flags": [
+        "-DSYNTHESIS=1"
+      ],
+      "log_sha256": "923c2cdb3c19c7979693ca6f3ccb95ccfe249f82f2dd24253ccea0ad7f481c81"
+    },
+    {
+      "mode": "synthesis",
+      "top": "requant_compute_lane",
+      "delayed_parameters": 1,
+      "passed": true,
+      "all_public_outputs_compared": true,
+      "external_inputs_constrained": false,
+      "formal_flags": [
+        "-DSYNTHESIS=1"
+      ],
+      "log_sha256": "ced1626e739af199daadaf9ecbe9deeb729b30e00b73f2aa280d6bcf6b25fed9"
+    },
+    {
+      "mode": "fpga",
+      "top": "requant_shift_pipeline",
+      "delayed_parameters": 0,
+      "passed": true,
+      "all_public_outputs_compared": true,
+      "external_inputs_constrained": false,
+      "formal_flags": [
+        "-USYNTHESIS",
+        "-DXILINX_FPGA=1"
+      ],
+      "log_sha256": "3a516efc46845a1f613faed9de17fd35b82b7cf49d68f93aefe9c6e2dfc8b462"
+    },
+    {
+      "mode": "fpga",
+      "top": "requant_compute_lane",
+      "delayed_parameters": 0,
+      "passed": true,
+      "all_public_outputs_compared": true,
+      "external_inputs_constrained": false,
+      "formal_flags": [
+        "-USYNTHESIS",
+        "-DXILINX_FPGA=1"
+      ],
+      "log_sha256": "f60bd3b98025a4848bfc63a03431b55b882b7d8660720c8fddc64df12fd38c93"
+    },
+    {
+      "mode": "fpga",
+      "top": "requant_compute_lane",
+      "delayed_parameters": 1,
+      "passed": true,
+      "all_public_outputs_compared": true,
+      "external_inputs_constrained": false,
+      "formal_flags": [
+        "-USYNTHESIS",
+        "-DXILINX_FPGA=1"
+      ],
+      "log_sha256": "5c84f793252532c3ca7c73b3f04b9293077a17a4e4492c6ff9c746554d1d12e1"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "top": "requant_shift_pipeline",
+      "delayed_parameters": 0,
+      "passed": true,
+      "all_public_outputs_compared": true,
+      "external_inputs_constrained": false,
+      "formal_flags": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1"
+      ],
+      "log_sha256": "84300e55b2a921846b9a2a1efa5e77fb3b7e566e2556324fea2db070ef954944"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "top": "requant_compute_lane",
+      "delayed_parameters": 0,
+      "passed": true,
+      "all_public_outputs_compared": true,
+      "external_inputs_constrained": false,
+      "formal_flags": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1"
+      ],
+      "log_sha256": "903b51f94eb396c070a79741f5c4ec666e9a8099d41fb432eb4db569a565fcbd"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "top": "requant_compute_lane",
+      "delayed_parameters": 1,
+      "passed": true,
+      "all_public_outputs_compared": true,
+      "external_inputs_constrained": false,
+      "formal_flags": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1"
+      ],
+      "log_sha256": "0e6922c8c278b5f6a5c1bcc5a043f21e27f0e710dabaa19a68bf080b641e143c"
+    }
+  ],
+  "four_state": [
+    {
+      "mode": "generic",
+      "passed": true,
+      "comparisons": 262144,
+      "log_sha256": "6d12f70457d27e449356784b2b961778b7f55d924c81bdfbb7a09a10fa9bc753"
+    },
+    {
+      "mode": "synthesis",
+      "passed": true,
+      "comparisons": 262144,
+      "log_sha256": "6d12f70457d27e449356784b2b961778b7f55d924c81bdfbb7a09a10fa9bc753"
+    },
+    {
+      "mode": "fpga",
+      "passed": true,
+      "comparisons": 262144,
+      "log_sha256": "6d12f70457d27e449356784b2b961778b7f55d924c81bdfbb7a09a10fa9bc753"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "passed": true,
+      "comparisons": 262144,
+      "log_sha256": "6d12f70457d27e449356784b2b961778b7f55d924c81bdfbb7a09a10fa9bc753"
+    }
+  ],
+  "four_state_comparisons": 1048576,
+  "source_sha256": {
+    "rtl/npu/writeback/requant_pkg.sv": "77ec518f9076adc63ef754b6d23e0aa1d866c304cacf376da98ed9b58d5eed1f",
+    "rtl/npu/writeback/vec_requant.sv": "2cc1cb932b439797d67ba33b3719fd3a47bb7ffffd812d685a9725cd073fe5d7",
+    "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+    "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+    "rtl/npu/writeback/requant_compute_lane.sv": "0191ad315639416ad625333f0b4ee59115b218af21e354fee0f2a8c14d351455",
+    "rtl/npu/writeback/requant_group_buffer.sv": "5c4250e8e09f2b976c1c3bbec57d3831ceaf2154c994c3d9b307722bc464b7a4",
+    "rtl/npu/writeback/requant_group_difference.sv": "e9bbd127ed9f0dd3f6584b3b85cfaaeaf4e30818155e342059f94f4d7532f3b3",
+    "rtl/npu/writeback/requant_group_last.sv": "e5fc5d72de98dd84e4dc69577d7063d4028b2c1e87f7fff3baf4883cde1cfc10",
+    "rtl/npu/writeback/requant_load_advance.sv": "45e343d568eb8c11d068a489a13e32d758d3d11f81c74fb966d57afbd9194e5c",
+    "rtl/npu/writeback/requant_parameter_last.sv": "d4fcf2bf1c4120a9ee2f83348fbdb6fe762f93627305a89401885e1b5c9c73b1",
+    "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+    "rtl/npu/conv/registered_multiplier_s32.sv": "3de17088b04b4071c2d948cf1e29389b586a0f63e4b71954f46c6bd87328ac70",
+    "rtl/npu/writeback/requant_round_add.sv": "6c12c38307b67f2dab38a044c952eefadb42466c646afc7f31b2fa40f699d584",
+    "rtl/npu/writeback/requant_shift_pipeline.sv": "d32be3d03c012fc5d477e6b3be5eb0b16b292c5d5f4c40564cc35bd11802e979",
+    "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+    "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+    "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+  },
+  "test_sha256": "6470aae0d42a4708a5b7ffa5d5a0eaf4f7512b09c3d079bf08b84ae58bc51216",
+  "production_composition": {
+    "passed": true,
+    "method": "complete_lane_interface_equivalence",
+    "all_parent_and_other_dependency_sources_unchanged": true,
+    "unchanged_dependency_sha256": {
+      "rtl/npu/writeback/requant_pkg.sv": "77ec518f9076adc63ef754b6d23e0aa1d866c304cacf376da98ed9b58d5eed1f",
+      "rtl/npu/writeback/vec_requant.sv": "2cc1cb932b439797d67ba33b3719fd3a47bb7ffffd812d685a9725cd073fe5d7",
+      "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+      "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+      "rtl/npu/writeback/requant_compute_lane.sv": "0191ad315639416ad625333f0b4ee59115b218af21e354fee0f2a8c14d351455",
+      "rtl/npu/writeback/requant_group_buffer.sv": "5c4250e8e09f2b976c1c3bbec57d3831ceaf2154c994c3d9b307722bc464b7a4",
+      "rtl/npu/writeback/requant_group_difference.sv": "e9bbd127ed9f0dd3f6584b3b85cfaaeaf4e30818155e342059f94f4d7532f3b3",
+      "rtl/npu/writeback/requant_group_last.sv": "e5fc5d72de98dd84e4dc69577d7063d4028b2c1e87f7fff3baf4883cde1cfc10",
+      "rtl/npu/writeback/requant_load_advance.sv": "45e343d568eb8c11d068a489a13e32d758d3d11f81c74fb966d57afbd9194e5c",
+      "rtl/npu/writeback/requant_parameter_last.sv": "d4fcf2bf1c4120a9ee2f83348fbdb6fe762f93627305a89401885e1b5c9c73b1",
+      "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+      "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+      "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+      "rtl/npu/conv/registered_multiplier_s32.sv": "3de17088b04b4071c2d948cf1e29389b586a0f63e4b71954f46c6bd87328ac70",
+      "rtl/npu/writeback/requant_round_add.sv": "6c12c38307b67f2dab38a044c952eefadb42466c646afc7f31b2fa40f699d584",
+      "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+      "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+      "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+    },
+    "delayed_parameters_proven": [
+      0,
+      1
+    ],
+    "all_external_inputs_unconstrained": true,
+    "all_public_cycle_behaviors_preserved": true
+  }
+}

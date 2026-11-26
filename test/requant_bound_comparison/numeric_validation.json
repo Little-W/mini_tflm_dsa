@@ -1,0 +1,102 @@
+{
+  "passed": true,
+  "latency_enabled_edges": 7,
+  "source_sha256": {
+    "rtl/npu/writeback/requant_pkg.sv": "77ec518f9076adc63ef754b6d23e0aa1d866c304cacf376da98ed9b58d5eed1f",
+    "rtl/npu/writeback/requant_shift_pipeline.sv": "a667dce15a23081783a6f76c65dc02554271dcfcc20f01729dccac11f4f059d6",
+    "rtl/npu/writeback/requant_compute_lane.sv": "0191ad315639416ad625333f0b4ee59115b218af21e354fee0f2a8c14d351455",
+    "rtl/npu/writeback/requant_round_add.sv": "6c12c38307b67f2dab38a044c952eefadb42466c646afc7f31b2fa40f699d584",
+    "rtl/npu/conv/registered_multiplier_s32.sv": "3de17088b04b4071c2d948cf1e29389b586a0f63e4b71954f46c6bd87328ac70",
+    "rtl/common/parallel_prefix_add.sv": "556a1e5163a7bb2da066d7cfc243b0a9406cce2c5f7e3b3d43f4c6d3b557e490",
+    "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+    "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+    "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+  },
+  "test_sha256": {
+    "test_top.sv": "6f024e901752d935682d8fcbc35b5322ef493c90e0a165ab22b1699621634083",
+    "main.cpp": "6dc564ca27d1180707c5ee01f64a1de02eeab376f31e7046e8f0f6e2c98f938c",
+    "run.py": "1c373c1ed338e203111477c419db88f45c64fb1da58981ff8f5203e2bd7d8ec8"
+  },
+  "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+  "cases": {
+    "generic_delayed0": {
+      "passed": true,
+      "variant": "generic",
+      "delayed_parameters": 0,
+      "checks": {
+        "cycles": 1057912,
+        "outputs": 850859,
+        "directed": 524288,
+        "random": 524288,
+        "holds": 73578,
+        "clears": 3129,
+        "resets": 468,
+        "disabled_lanes": 42431,
+        "clear_during_hold": 787,
+        "latency": 7
+      },
+      "executable_sha256": "b0d677146d5039d097f4c6abf157c2dbd97b5e97e67b45e3a5580e18fcb1d5e4",
+      "log_sha256": "3c5e8b7e572f99f9df0cd9d5844af05d85d30794a46cb9969c653289acf41a14"
+    },
+    "generic_delayed1": {
+      "passed": true,
+      "variant": "generic",
+      "delayed_parameters": 1,
+      "checks": {
+        "cycles": 1057912,
+        "outputs": 850859,
+        "directed": 524288,
+        "random": 524288,
+        "holds": 73578,
+        "clears": 3129,
+        "resets": 468,
+        "disabled_lanes": 42431,
+        "clear_during_hold": 787,
+        "latency": 7
+      },
+      "executable_sha256": "97d72878c1f08fd8ddef6ce6e32e3d9aac8a82e5c4546df703efb146f855a525",
+      "log_sha256": "3c5e8b7e572f99f9df0cd9d5844af05d85d30794a46cb9969c653289acf41a14"
+    },
+    "fpga_delayed0": {
+      "passed": true,
+      "variant": "fpga",
+      "delayed_parameters": 0,
+      "checks": {
+        "cycles": 1057912,
+        "outputs": 850859,
+        "directed": 524288,
+        "random": 524288,
+        "holds": 73578,
+        "clears": 3129,
+        "resets": 468,
+        "disabled_lanes": 42431,
+        "clear_during_hold": 787,
+        "latency": 7
+      },
+      "executable_sha256": "4b4b73d1e234c670ff8ee0a7be4ab2e3cdd393622d889917d2997c0885f87ad8",
+      "log_sha256": "3c5e8b7e572f99f9df0cd9d5844af05d85d30794a46cb9969c653289acf41a14"
+    },
+    "fpga_delayed1": {
+      "passed": true,
+      "variant": "fpga",
+      "delayed_parameters": 1,
+      "checks": {
+        "cycles": 1057912,
+        "outputs": 850859,
+        "directed": 524288,
+        "random": 524288,
+        "holds": 73578,
+        "clears": 3129,
+        "resets": 468,
+        "disabled_lanes": 42431,
+        "clear_during_hold": 787,
+        "latency": 7
+      },
+      "executable_sha256": "c4ded357a54b005a82caffb34298c2678e0a295a81063f3fff1ce2eb33315f6d",
+      "log_sha256": "3c5e8b7e572f99f9df0cd9d5844af05d85d30794a46cb9969c653289acf41a14"
+    }
+  }
+}

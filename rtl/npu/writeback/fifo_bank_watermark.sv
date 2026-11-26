@@ -1,25 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-module fifo_bank_watermark #(
+/* 根据结果存储体占用和预留数量计算是否可以接收下一计算组。 */ module fifo_bank_watermark #(
     parameter int p_banks = 16,
     parameter int p_count_width = (p_banks <= 1) ? 1 : $clog2(p_banks + 1),
     parameter bit p_precomputed_threshold = 1'b0
 ) (
-    input  wire logic [31:0] i_reserve,
-    input  wire logic [p_count_width-1:0] i_ready_banks,
-    input  wire logic i_partial_write,
-    input  wire logic [p_count_width-1:0] i_ready_threshold,
-    output logic o_full
+    input  wire logic [31:0] i_reserve /* 下一计算组需要预留的结果存储体数 */,
+    input  wire logic [p_count_width-1:0] i_ready_banks /* 当前已完成写入的结果存储体数 */,
+    input  wire logic i_partial_write /* 当前另有一个未完成写入的结果存储体 */,
+    input  wire logic [p_count_width-1:0] i_ready_threshold /* 预先计算的已完成存储体数量限制 */,
+    output logic o_full /* 当前结果存储余量不足以满足预留需求 */
 );
     if (p_precomputed_threshold) begin : g_precomputed_threshold
-        logic count_overflow, ready_above, ready_at;
-
-        // 配置阶段已经保存可用银行阈值，运行期间只比较完整占用数量。
-        assign count_overflow = i_partial_write && (&i_ready_banks);
-        assign ready_above = i_ready_banks > i_ready_threshold;
-        assign ready_at = i_ready_banks == i_ready_threshold;
-        assign o_full = !count_overflow && (ready_above || (i_partial_write && ready_at));
+        // 配置阶段保存容量阈值，运行期间并行比较计数片段并归并部分写入条件。
+        fifo_ready_threshold #(.p_width(p_count_width)) u_threshold (
+            .i_ready(i_ready_banks), .i_threshold(i_ready_threshold),
+            .i_partial(i_partial_write), .o_full(o_full)
+        );
     end else if (p_banks > 0 && p_count_width >= $clog2(p_banks+1)) begin : g_parallel_compare
         localparam int p_sum_width = p_count_width + 1;
         localparam logic [p_sum_width-1:0] p_negative_capacity = ~p_sum_width'(p_banks);

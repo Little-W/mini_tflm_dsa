@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import shlex
 import subprocess
 import sys
@@ -30,7 +31,7 @@ def main():
     parser.add_argument("--out", type=Path, default=ROOT / "build/requant_word_index")
     parser.add_argument("--source-root", type=Path, default=ROOT)
     parser.add_argument("--reference-root", type=Path)
-    parser.add_argument("--reference", default="5adaa4c9")
+    parser.add_argument("--reference", default="584233d8564344715d90936ba25afbabef03b897")
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -51,10 +52,13 @@ def main():
     if controller(content) != controller(reference):
         raise RuntimeError("参数装载控制的状态转移或更新条件发生变化")
     # 完整生产辅助模块直接参与证明，参考表达式独立定义索引截断顺序。
-    match = re.search(r"^module requant_parameter_last\b.*?^endmodule", content, re.M | re.S)
+    helper_path = args.source_root.resolve() / "rtl/npu/writeback/requant_parameter_last.sv"
+    helper_content = helper_path.read_text() if helper_path.is_file() else content
+    match = re.search(r"^module requant_parameter_last\b.*?^endmodule", helper_content, re.M | re.S)
     if match is None:
         raise RuntimeError("缺少完整参数末次写入比较模块")
     helper = match[0]
+    resolve = runpy.run_path(str(ROOT / "scripts/rtl/source_files.py"))["with_dependencies"]
     reports = []
     profiles = [(1,1,0),(1,2,0),(1,2,1),(3,3,0),(3,3,1),(3,3,2),
                 (8,2,0),(8,2,1),(9,2,0),(9,2,1),(16,8,0),(16,8,7),(31,2,0),(31,2,1),
@@ -79,8 +83,8 @@ endmodule
 {helper}
 """)
         script = folder / "proof.ys"
-        common = args.source_root.resolve() / "rtl/common/parallel_prefix_add.sv"
-        script.write_text("read_slang --top last_parameter -DSYNTHESIS=1 " + shlex.join([str(source),str(common)]) + "\n"
+        sources = resolve([source], args.source_root.resolve())
+        script.write_text("read_slang --top last_parameter -DSYNTHESIS=1 " + shlex.join(list(map(str, sources))) + "\n"
                           "prep -top last_parameter -flatten\n"
                           "sat -verify -prove equal 1 -show-inputs -show-outputs\n")
         execute([sys.executable, ROOT / "scripts/fpga/open_fpga_synth.py", "--worker", script],
@@ -131,7 +135,7 @@ endmodule
 endmodule
 """)
         binary = folder / "simulation"
-        execute(["iverilog", "-g2012", "-s", "tb", "-o", binary, source, common, bench], folder / "compile.log")
+        execute(["iverilog", "-g2012", "-s", "tb", "-o", binary, *sources, bench], folder / "compile.log")
         execute(["vvp", binary], folder / "simulation.log")
         if "LAST_PARAMETER_PASS checks=30000" not in (folder / "simulation.log").read_text():
             raise RuntimeError("参数末次写入资格的四态检查未完成")
@@ -143,7 +147,7 @@ endmodule
         raise RuntimeError("检查期间生产源码发生变化")
     result = dict(passed=True, source_sha256=digest(path), reference=reference_identifier,
                   reference_source_sha256=hashlib.sha256(reference.encode()).hexdigest(),
-                  helper_sha256=digest(common),
+                  helper_sha256=hashlib.sha256(helper_content.encode()).hexdigest(),
                   control_updates_unchanged=True, input_assumptions=[], random_seed=20261125, profiles=reports,
                   four_state_comparisons=sum(row["four_state_comparisons"] for row in reports))
     (out / "summary.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")

@@ -52,7 +52,9 @@ python test/capacity/check_elaboration.py --config config/npu_fpga.mk --verilato
 
 `run_npu.py` 复用已有生产仿真程序，执行 15 个连续任务。任务包含 WS/IS 两种合并输出、组尾、WS/IS 帧式输出、INT16 输出、写响应错误、读响应错误、无效复用配置和各自恢复任务。所有非帧式任务明确检查 `frame_commands=0`，两项帧式任务检查帧命令实际执行。
 
-案例期望值已使用 `b8b34d5` 的生产 FPGA 仿真程序验证，15 项通过，共检查 11,392 个 INT32 累加值。带有新观察器的仿真程序还要求合并输出、帧式输出、WS 与 IS 合并输出、双向模式切换和错误恢复的计数均大于零。
+任务根据仿真程序 `build.json` 中的 `IA_COMPACT_ENABLE` 选择输入存储块数量。WS 使用左操作数格式，IS 使用 INT8 权重格式；紧凑格式需要至少一个输入存储块，非紧凑格式需要至少两个。案例明确要求的存储块数量继续保留。当前生产配置包含七个 8,192 字节共享存储块，关闭紧凑格式，因此各任务分配两个输入存储块和五个部分和存储块。
+
+`1d2f7f6a` RTL 的 FPGA 与 ASIC 仿真程序均通过 15 项任务，各检查 11,392 个 INT32 累加值，任务周期合计为 51,371。观察器记录 9,181 个合并输出周期、1,804 个帧式输出周期、六次 WS 转 IS、四次 IS 转 WS 和三次错误恢复。全部任务的数值比较、命令模式和观察器计数检查均通过。结果和源文件校验值保存在 `test/ps_compression/input_configuration_validation.json`。
 
 ```sh
 python test/writeback_cyclic/run_npu.py --out build/fifo_npu_modes --sim build/fpga_integration/npu/s16

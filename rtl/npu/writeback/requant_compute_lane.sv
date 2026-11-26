@@ -6,22 +6,22 @@ module requant_compute_lane #(
     // 同步参数存储在数据接收后的下一个边沿提供乘数和移位量。
     parameter bit p_delayed_parameters = 1'b0
 ) (
-    input  wire logic clk,
-    input  wire logic rst_n,
-    input  wire logic i_en,
-    input  wire logic i_clear,
-    input  wire logic i_valid,
-    input  wire logic i_lane_enable,
-    input  wire logic signed [31:0] i_value,
-    input  wire logic signed [31:0] i_multiplier,
-    input  wire logic [6:0] i_amount,
-    input  wire logic i_s16,
-    input  wire logic signed [31:0] i_dst_offset,
-    input  wire logic signed [31:0] i_activation_min,
-    input  wire logic signed [31:0] i_activation_max,
-    output logic o_valid,
-    output logic signed [7:0] o_s8,
-    output logic signed [15:0] o_s16
+    input  wire logic clk /* 工作时钟 */,
+    input  wire logic rst_n /* 低有效复位 */,
+    input  wire logic i_en /* 推进本通道的量化流水寄存器 */,
+    input  wire logic i_clear /* 清除当前量化流水的有效状态 */,
+    input  wire logic i_valid /* 当前待量化累加结果有效 */,
+    input  wire logic i_lane_enable /* 当前通道参与本次量化运算 */,
+    input  wire logic signed [31:0] i_value /* 待重新量化的有符号32 位累加值 */,
+    input  wire logic signed [31:0] i_multiplier /* 本次量化使用的有符号乘数 */,
+    input  wire logic [6:0] i_amount /* 乘积的总算术右移位数 */,
+    input  wire logic i_s16 /* 当前结果选择16 位输出格式 */,
+    input  wire logic signed [31:0] i_dst_offset /* 舍入后加入的输出零点偏移 */,
+    input  wire logic signed [31:0] i_activation_min /* 当前输出激活的最小允许值 */,
+    input  wire logic signed [31:0] i_activation_max /* 当前输出激活的最大允许值 */,
+    output logic o_valid /* 当前量化流水输出有效 */,
+    output logic signed [7:0] o_s8 /* 裁剪后的8 位有符号量化结果 */,
+    output logic signed [15:0] o_s16 /* 裁剪后的16 位有符号量化结果 */
 );
     //! 0. 算术与流水信号
     //! ------------------
@@ -94,7 +94,7 @@ module requant_compute_lane #(
     //! 3. 裁剪输出并传递有效位
     //! ------------------------
 
-    // 各字节独立比较，高位相等时再采用低位关系。
+    // 已知输入按符号翻转后的无符号次序比较；未知输入按字节关系传播。
     for (genvar bound = 0; bound < 2; bound++) begin : g_bound
         logic [34:0] lhs, rhs;
         logic [4:0] equal_group, greater_group, greater_selected;
@@ -116,7 +116,19 @@ module requant_compute_lane #(
                 assign greater_selected[group] = greater_group[group] && (&equal_group[4:group+1]);
             end
         end
-        assign bound_less[bound] = !((|greater_selected) || (&equal_group));
+        logic reference_less, inferred_less, unused_equal;
+        assign reference_less = !((|greater_selected) || (&equal_group));
+        // 翻转最高符号位后保持完整三十五位次序，FPGA 可推断两段减法。
+        unsigned_compare #(.p_width(35)) u_signed_compare (
+            .i_a({~lhs[34], lhs[33:0]}), .i_b({~rhs[34], rhs[33:0]}),
+            .o_less(inferred_less), .o_equal(unused_equal)
+        );
+        always_comb begin
+            case (^{lhs, rhs})
+                1'b0, 1'b1: bound_less[bound] = inferred_less;
+                default: bound_less[bound] = reference_less;
+            endcase
+        end
     end
 
     // 有效位与尾列掩码随算术共同暂停，初始化清空整条流水。
