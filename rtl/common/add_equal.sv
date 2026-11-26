@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-// 比较定宽模加结果，各位并行检查相邻输入位的进位一致性。
+// 检查定宽两操作数与输入进位的模加结果是否等于目标值。
 module add_equal #(
     parameter int unsigned p_width = 32,
-    parameter bit p_preserve_bits = 1'b0
+    parameter bit p_preserve_bits = 1'b0,
+    parameter bit p_keep_bits = p_preserve_bits // 是否保留各位比较结果，结构选择保持独立。
 ) (
-    input  wire logic [p_width-1:0] i_a,
-    input  wire logic [p_width-1:0] i_b,
-    input  wire logic [p_width-1:0] i_target,
-    input  wire logic               i_carry_in,
-    output logic                   o_equal
+    input  wire logic [p_width-1:0] i_a, // 第一个定宽操作数
+    input  wire logic [p_width-1:0] i_b, // 第二个定宽操作数
+    input  wire logic [p_width-1:0] i_target, // 需要比较的目标值
+    input  wire logic               i_carry_in, // 最低位输入进位
+    output logic                   o_equal // 定宽运算结果与目标值相等
 );
-    (* keep = p_preserve_bits *) logic [p_width-1:0] bit_equal;
+    (* keep = p_keep_bits *) logic [p_width-1:0] bit_equal;
 
     if (p_preserve_bits) begin : g_parallel_bits
         localparam int unsigned p_groups = (p_width+5)/6;
@@ -54,32 +55,6 @@ module add_equal #(
         end
         assign o_equal = &bit_equal;
     end
-endmodule
-
-// 每位比较只读取相邻两位，完整归并在上层并行执行。
-module add_equal_bit #(
-    parameter bit p_first = 1'b0
-) (
-    input wire logic [1:0] i_a,
-    input wire logic [1:0] i_b,
-    input wire logic [1:0] i_target,
-    input wire logic i_carry_in,
-    output logic o_equal
-);
-    logic required_carry;
-    assign required_carry = p_first ? i_carry_in :
-        (i_a[0] & i_b[0]) | ((i_a[0] | i_b[0]) & ~i_target[0]);
-    assign o_equal = ~(i_a[1] ^ i_b[1] ^ i_target[1] ^ required_carry);
-endmodule
-
-// 分组比较结果各自归并，宽操作数的最终检查保留平衡的组合层次。
-module add_equal_reduce #(
-    parameter int unsigned p_width = 6
-) (
-    input wire logic [p_width-1:0] i_equal,
-    output logic o_equal
-);
-    assign o_equal = &i_equal;
 endmodule
 
 `default_nettype wire

@@ -1,25 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-// 三个候选位分别受选择位控制，并行归并为一个输出位。
-module onehot_mux_group #(
-    parameter int unsigned p_count = 3
-) (
-    input  wire logic [p_count-1:0] i_select,
-    input  wire logic [p_count-1:0] i_data,
-    output logic o_data
-);
-    assign o_data = |(i_select & i_data);
-endmodule
-
-// 分组计算独热选择，每组结果完成后统一归并。
+// 按各选择位屏蔽候选数据，并分组归并所有候选位。
 module onehot_mux #(
     parameter int unsigned p_choices = 8,
     parameter int unsigned p_width = 1
 ) (
-    input  wire logic [p_choices-1:0] i_select,
-    input  wire logic [p_choices-1:0][p_width-1:0] i_data,
-    output logic [p_width-1:0] o_data
+    input  wire logic [p_choices-1:0] i_select, // 候选数据选择条件
+    input  wire logic [p_choices-1:0][p_width-1:0] i_data, // 各候选数据
+    output logic [p_width-1:0] o_data // 选择后的输出数据
 );
     localparam int unsigned p_groups = (p_choices+2)/3;
     for (genvar bit_index = 0; bit_index < p_width; bit_index++) begin : g_bit

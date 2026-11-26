@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import runpy
 import subprocess
 import sys
 
@@ -39,10 +40,13 @@ def main():
     reference = subprocess.check_output(["git", "show", f"{revision}:{SOURCE}"],
                                         cwd=ROOT, text=True)
     reference_path = out / "reference.sv"
-    reference_path.write_text(re.sub(r"\b(parallel_prefix_add|parallel_prefix_native_sums)\b",
+    reference_modules = re.findall(r'^module\s+(\w+)\b', reference, re.M)
+    reference_path.write_text(re.sub(r"\b(" + '|'.join(reference_modules) + r")\b",
                                      r"reference_\1", reference))
     current_path = out / "current.sv"
-    current_path.write_bytes((ROOT / SOURCE).read_bytes())
+    resolve = runpy.run_path(str(ROOT / 'scripts/rtl/source_files.py'))['with_dependencies']
+    current_sources = resolve([ROOT / SOURCE], ROOT)
+    current_path.write_bytes(b'\n'.join(path.read_bytes() for path in current_sources))
     configurations = [(16 + high, 16) for high in range(1, 24)]
     configurations += [(2, 1), (24, 1), (24, 23), (46, 23), (1, 0),
                        (32, 0), (32, 32), (47, 23), (64, 32)]
@@ -113,6 +117,8 @@ def main():
                                complete_result_comparisons=samples*len(profiles),
                                log_sha256=digest(result_log)))
     report = dict(passed=True, reference_commit=revision,
+                  dependency_sha256={str(path.relative_to(ROOT)): digest(path)
+                                     for path in current_sources},
                   source_sha256={"current": digest(current_path), "reference":
                                  hashlib.sha256(reference.encode()).hexdigest()},
                   profiles=profiles, unconstrained_arithmetic_proof=proof,

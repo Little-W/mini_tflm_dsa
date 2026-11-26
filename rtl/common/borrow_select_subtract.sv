@@ -6,9 +6,9 @@ module borrow_select_subtract #(
     parameter int unsigned p_width = 5,
     parameter int unsigned p_group_width = 3
 ) (
-    input  wire logic [p_width-1:0] i_a,
-    input  wire logic [p_width-1:0] i_b,
-    output logic [p_width:0] o_difference
+    input  wire logic [p_width-1:0] i_a /* 第一输入操作数。 */,
+    input  wire logic [p_width-1:0] i_b /* 第二输入操作数。 */,
+    output logic [p_width:0] o_difference /* 第一操作数减去第二操作数的定宽结果。 */
 );
     localparam int unsigned p_groups = (p_width+p_group_width-1)/p_group_width;
     logic [p_groups:0] borrow;

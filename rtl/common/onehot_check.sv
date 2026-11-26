@@ -5,8 +5,8 @@ module onehot_check #(
     parameter int p_width = 32,
     parameter bit p_allow_zero = 1'b0
 ) (
-    input  wire logic [p_width-1:0] i_value,
-    output logic o_valid
+    input  wire logic [p_width-1:0] i_value /* 待检查的位向量。 */,
+    output logic o_valid /* 独热条件成立，参数可允许全零。 */
 );
     //! 0. 分组尺寸与状态
     //! -----------------

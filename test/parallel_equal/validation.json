@@ -1,0 +1,67 @@
+{
+  "passed": true,
+  "source_sha256": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d",
+  "formal": [
+    {
+      "width": 1,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "157ccb14b1c0e11dea32e28da43dd4666dfb7119f6b06f6a128ed4e0d5e29a24"
+    },
+    {
+      "width": 2,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "a8e31aa30dd89e6ba3cde5dc7e51eadab057e512a9cb45dafcd772f1646123da"
+    },
+    {
+      "width": 3,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "fb91c297a5882d20ed298af615fe3feb2cf3f9a7ccfd661441114a5bb0ffcc0c"
+    },
+    {
+      "width": 4,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "03cddfcc6f08b73e550a61b8e92bebf28b0e4dfa11dad20adc59e17016d5e0d6"
+    },
+    {
+      "width": 16,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "fa37c236c6586f6eab39a4a5a1ac056c8db1a703e6da53a32e93d3423fc2bab1"
+    },
+    {
+      "width": 31,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "589fb6c13c17025d7b110d5e87f3182f780ecb78ffcf19f4252ed94a7c3cb8db"
+    },
+    {
+      "width": 32,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "a58fcc420c7a98dac3f0873886cb0622a3291807e49ff04aa6f6219b4eb1232f"
+    },
+    {
+      "width": 64,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "297b9e14490b30cf0a27184b1a788c82732ad2bfaf7668803afc1b5ce0390c81"
+    },
+    {
+      "width": 128,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "17b38a2ae4d6aac95f0c26c21464388038438a7de27c7dd821f81189ac59d609"
+    }
+  ],
+  "four_state_comparisons": 589824,
+  "parent": {
+    "reference": "c42f5ff9",
+    "source_sha256": "887bc666542eeb4d9241eeb3b7dbd97efaa3141cf7fd0eed335e1459006d70ea",
+    "remaining_functional_tokens_identical": true,
+    "complete_coordinates_and_enable_inputs_verified": true
+  }
+}

@@ -6,14 +6,14 @@ module pseudo_dual_port_ram #(
     parameter DATA_WIDTH = 8,
     parameter ADDR_WIDTH = 6
 ) (
-    input  wire logic clk,
-    input  wire logic ena,
-    input  wire logic enb,
-    input  wire logic wea,
-    input  wire logic [ADDR_WIDTH-1:0] addra,
-    input  wire logic [DATA_WIDTH-1:0] dia,
-    input  wire logic [ADDR_WIDTH-1:0] addrb,
-    output logic [DATA_WIDTH-1:0] dob
+    input  wire logic clk /* 模块工作时钟。 */,
+    input  wire logic ena /* A 端口访问使能。 */,
+    input  wire logic enb /* B 端口访问使能。 */,
+    input  wire logic wea /* A 端口写入使能。 */,
+    input  wire logic [ADDR_WIDTH-1:0] addra /* A 端口写入元素地址。 */,
+    input  wire logic [DATA_WIDTH-1:0] dia /* A 端口写入数据。 */,
+    input  wire logic [ADDR_WIDTH-1:0] addrb /* B 端口读取元素地址。 */,
+    output logic [DATA_WIDTH-1:0] dob /* B 端口同步读取数据。 */
 );
     logic storage_i_wr_en;
     logic [ADDR_WIDTH-1:0] storage_i_wr_addr, storage_i_rd_addr;

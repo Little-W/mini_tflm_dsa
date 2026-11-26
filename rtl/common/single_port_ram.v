@@ -1,4 +1,4 @@
-module single_port_ram #(
+/* 单端口同步读写存储器，写入时返回写入前的数据，访问禁止时保持输出。 */ module single_port_ram #(
     parameter DATA_WIDTH = 8,    // 数据宽度
     parameter ADDR_WIDTH = 6     // 地址宽度
 )(
@@ -17,7 +17,7 @@ module single_port_ram #(
             if (we) begin
                 ram[addr] <= di; // 写操作
             end
-            dout <= ram[addr];  // 读操作（修改：无论读写都更新输出）
+            dout <= ram[addr];  // 当前边沿返回写入前的存储值。
         end
     end
 

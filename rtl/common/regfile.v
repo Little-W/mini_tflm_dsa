@@ -15,14 +15,14 @@ module regfile #(
     parameter bit p_no_change_collision = 1'b0,
     parameter bit p_asic_force_sram = 1'b0
 ) (
-    input  wire logic clk,
-    input  wire logic i_wr_en,
-    input  wire logic [p_addr_width-1:0] i_wr_addr,
-    input  wire logic [p_data_width-1:0] i_wr_data,
-    input  wire logic [p_data_width/p_write_unit-1:0] i_wr_mask,
-    input  wire logic [p_read_ports-1:0] i_rd_en,
-    input  wire logic [p_read_ports-1:0][p_addr_width-1:0] i_rd_addr,
-    output logic [p_read_ports-1:0][p_data_width-1:0] o_rd_data
+    input  wire logic clk /* 模块工作时钟。 */,
+    input  wire logic i_wr_en /* 写端口访问使能。 */,
+    input  wire logic [p_addr_width-1:0] i_wr_addr /* 写入元素地址。 */,
+    input  wire logic [p_data_width-1:0] i_wr_data /* 待写入的数据。 */,
+    input  wire logic [p_data_width/p_write_unit-1:0] i_wr_mask /* 逐写入分段的使能掩码。 */,
+    input  wire logic [p_read_ports-1:0] i_rd_en /* 各读端口的访问使能。 */,
+    input  wire logic [p_read_ports-1:0][p_addr_width-1:0] i_rd_addr /* 各读端口的元素地址。 */,
+    output logic [p_read_ports-1:0][p_data_width-1:0] o_rd_data /* 各读端口返回的数据。 */
 );
 
     //! 0. 常量与内部信号

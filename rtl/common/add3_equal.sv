@@ -4,11 +4,11 @@
 module add3_equal #(
     parameter int unsigned p_width = 32
 ) (
-    input  wire logic [p_width-1:0] i_a,
-    input  wire logic [p_width-1:0] i_b,
-    input  wire logic [p_width-1:0] i_c,
-    input  wire logic [p_width-1:0] i_target,
-    output logic o_equal
+    input  wire logic [p_width-1:0] i_a /* 第一输入操作数。 */,
+    input  wire logic [p_width-1:0] i_b /* 第二输入操作数。 */,
+    input  wire logic [p_width-1:0] i_c /* 第三输入操作数。 */,
+    input  wire logic [p_width-1:0] i_target /* 待比较的目标值。 */,
+    output logic o_equal /* 三个操作数的定宽和等于目标值。 */
 );
   logic [p_width-1:0] sum_equal_i_a;
   logic [p_width-1:0] sum_equal_i_b;

@@ -1,0 +1,589 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+    "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+    "verification_script": "cc07d66cb5cbdabb437bcbf5e5728601ea0faaae69217c4f9d5acfbcaeb45075"
+  },
+  "random_seed": 20261125,
+  "inputs_constrained": false,
+  "cases": [
+    {
+      "mode": "generic",
+      "width": 1,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 2850,
+      "four_state_output_comparisons": 5700,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 2,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 2882,
+      "four_state_output_comparisons": 5764,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 7,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3042,
+      "four_state_output_comparisons": 6084,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 16,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3330,
+      "four_state_output_comparisons": 6660,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 23,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3554,
+      "four_state_output_comparisons": 7108,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 24,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3586,
+      "four_state_output_comparisons": 7172,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 25,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3618,
+      "four_state_output_comparisons": 7236,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 27,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3682,
+      "four_state_output_comparisons": 7364,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 28,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3714,
+      "four_state_output_comparisons": 7428,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 31,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3810,
+      "four_state_output_comparisons": 7620,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 32,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3842,
+      "four_state_output_comparisons": 7684,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 33,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3874,
+      "four_state_output_comparisons": 7748,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 40,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 4098,
+      "four_state_output_comparisons": 8196,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 46,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 4290,
+      "four_state_output_comparisons": 8580,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 47,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 4322,
+      "four_state_output_comparisons": 8644,
+      "passed": true
+    },
+    {
+      "mode": "generic",
+      "width": 64,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 4866,
+      "four_state_output_comparisons": 9732,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 1,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 2850,
+      "four_state_output_comparisons": 5700,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 2,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 2882,
+      "four_state_output_comparisons": 5764,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 7,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3042,
+      "four_state_output_comparisons": 6084,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 16,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3330,
+      "four_state_output_comparisons": 6660,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 23,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3554,
+      "four_state_output_comparisons": 7108,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 24,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3586,
+      "four_state_output_comparisons": 7172,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 25,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3618,
+      "four_state_output_comparisons": 7236,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 27,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3682,
+      "four_state_output_comparisons": 7364,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 28,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3714,
+      "four_state_output_comparisons": 7428,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 31,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3810,
+      "four_state_output_comparisons": 7620,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 32,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3842,
+      "four_state_output_comparisons": 7684,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 33,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3874,
+      "four_state_output_comparisons": 7748,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 40,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 4098,
+      "four_state_output_comparisons": 8196,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 46,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 4290,
+      "four_state_output_comparisons": 8580,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 47,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 4322,
+      "four_state_output_comparisons": 8644,
+      "passed": true
+    },
+    {
+      "mode": "fpga",
+      "width": 64,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 4866,
+      "four_state_output_comparisons": 9732,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 1,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 2850,
+      "four_state_output_comparisons": 5700,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 2,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 2882,
+      "four_state_output_comparisons": 5764,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 7,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3042,
+      "four_state_output_comparisons": 6084,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 16,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3330,
+      "four_state_output_comparisons": 6660,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 23,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3554,
+      "four_state_output_comparisons": 7108,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 24,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3586,
+      "four_state_output_comparisons": 7172,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 25,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3618,
+      "four_state_output_comparisons": 7236,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 27,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3682,
+      "four_state_output_comparisons": 7364,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 28,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3714,
+      "four_state_output_comparisons": 7428,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 31,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3810,
+      "four_state_output_comparisons": 7620,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 32,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3842,
+      "four_state_output_comparisons": 7684,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 33,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 3874,
+      "four_state_output_comparisons": 7748,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 40,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 4098,
+      "four_state_output_comparisons": 8196,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 46,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 4290,
+      "four_state_output_comparisons": 8580,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 47,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 4322,
+      "four_state_output_comparisons": 8644,
+      "passed": true
+    },
+    {
+      "mode": "fpga_synthesis",
+      "width": 64,
+      "split_compare": [
+        0,
+        1
+      ],
+      "formal_passed": true,
+      "four_state_vectors": 4866,
+      "four_state_output_comparisons": 9732,
+      "passed": true
+    }
+  ]
+}

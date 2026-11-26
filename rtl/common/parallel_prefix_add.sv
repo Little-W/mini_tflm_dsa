@@ -1,26 +1,112 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-// 完整定宽加法保留所有结果位和最高进位。
+// 分组计算定宽加法的和值与最高进位，支持完整前缀、分段加法和分段减法。
 module parallel_prefix_add #(
     parameter int unsigned p_width = 32,
     parameter int unsigned p_group_width = 8,
     parameter bit p_preserve_groups = 1'b0,
     parameter int unsigned p_carry_select_width = 0,
     parameter int unsigned p_dsp_split_width = 0,
-    parameter bit p_parallel_high_prefix = 1'b0
+    parameter bit p_parallel_high_prefix = 1'b0,
+    parameter bit p_keep_carry = 1'b1, // 是否保留只用于最高输出进位的末组传播节点。
+    parameter bit p_preserve_grouped_unknowns = 1'b0, // 分段算术在未知输入时使用原分组加法的传播结果。
+    parameter bit p_direct_subtract = 1'b0 // 输入进位为一时使用两段直接减法，其余输入保留分组加法。
 ) (
-    input  wire logic [p_width-1:0] i_a,
-    input  wire logic [p_width-1:0] i_b,
-    input  wire logic               i_carry,
-    output logic [p_width-1:0] o_sum,
-    output logic               o_carry
+    input  wire logic [p_width-1:0] i_a, // 第一个定宽操作数
+    input  wire logic [p_width-1:0] i_b, // 第二个定宽操作数
+    input  wire logic               i_carry, // 低位段传入的进位
+    output logic [p_width-1:0] o_sum, // 本级加法结果
+    output logic               o_carry // 最高位输出进位
 );
     logic [p_width-1:0] prefix_sum;
     logic prefix_carry;
+`ifdef SYNTHESIS
+    if (p_preserve_grouped_unknowns && p_dsp_split_width > 0 &&
+        p_dsp_split_width < p_width && p_dsp_split_width <= 23 &&
+        p_width-p_dsp_split_width <= 23) begin : g_grouped_unknowns
+        logic [p_width-1:0] reference_sum;
+        logic reference_carry;
+        // 分组产生及传播表达式只含与、或归并，紧凑形式保留相同四态结果。
+        // 参照计算无需保留组合节点，二态综合删除未知输入使用的计算分支。
+        parallel_prefix_add #(.p_width(p_width), .p_group_width(p_group_width)) u_reference (
+            .i_a(i_a), .i_b(i_b), .i_carry(i_carry),
+            .o_sum(reference_sum), .o_carry(reference_carry)
+        );
+        always_comb begin
+            case (^{i_a, i_b, i_carry})
+                1'b0, 1'b1: {o_carry, o_sum} = {prefix_carry, prefix_sum};
+                default: {o_carry, o_sum} = {reference_carry, reference_sum};
+            endcase
+        end
+    end else
+`endif
     assign {o_carry, o_sum} = {prefix_carry, prefix_sum};
 `ifdef SYNTHESIS
-    if (p_dsp_split_width > 0 && p_dsp_split_width < p_width &&
+    if (p_direct_subtract && p_dsp_split_width > 0 && p_dsp_split_width < p_width &&
+        p_dsp_split_width <= 23 && p_width-p_dsp_split_width <= 23) begin : g_inferred_subtract
+        localparam int unsigned p_low_width = p_dsp_split_width;
+        localparam int unsigned p_high_width = p_width - p_low_width;
+        localparam int unsigned p_high_groups = (p_high_width+3)/4;
+        logic [p_low_width:0] low_difference;
+        logic [p_high_width:0] high_difference, corrected_difference;
+        logic [p_high_groups-1:0] high_zero;
+        logic [p_width-1:0] reference_sum;
+        logic reference_carry;
+        parallel_prefix_add #(.p_width(p_width), .p_group_width(p_group_width)) u_reference (
+            .i_a(i_a), .i_b(i_b), .i_carry(i_carry),
+            .o_sum(reference_sum), .o_carry(reference_carry)
+        );
+        // 输入反码恢复为减数，两段完整差值分别包含最高借位。
+        parallel_prefix_native_differences #(
+            .p_low_width(p_low_width+1), .p_high_width(p_high_width+1)
+        ) u_differences (
+            .i_low_a({1'b0, i_a[p_low_width-1:0]}),
+            .i_low_b({1'b0, ~i_b[p_low_width-1:0]}),
+            .i_high_a({1'b0, i_a[p_width-1:p_low_width]}),
+            .i_high_b({1'b0, ~i_b[p_width-1:p_low_width]}),
+            .o_low_difference(low_difference), .o_high_difference(high_difference)
+        );
+        for (genvar group_index = 0; group_index < p_high_groups; group_index++) begin : g_zero
+            localparam int unsigned p_first = 4*group_index;
+            localparam int unsigned p_bits = p_high_width-p_first < 4 ? p_high_width-p_first : 4;
+            (* keep = p_preserve_groups && (p_bits == 4) &&
+                (p_keep_carry || group_index < p_high_groups-1) *) logic group_zero;
+            assign group_zero = !(|high_difference[p_first+:p_bits]);
+            assign high_zero[group_index] = group_zero;
+        end
+        // 高段减去低段借位，结果最高位的反相仍为加法器的输出进位。
+        for (genvar group_index = 0; group_index < (p_high_width+4)/4; group_index++) begin : g_correct
+            localparam int unsigned p_first = 4*group_index;
+            localparam int unsigned p_bits = p_high_width+1-p_first < 4 ? p_high_width+1-p_first : 4;
+            localparam int unsigned p_inputs = group_index > 0 ? group_index : 1;
+            logic [p_inputs-1:0] groups;
+            if (group_index == 0) begin : g_first
+                assign groups = 1'b1;
+            end else begin : g_later
+                assign groups = high_zero[group_index-1:0];
+            end
+            parallel_prefix_high_group #(.p_bits(p_bits), .p_groups(p_inputs),
+                .p_borrow_mode(1'b1)) u_group (
+                .i_groups(groups), .i_sum(high_difference[p_first+:p_bits]),
+                .i_carry(low_difference[p_low_width]), .i_invert(1'b0),
+                .o_sum(corrected_difference[p_first+:p_bits])
+            );
+        end
+        // 进位为零及含未知位的输入沿用分组计算，保持完整加法接口含义。
+        always_comb begin
+            case ({i_carry, ^{i_a, i_b}})
+                2'b10, 2'b11: begin
+                    prefix_sum = {corrected_difference[p_high_width-1:0], low_difference[p_low_width-1:0]};
+                    prefix_carry = ~corrected_difference[p_high_width];
+                end
+                default: begin
+                    prefix_sum = reference_sum;
+                    prefix_carry = reference_carry;
+                end
+            endcase
+        end
+    end else if (p_dsp_split_width > 0 && p_dsp_split_width < p_width &&
         p_dsp_split_width <= 23 && p_width-p_dsp_split_width <= 23) begin : g_inferred_add
         localparam int unsigned p_low_width = p_dsp_split_width;
         localparam int unsigned p_high_width = p_width - p_low_width;
@@ -52,8 +138,9 @@ module parallel_prefix_add #(
         for (genvar group_index = 0; group_index < p_high_groups; group_index++) begin : g_high_group
             localparam int unsigned p_first = group_index*4;
             localparam int unsigned p_bits = p_high_width-p_first < 4 ? p_high_width-p_first : 4;
-            (* keep = p_preserve_groups && (p_bits == 4) *) logic group_all;
-            (* keep = p_preserve_groups && !p_parallel_high_prefix && (p_bits == 4) *) logic prefix_all;
+            // 末组传播条件只影响输出进位，使用方可单独关闭该结果的保留。
+            (* keep = p_preserve_groups && (p_bits == 4) && (p_keep_carry || group_index < p_high_groups-1) *) logic group_all;
+            (* keep = p_preserve_groups && !p_parallel_high_prefix && (p_bits == 4) && (p_keep_carry || group_index < p_high_groups-1) *) logic prefix_all;
             assign group_all = &high_sum[p_first+:p_bits];
             assign high_group_all[group_index] = group_all;
             assign prefix_all = &high_group_all[group_index:0];
@@ -158,7 +245,8 @@ module parallel_prefix_add #(
             logic unused_local_carry;
             // 最高组只形成输出进位，其余组保留供更高位使用的产生和传播条件。
             (* keep = p_preserve_groups && (group < p_groups - 1) *) logic local_generate;
-            (* keep = p_preserve_groups && (group < p_groups - 1) *) logic local_propagate;
+            // 最低组传播条件只连接外部输入进位，允许常量进位消除该部分逻辑。
+            (* keep = p_preserve_groups && (group > 0) && (group < p_groups - 1) *) logic local_propagate;
 
             // 组内各进位产生条件并行计算，最高组允许少于配置的组宽。
             for (genvar bit_idx = 0; bit_idx < p_bits; bit_idx++) begin : g_generate
@@ -222,56 +310,6 @@ module parallel_prefix_add #(
                 assign group_carry[boundary+1] = (|generate_terms) |
                     (i_carry & (&group_propagate[0 +: boundary+1]));
             end
-        end
-    end
-endmodule
-
-// 两个完整部分和保留普通加法表达式，位宽均包含本段需要的最高进位。
-(* keep_hierarchy = "yes" *)
-module parallel_prefix_native_sums #(
-    parameter int unsigned p_low_width = 17,
-    parameter int unsigned p_high_width = 17
-) (
-    input wire logic [p_low_width-1:0] i_low_a, i_low_b,
-    input wire logic [p_high_width-1:0] i_high_a, i_high_b,
-    (* use_dsp = "simd" *) output logic [p_low_width-1:0] o_low_sum,
-    (* use_dsp = "simd" *) output logic [p_high_width-1:0] o_high_sum
-);
-    assign o_low_sum = i_low_a + i_low_b;
-    assign o_high_sum = i_high_a + i_high_b;
-endmodule
-
-// 高段各组独立完成进位修正，保留完整组传播条件与组内各位的并行关系。
-(* keep_hierarchy = "yes" *)
-module parallel_prefix_high_group #(
-    parameter int unsigned p_bits = 4,
-    parameter int unsigned p_groups = 1
-) (
-    input wire logic [p_groups-1:0] i_groups,
-    input wire logic [p_bits-1:0] i_sum,
-    input wire logic i_carry,
-    input wire logic i_invert,
-    output logic [p_bits-1:0] o_sum
-);
-    //! 0. 辅助定义
-    //! -------------
-
-    logic group_carry;
-
-    //! 1. 输入进位计算
-    //! -----------------
-
-    // 编码进位在本组内恢复极性，并与完整低位组的传播条件共同归约。
-    assign group_carry = (i_carry ^ i_invert) & (&i_groups);
-
-    //! 2. 输出结果生成
-    //! -----------------
-
-    for (genvar bit_index = 0; bit_index < p_bits; bit_index++) begin : g_bit
-        if (bit_index == 0) begin : g_first
-            assign o_sum[bit_index] = i_sum[bit_index] ^ group_carry;
-        end else begin : g_following
-            assign o_sum[bit_index] = i_sum[bit_index] ^ (group_carry & (&i_sum[bit_index-1:0]));
         end
     end
 endmodule

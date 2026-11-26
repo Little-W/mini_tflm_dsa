@@ -1,0 +1,123 @@
+{
+  "passed": true,
+  "source_sha256": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+  "formal": [
+    {
+      "width": 1,
+      "group_width": 3,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 1,
+      "group_width": 4,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 2,
+      "group_width": 3,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 2,
+      "group_width": 4,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 4,
+      "group_width": 3,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 4,
+      "group_width": 4,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 7,
+      "group_width": 3,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 7,
+      "group_width": 4,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 8,
+      "group_width": 3,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 8,
+      "group_width": 4,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 16,
+      "group_width": 3,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 16,
+      "group_width": 4,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 17,
+      "group_width": 3,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 17,
+      "group_width": 4,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 32,
+      "group_width": 3,
+      "inputs_constrained": false,
+      "passed": true
+    },
+    {
+      "width": 32,
+      "group_width": 4,
+      "inputs_constrained": false,
+      "passed": true
+    }
+  ],
+  "four_state_comparisons": 524288,
+  "parent_module": {
+    "passed": true,
+    "reference": "df08ac0807a94b6615ae527a8c401c6756696837",
+    "inputs_constrained": false,
+    "source_sha256": "2bc015312ba0754d75f804fe096b501131bca3ce729e75d9fe116216f9b3bb6c",
+    "profiles": [
+      {
+        "synthesis": false,
+        "proven_points": 3015,
+        "passed": true,
+        "log_sha256": "9caf5cb1de4234b34263744a96374f9c6706607d7d6af8cb482e13db2ea783b7"
+      },
+      {
+        "synthesis": true,
+        "proven_points": 3027,
+        "passed": true,
+        "log_sha256": "594c6663b61b9485ddde5be76c22c9392b5f9a52ffa366907ed290747e90e42a"
+      }
+    ]
+  }
+}

@@ -6,13 +6,14 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import runpy
 import shlex
 import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "rtl/common/parallel_unsigned_compare.sv"
-WIDTHS = (1, 2, 3, 7, 16, 27, 28, 32, 35, 64)
+WIDTHS = (1, 2, 3, 7, 16, 23, 24, 27, 28, 29, 32, 35, 46, 47, 64)
 SEED = 20261125
 
 
@@ -23,10 +24,15 @@ def digest(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--synthesis", action="store_true", help="检查 FPGA 的分段比较实现")
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     hashes = {str(SOURCE.relative_to(ROOT)): digest(SOURCE), "verification_script": digest(__file__)}
+    resolve = runpy.run_path(str(ROOT/'scripts/rtl/source_files.py'))['with_dependencies']
+    sources = resolve([SOURCE], ROOT)
+    hashes.update({str(path.relative_to(ROOT)): digest(path) for path in sources})
+    definitions = ['-DSYNTHESIS=1', '-DXILINX_FPGA=1'] if args.synthesis else []
     proof = out / "proof.sv"
     proof.write_text('''module proof #(parameter int unsigned p_width=32)(
     input logic [p_width-1:0] i_a,i_b,
@@ -102,7 +108,7 @@ endmodule
         script = out / f"w{width}.ys"
         log = out / f"w{width}_formal.log"
         script.write_text(shlex.join(["read_slang", "--top", "proof", f"-Gp_width={width}",
-                                      str(SOURCE), str(proof)]) + "\n" +
+                                      *definitions, *map(str, sources), str(proof)]) + "\n" +
                           "prep -top proof -flatten\ncheck -assert\n" +
                           "sat -verify -prove equivalent 1 -show-inputs -show-outputs\n")
         with log.open("w") as stream:
@@ -114,7 +120,7 @@ endmodule
         binary = out / f"w{width}.vvp"
         with (out / f"w{width}_compile.log").open("w") as stream:
             subprocess.run(["iverilog", "-g2012", "-s", "tb", f"-Ptb.p_width={width}",
-                            "-o", str(binary), str(SOURCE), str(proof), str(bench)],
+                            *definitions, "-o", str(binary), *map(str, sources), str(proof), str(bench)],
                            stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=120)
         simulation = subprocess.check_output(["vvp", str(binary)], text=True, timeout=120)
         (out / f"w{width}_four_state.log").write_text(simulation)
@@ -125,10 +131,12 @@ endmodule
                          four_state_vectors=vectors, four_state_output_comparisons=2*vectors,
                          passed=True))
         print(json.dumps(rows[-1]), flush=True)
-    if hashes != {str(SOURCE.relative_to(ROOT)): digest(SOURCE), "verification_script": digest(__file__)}:
+    current_hashes = {str(path.relative_to(ROOT)): digest(path) for path in sources}
+    current_hashes["verification_script"] = digest(__file__)
+    if hashes != current_hashes:
         raise RuntimeError("Sources changed during verification")
     (out / "summary.json").write_text(json.dumps(dict(passed=True, source_sha256=hashes,
-        random_seed=SEED, inputs_constrained=False, cases=rows), indent=2) + "\n")
+        random_seed=SEED, synthesis=args.synthesis, inputs_constrained=False, cases=rows), indent=2) + "\n")
 
 
 if __name__ == "__main__":
