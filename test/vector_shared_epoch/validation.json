@@ -1,0 +1,70 @@
+{
+  "passed": true,
+  "external_inputs_constrained": false,
+  "parameters": "TILE=16, BUS_WIDTH=64, PE_COUNT=8, WINDOW_LANES=8, SHARED_STORAGE_ENABLE=1",
+  "scope": "After observing reset and after each CHECK state clearing edge",
+  "source_sha256": {
+    "rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+    "rtl/npu/conv/vector_engine_control_pkg.sv": "b90566fe45a0be8d23ee302ccd0ac055da88af1ba06e5c43c41b6dfb890bbdf8",
+    "rtl/npu/conv/vector_engine_pkg.sv": "3b120fbc30d6d9a86296526af9b9248f69862112218de6c869e3c89c1321dc05",
+    "rtl/npu/conv/vector_activation_clamp.sv": "4a5962a464c3f92c26dd99f4865339289877581d041711a1e862a94789e7c88e",
+    "rtl/npu/conv/vector_banked_writeback.sv": "1c4dc6871d55a9e5a1226b0cd21521bc2b66dfea1bbdb605626bb60f251e4ade",
+    "rtl/npu/conv/vector_config_check.sv": "586a91307f87f0e57400101c866a35d2318aec53ba1ff8662fa1583f9c08806e",
+    "rtl/npu/conv/vector_engine_address.sv": "4ce1c95e0de90442c225d73d895d6236f51785f17ed41671ca3e3cba8692a0d7",
+    "rtl/npu/conv/vector_engine_control.sv": "7b596ea5027dcc692f6953c73be79272c2e4cd5c8f9ebaaeba91f3abac90dbf6",
+    "rtl/npu/conv/vector_engine_operand_store.sv": "1f0210066838a31b554ee37181b99c2004aa1240255c05e6b0ba92904ef4a539",
+    "rtl/npu/conv/vector_pe.sv": "c94612ef19887f0e74f0ad123e08ad8583b780f6165bcdb599cfd39205782c1c",
+    "rtl/npu/conv/vector_reduce_alu.sv": "90b6c5277ad7c2f36b49fe0ea035407150526f868ae28d816ad846a163579b42",
+    "rtl/npu/conv/vector_round_shift.sv": "9148e8a5c78726610f935553c52f438264b3bacdc6c1f2baf52f03a2adbb916f",
+    "rtl/npu/conv/vector_scalar_multiplier.sv": "b7e9455edd6ed12acac0cb1045a90f48da0f130b5ba33ad727a859949f7807cc",
+    "rtl/npu/conv/vector_softmax.sv": "1b0cecc2de8246389cf9f1178a0699aa1825aa913717ff578a2252d404ea8e0e",
+    "rtl/common/parallel_prefix_add.sv": "556a1e5163a7bb2da066d7cfc243b0a9406cce2c5f7e3b3d43f4c6d3b557e490",
+    "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+    "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+    "rtl/npu/conv/vector_coordinate_bound.sv": "712d7834a98cbb9498e1322776dce4231a7def60984636e0b8ddd02c473d3b68",
+    "rtl/npu/conv/vector_interval_bound.sv": "f1a595819b02e143a57641fc9e4f3bd7f5209720c11702d489c0b37ec14ae877",
+    "rtl/npu/conv/vector_read_address_add.sv": "97a3bf404e03befc3ace578d272a0a039601f08dfff37f715b6f21de4bda133a",
+    "rtl/npu/conv/vector_window_count_add.sv": "d19734290f54aaff05bae066e2a9d899d6b23f83047e2e81e9965aeeaad46fb5",
+    "rtl/npu/conv/vector_engine_error_select.sv": "9478fb28561550150194f3be20941784d7f727f1e939d8e60585080c5c142ad8",
+    "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+    "rtl/npu/conv/vector_quant_params.sv": "6a5e468713bbf0287233a96593a1e2003c24f7e97dfa018ffc1a23fab5cef193",
+    "rtl/npu/conv/vector_weight_store.sv": "906bf7a4952f2fa7375bb2f1d398b627cce204596bb511470c0aed1b991e985b",
+    "rtl/npu/conv/vector_window_bank_map.sv": "a728116a86f9532191a7df73fe2478b8f73eabf2583878ee0b5628f909ab9ff6",
+    "rtl/npu/conv/vector_window_valid_mux.sv": "c7e5655fc20a53b0ea9c27fa28678f2ba0eede34e3ea7c178ab68c4cf0068541",
+    "rtl/npu/conv/registered_multiplier_s32.sv": "3de17088b04b4071c2d948cf1e29389b586a0f63e4b71954f46c6bd87328ac70",
+    "rtl/npu/conv/vector_softmax_accumulator.sv": "93c8d8816899c8ba2de3585e1b40e1f2aa68a502e2ce348166b8e31772897816",
+    "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+    "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+    "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+    "rtl/npu/conv/vector_window_count_group.sv": "941944786b14707eba3014d450cdc83269cbe67c88c4742fa76ca4fed8601313",
+    "rtl/npu/conv/vector_engine.sv": "38c5736f73d0f1f70a7a75ab4cf6e7369521939ba9718f69ae62cd5609d8b5f3"
+  },
+  "property_sha256": "d08eafc948ba7422322914e239fc462732d0ea6f27ed91c7ac2405e114d7ccb8",
+  "test_sha256": "e1e5dd3890593a283f5fd084433003393b4261cedbbf2946b9041e9113dd9af9",
+  "original_vector_engine_sha256": "38c5736f73d0f1f70a7a75ab4cf6e7369521939ba9718f69ae62cd5609d8b5f3",
+  "profiles": [
+    {
+      "profile": "generic_local",
+      "passed": true,
+      "log_sha256": "4c179f0011c3fe19e02e6d2073dbcc8b195b31b61ee5b9f27ea9da048b6b5333"
+    },
+    {
+      "profile": "generic_shared",
+      "passed": true,
+      "log_sha256": "3732b681aa3f17e72461387b116acc64606fa2f4e5e8bcc77de44574e65ba6a9"
+    },
+    {
+      "profile": "synthesis_local",
+      "passed": true,
+      "log_sha256": "aab42452320e8656ff8957c8c57a269bb085d2fbc69eee26dd31c04ac70ab868"
+    },
+    {
+      "profile": "synthesis_shared",
+      "passed": true,
+      "log_sha256": "6ff4bf44aea251169b2284567f10a4807fce24d689f4fd66afe6188d754f9c53"
+    }
+  ]
+}

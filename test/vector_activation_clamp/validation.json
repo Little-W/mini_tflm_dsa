@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "reference_commit": "685a48415e1848e108552f1bea5072636fe0b9ad",
+  "unbounded_equivalence": true,
+  "input_assumptions": [],
+  "four_state_checks": 8192,
+  "source_sha256": "4a5962a464c3f92c26dd99f4865339289877581d041711a1e862a94789e7c88e",
+  "reference_source_sha256": "68b50491b4c3bff1ca44ba44fba06ead2fcfc9608a7a79f8de3b0a10ea949c0a",
+  "proof_log_sha256": "675199666e5506ba84afa92dd74d8910c98bb56b2621370721c9248f09aaaece",
+  "four_state_log_sha256": "ce8a63279584be77ec43469c900608486b15469c2919afbf8805fe255ccd7ebf"
+}

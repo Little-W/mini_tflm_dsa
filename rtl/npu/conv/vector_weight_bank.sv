@@ -6,10 +6,10 @@ module vector_weight_bank #(
   parameter integer DEPTH=49,
   parameter integer ADDRESS_BITS=$clog2(DEPTH)>0 ? $clog2(DEPTH) : 1
 ) (
-  input wire clk, write_enable,
-  input wire [31:0] write_address, read_address,
-  input wire signed [7:0] write_data,
-  output wire signed [7:0] read_data
+  input wire clk /* 模块工作时钟。 */, write_enable /* 允许写入当前卷积核位置的权重。 */,
+  input wire [31:0] write_address /* 待写权重的卷积核位置索引。 */, read_address /* 当前计算所需的卷积核位置索引。 */,
+  input wire signed [7:0] write_data, // 写入的八位有符号权重。
+  output wire signed [7:0] read_data // 异步读出的权重，索引越界时为零。
 );
   logic signed [7:0] data [DEPTH];
   always_ff @(posedge clk) begin

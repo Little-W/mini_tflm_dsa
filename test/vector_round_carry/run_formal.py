@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import runpy
 from pathlib import Path
 import re
 import shlex
@@ -14,6 +15,7 @@ from rtl_reference import read_rtl_source
 
 ROOT=Path(__file__).resolve().parents[2]
 SOURCE='rtl/npu/conv/vector_round_shift.sv'
+DEPENDENCIES = runpy.run_path(str(ROOT / "scripts/rtl/source_files.py"))["with_dependencies"]
 
 
 def main():
@@ -40,7 +42,8 @@ def main():
         options=f'-GREGISTER_MIDDLE={middle}'
         commands=[]
         for name,source in (('reference',reference),('current',current)):
-            commands.extend([f'read_slang --top vector_round_shift {options} {shlex.quote(str(source))} {shlex.quote(str(model))}',
+            source_arguments = shlex.join(map(str, DEPENDENCIES([source, model], ROOT)))
+            commands.extend([f'read_slang --top vector_round_shift {options} {source_arguments}',
                              'prep -top vector_round_shift -flatten','memory_map','async2sync','opt_clean',
                              f'rename vector_round_shift {name}',f'design -stash {name}'])
         commands.extend(['design -copy-from reference -as reference reference','design -copy-from current -as current current',

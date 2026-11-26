@@ -26,166 +26,166 @@ module vector_engine_address #(
   localparam int p_window_count_width = $clog2(p_window_lanes+1),
   localparam int p_window_count_leaves = 1 << $clog2(p_window_lanes)
 ) (
-  input wire logic clk,
-  input wire logic rst_n,
-  input wire logic i_start,
-  input wire vector_engine_pkg::vector_engine_cfg_t i_cfg,
-  input wire logic i_dma_cfg_ready,
-  output logic o_dma_conv_enable,
-  output logic o_dma_range_enable,
-  output conv_im2col_pkg::conv_cfg_t o_dma_conv_cfg,
-  output logic [31:0] o_dma_range_base [4],
-  output logic [32:0] o_dma_range_end [4],
-  output logic o_win_req_valid,
-  input wire logic i_win_req_ready,
-  output logic [31:0] o_win_req_p0,
-  output logic [31:0] o_win_req_q0,
-  output logic [31:0] o_win_req_cols,
-  output logic [1:0] o_win_req_tag,
-  input wire logic i_win_rsp_valid,
-  output logic o_win_rsp_ready,
-  input wire logic [1:0] i_win_rsp_tag,
-  input wire logic [p_window_lanes-1:0] i_win_rsp_mask,
-  input wire logic i_win_rsp_last,
-  input wire logic i_win_rsp_error,
-  input wire logic i_win_busy,
-  input wire logic i_weight_read_valid,
-  input wire logic i_ps_read_valid,
-  input wire logic i_rd_req,
-  output logic o_rd_start,
-  input wire logic i_rd_granted,
-  output logic o_rd_im2col,
-  output logic [31:0] o_rd_p0,
-  output logic [31:0] o_rd_q0,
-  output logic [31:0] o_rd_base_addr,
-  output logic [31:0] o_rd_row_stride,
-  output logic [31:0] o_rd_rows_to_read,
-  output logic [31:0] o_rd_valid_cols,
-  output logic [7:0] o_rd_burst_len_m1,
-  output logic o_rd_use_16bits,
-  input wire logic i_rd_busy,
-  input wire logic i_rd_done,
-  input wire logic i_rd_valid [p_bus_width/8],
-  input wire logic [$clog2(p_dma_size)-1:0] i_rd_col_base,
-  input wire logic [p_bus_width-1:0] i_rd_raw_data,
-  input wire logic i_rd_raw_valid,
-  input wire logic i_wr_busy,
-  input wire logic i_read_done_q,
-  input wire vector_engine_control_pkg::state_t i_state,
-  input wire logic i_state_soft_lut_read = 1'b0,
-  input wire logic i_state_pool_read = 1'b0,
-  input wire logic i_state_failed,
-  input wire logic i_state_compute_commit,
-  input wire logic i_state_dw_execute,
-  input wire logic i_state_output_init,
-  input wire logic i_state_dw_finish,
-  input wire logic i_window_fetch_phase,
-  input wire vector_engine_control_pkg::load_t i_load_kind,
-  input wire logic [5:0] i_load_read_select = 6'b000000,
-  input wire vector_engine_pkg::vector_engine_cfg_t i_c,
-  input wire logic i_spatial,
-  input wire logic i_depthwise,
-  input wire logic i_vector_hadamard,
-  input wire logic i_add_s8,
-  input wire logic i_binary_vector,
-  input wire logic i_softmax_s8,
-  output logic [31:0] o_channels,
-  input wire logic [31:0] i_position,
-  input wire logic [15:0] i_channel_base,
-  input wire logic [p_active_count_w-1:0] i_active,
-  input wire logic [p_tap_count_w-1:0] i_taps,
-  input wire logic [15:0] i_ox,
-  output logic [15:0] o_fetch_ox_next,
-  input wire logic [p_tap_count_w-1:0] i_kx,
-  input wire logic [p_tap_count_w-1:0] i_kernel_last_column,
-  input wire logic [p_tap_count_w-1:0] i_tap,
-  input wire logic [p_tap_count_w-1:0] i_valid_taps,
-  input wire logic [31:0] i_vector_offset,
-  output logic [31:0] o_channel_remaining,
-  output logic [15:0] o_channel_next,
-  output logic o_channel_has_more,
-  output logic [p_active_count_w-1:0] o_vector_next_active,
-  output logic o_vector_has_more,
-  input wire logic [p_tile_index_w-1:0] i_compute_index,
-  output logic o_compute_group_last_q,
-  output logic o_pool_pixel_has_more_q,
-  input wire logic [31:0] i_fetch_tap_offset,
-  input wire logic [31:0] i_position_offset,
-  input wire logic [31:0] i_pool_byte_offset,
-  output logic [31:0] o_fetch_position_next,
-  output logic [31:0] o_fetch_tap_offset_next,
-  output logic [31:0] o_position_offset_next,
-  output logic [31:0] o_pool_byte_offset_next,
-  output logic [31:0] o_vector_offset_next,
-  output logic signed [31:0] o_add_input_sum,
-  output logic o_parameter_row_last_fire,
-  output logic o_parameter_three_rows,
-  output logic o_parameter_two_rows,
-  input wire logic i_shared_weight_write_pending,
-  input wire logic i_tap_last_modulo,
-  input wire logic signed [31:0] i_add_scaled_a,
-  input wire logic signed [63:0] i_add_rounded,
-  input wire logic signed [33:0] i_input_y,
-  input wire logic signed [33:0] i_input_x,
-  input wire logic signed [33:0] i_input_origin_x,
-  input wire logic signed [33:0] i_input_origin_y,
-  output logic o_param_bad,
-  output logic o_dw_in_bounds,
-  output logic [15:0] o_output_last_column,
-  input wire logic [32:0] i_checked_range_end [4],
-  output logic o_global_pool,
-  input wire logic [63:0] i_position_count,
-  input wire logic i_config_check_done,
-  input wire logic i_dw_issue_fire,
-  input wire logic i_dw_group_last,
-  input wire logic i_dw_tap_advance,
-  input wire logic i_dw_snapshot_fire,
-  input wire logic [1:0] i_dw_shared_inflight,
-  input wire logic i_writeback_busy,
-  output logic o_avg_power_two,
-  output logic [5:0] o_avg_shift,
-  input wire logic i_input_range_mode,
-  input wire logic [1:0] i_read_bank,
-  input wire logic [1:0] i_wf_bank,
-  output logic [1:0] o_input_bank_mask,
-  output logic [3:0] o_input_ready,
-  output logic [3:0] o_input_reserved,
-  output logic o_input_drain_ready,
-  output logic [p_input_index_w-1:0] o_input_read_base,
-  output logic [p_input_index_w-1:0] o_input_response_base,
-  input wire logic [31:0] i_window_received,
-  output logic [31:0] o_window_count_o_sum,
-  output logic o_window_response_fire,
-  output logic o_window_request_fire,
-  output logic o_window_fetch_advance,
-  output logic o_window_response_fault,
-  input wire logic i_window_write_pending,
-  input wire logic [31:0] i_fetch_position,
-  input wire logic [15:0] i_fetch_ox,
-  input wire logic signed [33:0] i_fetch_x,
-  input wire logic signed [33:0] i_fetch_y,
-  input wire logic signed [33:0] i_fetch_origin_x,
-  input wire logic signed [33:0] i_fetch_origin_y,
-  output logic [33:0] o_coordinate_step_o_value [8],
-  output logic o_next_window_valid_q,
-  output logic signed [33:0] o_next_window_x,
-  output logic signed [33:0] o_next_window_y,
-  output logic o_kernel_column_end,
-  output logic [15:0] o_padding_x_negative,
-  output logic [15:0] o_padding_y_negative,
-  input wire logic [7:0] i_soft_lut_index_q,
-  input wire logic [p_tap_count_w-1:0] i_pool_taps_remaining,
-  input wire logic [p_input_index_w:0] i_pool_pixels,
-  input wire logic [p_input_index_w:0] i_pool_received,
-  input wire logic [p_input_index_w:0] i_pool_pixel,
-  input wire logic [p_input_index_w:0] i_pool_elements,
-  output logic [p_input_index_w:0] o_pool_next_elements,
-  output logic [p_input_index_w:0] o_pool_next_pixels,
-  input wire logic [p_input_index_w:0] i_pool_row_remaining,
-  output logic [p_bus_shift:0] o_pool_beat_count,
-  output logic o_pool_read_complete_saved,
-  output logic [31:0] o_position_next,
-  output logic [31:0] o_write_origin_next
+  input wire logic clk, // 模块工作时钟。
+  input wire logic rst_n, // 低有效复位输入。
+  input wire logic i_start, // 提交一个新的向量计算任务。
+  input wire vector_engine_pkg::vector_engine_cfg_t i_cfg, // 当前待接收的向量任务配置。
+  input wire logic i_dma_cfg_ready, // 共享 DMA 能够接收当前读取配置。
+  output logic o_dma_conv_enable, // 共享 DMA 采用卷积窗口展开方式。
+  output logic o_dma_range_enable, // 共享 DMA 启用已配置的读取区间检查。
+  output conv_im2col_pkg::conv_cfg_t o_dma_conv_cfg, // 提供给共享 DMA 的卷积窗口配置。
+  output logic [31:0] o_dma_range_base [4], // 共享 DMA 各读取区间的起始字节地址。
+  output logic [32:0] o_dma_range_end [4], // 共享 DMA 各读取区间的右端地址，不包含该地址。
+  output logic o_win_req_valid, // 卷积窗口读取请求有效。
+  input wire logic i_win_req_ready, // 卷积前端能够接收当前窗口请求。
+  output logic [31:0] o_win_req_p0, // 窗口请求对应的线性输出位置起点。
+  output logic [31:0] o_win_req_q0, // 窗口请求对应的卷积归约位置起点。
+  output logic [31:0] o_win_req_cols, // 当前窗口请求需要返回的通道数。
+  output logic [1:0] o_win_req_tag, // 当前窗口请求分配的输入缓存槽标签。
+  input wire logic i_win_rsp_valid, // 卷积前端返回的窗口数据有效。
+  output logic o_win_rsp_ready, // 能够接收卷积前端的窗口数据。
+  input wire logic [1:0] i_win_rsp_tag, // 返回窗口数据所属的输入缓存槽标签。
+  input wire logic [p_window_lanes-1:0] i_win_rsp_mask, // 本拍返回窗口数据的有效通道掩码。
+  input wire logic i_win_rsp_last, // 当前返回数据结束本次窗口请求。
+  input wire logic i_win_rsp_error, // 卷积前端报告当前窗口读取错误。
+  input wire logic i_win_busy, // 卷积窗口前端仍有正在处理的请求。
+  input wire logic i_weight_read_valid, // 共享权重存储返回数据有效。
+  input wire logic i_ps_read_valid, // 共享部分和存储返回数据有效。
+  input wire logic i_rd_req, // 向共享 DMA 仲裁器申请读取资源。
+  output logic o_rd_start, // 启动已获得授权的 DMA 读取任务。
+  input wire logic i_rd_granted, // 共享 DMA 仲裁器授予读取资源。
+  output logic o_rd_im2col, // 当前 DMA 读取使用卷积窗口展开。
+  output logic [31:0] o_rd_p0, // DMA 卷积读取的线性输出位置起点。
+  output logic [31:0] o_rd_q0, // DMA 卷积读取的归约位置起点。
+  output logic [31:0] o_rd_base_addr, // DMA 读取的起始字节地址。
+  output logic [31:0] o_rd_row_stride, // DMA 相邻读取行的字节间隔。
+  output logic [31:0] o_rd_rows_to_read, // 当前 DMA 任务需要读取的行数。
+  output logic [31:0] o_rd_valid_cols, // 当前 DMA 读取行的有效列数。
+  output logic [7:0] o_rd_burst_len_m1, // DMA 每行读取的突发拍数减一。
+  output logic o_rd_use_16bits, // DMA 返回数据采用十六位元素。
+  input wire logic i_rd_busy, // 共享 DMA 正在执行读取。
+  input wire logic i_rd_done, // 共享 DMA 的当前读取任务完成。
+  input wire logic i_rd_valid [p_bus_width/8], // DMA 返回数据各通道的有效标志。
+  input wire logic [$clog2(p_dma_size)-1:0] i_rd_col_base, // DMA 本拍返回数据的起始列索引。
+  input wire logic [p_bus_width-1:0] i_rd_raw_data, // DMA 返回的原始总线数据。
+  input wire logic i_rd_raw_valid, // DMA 原始总线返回数据有效。
+  input wire logic i_wr_busy, // 共享 DMA 仍在执行写入。
+  input wire logic i_read_done_q, // 已保存的 DMA 读取完成状态。
+  input wire vector_engine_control_pkg::state_t i_state, // 向量控制器当前的状态编码。
+  input wire logic i_state_soft_lut_read = 1'b0, // 控制器正在读取 Softmax 指数近似表。
+  input wire logic i_state_pool_read = 1'b0, // 控制器正在读取池化输入数据。
+  input wire logic i_state_failed, // 控制器正在处理任务错误。
+  input wire logic i_state_compute_commit, // 控制器正在提交本轮计算结果。
+  input wire logic i_state_dw_execute, // 控制器正在发射深度卷积计算。
+  input wire logic i_state_output_init, // 控制器正在初始化当前输出分块。
+  input wire logic i_state_dw_finish, // 控制器正在完成当前深度卷积输出位置。
+  input wire logic i_window_fetch_phase, // 当前状态允许继续预取输入窗口。
+  input wire vector_engine_control_pkg::load_t i_load_kind, // 当前 DMA 读取的数据类型。
+  input wire logic [5:0] i_load_read_select = 6'b000000, // 各类读取来源的独立选择标志。
+  input wire vector_engine_pkg::vector_engine_cfg_t i_c, // 当前已保存的向量任务配置。
+  input wire logic i_spatial, // 当前任务为深度卷积或空间池化运算。
+  input wire logic i_depthwise, // 当前任务执行八位深度卷积。
+  input wire logic i_vector_hadamard, // 当前向量任务执行逐元素乘法。
+  input wire logic i_add_s8, // 当前任务执行量化八位向量加法。
+  input wire logic i_binary_vector, // 当前任务需要两路向量输入。
+  input wire logic i_softmax_s8, // 当前任务执行八位 Softmax。
+  output logic [31:0] o_channels, // 当前空间任务的通道总数。
+  input wire logic [31:0] i_position, // 当前处理的线性输出空间位置。
+  input wire logic [15:0] i_channel_base, // 当前通道分块的首通道编号。
+  input wire logic [p_active_count_w-1:0] i_active, // 当前分块实际使用的通道或元素数量。
+  input wire logic [p_tap_count_w-1:0] i_taps, // 当前卷积核或池化窗口的总位置数。
+  input wire logic [15:0] i_ox, // 当前计算输出位置的横坐标。
+  output logic [15:0] o_fetch_ox_next, // 窗口预取扫描的下一输出横坐标。
+  input wire logic [p_tap_count_w-1:0] i_kx, // 当前卷积核位置的横坐标。
+  input wire logic [p_tap_count_w-1:0] i_kernel_last_column, // 当前卷积核的最后一个列坐标。
+  input wire logic [p_tap_count_w-1:0] i_tap, // 当前计算使用的卷积核线性位置。
+  input wire logic [p_tap_count_w-1:0] i_valid_taps, // 当前输出位置已累计的有效窗口位置数。
+  input wire logic [31:0] i_vector_offset, // 当前向量分块相对输入起点的元素偏移。
+  output logic [31:0] o_channel_remaining, // 当前通道起点之后尚需处理的通道数。
+  output logic [15:0] o_channel_next, // 完成当前分块后的下一首通道编号。
+  output logic o_channel_has_more, // 当前分块之后仍有空间通道需要处理。
+  output logic [p_active_count_w-1:0] o_vector_next_active, // 下一向量分块需要处理的有效元素数。
+  output logic o_vector_has_more, // 当前分块之后仍有向量元素需要处理。
+  input wire logic [p_tile_index_w-1:0] i_compute_index, // 当前并行计算组的首元素索引。
+  output logic o_compute_group_last_q, // 已保存的当前并行计算组为末组的条件。
+  output logic o_pool_pixel_has_more_q, // 已保存的池化批次还有后续像素的条件。
+  input wire logic [31:0] i_fetch_tap_offset, // 预取卷积核位置相对窗口起点的通道偏移。
+  input wire logic [31:0] i_position_offset, // 当前输出空间位置的线性字节偏移。
+  input wire logic [31:0] i_pool_byte_offset, // 当前池化批次相对输入基址的字节偏移。
+  output logic [31:0] o_fetch_position_next, // 窗口预取扫描的下一线性输出位置。
+  output logic [31:0] o_fetch_tap_offset_next, // 下一预取卷积核位置的通道偏移。
+  output logic [31:0] o_position_offset_next, // 下一输出空间位置的线性字节偏移。
+  output logic [31:0] o_pool_byte_offset_next, // 下一池化输入批次的字节偏移。
+  output logic [31:0] o_vector_offset_next, // 下一向量分块相对输入起点的元素偏移。
+  output logic signed [31:0] o_add_input_sum, // 八位加法两路缩放输入相加后的中间结果。
+  output logic o_parameter_row_last_fire, // 本拍参数返回数据结束当前参数数组行。
+  output logic o_parameter_three_rows, // 偏置、乘数和移位数组能够用三行连续描述符读取。
+  output logic o_parameter_two_rows, // 乘数和移位数组能够用两行连续描述符读取。
+  input wire logic i_shared_weight_write_pending, // 共享权重存储仍有等待完成的写入。
+  input wire logic i_tap_last_modulo, // 随卷积核位置保存的末项标志。
+  input wire logic signed [31:0] i_add_scaled_a, // 已保存的第一路八位加法输入缩放值。
+  input wire logic signed [63:0] i_add_rounded, // 已保存的八位加法缩放舍入中间结果。
+  input wire logic signed [33:0] i_input_y, // 当前计算对应的有符号输入纵坐标。
+  input wire logic signed [33:0] i_input_x, // 当前计算对应的有符号输入横坐标。
+  input wire logic signed [33:0] i_input_origin_x, // 当前输出窗口起点的有符号输入横坐标。
+  input wire logic signed [33:0] i_input_origin_y, // 当前输出窗口起点的有符号输入纵坐标。
+  output logic o_param_bad, // 运行地址或参数检查发现错误。
+  output logic o_dw_in_bounds, // 当前深度卷积采样坐标处于输入图像范围。
+  output logic [15:0] o_output_last_column, // 输出图像的最后一个列坐标。
+  input wire logic [32:0] i_checked_range_end [4], // 配置检查完成的四个读取区间右端地址。
+  output logic o_global_pool, // 当前池化窗口覆盖整个输入图像。
+  input wire logic [63:0] i_position_count, // 配置检查得到的输出空间位置总数。
+  input wire logic i_config_check_done, // 当前向量配置检查完成。
+  input wire logic i_dw_issue_fire, // 本周期接受一组深度卷积乘加输入。
+  input wire logic i_dw_group_last, // 当前深度卷积输入为本次通道分块的末组。
+  input wire logic i_dw_tap_advance, // 深度卷积计算推进到下一卷积核位置。
+  input wire logic i_dw_snapshot_fire, // 保存一个输出位置的完整深度卷积累加结果。
+  input wire logic [1:0] i_dw_shared_inflight, // 共享量化器中仍在处理的深度卷积请求数量。
+  input wire logic i_writeback_busy, // 结果写回仍有待处理数据或事务。
+  output logic o_avg_power_two, // 当前平均池化的除数为二的整数次幂。
+  output logic [5:0] o_avg_shift, // 二的整数次幂平均池化所需的右移位数。
+  input wire logic i_input_range_mode, // DMA 当前配置采用输入张量读取区间。
+  input wire logic [1:0] i_read_bank, // 当前计算读取的输入缓存槽号。
+  input wire logic [1:0] i_wf_bank, // 窗口预取分配的输入缓存槽号。
+  output logic [1:0] o_input_bank_mask, // 输入缓存槽号循环推进时使用的低位掩码。
+  output logic [3:0] o_input_ready, // 四个输入缓存槽的数据就绪标志。
+  output logic [3:0] o_input_reserved, // 四个输入缓存槽的请求预留标志。
+  output logic o_input_drain_ready, // 输入读取、共享存储及结果写回均已排空。
+  output logic [p_input_index_w-1:0] o_input_read_base, // 当前计算读取槽的输入存储起始元素索引。
+  output logic [p_input_index_w-1:0] o_input_response_base, // 当前返回槽的输入存储起始元素索引。
+  input wire logic [31:0] i_window_received, // 当前窗口已接收的有效元素数。
+  output logic [31:0] o_window_count_o_sum, // 计入本拍有效通道后的窗口接收元素总数。
+  output logic o_window_response_fire, // 本周期接收卷积窗口返回数据。
+  output logic o_window_request_fire, // 本周期提交卷积窗口请求。
+  output logic o_window_fetch_advance, // 预取窗口已提交或越过无效坐标，可以推进扫描。
+  output logic o_window_response_fault, // 窗口返回的错误标志或元素数量检查失败。
+  input wire logic i_window_write_pending, // 已接收窗口数据尚待写入输入存储。
+  input wire logic [31:0] i_fetch_position, // 窗口预取当前的线性输出位置。
+  input wire logic [15:0] i_fetch_ox, // 窗口预取当前的输出横坐标。
+  input wire logic signed [33:0] i_fetch_x, // 窗口预取当前的有符号输入横坐标。
+  input wire logic signed [33:0] i_fetch_y, // 窗口预取当前的有符号输入纵坐标。
+  input wire logic signed [33:0] i_fetch_origin_x, // 预取输出窗口起点的有符号输入横坐标。
+  input wire logic signed [33:0] i_fetch_origin_y, // 预取输出窗口起点的有符号输入纵坐标。
+  output logic [33:0] o_coordinate_step_o_value [8], // 八个并行坐标步进候选的计算结果。
+  output logic o_next_window_valid_q, // 已保存的下一采样窗口坐标有效条件。
+  output logic signed [33:0] o_next_window_x, // 下一采样窗口的有符号输入横坐标。
+  output logic signed [33:0] o_next_window_y, // 下一采样窗口的有符号输入纵坐标。
+  output logic o_kernel_column_end, // 当前卷积核横坐标已到达末列。
+  output logic [15:0] o_padding_x_negative, // 横向填充尺寸取负后保留的低十六位。
+  output logic [15:0] o_padding_y_negative, // 纵向填充尺寸取负后保留的低十六位。
+  input wire logic [7:0] i_soft_lut_index_q, // 已保存的 Softmax 指数表读取索引。
+  input wire logic [p_tap_count_w-1:0] i_pool_taps_remaining, // 尚需读取的池化窗口位置数量。
+  input wire logic [p_input_index_w:0] i_pool_pixels, // 当前池化输入批次覆盖的像素数量。
+  input wire logic [p_input_index_w:0] i_pool_received, // 当前池化输入批次已接收的有效元素数。
+  input wire logic [p_input_index_w:0] i_pool_pixel, // 当前正在归约的池化批次内像素索引。
+  input wire logic [p_input_index_w:0] i_pool_elements, // 当前池化输入批次需要接收的元素总数。
+  output logic [p_input_index_w:0] o_pool_next_elements, // 下一池化输入批次需要接收的元素总数。
+  output logic [p_input_index_w:0] o_pool_next_pixels, // 下一池化输入批次覆盖的像素数量。
+  input wire logic [p_input_index_w:0] i_pool_row_remaining, // 当前池化读取行尚需返回的字节数。
+  output logic [p_bus_shift:0] o_pool_beat_count, // 当前池化返回拍包含的有效元素数。
+  output logic o_pool_read_complete_saved, // DMA 完成时保存的池化输入数量完整条件。
+  output logic [31:0] o_position_next, // 当前线性输出位置加一后的结果。
+  output logic [31:0] o_write_origin_next // 下一写回阶段需要采用的输出字节地址。
 );
   logic start;
   vector_engine_pkg::vector_engine_cfg_t cfg;
@@ -536,6 +536,10 @@ module vector_engine_address #(
   logic input_ready_release;
   (* keep = 1 *) logic input_drain_local_idle;
   logic window_slot_available;
+  logic window_request_idle;
+  logic window_request_release_enabled;
+  logic window_position_valid;
+  logic unused_window_position_equal;
   logic input_reservations_clear;
   logic [$clog2(p_window_lanes+1)-1:0] window_response_count;
   logic [31:0] window_count_i_value;
@@ -590,11 +594,14 @@ module vector_engine_address #(
   logic [15:0] read_address_channel;
   logic [1:0] unused_read_address_carry;
   logic [31:0] parameter_stride_i_b;
-  logic unused_parameter_stride_carry;
-  logic parameter_stride_equal;
+  logic parameter_stride_carry;
+  (* keep = 1 *) logic parameter_stride_equal;
+  logic parameter_bases_equal;
   logic [31:0] parameter_row_stride_next;
   logic parameter_two_rows_next;
   logic parameter_three_rows_next;
+  logic parameter_bias_before_multiplier;
+  logic unused_parameter_bias_equal;
   logic [31:0] write_address_offset;
   logic [31:0] write_main_offset;
   logic [15:0] write_channel_offset;
@@ -652,11 +659,11 @@ module vector_engine_address #(
       .i_target(window_count_i_target), .i_carry_in(window_count_i_carry),
       .o_equal(window_count_o_equal)
   );
-  // 接收累计值保留完整三十二位，FPGA 配置使用公共加法器的算术推断。
-  parallel_prefix_add #(.p_width(32)) u_window_count_sum (
-      .i_a(window_count_i_value), .i_b(window_count_i_increment), .i_carry(window_count_i_carry),
-      .o_sum(window_count_o_sum), .o_carry(unused_window_count_carry)
+  // 本拍元素数只进入低段加法，高段预先准备全部传播条件。
+  vector_window_count_add #(.p_width(32), .p_increment_width($clog2(p_window_lanes+1))) u_window_count_sum (
+      .i_value(window_count_i_value), .i_increment(window_response_count), .o_sum(window_count_o_sum)
   );
+  assign unused_window_count_carry = 1'b0;
   // 每组三位并行检查核列编号，组间归并供坐标与范围选择共同使用。
   localparam int p_column_equal_groups = (p_tap_count_w + 2) / 3;
   (* keep = 1 *) logic [p_column_equal_groups-1:0] kernel_column_equal;
@@ -836,20 +843,34 @@ module vector_engine_address #(
   // 十六路计算配置保存四个完整通道组；较窄配置保存两个完整组或四个半组。
   // 槽位预留允许 DMA 提前发出请求，并按顺序接收响应。
   assign window_fetch_enabled=spatial && !global_pool && window_fetch_phase;
-  assign window_fetch_in_bounds=fetch_x>=0 && fetch_y>=0 &&
-    fetch_x<$signed(34'(c.image.input_w)) && fetch_y<$signed(34'(c.image.input_h));
+  vector_window_bounds u_window_bounds (
+      .i_x(fetch_x), .i_y(fetch_y), .i_width(c.image.input_w), .i_height(c.image.input_h),
+      .o_in_bounds(window_fetch_in_bounds)
+  );
   assign input_bank_mask=p_pe_count>=16 || active<=p_active_count_w'(p_tile/2) ? 2'b11 : 2'b01;
   assign input_read_base=active<=p_active_count_w'(p_tile/2) ?
       (p_input_index_w'(read_bank)<<($clog2(p_tile)-1)) : (p_input_index_w'(read_bank)<<$clog2(p_tile));
   assign input_response_base=active<=p_active_count_w'(p_tile/2) ?
       (p_input_index_w'(win_rsp_tag)<<($clog2(p_tile)-1)) : (p_input_index_w'(win_rsp_tag)<<$clog2(p_tile));
+  // 完整三十二位位置先独立比较，范围资格与返回释放条件分别准备。
+  parallel_unsigned_compare #(.p_width(32)) u_window_position (
+      .i_a(fetch_position), .i_b(32'(position_count)),
+      .o_less(window_position_valid), .o_equal(unused_window_position_equal)
+  );
   assign window_slot_available = window_fetch_enabled &&
-      (fetch_position < 32'(position_count)) && window_fetch_in_bounds;
+      window_position_valid && window_fetch_in_bounds;
   // 最后一个通道组被乘加单元接收时，当前输入槽位即可接收后续窗口请求。
   // 新窗口先经过描述符队列，返回数据在后续边沿写入，不影响本拍捕获的操作数。
   assign input_slot_release = dw_issue_fire && dw_group_last && (wf_bank == read_bank);
-  assign win_req_valid = window_slot_available && !window_response_fault &&
-      (!input_ready[wf_bank] || input_slot_release) && !input_reserved[wf_bank];
+  // 槽位范围、预留和故障资格先并行完成，权重返回触发的发射只参与末级选择。
+  assign window_request_idle = window_slot_available && !window_response_fault &&
+      !input_reserved[wf_bank] && !input_ready[wf_bank];
+  assign window_request_release_enabled = window_slot_available && !window_response_fault &&
+      !input_reserved[wf_bank] && dw_group_last && (wf_bank == read_bank);
+  vector_window_request_qualify u_window_request_qualify (
+      .i_idle(window_request_idle), .i_release_enabled(window_request_release_enabled),
+      .i_release(dw_issue_fire), .o_valid(win_req_valid)
+  );
   assign win_req_p0=fetch_position;
   assign win_req_q0=window_request_offset;
   assign win_req_cols=active;
@@ -878,7 +899,7 @@ module vector_engine_address #(
       (window_response_error_q || !window_response_count_ok_q);
   assign window_response_fire=win_rsp_valid && win_rsp_ready;
   assign window_fetch_advance=window_request_fire ||
-    (window_fetch_enabled && fetch_position<32'(position_count) && !window_fetch_in_bounds);
+    (window_fetch_enabled && window_position_valid && !window_fetch_in_bounds);
   assign input_reservations_clear = (state == vector_engine_control_pkg::CHECK) || (state == vector_engine_control_pkg::TILE_INIT) ||
       (state_failed && input_drain_ready);
   assign input_response_pending = p_input_bank_storage &&
@@ -1024,18 +1045,35 @@ module vector_engine_address #(
   assign rd_start = rd_req && rd_granted;
 
   // 等距参数数组由二维 DMA 连续读取，接收端在每行结束后切换参数类型。
+  // 两个地址的完整三十二位差值由分段算术和并行进位修正生成。
   assign parameter_stride_i_b = ~c.multiplier_base;
-  parallel_prefix_add #(.p_width(32)) u_parameter_stride (
+  parallel_prefix_add #(.p_width(32),
+        .p_dsp_split_width(16), .p_parallel_high_prefix(1'b1),
+        .p_keep_carry(1'b0), .p_preserve_grouped_unknowns(1'b1),
+        .p_direct_subtract(1'b1)) u_parameter_stride (
       .i_a(c.shift_base), .i_b(parameter_stride_i_b), .i_carry(1'b1),
-      .o_sum(parameter_row_stride_next), .o_carry(unused_parameter_stride_carry)
+      .o_sum(parameter_row_stride_next), .o_carry(parameter_stride_carry)
   );
   add_equal #(.p_width(32)) u_parameter_stride_equal (
       .i_a(c.bias_base), .i_b(c.shift_base), .i_target({c.multiplier_base[30:0], 1'b0}),
       .i_carry_in(1'b0), .o_equal(parameter_stride_equal)
   );
-  assign parameter_two_rows_next = c.shift_base>c.multiplier_base;
+  parallel_equal #(.p_width(32)) u_parameter_bases_equal (
+      .i_a(c.shift_base), .i_b(c.multiplier_base), .o_equal(parameter_bases_equal)
+  );
+  // 地址相等判断与减法借位并行生成，严格递增条件直接合并两个单比特结果。
+  always_comb begin
+    case (^{c.shift_base, c.multiplier_base})
+      1'b0, 1'b1: parameter_two_rows_next = parameter_stride_carry && !parameter_bases_equal;
+      default: parameter_two_rows_next = c.shift_base > c.multiplier_base;
+    endcase
+  end
+  parallel_unsigned_compare #(.p_width(32)) u_parameter_bias_order (
+      .i_a(c.bias_base), .i_b(c.multiplier_base),
+      .o_less(parameter_bias_before_multiplier), .o_equal(unused_parameter_bias_equal)
+  );
   assign parameter_three_rows_next = c.bias_base!=0 &&
-      c.multiplier_base>c.bias_base && parameter_two_rows_next &&
+      parameter_bias_before_multiplier && parameter_two_rows_next &&
       parameter_stride_equal;
   // 配置检查期间保存参数行描述符，随后各通道复用相同的步长与行数判断。
   always_ff @(posedge clk or negedge rst_n) begin

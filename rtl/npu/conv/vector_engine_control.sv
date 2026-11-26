@@ -22,206 +22,206 @@ module vector_engine_control #(
   localparam int p_input_index_w = $clog2(p_dma_size),
   localparam int p_pool_group_count=(p_tile+p_pe_count-1)/p_pe_count
 ) (
-  input wire logic clk,
-  input wire logic rst_n,
-  input wire logic i_start,
-  input wire vector_engine_pkg::vector_engine_cfg_t i_cfg,
-  output logic o_ready,
-  output logic o_done_valid,
-  input wire logic i_done_ready,
-  output logic [1:0] o_error,
-  output logic o_dma_cfg_valid,
-  input wire logic i_dma_cfg_ready,
-  input wire logic i_win_rsp_last,
-  input wire logic i_win_busy,
-  input wire logic signed [31:0] i_quant_req_accumulator [p_tile],
-  input wire logic i_storage_error,
-  output logic o_rd_req,
-  input wire logic i_rd_granted,
-  input wire logic i_rd_done,
-  input wire logic i_rd_error,
-  input wire logic [p_bus_width-1:0] i_rd_raw_data,
-  input wire logic i_rd_raw_valid,
-  input wire logic i_wr_done,
-  input wire logic i_wr_error,
-  output logic o_read_done_q,
-  output logic o_read_error_q,
-  output logic o_write_response_done_q,
-  output logic o_write_response_error_q,
-  output vector_engine_control_pkg::state_t o_state,
-  output logic o_state_failed,
-  output logic o_state_compute_commit,
-  output logic o_state_pool_store,
-  output logic o_state_dw_execute,
-  output logic o_state_weight_read_phase,
-  output logic o_state_weight_zero_address,
-  output logic o_state_output_init,
-  output logic o_state_vector_init,
-  output logic o_state_dw_finish,
-  output logic o_window_fetch_phase,
-  output logic o_state_soft_lut_read,
-  output logic o_state_pool_read,
-  output vector_engine_control_pkg::load_t o_load_kind,
-  output logic [5:0] o_load_read_select,
-  output vector_engine_pkg::vector_engine_cfg_t o_c,
-  output logic o_spatial,
-  output logic o_depthwise,
-  output logic o_binary_vector,
-  output logic o_add_s8,
-  output logic o_softmax_s8,
-  output logic o_byte_output,
-  output logic o_avg_pool,
-  output logic o_max_pool,
-  output logic o_min_pool,
-  output logic o_vector_max,
-  output logic o_vector_min,
-  output logic o_vector_hadamard,
-  input wire logic [31:0] i_channels,
-  output logic [31:0] o_position,
-  output logic o_position_is_last,
-  output logic [15:0] o_channel_base,
-  output logic [p_active_count_w-1:0] o_active,
-  output logic [p_tile-1:0] o_active_lane_mask,
-  output logic [p_tap_count_w-1:0] o_taps,
-  output logic [15:0] o_ox,
-  output logic [15:0] o_oy,
-  input wire logic [15:0] i_fetch_ox_next,
-  input wire logic [15:0] i_ox_next,
-  input wire logic [15:0] i_oy_next,
-  output logic [p_tap_count_w-1:0] o_kx,
-  output logic [p_tap_count_w-1:0] o_kernel_last_column,
-  output logic [p_tap_count_w-1:0] o_tap,
-  output logic [p_tap_count_w-1:0] o_load_tap,
-  output logic [p_tap_count_w-1:0] o_valid_taps,
-  output logic [31:0] o_vector_offset,
-  input wire logic [31:0] i_channel_remaining,
-  input wire logic [15:0] i_channel_next,
-  input wire logic i_channel_has_more,
-  input wire logic [p_active_count_w-1:0] i_vector_next_active,
-  input wire logic i_vector_has_more,
-  output logic [p_tile_index_w-1:0] o_compute_index,
-  output logic [p_tile_index_w-1:0] o_quant_index,
-  output logic [p_tile_index_w-1:0] o_reduce_index,
-  output logic [p_pool_group_count-1:0] o_compute_pool_group,
-  input wire logic i_compute_group_last_q,
-  input wire logic i_pool_pixel_has_more_q,
-  output logic [31:0] o_fetch_tap_offset,
-  output logic [31:0] o_position_offset,
-  output logic [31:0] o_pool_byte_offset,
-  input wire logic [31:0] i_fetch_position_next,
-  input wire logic [31:0] i_fetch_tap_offset_next,
-  input wire logic [31:0] i_position_offset_next,
-  input wire logic [31:0] i_pool_byte_offset_next,
-  input wire logic [31:0] i_vector_offset_next,
-  input wire logic i_weight_row_last_fire,
-  input wire logic i_parameter_row_last_fire,
-  input wire logic i_parameter_three_rows,
-  input wire logic i_parameter_two_rows,
-  input wire logic [p_tap_count_w-1:0] i_weight_tap_nxt,
-  input wire logic [p_tap_count_w-1:0] i_weight_tap_after_next,
-  output logic [p_tap_count_w-1:0] o_weight_prefetch_q,
-  input wire logic i_tap_last_wide,
-  output logic o_tap_last_modulo,
-  input wire logic i_tap_last_config,
-  input wire logic i_tap_last_zero,
-  input wire logic i_tap_last_increment,
-  output logic [2:0] o_pe_op,
-  output logic [1:0] o_add_stage,
-  output logic signed [31:0] o_add_scaled_a,
-  output logic signed [63:0] o_add_rounded,
-  output logic signed [31:0] o_reduce_acc,
-  input wire logic signed [31:0] i_reduce_next,
-  output logic signed [33:0] o_input_y,
-  output logic signed [33:0] o_input_x,
-  output logic signed [33:0] o_input_origin_x,
-  output logic signed [33:0] o_input_origin_y,
-  input wire logic i_param_bad,
-  input wire logic i_dw_in_bounds,
-  input wire logic [15:0] i_output_last_column,
-  input wire logic i_global_pool,
-  input wire logic [63:0] i_kernel_count,
-  input wire logic [63:0] i_position_count,
-  input wire logic i_config_check_ready,
-  input wire logic i_config_check_done,
-  input wire logic i_config_check_error,
-  output logic signed [31:0] o_q_accumulator,
-  output logic signed [31:0] o_q_multiplier,
-  output logic signed [63:0] o_q_rounded,
-  input wire logic signed [31:0] i_q_clamped_data,
-  output logic [6:0] o_q_valid,
-  output logic [7:0] o_q_clamped_q,
-  output logic [p_tile_index_w-1:0] o_q_issue,
-  output logic [p_tile_index_w-1:0] o_q_count,
-  input wire logic i_dw_issue_fire,
-  input wire logic i_dw_group_last,
-  input wire logic i_dw_tap_advance,
-  input wire logic i_dw_snapshot_fire,
-  input wire logic i_dw_quant_start,
-  input wire logic i_dw_quant_input_active,
-  input wire logic i_dw_group_pending,
-  input wire logic i_dw_work_pending,
-  output logic [31:0] o_write_origin,
-  output logic [31:0] o_write_total,
-  input wire logic i_writeback_ready,
-  input wire logic i_writeback_done,
-  input wire logic i_writeback_error,
-  input wire logic i_writeback_busy,
-  output logic o_avg_negative,
-  input wire logic i_avg_power_two,
-  input wire logic i_avg_done,
-  output logic o_input_range_mode,
-  output logic [1:0] o_read_bank,
-  output logic [1:0] o_wf_bank,
-  input wire logic [1:0] i_input_bank_mask,
-  input wire logic [3:0] i_input_ready,
-  input wire logic [3:0] i_input_reserved,
-  input wire logic i_input_drain_ready,
-  output logic [31:0] o_window_received,
-  input wire logic [31:0] i_window_count_o_sum,
-  input wire logic i_window_response_fire,
-  input wire logic i_window_request_fire,
-  input wire logic i_window_fetch_advance,
-  input wire logic i_window_response_fault,
-  output logic [31:0] o_fetch_position,
-  output logic [15:0] o_fetch_ox,
-  output logic signed [33:0] o_fetch_x,
-  output logic signed [33:0] o_fetch_y,
-  output logic signed [33:0] o_fetch_origin_x,
-  output logic signed [33:0] o_fetch_origin_y,
-  input wire logic [33:0] i_coordinate_step_o_value [8],
-  input wire logic i_next_window_valid_q,
-  input wire logic signed [33:0] i_next_window_x,
-  input wire logic signed [33:0] i_next_window_y,
-  input wire logic i_kernel_column_end,
-  input wire logic [15:0] i_padding_x_negative,
-  input wire logic [15:0] i_padding_y_negative,
-  input wire logic i_soft_ready,
-  input wire logic i_soft_done,
-  input wire logic [1:0] i_soft_error,
-  input wire logic i_soft_lut_req_valid,
-  input wire logic [7:0] i_soft_lut_index,
-  output logic [7:0] o_soft_lut_index_q,
-  output logic [31:0] o_soft_lut_data,
-  output logic [p_tap_count_w-1:0] o_pool_taps_remaining,
-  output logic [p_input_index_w:0] o_pool_pixels,
-  output logic [p_input_index_w:0] o_pool_received,
-  output logic [p_input_index_w:0] o_pool_pixel,
-  output logic [p_input_index_w:0] o_pool_elements,
-  input wire logic [p_input_index_w:0] i_pool_next_elements,
-  input wire logic [p_input_index_w:0] i_pool_next_pixels,
-  output logic [p_input_index_w:0] o_pool_input_index,
-  output logic [p_input_index_w:0] o_pool_row_remaining,
-  input wire logic i_pool_response_fire,
-  input wire logic [p_bus_shift:0] i_pool_beat_count,
-  input wire logic i_pool_read_complete_saved,
-  input wire logic [31:0] i_position_next,
-  input wire logic [31:0] i_write_origin_next,
-  input wire logic signed [31:0] i_serial_acc_read_data,
-  input wire logic signed [31:0] i_params_o_multiplier,
-  input wire logic [5:0] i_params_o_right_shift,
-  input wire logic signed [63:0] i_rounding_result,
-  output logic [5:0] o_q_right [3],
-  output logic [p_tile_index_w-1:0] o_q_index [7]
+  input wire logic clk, // 模块工作时钟。
+  input wire logic rst_n, // 低有效复位输入。
+  input wire logic i_start, // 提交一个新的向量计算任务。
+  input wire vector_engine_pkg::vector_engine_cfg_t i_cfg, // 当前待接收的向量任务配置。
+  output logic o_ready, // 向量控制器能够接收新任务。
+  output logic o_done_valid, // 当前向量任务的完成响应有效。
+  input wire logic i_done_ready, // 调用方接收当前任务的完成响应。
+  output logic [1:0] o_error, // 当前向量任务的错误状态编码。
+  output logic o_dma_cfg_valid, // 向共享 DMA 提交读取范围及卷积配置。
+  input wire logic i_dma_cfg_ready, // 共享 DMA 能够接收当前读取配置。
+  input wire logic i_win_rsp_last, // 当前返回数据结束本次窗口请求。
+  input wire logic i_win_busy, // 卷积窗口前端仍有正在处理的请求。
+  input wire logic signed [31:0] i_quant_req_accumulator [p_tile], // 已完成深度卷积累加的逐通道量化输入。
+  input wire logic i_storage_error, // 共享操作数存储报告错误。
+  output logic o_rd_req, // 向共享 DMA 仲裁器申请读取资源。
+  input wire logic i_rd_granted, // 共享 DMA 仲裁器授予读取资源。
+  input wire logic i_rd_done, // 共享 DMA 的当前读取任务完成。
+  input wire logic i_rd_error, // 共享 DMA 的当前读取任务发生错误。
+  input wire logic [p_bus_width-1:0] i_rd_raw_data, // DMA 返回的原始总线数据。
+  input wire logic i_rd_raw_valid, // DMA 原始总线返回数据有效。
+  input wire logic i_wr_done, // 共享 DMA 当前写入任务完成。
+  input wire logic i_wr_error, // 共享 DMA 当前写入任务发生错误。
+  output logic o_read_done_q, // 已保存的 DMA 读取完成状态。
+  output logic o_read_error_q, // 已保存的 DMA 读取错误状态。
+  output logic o_write_response_done_q, // 已保存的 DMA 写入完成响应。
+  output logic o_write_response_error_q, // 已保存的 DMA 写入错误响应。
+  output vector_engine_control_pkg::state_t o_state, // 向量控制器当前的状态编码。
+  output logic o_state_failed, // 控制器正在处理任务错误。
+  output logic o_state_compute_commit, // 控制器正在提交本轮计算结果。
+  output logic o_state_pool_store, // 控制器正在保存池化结果。
+  output logic o_state_dw_execute, // 控制器正在发射深度卷积计算。
+  output logic o_state_weight_read_phase, // 当前阶段允许准备权重读取。
+  output logic o_state_weight_zero_address, // 当前阶段使用卷积核首位置读取权重。
+  output logic o_state_output_init, // 控制器正在初始化当前输出分块。
+  output logic o_state_vector_init, // 控制器正在初始化当前向量分块。
+  output logic o_state_dw_finish, // 控制器正在完成当前深度卷积输出位置。
+  output logic o_window_fetch_phase, // 当前状态允许继续预取输入窗口。
+  output logic o_state_soft_lut_read, // 控制器正在读取 Softmax 指数近似表。
+  output logic o_state_pool_read, // 控制器正在读取池化输入数据。
+  output vector_engine_control_pkg::load_t o_load_kind, // 当前 DMA 读取的数据类型。
+  output logic [5:0] o_load_read_select, // 各类读取来源的独立选择标志。
+  output vector_engine_pkg::vector_engine_cfg_t o_c, // 当前已保存的向量任务配置。
+  output logic o_spatial, // 当前任务为深度卷积或空间池化运算。
+  output logic o_depthwise, // 当前任务执行八位深度卷积。
+  output logic o_binary_vector, // 当前任务需要两路向量输入。
+  output logic o_add_s8, // 当前任务执行量化八位向量加法。
+  output logic o_softmax_s8, // 当前任务执行八位 Softmax。
+  output logic o_byte_output, // 当前任务按八位元素写回结果。
+  output logic o_avg_pool, // 当前任务执行平均池化。
+  output logic o_max_pool, // 当前任务执行最大值池化。
+  output logic o_min_pool, // 当前任务执行最小值池化。
+  output logic o_vector_max, // 当前向量任务执行最大值归约。
+  output logic o_vector_min, // 当前向量任务执行最小值归约。
+  output logic o_vector_hadamard, // 当前向量任务执行逐元素乘法。
+  input wire logic [31:0] i_channels, // 当前空间任务的通道总数。
+  output logic [31:0] o_position, // 当前处理的线性输出空间位置。
+  output logic o_position_is_last, // 当前输出空间位置是任务的最后一项。
+  output logic [15:0] o_channel_base, // 当前通道分块的首通道编号。
+  output logic [p_active_count_w-1:0] o_active, // 当前分块实际使用的通道或元素数量。
+  output logic [p_tile-1:0] o_active_lane_mask, // 当前分块各计算通道的有效掩码。
+  output logic [p_tap_count_w-1:0] o_taps, // 当前卷积核或池化窗口的总位置数。
+  output logic [15:0] o_ox, // 当前计算输出位置的横坐标。
+  output logic [15:0] o_oy, // 当前计算输出位置的纵坐标。
+  input wire logic [15:0] i_fetch_ox_next, // 窗口预取扫描的下一输出横坐标。
+  input wire logic [15:0] i_ox_next, // 当前计算扫描的下一输出横坐标。
+  input wire logic [15:0] i_oy_next, // 当前计算扫描的下一输出纵坐标。
+  output logic [p_tap_count_w-1:0] o_kx, // 当前卷积核位置的横坐标。
+  output logic [p_tap_count_w-1:0] o_kernel_last_column, // 当前卷积核的最后一个列坐标。
+  output logic [p_tap_count_w-1:0] o_tap, // 当前计算使用的卷积核线性位置。
+  output logic [p_tap_count_w-1:0] o_load_tap, // 当前 DMA 权重数据对应的卷积核位置。
+  output logic [p_tap_count_w-1:0] o_valid_taps, // 当前输出位置已累计的有效窗口位置数。
+  output logic [31:0] o_vector_offset, // 当前向量分块相对输入起点的元素偏移。
+  input wire logic [31:0] i_channel_remaining, // 当前通道起点之后尚需处理的通道数。
+  input wire logic [15:0] i_channel_next, // 完成当前分块后的下一首通道编号。
+  input wire logic i_channel_has_more, // 当前分块之后仍有空间通道需要处理。
+  input wire logic [p_active_count_w-1:0] i_vector_next_active, // 下一向量分块需要处理的有效元素数。
+  input wire logic i_vector_has_more, // 当前分块之后仍有向量元素需要处理。
+  output logic [p_tile_index_w-1:0] o_compute_index, // 当前并行计算组的首元素索引。
+  output logic [p_tile_index_w-1:0] o_quant_index, // 当前串行量化元素的索引。
+  output logic [p_tile_index_w-1:0] o_reduce_index, // 当前串行归约元素的索引。
+  output logic [p_pool_group_count-1:0] o_compute_pool_group, // 当前池化并行计算组的选择标志。
+  input wire logic i_compute_group_last_q, // 已保存的当前并行计算组为末组的条件。
+  input wire logic i_pool_pixel_has_more_q, // 已保存的池化批次还有后续像素的条件。
+  output logic [31:0] o_fetch_tap_offset, // 预取卷积核位置相对窗口起点的通道偏移。
+  output logic [31:0] o_position_offset, // 当前输出空间位置的线性字节偏移。
+  output logic [31:0] o_pool_byte_offset, // 当前池化批次相对输入基址的字节偏移。
+  input wire logic [31:0] i_fetch_position_next, // 窗口预取扫描的下一线性输出位置。
+  input wire logic [31:0] i_fetch_tap_offset_next, // 下一预取卷积核位置的通道偏移。
+  input wire logic [31:0] i_position_offset_next, // 下一输出空间位置的线性字节偏移。
+  input wire logic [31:0] i_pool_byte_offset_next, // 下一池化输入批次的字节偏移。
+  input wire logic [31:0] i_vector_offset_next, // 下一向量分块相对输入起点的元素偏移。
+  input wire logic i_weight_row_last_fire, // 本拍权重返回数据结束一个卷积核位置。
+  input wire logic i_parameter_row_last_fire, // 本拍参数返回数据结束当前参数数组行。
+  input wire logic i_parameter_three_rows, // 偏置、乘数和移位数组能够用三行连续描述符读取。
+  input wire logic i_parameter_two_rows, // 乘数和移位数组能够用两行连续描述符读取。
+  input wire logic [p_tap_count_w-1:0] i_weight_tap_nxt, // 当前卷积核位置加一后的索引。
+  input wire logic [p_tap_count_w-1:0] i_weight_tap_after_next, // 当前卷积核位置加二后的索引。
+  output logic [p_tap_count_w-1:0] o_weight_prefetch_q, // 已保存的下一权重预取位置。
+  input wire logic i_tap_last_wide, // 扩展位宽比较确认当前卷积核位置为末项。
+  output logic o_tap_last_modulo, // 随卷积核位置保存的末项标志。
+  input wire logic i_tap_last_config, // 按新配置的核元素数计算的末项条件。
+  input wire logic i_tap_last_zero, // 卷积核位置归零后即为末项的条件。
+  input wire logic i_tap_last_increment, // 卷积核位置递增一次后成为末项的条件。
+  output logic [2:0] o_pe_op, // 当前计算单元使用的乘加或极值操作码。
+  output logic [1:0] o_add_stage, // 八位量化加法当前的缩放计算阶段。
+  output logic signed [31:0] o_add_scaled_a, // 已保存的第一路八位加法输入缩放值。
+  output logic signed [63:0] o_add_rounded, // 已保存的八位加法缩放舍入中间结果。
+  output logic signed [31:0] o_reduce_acc, // 已保存的当前串行归约累计值。
+  input wire logic signed [31:0] i_reduce_next, // 归约计算单元生成的下一累计值。
+  output logic signed [33:0] o_input_y, // 当前计算对应的有符号输入纵坐标。
+  output logic signed [33:0] o_input_x, // 当前计算对应的有符号输入横坐标。
+  output logic signed [33:0] o_input_origin_x, // 当前输出窗口起点的有符号输入横坐标。
+  output logic signed [33:0] o_input_origin_y, // 当前输出窗口起点的有符号输入纵坐标。
+  input wire logic i_param_bad, // 运行地址或参数检查发现错误。
+  input wire logic i_dw_in_bounds, // 当前深度卷积采样坐标处于输入图像范围。
+  input wire logic [15:0] i_output_last_column, // 输出图像的最后一个列坐标。
+  input wire logic i_global_pool, // 当前池化窗口覆盖整个输入图像。
+  input wire logic [63:0] i_kernel_count, // 配置检查得到的卷积核或池化窗口位置总数。
+  input wire logic [63:0] i_position_count, // 配置检查得到的输出空间位置总数。
+  input wire logic i_config_check_ready, // 配置检查器能够接收新任务。
+  input wire logic i_config_check_done, // 当前向量配置检查完成。
+  input wire logic i_config_check_error, // 当前向量配置检查失败。
+  output logic signed [31:0] o_q_accumulator, // 当前量化流水输入的累加结果。
+  output logic signed [31:0] o_q_multiplier, // 与当前量化输入共同保存的乘数。
+  output logic signed [63:0] o_q_rounded, // 量化乘积经过右移舍入后的完整中间值。
+  input wire logic signed [31:0] i_q_clamped_data, // 量化结果经过偏移和激活限幅后的数值。
+  output logic [6:0] o_q_valid, // 量化流水七个阶段各自的有效标志。
+  output logic [7:0] o_q_clamped_q, // 已保存的八位量化限幅结果。
+  output logic [p_tile_index_w-1:0] o_q_issue, // 当前准备送入量化流水的通道索引。
+  output logic [p_tile_index_w-1:0] o_q_count, // 本批量化请求需要处理的通道数量。
+  input wire logic i_dw_issue_fire, // 本周期接受一组深度卷积乘加输入。
+  input wire logic i_dw_group_last, // 当前深度卷积输入为本次通道分块的末组。
+  input wire logic i_dw_tap_advance, // 深度卷积计算推进到下一卷积核位置。
+  input wire logic i_dw_snapshot_fire, // 保存一个输出位置的完整深度卷积累加结果。
+  input wire logic i_dw_quant_start, // 开始处理一批深度卷积量化输入。
+  input wire logic i_dw_quant_input_active, // 本周期存在有效的深度卷积量化输入。
+  input wire logic i_dw_group_pending, // 仍有深度卷积通道组等待完成。
+  input wire logic i_dw_work_pending, // 深度卷积计算或量化仍有待完成工作。
+  output logic [31:0] o_write_origin, // 当前结果分块的写回起始字节地址。
+  output logic [31:0] o_write_total, // 当前结果分块需要写回的字节数。
+  input wire logic i_writeback_ready, // 结果写回队列能够接收当前请求。
+  input wire logic i_writeback_done, // 当前结果序列的写回完成。
+  input wire logic i_writeback_error, // 当前结果序列的写回发生错误。
+  input wire logic i_writeback_busy, // 结果写回仍有待处理数据或事务。
+  output logic o_avg_negative, // 当前平均池化的累加结果为负。
+  input wire logic i_avg_power_two, // 当前平均池化的除数为二的整数次幂。
+  input wire logic i_avg_done, // 当前平均池化除法完成。
+  output logic o_input_range_mode, // DMA 当前配置采用输入张量读取区间。
+  output logic [1:0] o_read_bank, // 当前计算读取的输入缓存槽号。
+  output logic [1:0] o_wf_bank, // 窗口预取分配的输入缓存槽号。
+  input wire logic [1:0] i_input_bank_mask, // 输入缓存槽号循环推进时使用的低位掩码。
+  input wire logic [3:0] i_input_ready, // 四个输入缓存槽的数据就绪标志。
+  input wire logic [3:0] i_input_reserved, // 四个输入缓存槽的请求预留标志。
+  input wire logic i_input_drain_ready, // 输入读取、共享存储及结果写回均已排空。
+  output logic [31:0] o_window_received, // 当前窗口已接收的有效元素数。
+  input wire logic [31:0] i_window_count_o_sum, // 计入本拍有效通道后的窗口接收元素总数。
+  input wire logic i_window_response_fire, // 本周期接收卷积窗口返回数据。
+  input wire logic i_window_request_fire, // 本周期提交卷积窗口请求。
+  input wire logic i_window_fetch_advance, // 预取窗口已提交或越过无效坐标，可以推进扫描。
+  input wire logic i_window_response_fault, // 窗口返回的错误标志或元素数量检查失败。
+  output logic [31:0] o_fetch_position, // 窗口预取当前的线性输出位置。
+  output logic [15:0] o_fetch_ox, // 窗口预取当前的输出横坐标。
+  output logic signed [33:0] o_fetch_x, // 窗口预取当前的有符号输入横坐标。
+  output logic signed [33:0] o_fetch_y, // 窗口预取当前的有符号输入纵坐标。
+  output logic signed [33:0] o_fetch_origin_x, // 预取输出窗口起点的有符号输入横坐标。
+  output logic signed [33:0] o_fetch_origin_y, // 预取输出窗口起点的有符号输入纵坐标。
+  input wire logic [33:0] i_coordinate_step_o_value [8], // 八个并行坐标步进候选的计算结果。
+  input wire logic i_next_window_valid_q, // 已保存的下一采样窗口坐标有效条件。
+  input wire logic signed [33:0] i_next_window_x, // 下一采样窗口的有符号输入横坐标。
+  input wire logic signed [33:0] i_next_window_y, // 下一采样窗口的有符号输入纵坐标。
+  input wire logic i_kernel_column_end, // 当前卷积核横坐标已到达末列。
+  input wire logic [15:0] i_padding_x_negative, // 横向填充尺寸取负后保留的低十六位。
+  input wire logic [15:0] i_padding_y_negative, // 纵向填充尺寸取负后保留的低十六位。
+  input wire logic i_soft_ready, // Softmax 计算器能够接收新任务。
+  input wire logic i_soft_done, // Softmax 计算器完成当前任务。
+  input wire logic [1:0] i_soft_error, // Softmax 计算器返回的错误状态。
+  input wire logic i_soft_lut_req_valid, // Softmax 计算器的指数查表请求有效。
+  input wire logic [7:0] i_soft_lut_index, // Softmax 指数近似表的当前读取索引。
+  output logic [7:0] o_soft_lut_index_q, // 已保存的 Softmax 指数表读取索引。
+  output logic [31:0] o_soft_lut_data, // DMA 返回并保存的 Softmax 指数表数据。
+  output logic [p_tap_count_w-1:0] o_pool_taps_remaining, // 尚需读取的池化窗口位置数量。
+  output logic [p_input_index_w:0] o_pool_pixels, // 当前池化输入批次覆盖的像素数量。
+  output logic [p_input_index_w:0] o_pool_received, // 当前池化输入批次已接收的有效元素数。
+  output logic [p_input_index_w:0] o_pool_pixel, // 当前正在归约的池化批次内像素索引。
+  output logic [p_input_index_w:0] o_pool_elements, // 当前池化输入批次需要接收的元素总数。
+  input wire logic [p_input_index_w:0] i_pool_next_elements, // 下一池化输入批次需要接收的元素总数。
+  input wire logic [p_input_index_w:0] i_pool_next_pixels, // 下一池化输入批次覆盖的像素数量。
+  output logic [p_input_index_w:0] o_pool_input_index, // 当前池化计算在输入缓存中的首元素索引。
+  output logic [p_input_index_w:0] o_pool_row_remaining, // 当前池化读取行尚需返回的字节数。
+  input wire logic i_pool_response_fire, // 本周期接收一拍池化输入数据。
+  input wire logic [p_bus_shift:0] i_pool_beat_count, // 当前池化返回拍包含的有效元素数。
+  input wire logic i_pool_read_complete_saved, // DMA 完成时保存的池化输入数量完整条件。
+  input wire logic [31:0] i_position_next, // 当前线性输出位置加一后的结果。
+  input wire logic [31:0] i_write_origin_next, // 下一写回阶段需要采用的输出字节地址。
+  input wire logic signed [31:0] i_serial_acc_read_data, // 当前串行归约或量化读取的累加结果。
+  input wire logic signed [31:0] i_params_o_multiplier, // 当前串行量化通道的有符号乘数。
+  input wire logic [5:0] i_params_o_right_shift, // 当前串行量化通道的右移位数。
+  input wire logic signed [63:0] i_rounding_result, // 右移舍入模块返回的完整计算结果。
+  output logic [5:0] o_q_right [3], // 随量化数据推进的三个右移位数记录。
+  output logic [p_tile_index_w-1:0] o_q_index [7] // 随量化数据推进的七个通道索引记录。
 );
 
   logic start;
@@ -632,10 +632,23 @@ module vector_engine_control #(
   logic [p_tap_count_w-1:0] pool_offset;
   logic [p_input_index_w:0] pool_row_columns;
 
+  logic next_position_less, next_position_equal;
+  unsigned_compare #(.p_width(32)) u_next_position_compare (
+    .i_a(position_next), .i_b(32'(position_count)),
+    .o_less(next_position_less), .o_equal(next_position_equal)
+  );
   // 完成状态在位置更新后至少间隔一个周期到达，提前保存下一位置的边界关系。
   always_ff @(posedge clk) begin
-    position_has_more <= position_next < 32'(position_count);
-    o_position_is_last <= position_next == 32'(position_count);
+    case (^{position_next,position_count[31:0]})
+      1'b0,1'b1: begin
+        position_has_more <= next_position_less;
+        o_position_is_last <= next_position_equal;
+      end
+      default: begin
+        position_has_more <= position_next < 32'(position_count);
+        o_position_is_last <= position_next == 32'(position_count);
+      end
+    endcase
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -722,13 +735,105 @@ module vector_engine_control #(
     end
   end
 
+  // 错误来源在本地状态译码内归并，任务开始只参与最终清零选择。
+  logic [1:0] error_local, error_next;
+  logic error_override;
+  always_comb begin
+    error_local = error;
+    case (state)
+      vector_engine_control_pkg::CHECK_WAIT: begin
+        if (config_check_done && config_check_error) error_local = 2'b01;
+      end
+      vector_engine_control_pkg::LOAD_VERIFY: begin
+        if (load_completion_error || param_bad_seen) error_local = 2'b10;
+        else begin
+          case (load_kind)
+            vector_engine_control_pkg::LD_WEIGHT, vector_engine_control_pkg::LD_BIAS,
+            vector_engine_control_pkg::LD_MULT, vector_engine_control_pkg::LD_SHIFT,
+            vector_engine_control_pkg::LD_A, vector_engine_control_pkg::LD_B: begin end
+            default: error_local = 2'b10;
+          endcase
+        end
+      end
+      vector_engine_control_pkg::POOL_LOAD_WAIT: begin
+        if (read_done_q && (read_error_q || !pool_read_complete_saved)) error_local = 2'b10;
+      end
+      vector_engine_control_pkg::QUANT_INIT: begin
+        if (!writeback_busy && avg_pool && valid_taps == 0) error_local = 2'b01;
+      end
+      vector_engine_control_pkg::SOFT_RUN: begin
+        if (soft_done && soft_error != 0) error_local = soft_error;
+      end
+      vector_engine_control_pkg::IDLE, vector_engine_control_pkg::CHECK, vector_engine_control_pkg::CONFIGURE,
+      vector_engine_control_pkg::TILE_INIT, vector_engine_control_pkg::LOAD_REQ, vector_engine_control_pkg::LOAD_WAIT,
+      vector_engine_control_pkg::OUTPUT_INIT, vector_engine_control_pkg::DW_EXECUTE, vector_engine_control_pkg::DW_FINISH,
+      vector_engine_control_pkg::POOL_LOAD_PREP, vector_engine_control_pkg::POOL_LOAD_REQ, vector_engine_control_pkg::POOL_LOAD_DRAIN,
+      vector_engine_control_pkg::TAP_CHECK, vector_engine_control_pkg::WINDOW_WAIT, vector_engine_control_pkg::EXECUTE,
+      vector_engine_control_pkg::EXECUTE_COMMIT, vector_engine_control_pkg::ADD_MULT, vector_engine_control_pkg::ADD_DRAIN,
+      vector_engine_control_pkg::ADD_ROUND, vector_engine_control_pkg::ADD_ROUND_WAIT, vector_engine_control_pkg::ADD_SUM,
+      vector_engine_control_pkg::ADD_CLAMP, vector_engine_control_pkg::ADD_STORE, vector_engine_control_pkg::TAP_NEXT,
+      vector_engine_control_pkg::AVG_START, vector_engine_control_pkg::AVG_POWER_DELAY, vector_engine_control_pkg::AVG_POWER_CLAMP,
+      vector_engine_control_pkg::AVG_POWER_STORE, vector_engine_control_pkg::AVG_WAIT, vector_engine_control_pkg::POOL_STORE,
+      vector_engine_control_pkg::WRITE_PREP, vector_engine_control_pkg::OUTPUT_NEXT, vector_engine_control_pkg::DRAIN_TILE,
+      vector_engine_control_pkg::DRAIN, vector_engine_control_pkg::SOFT_START, vector_engine_control_pkg::SOFT_LUT_REQ,
+      vector_engine_control_pkg::SOFT_LUT_WAIT, vector_engine_control_pkg::VECTOR_INIT, vector_engine_control_pkg::VECTOR_NEXT,
+      vector_engine_control_pkg::VECTOR_REDUCE, vector_engine_control_pkg::FAILED, vector_engine_control_pkg::DONE: begin end
+      default: error_local = 2'b10;
+    endcase
+  end
+  assign error_override = (writeback_done && writeback_error) || window_response_fault ||
+      (p_shared_storage_enable && i_storage_error && state != vector_engine_control_pkg::IDLE &&
+       !state_failed && state != vector_engine_control_pkg::DONE);
+  vector_engine_error_select u_error_select (
+    .i_local(error_local), .i_idle(state == vector_engine_control_pkg::IDLE),
+    .i_start(start), .i_override(error_override), .o_next(error_next)
+  );
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) error <= 2'b00;
+    else error <= error_next;
+  end
+
+  logic [2:0] tap_weight_select, tap_y_select;
+  logic [2:0][p_tap_count_w-1:0] tap_weight_data;
+  logic [2:0][17:0] tap_y_data;
+  logic [p_tap_count_w-1:0] tap_weight_value;
+  logic [17:0] tap_y_value;
+  vector_tap_update_select u_tap_update (
+    .i_state(state), .i_config_done(config_check_done), .i_config_error(config_check_error),
+    .i_dw_advance(dw_tap_advance), .i_tap_last_modulo(tap_last_modulo),
+    .i_dw_snapshot(dw_snapshot_fire), .i_position_more(position_has_more),
+    .i_output_column_last(ox == output_last_column), .i_compute_group_last(compute_group_last_q),
+    .i_global_pool(global_pool), .i_spatial(spatial), .i_tap_last_wide(tap_last_wide),
+    .o_weight_select(tap_weight_select), .o_y_select(tap_y_select)
+  );
+  // 候选数值与更新事件并行形成，较晚的接收事件只选择已经准备的数值。
+  assign tap_weight_data[0] = tap_last_config ? '0 : weight_tap_nxt;
+  assign tap_weight_data[1] = tap_last_zero ? '0 : p_tap_count_w'(1);
+  assign tap_weight_data[2] = tap_last_increment ? '0 : weight_tap_after_next;
+  assign tap_y_data = {18'(next_window_y), 18'($signed(coordinate_step_o_value[3])), input_origin_y};
+  onehot_mux #(.p_choices(3), .p_width(p_tap_count_w)) u_tap_weight (
+    .i_select(tap_weight_select), .i_data(tap_weight_data), .o_data(tap_weight_value)
+  );
+  onehot_mux #(.p_choices(3), .p_width(18)) u_tap_y (
+    .i_select(tap_y_select), .i_data(tap_y_data), .o_data(tap_y_value)
+  );
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::IDLE); c<='0; error<=0; {load_read_select,load_kind}<=vector_engine_control_pkg::load_control_value(vector_engine_control_pkg::LD_WEIGHT);
+      weight_prefetch_q <= p_tap_count_w'(1);
+      input_y <= '0;
+    end else begin
+      if (|tap_weight_select) weight_prefetch_q <= tap_weight_value;
+      if (|tap_y_select) input_y <= $signed(tap_y_value);
+    end
+  end
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::IDLE); c<='0;  {load_read_select,load_kind}<=vector_engine_control_pkg::load_control_value(vector_engine_control_pkg::LD_WEIGHT);
       parameter_rows_remaining<=0;
-      taps<=0; tap_last_modulo<=1'b0;weight_prefetch_q<=p_tap_count_w'(1); {active_lane_mask,active}<=active_count_value(0); channel_base<=0; position<=0;
+      taps<=0; tap_last_modulo<=1'b0; {active_lane_mask,active}<=active_count_value(0); channel_base<=0; position<=0;
       ox<=0;oy<=0;kx<=0;ky<=0;tap<=0;load_tap<=0;valid_taps<=0;
-      input_x<=0;input_y<=0;input_origin_x<=0;input_origin_y<=0;
+      input_x<=0;input_origin_x<=0;input_origin_y<=0;
       vector_offset<=0;{compute_pool_group,compute_index}<=compute_index_value(0);quant_index<=0;reduce_index<=0;
       reduce_acc<=0; param_bad_seen<=0;load_completion_error<=1'b0;
       add_stage<=0;add_multiply_wait<=0;add_scaled_a<=0;add_rounded<=0;
@@ -828,7 +933,7 @@ module vector_engine_control #(
       end
       case (state)
         vector_engine_control_pkg::IDLE: if (start) begin
-          c<=cfg; error<=0; {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::CHECK);
+          c<=cfg;  {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::CHECK);
           input_range_mode<=0;
         end
         vector_engine_control_pkg::CHECK: begin
@@ -838,10 +943,10 @@ module vector_engine_control #(
           if (config_check_ready) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::CHECK_WAIT);
         end
         vector_engine_control_pkg::CHECK_WAIT: if (config_check_done) begin
-          if (config_check_error) begin error<=2'b01;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
+          if (config_check_error) begin {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
           else begin
             taps<=32'(kernel_count);tap_last_modulo<=tap_last_config;
-            weight_prefetch_q<=tap_last_config ? '0 : weight_tap_nxt;channel_base<=0;input_range_mode<=global_pool;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::CONFIGURE);
+            channel_base<=0;input_range_mode<=global_pool;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::CONFIGURE);
           end
         end
         vector_engine_control_pkg::CONFIGURE: if (dma_cfg_ready) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(spatial ? vector_engine_control_pkg::TILE_INIT : vector_engine_control_pkg::VECTOR_INIT);
@@ -866,7 +971,7 @@ module vector_engine_control #(
           {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_VERIFY);
         end
         vector_engine_control_pkg::LOAD_VERIFY: begin
-          if (load_completion_error || param_bad_seen) begin error<=2'b10;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
+          if (load_completion_error || param_bad_seen) begin {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
           else case (load_kind)
             vector_engine_control_pkg::LD_WEIGHT: begin {load_read_select,load_kind}<=vector_engine_control_pkg::load_control_value(c.bias_base==0 ? vector_engine_control_pkg::LD_MULT : vector_engine_control_pkg::LD_BIAS);{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);end
             vector_engine_control_pkg::LD_BIAS: begin {load_read_select,load_kind}<=vector_engine_control_pkg::load_control_value(vector_engine_control_pkg::LD_MULT);{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::LOAD_REQ);end
@@ -878,12 +983,12 @@ module vector_engine_control #(
               {compute_pool_group,compute_index}<=compute_index_value(0);add_stage<=0;
               {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(add_s8 ? vector_engine_control_pkg::ADD_MULT : vector_engine_control_pkg::EXECUTE);
             end
-            default: begin error<=2'b10;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
+            default: begin {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
           endcase
         end
         vector_engine_control_pkg::OUTPUT_INIT: begin
-          tap<=0;tap_last_modulo<=tap_last_zero;weight_prefetch_q<=tap_last_zero ? '0 : p_tap_count_w'(1);kx<=0;ky<=0;valid_taps<=0;{compute_pool_group,compute_index}<=compute_index_value(0);
-          input_x<=input_origin_x;input_y<=input_origin_y;
+          tap<=0;tap_last_modulo<=tap_last_zero;kx<=0;ky<=0;valid_taps<=0;{compute_pool_group,compute_index}<=compute_index_value(0);
+          input_x<=input_origin_x;
           if (global_pool) begin
             valid_taps<=taps;pool_offset<=0;pool_taps_remaining<=taps;pool_byte_offset<=0;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_LOAD_PREP);
           end else {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(depthwise ? vector_engine_control_pkg::DW_EXECUTE : vector_engine_control_pkg::TAP_CHECK);
@@ -899,15 +1004,15 @@ module vector_engine_control #(
           if (dw_tap_advance) begin
             if (tap_last_modulo) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DW_FINISH);
             else begin
-              tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;
-              input_x<=18'(next_window_x);input_y<=18'(next_window_y);
+              tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;
+              input_x<=18'(next_window_x);
               if (kernel_column_end) begin kx<=0;ky<=ky+1'b1;end
               else kx<=kx+1'b1;
             end
           end
         end
         vector_engine_control_pkg::DW_FINISH: if (dw_snapshot_fire) begin
-          {compute_pool_group,compute_index}<=compute_index_value('0);tap<='0;tap_last_modulo<=tap_last_zero;weight_prefetch_q<=tap_last_zero ? '0 : p_tap_count_w'(1);kx<='0;ky<='0;
+          {compute_pool_group,compute_index}<=compute_index_value('0);tap<='0;tap_last_modulo<=tap_last_zero;kx<='0;ky<='0;
           if (position_has_more) begin
             position<=position_next;position_offset<=position_offset_next;
             if (ox==output_last_column) begin
@@ -915,12 +1020,12 @@ module vector_engine_control #(
               input_origin_x<=$signed({{2{(|c.image.pad_left)}}, padding_x_negative});
               input_x<=$signed({{2{(|c.image.pad_left)}}, padding_x_negative});
               input_origin_y<=18'($signed(coordinate_step_o_value[3]));
-              input_y<=18'($signed(coordinate_step_o_value[3]));
+
             end else begin
               ox<=ox_next;
               input_origin_x<=18'($signed(coordinate_step_o_value[2]));
               input_x<=18'($signed(coordinate_step_o_value[2]));
-              input_y<=input_origin_y;
+
             end
             {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DW_EXECUTE);
           end else if (channel_has_more) begin
@@ -936,7 +1041,7 @@ module vector_engine_control #(
         end
         vector_engine_control_pkg::POOL_LOAD_REQ: if (rd_granted) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_LOAD_WAIT);
         vector_engine_control_pkg::POOL_LOAD_WAIT: if (read_done_q) begin
-          if (read_error_q || !pool_read_complete_saved) begin error<=2'b10;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
+          if (read_error_q || !pool_read_complete_saved) begin {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
           else begin {compute_pool_group,compute_index}<=compute_index_value(0);{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_LOAD_DRAIN);end
         end
         vector_engine_control_pkg::POOL_LOAD_DRAIN: {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::EXECUTE);
@@ -967,7 +1072,7 @@ module vector_engine_control #(
             read_bank<=(read_bank+1'b1)&input_bank_mask;{compute_pool_group,compute_index}<=compute_index_value(0);
             if (tap_last_wide) begin quant_index<=0;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::QUANT_INIT);end
             else begin
-              tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;input_x<=18'(next_window_x);input_y<=18'(next_window_y);
+              tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;input_x<=18'(next_window_x);
               if (kernel_column_end) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
               if (next_window_valid_q) begin
                 valid_taps<=valid_taps+1;
@@ -1009,14 +1114,14 @@ module vector_engine_control #(
         end
         vector_engine_control_pkg::TAP_NEXT: if (tap_last_wide) begin quant_index<=0;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::QUANT_INIT);end
           else begin
-            tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;input_x<=18'(next_window_x);input_y<=18'(next_window_y);
+            tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;input_x<=18'(next_window_x);
             if (kernel_column_end) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
             {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::TAP_CHECK);
           end
         vector_engine_control_pkg::QUANT_INIT: begin
           if (!writeback_busy) begin
             if (avg_pool) begin
-              if (valid_taps==0) begin error<=2'b01;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end else {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::AVG_START);
+              if (valid_taps==0) begin {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end else {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::AVG_START);
             end else begin
               {compute_pool_group,compute_index}<=compute_index_value('0);
               {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::POOL_STORE);
@@ -1073,7 +1178,7 @@ module vector_engine_control #(
           {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DONE);
         vector_engine_control_pkg::SOFT_START: if (soft_ready) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::SOFT_RUN);
         vector_engine_control_pkg::SOFT_RUN: if (soft_done) begin
-          if (soft_error!=0) begin error<=soft_error;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
+          if (soft_error!=0) begin {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
           else begin write_origin<=write_origin_next;write_total<=active;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::WRITE_PREP);end
         end else if (soft_lut_req_valid) begin
           soft_lut_data<=0;soft_lut_index_q<=soft_lut_index;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::SOFT_LUT_REQ);
@@ -1103,15 +1208,15 @@ module vector_engine_control #(
           {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::DONE);
         end
         vector_engine_control_pkg::DONE: if (done_ready) {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::IDLE);
-        default: begin error<=2'b10;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
+        default: begin {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);end
       endcase
       if ((writeback_done && writeback_error) ||
           window_response_fault) begin
-        error<=2'b10;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);
+        {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);
       end
       if (p_shared_storage_enable && i_storage_error &&
           state!=vector_engine_control_pkg::IDLE && !state_failed && state!=vector_engine_control_pkg::DONE) begin
-        error<=2'b10;{state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);
+        {state_soft_lut_read,state_pool_read,state_weight_zero_address,state_weight_read_phase,state_dw_execute,state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=vector_engine_control_pkg::state_control_value(vector_engine_control_pkg::FAILED);
       end
     end
   end

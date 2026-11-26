@@ -1,0 +1,50 @@
+{
+  "passed": true,
+  "reference_commit": "4f0fbf93f3226e5675fa22c4fb5a522b94e53f66",
+  "parameters": {
+    "p_tile": 16,
+    "p_bus_width": 64,
+    "p_dma_size": 64,
+    "p_pe_count": 8,
+    "p_window_lanes": 8,
+    "p_shared_quant_enable": 1,
+    "p_shared_storage_enable": 1
+  },
+  "inputs_constrained": false,
+  "all_public_outputs_compared": true,
+  "source_sha256": {
+    "rtl/npu/conv/vector_engine_control_pkg.sv": "b90566fe45a0be8d23ee302ccd0ac055da88af1ba06e5c43c41b6dfb890bbdf8",
+    "rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+    "rtl/npu/conv/vector_engine_pkg.sv": "3b120fbc30d6d9a86296526af9b9248f69862112218de6c869e3c89c1321dc05",
+    "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+    "rtl/common/parallel_prefix_add.sv": "aeaeed86349c4531f486bfc7cc364f559b31e34d5f3959782b408a036defba00",
+    "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+    "rtl/npu/conv/vector_quant_params.sv": "6a5e468713bbf0287233a96593a1e2003c24f7e97dfa018ffc1a23fab5cef193",
+    "rtl/npu/conv/vector_weight_store.sv": "906bf7a4952f2fa7375bb2f1d398b627cce204596bb511470c0aed1b991e985b",
+    "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+    "rtl/common/parallel_prefix_high_group.sv": "f37805622ff8cfac2cec15d31c4bf4ceef1d73e986559d6e81f2c13a5870c70a",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+    "rtl/npu/conv/vector_engine_operand_store.sv": "1f0210066838a31b554ee37181b99c2004aa1240255c05e6b0ba92904ef4a539",
+    "rtl/npu/conv/vector_window_bank_map.sv": "a728116a86f9532191a7df73fe2478b8f73eabf2583878ee0b5628f909ab9ff6",
+    "rtl/npu/conv/vector_window_valid_mux.sv": "c7e5655fc20a53b0ea9c27fa28678f2ba0eede34e3ea7c178ab68c4cf0068541"
+  },
+  "test_sha256": "01c1e9bda70ed89dcc34d0f108b23c009c96208c67a3ffe3fddb2d1ff5db1a98",
+  "four_state_vector_comparisons": 16384,
+  "profiles": [
+    {
+      "synthesis": false,
+      "passed": true,
+      "four_state_vector_comparisons": 8192,
+      "formal_log_sha256": "b8f3e2505b6f04e428ca69525ba28eef641a1026b9290a14cf1d397989870fc0",
+      "four_state_log_sha256": "a684736370c3eed5b67bb09aaae91bb232849b9c1fbbe5656d6a9c4fb3cc0c2e"
+    },
+    {
+      "synthesis": true,
+      "passed": true,
+      "four_state_vector_comparisons": 8192,
+      "formal_log_sha256": "7d1bb2a881098a8c4994e5b1612c1d13ae3663f7cf535fb4289d1a81bb4129ae",
+      "four_state_log_sha256": "a684736370c3eed5b67bb09aaae91bb232849b9c1fbbe5656d6a9c4fb3cc0c2e"
+    }
+  ]
+}

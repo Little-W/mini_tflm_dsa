@@ -8,11 +8,11 @@ module registered_multiplier_s32 #(
     parameter bit p_input_register = 1'b0,
     parameter bit p_b_input_register = p_input_register
 ) (
-    input  wire logic clk,
-    input  wire logic i_en,
-    input  wire logic signed [31:0] i_a,
-    input  wire logic signed [31:0] i_b,
-    output logic signed [63:0] o_product
+    input  wire logic clk, // 模块工作时钟。
+    input  wire logic i_en, // 共同推进输入寄存与乘法流水的使能。
+    input  wire logic signed [31:0] i_a, // 第一个三十二位有符号乘数。
+    input  wire logic signed [31:0] i_b, // 第二个三十二位有符号乘数。
+    output logic signed [63:0] o_product // 寄存后的完整六十四位有符号乘积。
 );
     //! 0. 运算数据与进位
     //! -----------------

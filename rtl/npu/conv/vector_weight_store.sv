@@ -7,13 +7,13 @@ module vector_weight_store #(
     parameter int p_depth = 49,
     parameter int p_address_width = (p_depth < 2) ? 1 : $clog2(p_depth)
 ) (
-    input wire logic clk,
-    input wire logic i_wr_en,
-    input wire logic [31:0] i_wr_tap,
-    input wire logic [p_channels-1:0] i_wr_mask,
-    input wire logic [8*p_channels-1:0] i_wr_data,
-    input wire logic [31:0] i_rd_tap,
-    output logic [8*p_channels-1:0] o_rd_data
+    input wire logic clk, // 模块工作时钟。
+    input wire logic i_wr_en, // 允许接收本周期的权重写入。
+    input wire logic [31:0] i_wr_tap, // 待写入的卷积核位置索引。
+    input wire logic [p_channels-1:0] i_wr_mask, // 各权重通道的字节写入使能。
+    input wire logic [8*p_channels-1:0] i_wr_data, // 本周期各通道的八位权重数据。
+    input wire logic [31:0] i_rd_tap, // 同步读取的卷积核位置索引。
+    output logic [8*p_channels-1:0] o_rd_data // 同步返回的各通道权重，索引越界时为零。
 );
     //! 0. 存储端口和读取状态
     //! -----------------------

@@ -1,0 +1,140 @@
+{
+  "target": "Xilinx 7 series",
+  "delay_target_ps": 6667,
+  "wire_delay_ps": 300,
+  "max_lut_inputs": 8,
+  "modules": [
+    {
+      "module": "vector_engine_address",
+      "reference": {
+        "resources": {
+          "logic_lut_cells": 1849,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1849,
+          "flip_flops": 260,
+          "dsp48e1": 6,
+          "ramb36e1": 0,
+          "ramb18e1": 0
+        },
+        "longest_register_path_cells": 10,
+        "input_sha256": "4d3e85d82915ba933546cffd244f16a2f788e69370c8fe7a1d1b2498442715ef",
+        "source_sha256": "eaae6ae307727f6c57ab70eac37dfbe5063e82a11378d0ee13c7057a35310961"
+      },
+      "native": {
+        "resources": {
+          "logic_lut_cells": 1827,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1827,
+          "flip_flops": 260,
+          "dsp48e1": 7,
+          "ramb36e1": 0,
+          "ramb18e1": 0
+        },
+        "longest_register_path_cells": 8,
+        "input_sha256": "b9eaa90b1329da2fbc81f7067af78c8f4ae43691c5e0ffcd2dd0eae3fda29338",
+        "source_sha256": "58eef86e4d12443b6fb51342abeec9f328a6529681defcb851cbe4ddecb88acb"
+      }
+    },
+    {
+      "module": "ps_window_scheduler",
+      "reference": {
+        "resources": {
+          "logic_lut_cells": 1852,
+          "distributed_ram_lut_sites_nominal": 56,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1908,
+          "flip_flops": 1118,
+          "dsp48e1": 2,
+          "ramb36e1": 0,
+          "ramb18e1": 5
+        },
+        "longest_register_path_cells": 15,
+        "input_sha256": "60638790e86ce93884e7489851b169ea0c86979c3abdd32d0bc886cf4ea1bd47",
+        "source_sha256": "c50457989248ae9599e4e3451c7441c4a42a282fc17ab37689b33c97a9639498"
+      },
+      "native": {
+        "resources": {
+          "logic_lut_cells": 1819,
+          "distributed_ram_lut_sites_nominal": 56,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1875,
+          "flip_flops": 1118,
+          "dsp48e1": 3,
+          "ramb36e1": 0,
+          "ramb18e1": 5
+        },
+        "longest_register_path_cells": 15,
+        "input_sha256": "531a7e16ae540fa1f057a73ac68e79385893d051475006da77b8275631f35aa7",
+        "source_sha256": "2d3d8334449e7c9e5e4cc525f49d70f4ed1167c9880b8123a312160ba331ff9b"
+      }
+    },
+    {
+      "module": "conv_next_use_predictor",
+      "reference": {
+        "resources": {
+          "logic_lut_cells": 1902,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1902,
+          "flip_flops": 1177,
+          "dsp48e1": 13,
+          "ramb36e1": 0,
+          "ramb18e1": 0
+        },
+        "longest_register_path_cells": 14,
+        "input_sha256": "c28ff077321a03f7da53d4962fa07f8c38b30a4d89670045cae02ca74ed78b8b",
+        "source_sha256": "205844c57c43ca3e035d1cc0a69f1d1efa7bd5fdbf1c537be9d90bf0146964ff"
+      },
+      "native": {
+        "resources": {
+          "logic_lut_cells": 1784,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1784,
+          "flip_flops": 1177,
+          "dsp48e1": 15,
+          "ramb36e1": 0,
+          "ramb18e1": 0
+        },
+        "longest_register_path_cells": 14,
+        "input_sha256": "99f18fe56a3ba39677c94cd42e339bdf3b3e0438b946732ee4a981fe577ab0c8",
+        "source_sha256": "ee619dc9a717cf787e2aa6e406764ae9170cf2ca014765672316ab45b4ebe2b9"
+      }
+    },
+    {
+      "module": "conv_im2col_geometry",
+      "reference": {
+        "resources": {
+          "logic_lut_cells": 3069,
+          "distributed_ram_lut_sites_nominal": 44,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 3113,
+          "flip_flops": 594,
+          "dsp48e1": 13,
+          "ramb36e1": 0,
+          "ramb18e1": 0
+        },
+        "longest_register_path_cells": 12,
+        "input_sha256": "3b871f2491d4948b4c203b6f05dfbf3a3646acadfec036f5c69f4229940fcc97",
+        "source_sha256": "b5aeef937b78dbe8ec16d3b65113e23cd9a776678f3d6ef7847c1553d517f33c"
+      },
+      "native": {
+        "resources": {
+          "logic_lut_cells": 2989,
+          "distributed_ram_lut_sites_nominal": 44,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 3033,
+          "flip_flops": 594,
+          "dsp48e1": 14,
+          "ramb36e1": 0,
+          "ramb18e1": 0
+        },
+        "longest_register_path_cells": 11,
+        "input_sha256": "20303fb80c4e0da98cbd2215e3769faff4787b70af99a1dda7fcabbd62a91965",
+        "source_sha256": "02331519a1e81f3a085138764a15eee10c230f5f56546491eefb74e6efb32b15"
+      }
+    }
+  ]
+}

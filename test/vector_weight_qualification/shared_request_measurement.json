@@ -1,0 +1,72 @@
+{
+  "reference": {
+    "resources": {
+      "logic_lut_cells": 38,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 38,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 7,
+      "dsp48e1": 0,
+      "ramb36e1": 0,
+      "ramb18e1": 0,
+      "carry4": 0,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "FDCE": 7,
+        "INV": 1,
+        "LUT1": 1,
+        "LUT2": 3,
+        "LUT3": 4,
+        "LUT4": 7,
+        "LUT5": 6,
+        "LUT6": 17,
+        "MUXF7": 2
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "maximum_register_combinational_cells": 4,
+    "metrics_sha256": "75c705e9d62caba253b469004042b10f94426bbc133b87b5f5b2caa27fb90391"
+  },
+  "current": {
+    "resources": {
+      "logic_lut_cells": 31,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 31,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 7,
+      "dsp48e1": 0,
+      "ramb36e1": 0,
+      "ramb18e1": 0,
+      "carry4": 0,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "FDCE": 7,
+        "INV": 1,
+        "LUT2": 2,
+        "LUT3": 6,
+        "LUT4": 4,
+        "LUT5": 4,
+        "LUT6": 15
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "maximum_register_combinational_cells": 4,
+    "metrics_sha256": "a98f627f18c5524f644f45785ea3e5101959ab2f7ce89350fe61babd1b6c38bd"
+  },
+  "source_sha256": "40dcdc5bf203f151752a1cb281b5481b27d9906204bd804b96ff088cac33d159",
+  "parameters": {
+    "p_bank_bytes": 8192,
+    "p_total_bytes": 57344,
+    "p_fixed_ps_channels": 1,
+    "p_weight_nonempty_writes": 1
+  },
+  "flow": {
+    "mapping": "physical-cost",
+    "delay_target_ps": 6667,
+    "wire_delay_ps": 300,
+    "maximum_cut_inputs": 8,
+    "native_combinational_helpers": false
+  }
+}

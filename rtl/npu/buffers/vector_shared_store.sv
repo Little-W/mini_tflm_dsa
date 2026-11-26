@@ -9,48 +9,50 @@ module vector_shared_store #(
     parameter int p_total_bytes = 14336,
     parameter int p_addr_width = $clog2(p_total_bytes / 16),
     parameter int p_bank_count_width = $clog2(p_total_bytes / p_bank_bytes + 1),
-    parameter bit p_fixed_ps_channels = 1'b1
+    parameter bit p_fixed_ps_channels = 1'b1,
+    // 来源已将有效写请求与非空字节掩码同时保存时，直接使用写请求资格。
+    parameter bit p_weight_nonempty_writes = 1'b0
 ) (
-    input  wire logic clk,
-    input  wire logic rst_n,
-    input  wire logic i_cfg_valid,
-    input  wire logic [p_bank_count_width-1:0] i_cfg_ia_banks,
-    input  wire logic i_enable,
-    input  wire logic i_flush,
-    output logic o_idle,
-    output logic o_error,
+    input  wire logic clk /* 工作时钟 */,
+    input  wire logic rst_n /* 低有效复位 */,
+    input  wire logic i_cfg_valid /* 接收本次向量任务的共享存储分配配置 */,
+    input  wire logic [p_bank_count_width-1:0] i_cfg_ia_banks /* 分配给向量权重数据的输入存储块数 */,
+    input  wire logic i_enable /* 允许向量通路独占当前共享存储端口 */,
+    input  wire logic i_flush /* 清除向量存储接口的有效状态及错误状态 */,
+    output logic o_idle /* 全部向量存储访问及其响应已经完成 */,
+    output logic o_error /* 共享存储分配、地址范围或同址读写冲突错误 */,
 
-    input  wire logic i_weight_read_en,
-    input  wire logic [p_addr_width-1:0] i_weight_read_addr,
-    output logic o_weight_read_valid,
-    output logic [127:0] o_weight_read_data,
-    input  wire logic i_weight_write_en,
-    input  wire logic [p_addr_width-1:0] i_weight_write_addr,
-    input  wire logic [127:0] i_weight_write_data,
-    input  wire logic [15:0] i_weight_write_mask,
+    input  wire logic i_weight_read_en /* 发起128 位权重存储字读取 */,
+    input  wire logic [p_addr_width-1:0] i_weight_read_addr /* 待获取权重的存储字地址 */,
+    output logic o_weight_read_valid /* 同步返回的权重存储字有效 */,
+    output logic [127:0] o_weight_read_data /* 同步返回的128 位权重数据 */,
+    input  wire logic i_weight_write_en /* 发起权重存储字写入 */,
+    input  wire logic [p_addr_width-1:0] i_weight_write_addr /* 待写入权重的存储字地址 */,
+    input  wire logic [127:0] i_weight_write_data /* 待写入的128 位权重数据 */,
+    input  wire logic [15:0] i_weight_write_mask /* 权重存储字的逐字节写使能 */,
 
-    input  wire logic i_ps_read_en,
-    input  wire logic [p_addr_width-1:0] i_ps_read_addr,
-    output logic o_ps_read_valid,
-    output logic [511:0] o_ps_read_data,
-    input  wire logic i_ps_write_en,
-    input  wire logic [p_addr_width-1:0] i_ps_write_addr,
-    input  wire logic [511:0] i_ps_write_data,
+    input  wire logic i_ps_read_en /* 发起完整512 位部分和行读取 */,
+    input  wire logic [p_addr_width-1:0] i_ps_read_addr /* 待获取部分和行的存储地址 */,
+    output logic o_ps_read_valid /* 同步返回的完整部分和行有效 */,
+    output logic [511:0] o_ps_read_data /* 同步返回的16 个 32 位部分和元素 */,
+    input  wire logic i_ps_write_en /* 写入完整512 位部分和行 */,
+    input  wire logic [p_addr_width-1:0] i_ps_write_addr /* 待写入部分和行的存储地址 */,
+    input  wire logic [511:0] i_ps_write_data /* 待写入的16 个 32 位部分和元素 */,
 
-    output logic [1:0] o_ia_read_en,
-    output logic [1:0] o_ia_write_en,
-    output logic [p_addr_width-1:0] o_ia_read_addr [2],
-    output logic [p_addr_width-1:0] o_ia_write_addr [2],
-    input  wire logic [127:0] i_ia_read_data [2],
-    output logic [127:0] o_ia_write_data [2],
-    output logic [15:0] o_ia_write_mask [2],
-    output logic [127:0] o_ia_shared_write_data,
-    output logic [3:0] o_ps_read_en,
-    output logic [3:0] o_ps_write_en,
-    output logic [p_addr_width-1:0] o_ps_read_addr [4],
-    output logic [p_addr_width-1:0] o_ps_write_addr [4],
-    input  wire logic [127:0] i_ps_read_data [4],
-    output logic [127:0] o_ps_write_data [4]
+    output logic [1:0] o_ia_read_en /* 两个输入数据通道的读使能 */,
+    output logic [1:0] o_ia_write_en /* 两个输入数据通道的写使能 */,
+    output logic [p_addr_width-1:0] o_ia_read_addr [2] /* 两个输入数据通道的存储字读取地址 */,
+    output logic [p_addr_width-1:0] o_ia_write_addr [2] /* 两个输入数据通道的存储字写入地址 */,
+    input  wire logic [127:0] i_ia_read_data [2] /* 两个输入数据通道同步返回的各128 位数据 */,
+    output logic [127:0] o_ia_write_data [2] /* 两个输入数据通道的各128 位写数据 */,
+    output logic [15:0] o_ia_write_mask [2] /* 两个输入数据通道的逐字节写使能 */,
+    output logic [127:0] o_ia_shared_write_data /* 预先选择的共享物理存储块写数据 */,
+    output logic [3:0] o_ps_read_en /* 四个部分和存储通道的读使能 */,
+    output logic [3:0] o_ps_write_en /* 四个部分和存储通道的写使能 */,
+    output logic [p_addr_width-1:0] o_ps_read_addr [4] /* 四个部分和通道的存储字读取地址 */,
+    output logic [p_addr_width-1:0] o_ps_write_addr [4] /* 四个部分和通道的存储字写入地址 */,
+    input  wire logic [127:0] i_ps_read_data [4] /* 四个部分和通道同步返回的各128 位数据 */,
+    output logic [127:0] o_ps_write_data [4] /* 四个部分和通道的各128 位写数据 */
 );
     //! 0. 存储尺寸与内部状态
     //! ----------------------
@@ -81,7 +83,17 @@ module vector_shared_store #(
         i_cfg_ia_banks == p_bank_count_width'(2) || i_cfg_ia_banks == p_bank_count_width'(4)) &&
         i_cfg_ia_banks <= p_bank_count_width'(p_banks - 4);
     assign access_en = i_enable && configured && !i_cfg_valid && !i_flush && !o_error;
-    assign weight_write_req = i_weight_write_en && (|i_weight_write_mask);
+    always_comb begin
+        weight_write_req = i_weight_write_en && (|i_weight_write_mask);
+        if (p_weight_nonempty_writes) begin
+            // 有效位与掩码同拍保存，晚到的掩码无需再次参与请求资格归并。
+            case (i_weight_write_en)
+                1'b0: weight_write_req = 1'b0;
+                1'b1: weight_write_req = 1'b1;
+                default: ;
+            endcase
+        end
+    end
     assign any_req = i_weight_read_en || weight_write_req || i_ps_read_en || i_ps_write_en;
     assign weight_read_range = i_weight_read_addr < ia_word_limit;
     assign weight_write_range = i_weight_write_addr < ia_word_limit;
@@ -214,6 +226,15 @@ module vector_shared_store #(
         assign o_ps_write_data[port_index] = i_ps_write_data[128*port_index +: 128];
         assign o_ps_read_data[128*port_index +: 128] = i_ps_read_data[port_index];
     end
+
+`ifdef NPU_SIM_ASSERT
+    always_ff @(posedge clk) begin
+        if (rst_n && p_weight_nonempty_writes && i_weight_write_en) begin
+            assert (|i_weight_write_mask)
+                else $fatal(1, "Valid vector weight write requires an enabled byte");
+        end
+    end
+`endif
 endmodule
 
 `default_nettype wire

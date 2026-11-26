@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-package vector_engine_pkg;
+package vector_engine_pkg; // 定义向量运算编码、任务与量化配置，并提供采样坐标推进函数。
   typedef enum logic [3:0] {
     DW_S8 = 4'd0, AVGPOOL_S8 = 4'd1, MAXPOOL_S8 = 4'd2,
     MINPOOL_S8 = 4'd3, VEC_SUM = 4'd4, VEC_MAX = 4'd5,

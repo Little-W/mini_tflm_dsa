@@ -31,96 +31,96 @@ module vector_engine_operand_store #(
   localparam int p_window_bank_w=$clog2(p_window_lanes),
   localparam int p_bias_words_per_beat = p_bus_width / 32
 ) (
-  input wire logic clk,
-  input wire logic rst_n,
-  input wire logic [31:0] i_win_rsp_col,
-  input wire logic signed [15:0] i_win_rsp_data [p_window_lanes],
-  input wire logic [p_window_lanes-1:0] i_win_rsp_mask,
-  output logic signed [31:0] o_quant_req_multiplier [p_tile],
-  output logic [5:0] o_quant_req_right [p_tile],
-  output logic o_weight_read_en,
-  output logic [p_shared_storage_addr_width-1:0] o_weight_read_addr,
-  input wire logic i_weight_read_valid,
-  input wire logic [127:0] i_weight_read_data,
-  output logic o_weight_write_en,
-  output logic [p_shared_storage_addr_width-1:0] o_weight_write_addr,
-  output logic [127:0] o_weight_write_data,
-  output logic [15:0] o_weight_write_mask,
-  input wire logic i_storage_error,
-  input wire logic signed [15:0] i_rd_data [p_bus_width/8],
-  input wire logic i_rd_valid [p_bus_width/8],
-  input wire logic [$clog2(p_dma_size)-1:0] i_rd_col_base,
-  input wire logic [p_bus_width-1:0] i_rd_raw_data,
-  input wire logic i_rd_raw_valid,
-  input wire logic i_read_done_q,
-  input wire vector_engine_control_pkg::state_t i_state,
-  input wire logic i_state_failed,
-  input wire logic i_state_compute_commit,
-  input wire logic i_state_weight_read_phase,
-  input wire logic i_state_weight_zero_address,
-  input wire logic i_state_output_init,
-  input wire logic i_state_vector_init,
-  input wire vector_engine_control_pkg::load_t i_load_kind,
-  input wire vector_engine_pkg::vector_engine_cfg_t i_c,
-  input wire logic i_spatial,
-  input wire logic i_depthwise,
-  input wire logic i_add_s8,
-  input wire logic i_softmax_s8,
-  input wire logic i_max_pool,
-  input wire logic i_min_pool,
-  input wire logic i_vector_max,
-  input wire logic i_vector_min,
-  input wire logic i_vector_hadamard,
-  input wire logic [p_active_count_w-1:0] i_active,
-  input wire logic [p_tile-1:0] i_active_lane_mask,
-  input wire logic [p_tap_count_w-1:0] i_taps,
-  input wire logic [p_tap_count_w-1:0] i_tap,
-  input wire logic [p_tap_count_w-1:0] i_load_tap,
-  input wire logic [p_tile_index_w-1:0] i_compute_index,
-  input wire logic i_compute_group_last_q,
-  output logic signed [15:0] o_input_buf [p_dma_size],
-  output logic signed [15:0] o_rhs_buf [p_tile],
-  output logic [7:0] o_input_softmax_data,
-  output logic [7:0] o_add_input_saved,
-  output logic o_weight_row_last_fire,
-  output logic o_weight_data_ready,
-  output logic o_shared_weight_write_pending,
-  output logic [p_tap_count_w-1:0] o_weight_tap_nxt,
-  output logic [p_tap_count_w-1:0] o_weight_tap_after_next,
-  input wire logic [p_tap_count_w-1:0] i_weight_prefetch_q,
-  output logic o_tap_last_wide,
-  input wire logic i_tap_last_modulo,
-  output logic o_tap_last_config,
-  output logic o_tap_last_zero,
-  output logic o_tap_last_increment,
-  output logic signed [31:0] o_acc_buf [p_tile],
-  input wire logic [p_tile-1:0] i_result_write_enable,
-  input wire logic [7:0] i_result_write_data [p_tile],
-  input wire logic signed [31:0] i_pe_result [p_pe_count],
-  input wire logic i_global_pool,
-  input wire logic [63:0] i_kernel_count,
-  input wire logic [p_tile_index_w-1:0] i_q_issue,
-  input wire logic i_dw_commit_vld,
-  input wire logic i_dw_tap_advance,
-  input wire logic [p_tile_index_w-1:0] i_dw_commit_index,
-  input wire logic i_dw_snapshot_fire,
-  input wire logic i_writeback_busy,
-  input wire logic [p_input_index_w-1:0] i_input_read_base,
-  input wire logic [p_input_index_w-1:0] i_input_response_base,
-  input wire logic i_window_response_fire,
-  output logic o_window_write_pending,
-  input wire logic [$clog2(p_tile)-1:0] i_soft_input_index,
-  input wire logic [p_input_index_w:0] i_pool_received,
-  input wire logic [p_input_index_w:0] i_pool_elements,
-  input wire logic [p_input_index_w:0] i_pool_input_index,
-  input wire logic i_pool_response_fire,
-  input wire logic [p_bus_shift:0] i_pool_beat_count,
-  output logic signed [15:0] o_input_lane [p_pe_count],
-  output logic signed [15:0] o_rhs_lane [p_pe_count],
-  output logic signed [7:0] o_weight_lane [p_pe_count],
-  output logic signed [31:0] o_accum_lane [p_pe_count],
-  output logic signed [31:0] o_params_o_multiplier,
-  output logic [5:0] o_params_o_right_shift
+  input wire logic clk, // 模块工作时钟。
+  input wire logic rst_n, // 低有效复位输入。
+  input wire logic [31:0] i_win_rsp_col, // 返回窗口数据的起始通道索引。
+  input wire logic signed [15:0] i_win_rsp_data [p_window_lanes], // 卷积前端返回的逐通道十六位数据。
+  input wire logic [p_window_lanes-1:0] i_win_rsp_mask, // 本拍返回窗口数据的有效通道掩码。
+  output logic signed [31:0] o_quant_req_multiplier [p_tile], // 各通道量化请求使用的三十二位乘数。
+  output logic [5:0] o_quant_req_right [p_tile], // 各通道量化请求使用的右移位数。
+  output logic o_weight_read_en, // 共享权重存储的读取使能。
+  output logic [p_shared_storage_addr_width-1:0] o_weight_read_addr, // 共享权重存储的读取地址。
+  input wire logic i_weight_read_valid, // 共享权重存储返回数据有效。
+  input wire logic [127:0] i_weight_read_data, // 共享权重存储返回的一百二十八位数据。
+  output logic o_weight_write_en, // 共享权重存储的写入使能。
+  output logic [p_shared_storage_addr_width-1:0] o_weight_write_addr, // 共享权重存储的写入地址。
+  output logic [127:0] o_weight_write_data, // 送入共享权重存储的一百二十八位数据。
+  output logic [15:0] o_weight_write_mask, // 共享权重存储各字节的写入使能。
+  input wire logic i_storage_error, // 共享操作数存储报告错误。
+  input wire logic signed [15:0] i_rd_data [p_bus_width/8], // DMA 返回并完成格式处理的逐通道数据。
+  input wire logic i_rd_valid [p_bus_width/8], // DMA 返回数据各通道的有效标志。
+  input wire logic [$clog2(p_dma_size)-1:0] i_rd_col_base, // DMA 本拍返回数据的起始列索引。
+  input wire logic [p_bus_width-1:0] i_rd_raw_data, // DMA 返回的原始总线数据。
+  input wire logic i_rd_raw_valid, // DMA 原始总线返回数据有效。
+  input wire logic i_read_done_q, // 已保存的 DMA 读取完成状态。
+  input wire vector_engine_control_pkg::state_t i_state, // 向量控制器当前的状态编码。
+  input wire logic i_state_failed, // 控制器正在处理任务错误。
+  input wire logic i_state_compute_commit, // 控制器正在提交本轮计算结果。
+  input wire logic i_state_weight_read_phase, // 当前阶段允许准备权重读取。
+  input wire logic i_state_weight_zero_address, // 当前阶段使用卷积核首位置读取权重。
+  input wire logic i_state_output_init, // 控制器正在初始化当前输出分块。
+  input wire logic i_state_vector_init, // 控制器正在初始化当前向量分块。
+  input wire vector_engine_control_pkg::load_t i_load_kind, // 当前 DMA 读取的数据类型。
+  input wire vector_engine_pkg::vector_engine_cfg_t i_c, // 当前已保存的向量任务配置。
+  input wire logic i_spatial, // 当前任务为深度卷积或空间池化运算。
+  input wire logic i_depthwise, // 当前任务执行八位深度卷积。
+  input wire logic i_add_s8, // 当前任务执行量化八位向量加法。
+  input wire logic i_softmax_s8, // 当前任务执行八位 Softmax。
+  input wire logic i_max_pool, // 当前任务执行最大值池化。
+  input wire logic i_min_pool, // 当前任务执行最小值池化。
+  input wire logic i_vector_max, // 当前向量任务执行最大值归约。
+  input wire logic i_vector_min, // 当前向量任务执行最小值归约。
+  input wire logic i_vector_hadamard, // 当前向量任务执行逐元素乘法。
+  input wire logic [p_active_count_w-1:0] i_active, // 当前分块实际使用的通道或元素数量。
+  input wire logic [p_tile-1:0] i_active_lane_mask, // 当前分块各计算通道的有效掩码。
+  input wire logic [p_tap_count_w-1:0] i_taps, // 当前卷积核或池化窗口的总位置数。
+  input wire logic [p_tap_count_w-1:0] i_tap, // 当前计算使用的卷积核线性位置。
+  input wire logic [p_tap_count_w-1:0] i_load_tap, // 当前 DMA 权重数据对应的卷积核位置。
+  input wire logic [p_tile_index_w-1:0] i_compute_index, // 当前并行计算组的首元素索引。
+  input wire logic i_compute_group_last_q, // 已保存的当前并行计算组为末组的条件。
+  output logic signed [15:0] o_input_buf [p_dma_size], // 按元素索引访问的输入数据缓存视图。
+  output logic signed [15:0] o_rhs_buf [p_tile], // 当前分块的第二路有符号向量输入。
+  output logic [7:0] o_input_softmax_data, // 当前 Softmax 输入索引对应的八位数据。
+  output logic [7:0] o_add_input_saved, // 已保存的当前量化加法输入字节。
+  output logic o_weight_row_last_fire, // 本拍权重返回数据结束一个卷积核位置。
+  output logic o_weight_data_ready, // 当前卷积核位置的权重数据已经可用。
+  output logic o_shared_weight_write_pending, // 共享权重存储仍有等待完成的写入。
+  output logic [p_tap_count_w-1:0] o_weight_tap_nxt, // 当前卷积核位置加一后的索引。
+  output logic [p_tap_count_w-1:0] o_weight_tap_after_next, // 当前卷积核位置加二后的索引。
+  input wire logic [p_tap_count_w-1:0] i_weight_prefetch_q, // 已保存的下一权重预取位置。
+  output logic o_tap_last_wide, // 扩展位宽比较确认当前卷积核位置为末项。
+  input wire logic i_tap_last_modulo, // 随卷积核位置保存的末项标志。
+  output logic o_tap_last_config, // 按新配置的核元素数计算的末项条件。
+  output logic o_tap_last_zero, // 卷积核位置归零后即为末项的条件。
+  output logic o_tap_last_increment, // 卷积核位置递增一次后成为末项的条件。
+  output logic signed [31:0] o_acc_buf [p_tile], // 当前输出分块各通道的累加结果。
+  input wire logic [p_tile-1:0] i_result_write_enable, // 各通道量化结果的写回使能。
+  input wire logic [7:0] i_result_write_data [p_tile], // 各通道待写回的八位量化结果。
+  input wire logic signed [31:0] i_pe_result [p_pe_count], // 本轮并行计算单元返回的三十二位结果。
+  input wire logic i_global_pool, // 当前池化窗口覆盖整个输入图像。
+  input wire logic [63:0] i_kernel_count, // 配置检查得到的卷积核或池化窗口位置总数。
+  input wire logic [p_tile_index_w-1:0] i_q_issue, // 当前准备送入量化流水的通道索引。
+  input wire logic i_dw_commit_vld, // 深度卷积乘加结果可以写回累加存储。
+  input wire logic i_dw_tap_advance, // 深度卷积计算推进到下一卷积核位置。
+  input wire logic [p_tile_index_w-1:0] i_dw_commit_index, // 当前深度卷积写回结果的首通道索引。
+  input wire logic i_dw_snapshot_fire, // 保存一个输出位置的完整深度卷积累加结果。
+  input wire logic i_writeback_busy, // 结果写回仍有待处理数据或事务。
+  input wire logic [p_input_index_w-1:0] i_input_read_base, // 当前计算读取槽的输入存储起始元素索引。
+  input wire logic [p_input_index_w-1:0] i_input_response_base, // 当前返回槽的输入存储起始元素索引。
+  input wire logic i_window_response_fire, // 本周期接收卷积窗口返回数据。
+  output logic o_window_write_pending, // 已接收窗口数据尚待写入输入存储。
+  input wire logic [$clog2(p_tile)-1:0] i_soft_input_index, // Softmax 当前需要读取的输入元素索引。
+  input wire logic [p_input_index_w:0] i_pool_received, // 当前池化输入批次已接收的有效元素数。
+  input wire logic [p_input_index_w:0] i_pool_elements, // 当前池化输入批次需要接收的元素总数。
+  input wire logic [p_input_index_w:0] i_pool_input_index, // 当前池化计算在输入缓存中的首元素索引。
+  input wire logic i_pool_response_fire, // 本周期接收一拍池化输入数据。
+  input wire logic [p_bus_shift:0] i_pool_beat_count, // 当前池化返回拍包含的有效元素数。
+  output logic signed [15:0] o_input_lane [p_pe_count], // 送入本组计算单元的输入操作数。
+  output logic signed [15:0] o_rhs_lane [p_pe_count], // 送入本组计算单元的第二路向量操作数。
+  output logic signed [7:0] o_weight_lane [p_pe_count], // 送入本组计算单元的八位有符号权重。
+  output logic signed [31:0] o_accum_lane [p_pe_count], // 送入本组计算单元的三十二位累加初值。
+  output logic signed [31:0] o_params_o_multiplier, // 当前串行量化通道的有符号乘数。
+  output logic [5:0] o_params_o_right_shift // 当前串行量化通道的右移位数。
 );
   logic [31:0] win_rsp_col;
   logic signed [15:0] win_rsp_data [p_window_lanes];
@@ -672,19 +672,35 @@ module vector_engine_operand_store #(
     assign window_lane_valid[lane]=window_write_valid[lane];
     assign window_write_index[lane]=input_response_base+p_input_index_w'(column_sum);
   end
-  assign window_first_bank = p_window_bank_w'(input_response_base)+p_window_bank_w'(win_rsp_col);
+  if (p_window_lanes == 8) begin : g_window_bank_map
+    logic [7:0][2:0] mapped_source;
+
+    // 循环起点和各分区来源同时计算，列号低三位支持全部八种取值。
+    vector_window_bank_map u_map (
+      .i_base(3'(input_response_base)), .i_column(3'(win_rsp_col)),
+      .o_first(window_first_bank), .o_source(mapped_source)
+    );
+  end else begin : g_window_bank_arithmetic
+    assign window_first_bank = p_window_bank_w'(input_response_base)+p_window_bank_w'(win_rsp_col);
+  end
   assign window_start_index = input_response_base + p_input_index_w'(win_rsp_col);
   assign window_row_next = (window_start_index >> p_window_bank_w) + p_input_index_w'(1);
   for (genvar bank=0;bank<p_window_lanes;bank++) begin : g_window_bank
     logic [p_window_bank_w-1:0] source_lane;
-    assign source_lane =p_window_bank_w'(bank)-window_first_bank;
+    if (p_window_lanes == 8) begin : g_mapped_source
+      assign source_lane = g_window_bank_map.mapped_source[bank];
+    end else begin : g_arithmetic_source
+      assign source_lane =p_window_bank_w'(bank)-window_first_bank;
+    end
     if (p_window_lanes == 8) begin : g_grouped_valid
       // 四路选择分别保存组合分组，最后由高位选择对应分组。
       (* keep = 1 *) logic [1:0] selected_half;
       for (genvar half=0;half<2;half++) begin : g_half
         logic [3:0] half_valid;
         assign half_valid =window_lane_valid[4*half+:4];
-        assign selected_half[half]=half_valid[source_lane[1:0]];
+        vector_window_valid_mux u_select (
+          .i_values(half_valid), .i_index(source_lane[1:0]), .o_value(selected_half[half])
+        );
       end
       assign window_bank_valid_next[bank]=selected_half[source_lane[2]];
     end else begin : g_direct_valid

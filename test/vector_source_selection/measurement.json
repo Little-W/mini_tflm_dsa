@@ -1,0 +1,457 @@
+{
+  "passed": true,
+  "module": "vector_banked_writeback",
+  "reference_commit": "190fbea02e10a46c2d7dc0de6b11624b1c84529e",
+  "reference_source_sha256": "c7f30c197fbfc6678f95f13530bf8389aee528efb70e7af4ea12c4de34e1707e",
+  "reference_source_identical_commits": [
+    "685a48415e1848e108552f1bea5072636fe0b9ad",
+    "190fbea02e10a46c2d7dc0de6b11624b1c84529e"
+  ],
+  "experimental_source_sha256": "08ce0963980077b453d6ec2d33db4d1a41c60be4a0d35ee15187a7445713b6e6",
+  "reviewed_interface_source_sha256": "1c4dc6871d55a9e5a1226b0cd21521bc2b66dfea1bbdb605626bb60f251e4ade",
+  "unique_parameter_profiles": 11,
+  "formal_proven_bits_by_profile": [
+    {
+      "parameters": {
+        "TILE": 1,
+        "BUS_WIDTH": 32,
+        "p_coalesce_bytes_only": 1,
+        "COUNT_WIDTH": 3
+      },
+      "proven_bits": 695,
+      "unproven_bits": 0
+    },
+    {
+      "parameters": {
+        "TILE": 1,
+        "BUS_WIDTH": 128,
+        "p_coalesce_bytes_only": 1,
+        "COUNT_WIDTH": 3
+      },
+      "proven_bits": 2127,
+      "unproven_bits": 0
+    },
+    {
+      "parameters": {
+        "TILE": 2,
+        "BUS_WIDTH": 64,
+        "p_coalesce_bytes_only": 1,
+        "COUNT_WIDTH": 4
+      },
+      "proven_bits": 1229,
+      "unproven_bits": 0
+    },
+    {
+      "parameters": {
+        "TILE": 3,
+        "BUS_WIDTH": 32,
+        "p_coalesce_bytes_only": 1,
+        "COUNT_WIDTH": 4
+      },
+      "proven_bits": 852,
+      "unproven_bits": 0
+    },
+    {
+      "parameters": {
+        "TILE": 16,
+        "BUS_WIDTH": 32,
+        "p_coalesce_bytes_only": 1,
+        "COUNT_WIDTH": 7
+      },
+      "proven_bits": 1686,
+      "unproven_bits": 0
+    },
+    {
+      "parameters": {
+        "TILE": 16,
+        "BUS_WIDTH": 64,
+        "p_coalesce_bytes_only": 1,
+        "COUNT_WIDTH": 7
+      },
+      "proven_bits": 2095,
+      "unproven_bits": 0
+    },
+    {
+      "parameters": {
+        "TILE": 16,
+        "BUS_WIDTH": 128,
+        "p_coalesce_bytes_only": 1,
+        "COUNT_WIDTH": 7
+      },
+      "proven_bits": 3024,
+      "unproven_bits": 0
+    },
+    {
+      "parameters": {
+        "TILE": 64,
+        "BUS_WIDTH": 64,
+        "p_coalesce_bytes_only": 1,
+        "COUNT_WIDTH": 9
+      },
+      "proven_bits": 5257,
+      "unproven_bits": 0
+    },
+    {
+      "parameters": {
+        "TILE": 3,
+        "BUS_WIDTH": 32,
+        "p_coalesce_bytes_only": 0,
+        "COUNT_WIDTH": 4
+      },
+      "proven_bits": 852,
+      "unproven_bits": 0
+    },
+    {
+      "parameters": {
+        "TILE": 16,
+        "BUS_WIDTH": 64,
+        "p_coalesce_bytes_only": 0,
+        "COUNT_WIDTH": 7
+      },
+      "proven_bits": 2095,
+      "unproven_bits": 0
+    },
+    {
+      "parameters": {
+        "TILE": 16,
+        "BUS_WIDTH": 64,
+        "p_coalesce_bytes_only": 1,
+        "COUNT_WIDTH": 9
+      },
+      "proven_bits": 2111,
+      "unproven_bits": 0
+    }
+  ],
+  "four_state_comparisons": 188160,
+  "four_state_selector_comparisons": 98048,
+  "four_state_clock_cycles": 45056,
+  "formal_scope": "完整模块的全部公开输入无约束，比较可匹配状态及所有公开输出。",
+  "four_state_scope": "两个完整模块实例比较全部公开输出。源选择遍历组号与格式的全部四态组合，随后使用实际内部状态更新比较自由输入序列。",
+  "simulation_representation": "状态枚举按同一 2 位编码展开为逻辑类型和常量，所有控制表达式及条件运算保持原样。",
+  "reference_resources": {
+    "logic_lut_cells": 1097,
+    "distributed_ram_lut_sites_nominal": 0,
+    "shift_register_lut_sites_nominal": 0,
+    "lut_sites_nominal_before_packing": 1097,
+    "physical_lut_sites_after_placement": null,
+    "flip_flops": 189,
+    "dsp48e1": 0,
+    "ramb36e1": 0,
+    "ramb18e1": 8,
+    "carry4": 46,
+    "unclassified_distributed_ram_types": [],
+    "cell_counts": {
+      "CARRY4": 46,
+      "FDCE": 87,
+      "FDRE": 102,
+      "INV": 25,
+      "LUT1": 96,
+      "LUT2": 117,
+      "LUT3": 136,
+      "LUT4": 188,
+      "LUT5": 216,
+      "LUT6": 344,
+      "MUXF7": 96,
+      "MUXF8": 32,
+      "RAMB18E1": 8
+    },
+    "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+  },
+  "candidate_resources": {
+    "logic_lut_cells": 1061,
+    "distributed_ram_lut_sites_nominal": 0,
+    "shift_register_lut_sites_nominal": 0,
+    "lut_sites_nominal_before_packing": 1061,
+    "physical_lut_sites_after_placement": null,
+    "flip_flops": 189,
+    "dsp48e1": 0,
+    "ramb36e1": 0,
+    "ramb18e1": 8,
+    "carry4": 46,
+    "unclassified_distributed_ram_types": [],
+    "cell_counts": {
+      "CARRY4": 46,
+      "FDCE": 87,
+      "FDRE": 102,
+      "INV": 25,
+      "LUT2": 109,
+      "LUT3": 342,
+      "LUT4": 64,
+      "LUT5": 340,
+      "LUT6": 206,
+      "RAMB18E1": 8
+    },
+    "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+  },
+  "reference_depth": {
+    "register_to_register": 8,
+    "input_to_register": 10,
+    "register_to_output": 5,
+    "input_to_output": 4
+  },
+  "candidate_depth": {
+    "register_to_register": 8,
+    "input_to_register": 10,
+    "register_to_output": 5,
+    "input_to_output": 4
+  },
+  "source_path_depths": {
+    "reference": {
+      "result_words": {
+        "maximum_combinational_cells": 6,
+        "selected_start_ports": 512,
+        "selected_endpoint_ports": 32,
+        "graph_complete": true
+      },
+      "format": {
+        "maximum_combinational_cells": 6,
+        "selected_start_ports": 1,
+        "selected_endpoint_ports": 32,
+        "graph_complete": true
+      },
+      "copy_group": {
+        "maximum_combinational_cells": 6,
+        "selected_start_ports": 3,
+        "selected_endpoint_ports": 32,
+        "graph_complete": true
+      },
+      "copy_active": {
+        "maximum_combinational_cells": 5,
+        "selected_start_ports": 1,
+        "selected_endpoint_ports": 32,
+        "graph_complete": true
+      },
+      "rotation_offset": {
+        "maximum_combinational_cells": 4,
+        "selected_start_ports": 3,
+        "selected_endpoint_ports": 32,
+        "graph_complete": true
+      }
+    },
+    "candidate": {
+      "result_words": {
+        "maximum_combinational_cells": 5,
+        "selected_start_ports": 512,
+        "selected_endpoint_ports": 32,
+        "graph_complete": true
+      },
+      "format": {
+        "maximum_combinational_cells": 5,
+        "selected_start_ports": 1,
+        "selected_endpoint_ports": 32,
+        "graph_complete": true
+      },
+      "copy_group": {
+        "maximum_combinational_cells": 6,
+        "selected_start_ports": 3,
+        "selected_endpoint_ports": 32,
+        "graph_complete": true
+      },
+      "copy_active": {
+        "maximum_combinational_cells": 6,
+        "selected_start_ports": 1,
+        "selected_endpoint_ports": 32,
+        "graph_complete": true
+      },
+      "rotation_offset": {
+        "maximum_combinational_cells": 4,
+        "selected_start_ports": 3,
+        "selected_endpoint_ports": 32,
+        "graph_complete": true
+      }
+    }
+  },
+  "logic_lut_reduction": 36,
+  "reviewed_interface_production_confirmation": {
+    "passed": true,
+    "source_sha256": "1c4dc6871d55a9e5a1226b0cd21521bc2b66dfea1bbdb605626bb60f251e4ade",
+    "parameters": {
+      "TILE": 16,
+      "BUS_WIDTH": 64,
+      "COUNT_WIDTH": 7,
+      "p_coalesce_bytes_only": 1
+    },
+    "proven_bits": 2095,
+    "unproven_bits": 0,
+    "four_state_comparisons": 12288,
+    "four_state_clock_cycles": 4096,
+    "counted_as_additional_unique_parameter_samples": false,
+    "metrics_path": "/tmp/npu_vector_writeback_measurements/reviewed_interface/metrics.json",
+    "input_sha256": {
+      "/tmp/npu_vector_writeback_measurements/reviewed_interface/equivalence.ys": "1be026c2d85eb8b7801bbb0a2ba6cdbe2a4aaa389cfbecdc8f5c1cce505c3530",
+      "/tmp/npu_vector_writeback_measurements/reviewed_interface/tb.sv": "5b507f54a78c8f176378eb35d32b75e789805a09c0c5dd0fd6f7b643220e0ca8",
+      "/tmp/npu_vector_writeback_measurements/reviewed_interface/candidate_sim.sv": "10c7f018b6a87fdae5755cd3eafd9724893aa6e357d483d476ea92c14cfbee14",
+      "/tmp/npu_vector_writeback_measurements/validation/reference_sim.sv": "f81ef900273cd1a4b46f7702640f4516e953cd8fc95c7015cb9fcd6865408543"
+    }
+  },
+  "reviewed_interface_identity": {
+    "reviewed_commit": "4cedb87823093ea82a39a937872885eaca9b39c5",
+    "path": "/tmp/npu_vector_writeback_measurements/reviewed_interface_candidate.sv",
+    "sha256": "1c4dc6871d55a9e5a1226b0cd21521bc2b66dfea1bbdb605626bb60f251e4ade",
+    "experimental_source_sha256": "08ce0963980077b453d6ec2d33db4d1a41c60be4a0d35ee15187a7445713b6e6",
+    "body_noncomment_tokens_equal": true,
+    "note": "模块主体的非注释词元完全相同；模块端口沿用所列整理提交的声明和中文说明。",
+    "public_ports_equal": true,
+    "port_count": 27,
+    "public_ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "type": "wirelogic"
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "type": "wirelogic"
+      },
+      {
+        "name": "request_valid",
+        "direction": "input",
+        "type": "wirelogic"
+      },
+      {
+        "name": "request_ready",
+        "direction": "output",
+        "type": "logic"
+      },
+      {
+        "name": "request_address",
+        "direction": "input",
+        "type": "wirelogic[31:0]"
+      },
+      {
+        "name": "request_bytes",
+        "direction": "input",
+        "type": "wirelogic[COUNT_WIDTH-1:0]"
+      },
+      {
+        "name": "request_byte_output",
+        "direction": "input",
+        "type": "wirelogic"
+      },
+      {
+        "name": "result_words",
+        "direction": "input",
+        "type": "wirelogic[32*TILE-1:0]"
+      },
+      {
+        "name": "request_coalesce",
+        "direction": "input",
+        "type": "wirelogic"
+      },
+      {
+        "name": "request_last",
+        "direction": "input",
+        "type": "wirelogic"
+      },
+      {
+        "name": "flush",
+        "direction": "input",
+        "type": "wirelogic"
+      },
+      {
+        "name": "busy",
+        "direction": "output",
+        "type": "logic"
+      },
+      {
+        "name": "done",
+        "direction": "output",
+        "type": "logic"
+      },
+      {
+        "name": "error",
+        "direction": "output",
+        "type": "logic"
+      },
+      {
+        "name": "wr_req",
+        "direction": "output",
+        "type": "logic"
+      },
+      {
+        "name": "wr_start",
+        "direction": "output",
+        "type": "logic"
+      },
+      {
+        "name": "wr_granted",
+        "direction": "input",
+        "type": "wirelogic"
+      },
+      {
+        "name": "wr_base_addr",
+        "direction": "output",
+        "type": "logic[31:0]"
+      },
+      {
+        "name": "wr_row_stride",
+        "direction": "output",
+        "type": "logic[31:0]"
+      },
+      {
+        "name": "wr_rows_to_write",
+        "direction": "output",
+        "type": "logic[31:0]"
+      },
+      {
+        "name": "wr_burst_len_m1",
+        "direction": "output",
+        "type": "logic[7:0]"
+      },
+      {
+        "name": "src_wdata",
+        "direction": "output",
+        "type": "logic[BUS_WIDTH-1:0]"
+      },
+      {
+        "name": "src_wmask",
+        "direction": "output",
+        "type": "logic[BUS_WIDTH/8-1:0]"
+      },
+      {
+        "name": "src_wvalid",
+        "direction": "output",
+        "type": "logic"
+      },
+      {
+        "name": "src_wready",
+        "direction": "input",
+        "type": "wirelogic"
+      },
+      {
+        "name": "wr_done",
+        "direction": "input",
+        "type": "wirelogic"
+      },
+      {
+        "name": "wr_error",
+        "direction": "input",
+        "type": "wirelogic"
+      }
+    ],
+    "mapped_connectivity_identical": true,
+    "mapped_connectivity_sha256": "2df6b317d6a9ac0ace9508244754acca70d357a478fb71f44a5e6ad54c1ea28a"
+  },
+  "patch_sha256": "88e0c8763b518a2791067f8c746db6bb19924cd63877fb8df7f28428134f47ed",
+  "measurement_paths": {
+    "formal": "/tmp/npu_vector_writeback_measurements/validation/summary.json",
+    "mapping": "/tmp/npu_vector_writeback_measurements/mapping_summary.json",
+    "production_confirmation": "/tmp/npu_vector_writeback_measurements/reviewed_interface/summary.json"
+  },
+  "cycle_and_storage_structure": "源选择使用组合逻辑；现有寄存器、存储体、请求复制和总线发送的状态更新保持不变。",
+  "validation_entry": {
+    "path": "test/vector_source_selection/run.py",
+    "arguments": [
+      "--repo",
+      "<repository>",
+      "--out",
+      "<results>"
+    ],
+    "default_reference_commit": "685a48415e1848e108552f1bea5072636fe0b9ad",
+    "sha256": "34cb41a09c3fa4508424b55086795eae9f627393d52742562448e328142b82ce",
+    "executed_from_external_working_directory": true,
+    "verified_parameter_profiles": 11,
+    "source_and_script_identity_checked": true
+  }
+}

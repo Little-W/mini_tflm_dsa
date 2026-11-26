@@ -1,0 +1,203 @@
+{
+  "passed": true,
+  "reference_commit": "57b61b24",
+  "input_constraints": [],
+  "all_parent_outputs_and_state_compared": true,
+  "formal": [
+    {
+      "mode": "generic",
+      "macro_options": [
+        "-USYNTHESIS",
+        "-UXILINX_FPGA"
+      ],
+      "pe_count": 8,
+      "passed": true,
+      "equivalence_points": 2039,
+      "log_sha256": "072e14448a4d236bedb7356089c46e9eba3dee98e53669444c0313d9fc8107c3"
+    },
+    {
+      "mode": "generic",
+      "macro_options": [
+        "-USYNTHESIS",
+        "-UXILINX_FPGA"
+      ],
+      "pe_count": 16,
+      "passed": true,
+      "equivalence_points": 2050,
+      "log_sha256": "3ef3012334659b4a38988aef9748fa77690994aa17571cb645a987474752a680"
+    },
+    {
+      "mode": "synthesis",
+      "macro_options": [
+        "-DSYNTHESIS=1",
+        "-UXILINX_FPGA"
+      ],
+      "pe_count": 8,
+      "passed": true,
+      "equivalence_points": 2039,
+      "log_sha256": "304d0dac8f3727f712ca967a57883eb2c0832a2b38bbc558ea88aabfc4709b74"
+    },
+    {
+      "mode": "synthesis",
+      "macro_options": [
+        "-DSYNTHESIS=1",
+        "-UXILINX_FPGA"
+      ],
+      "pe_count": 16,
+      "passed": true,
+      "equivalence_points": 2050,
+      "log_sha256": "6ef5c7ea0adb1bc23d632484aace9a0c89aa8193992c654ebc2b084433571c9a"
+    },
+    {
+      "mode": "fpga",
+      "macro_options": [
+        "-USYNTHESIS",
+        "-DXILINX_FPGA=1"
+      ],
+      "pe_count": 8,
+      "passed": true,
+      "equivalence_points": 2070,
+      "log_sha256": "e26cb91f6d1892e54c79f6034f88334a537b937e98fca1ed4e1776b3b21f0071"
+    },
+    {
+      "mode": "fpga",
+      "macro_options": [
+        "-USYNTHESIS",
+        "-DXILINX_FPGA=1"
+      ],
+      "pe_count": 16,
+      "passed": true,
+      "equivalence_points": 2081,
+      "log_sha256": "70273e63cbcf2024f0498ac9e83542302ec825ae8512a10c2f54354619992c63"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "macro_options": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1"
+      ],
+      "pe_count": 8,
+      "passed": true,
+      "equivalence_points": 2070,
+      "log_sha256": "406d98b80c131f85c6424d77cbfd696973359720ad6df0e253558e553388baef"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "macro_options": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1"
+      ],
+      "pe_count": 16,
+      "passed": true,
+      "equivalence_points": 2081,
+      "log_sha256": "0562c9632b1a3edf64d5c1951d04473579e4855e4f0cb1f68a70323e031c7238"
+    }
+  ],
+  "four_state": [
+    {
+      "mode": "generic",
+      "macro_options": [
+        "-USYNTHESIS",
+        "-UXILINX_FPGA"
+      ],
+      "passed": true,
+      "comparisons": 233472,
+      "log_sha256": "1f7d5787addc15db854cdd3001d89cbeafe9edc25eb29ba595e8ea9d9a183103"
+    },
+    {
+      "mode": "synthesis",
+      "macro_options": [
+        "-DSYNTHESIS=1",
+        "-UXILINX_FPGA"
+      ],
+      "passed": true,
+      "comparisons": 233472,
+      "log_sha256": "1f7d5787addc15db854cdd3001d89cbeafe9edc25eb29ba595e8ea9d9a183103"
+    },
+    {
+      "mode": "fpga",
+      "macro_options": [
+        "-USYNTHESIS",
+        "-DXILINX_FPGA=1"
+      ],
+      "passed": true,
+      "comparisons": 233472,
+      "log_sha256": "1f7d5787addc15db854cdd3001d89cbeafe9edc25eb29ba595e8ea9d9a183103"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "macro_options": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1"
+      ],
+      "passed": true,
+      "comparisons": 233472,
+      "log_sha256": "1f7d5787addc15db854cdd3001d89cbeafe9edc25eb29ba595e8ea9d9a183103"
+    }
+  ],
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_engine_control_pkg.sv": "b90566fe45a0be8d23ee302ccd0ac055da88af1ba06e5c43c41b6dfb890bbdf8",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_engine_pkg.sv": "3b120fbc30d6d9a86296526af9b9248f69862112218de6c869e3c89c1321dc05",
+    "/workspace/scratch/5bfa47658687/experiments/vector_request_timing/control_proof/reference_control.sv": "b5904cc557f9f3f64d4cfbd8ca8ce66c747b53f964133abbb8b616d30430cbb9",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_engine_error_select.sv": "9478fb28561550150194f3be20941784d7f727f1e939d8e60585080c5c142ad8",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_engine_control.sv": "dbb729113e16b5a9460bffd1d471a8f529706d06e95c8d610cb395111cff5b3e",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_tap_update_select.sv": "df9697fe64a4fd99064361c43a10fdbac86e078b614c8a55b6f2aa82b927b14f",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972"
+  },
+  "extracted_original_assignments": [
+    [
+      "weight_prefetch_q",
+      "tap_last_config?'0:weight_tap_nxt"
+    ],
+    [
+      "weight_prefetch_q",
+      "tap_last_zero?'0:p_tap_count_w'(1)"
+    ],
+    [
+      "input_y",
+      "input_origin_y"
+    ],
+    [
+      "weight_prefetch_q",
+      "tap_last_increment?'0:weight_tap_after_next"
+    ],
+    [
+      "input_y",
+      "18'(next_window_y)"
+    ],
+    [
+      "weight_prefetch_q",
+      "tap_last_zero?'0:p_tap_count_w'(1)"
+    ],
+    [
+      "input_y",
+      "18'($signed(coordinate_step_o_value[3]))"
+    ],
+    [
+      "input_y",
+      "input_origin_y"
+    ],
+    [
+      "weight_prefetch_q",
+      "tap_last_increment?'0:weight_tap_after_next"
+    ],
+    [
+      "input_y",
+      "18'(next_window_y)"
+    ],
+    [
+      "weight_prefetch_q",
+      "tap_last_increment?'0:weight_tap_after_next"
+    ],
+    [
+      "input_y",
+      "18'(next_window_y)"
+    ]
+  ],
+  "runner_sha256": "ed949448a65dd753d7de38ebe272b270a74c20c9efa071fb174f056e71a17187"
+}

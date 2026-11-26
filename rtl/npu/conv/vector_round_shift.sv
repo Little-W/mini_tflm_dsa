@@ -5,11 +5,11 @@ module vector_round_shift #(
   parameter bit REGISTER_MIDDLE = 1'b0,
   parameter bit REGISTER_INPUT = 1'b0
 ) (
-  input wire logic clk,
-  input wire logic signed [63:0] value,
-  input wire logic [5:0] amount,
-  output logic signed [63:0] result,
-  output logic signed [63:0] floor_value
+  input wire logic clk, // 输入和中间数据寄存器使用的时钟。
+  input wire logic signed [63:0] value, // 待舍入的完整有符号数值。
+  input wire logic [5:0] amount, // 算术右移位数，范围为零至六十三。
+  output logic signed [63:0] result, // 最近偶数舍入后的完整有符号结果。
+  output logic signed [63:0] floor_value // 算术右移后向下取整的完整有符号结果。
 );
   //! 0. 内部信号
   //! ----------------
@@ -108,37 +108,24 @@ module vector_round_shift #(
 
   // 高字节产生进位时，全部较低商位均为一，最低商位已经满足舍入条件。
   // 因此高字节只需检查保护位和低位全一条件。
-  (* keep = "true" *) logic [7:0] byte_all_ones;
-  (* keep = "true" *) logic lower_word_all_ones;
-  for (genvar part = 0; part < 8; part++) begin : g_byte_all_ones
+  (* keep = "true" *) logic [6:0] byte_all_ones;
+  for (genvar part = 0; part < 7; part++) begin : g_byte_all_ones
     assign byte_all_ones[part] = &floor_value[part*8+:8];
   end
-  assign lower_word_all_ones = &byte_all_ones[3:0];
   assign byte_carry[0] = increment;
   for (genvar part = 1; part < 8; part++) begin : g_byte_prefix
-    if (part < 4) begin : g_lower
-      assign byte_carry[part] = shift32[1] && (&byte_all_ones[part-1:0]);
-    end else if (part == 4) begin : g_word_boundary
-      assign byte_carry[part] = shift32[1] && lower_word_all_ones;
-    end else begin : g_upper
-      assign byte_carry[part] = shift32[1] && lower_word_all_ones && (&byte_all_ones[part-1:4]);
-    end
+    // 各字节的进位独立归并相应低位和保护位，保持平衡的组合层次。
+    (* keep_hierarchy = "yes" *) add_equal_reduce #(.p_width(part+1)) u_carry (
+      .i_equal({shift32[1],byte_all_ones[part-1:0]}), .o_equal(byte_carry[part])
+    );
   end
 
-  // 每个字节独立计算加一结果，舍入进位只选择已经完成的数值。
-  // 各字节保持完整的四态加法传播，进位未知时沿用定宽算术表达式。
+  // 每个字节直接合并商位与舍入进位，限制进位传播范围。
+  // 定宽加法保留未知商位和未知进位的完整四态传播。
   for (genvar part = 0; part < 8; part++) begin : g_increment8
     logic [7:0] byte_result;
-    logic [7:0] incremented_byte;
-    assign incremented_byte = floor_value[part*8+:8] + 8'd1;
     assign result[part*8+:8] = byte_result;
-    always_comb begin
-      case (byte_carry[part])
-        1'b0: byte_result = floor_value[part*8+:8] + 8'd0;
-        1'b1: byte_result = incremented_byte;
-        default: byte_result = floor_value[part*8+:8] + 8'(byte_carry[part]);
-      endcase
-    end
+    assign byte_result = floor_value[part*8+:8] + 8'(byte_carry[part]);
   end
 endmodule
 

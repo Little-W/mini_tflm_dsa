@@ -3,12 +3,12 @@
 
 // 串行归约在同一周期完成 INT32 加法或极值选择。
 module vector_reduce_alu (
-  input wire logic clk,
-  input wire logic signed [31:0] i_lhs,
-  input wire logic signed [31:0] i_rhs,
-  input wire logic i_max,
-  input wire logic i_min,
-  output logic signed [31:0] o_result
+  input wire logic clk, // 保留的时钟接口。
+  input wire logic signed [31:0] i_lhs, // 当前已累计的三十二位有符号归约值。
+  input wire logic signed [31:0] i_rhs, // 本周期加入归约的三十二位有符号操作数。
+  input wire logic i_max, // 选择较大值归约。
+  input wire logic i_min, // 选择较小值归约，同时有效时优先于较大值选择。
+  output logic signed [31:0] o_result // 按当前模式求和或选择极值得到的归约结果。
 );
   logic [31:0] sum_i_a, sum_i_b;
   logic sum_i_carry;
@@ -39,7 +39,9 @@ module vector_reduce_alu (
   assign lhs_greater = (i_lhs[31] ^ i_rhs[31]) ? i_rhs[31] : (|greater_terms);
 
   parallel_prefix_add #(
-      .p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)
+      .p_width(32), .p_group_width(8), .p_preserve_groups(1'b1),
+      .p_dsp_split_width(16), .p_parallel_high_prefix(1'b1),
+      .p_keep_carry(1'b0), .p_preserve_grouped_unknowns(1'b1)
   ) u_sum (
     .i_a(sum_i_a),
     .i_b(sum_i_b),

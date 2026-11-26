@@ -8,28 +8,28 @@ module vector_softmax #(
   parameter int unsigned MULTIPLIER_LATENCY = 0,
   parameter bit INPUT_REGISTERED = 1'b0
 ) (
-  input  wire logic clk, rst_n,
-  input  wire logic start,
-  input  wire logic [31:0] depth,
-  output logic ready, done,
-  output logic [1:0] error,
-  output logic [IW-1:0] input_index,
-  input  wire logic signed [7:0] input_data,
-  output logic lut_req_valid,
-  input  wire logic lut_req_ready,
-  output logic [7:0] lut_index,
-  input  wire logic lut_rsp_valid,
-  input  wire logic [31:0] lut_rsp_data,
-  input  wire logic lut_rsp_error,
-  output logic exp_we,
-  output logic [IW-1:0] exp_index,
-  output logic signed [31:0] exp_wdata,
-  input  wire logic signed [31:0] exp_rdata,
-  output logic out_we,
-  output logic [IW-1:0] out_index,
-  output logic signed [7:0] out_data,
-  output logic signed [31:0] mul_a, mul_b,
-  input  wire logic signed [63:0] mul_product
+  input  wire logic clk /* 模块工作时钟。 */, rst_n /* 低有效复位输入。 */,
+  input  wire logic start, // 开始当前向量的 Softmax 计算。
+  input  wire logic [31:0] depth, // 本次参与 Softmax 的有效元素数。
+  output logic ready /* 能够接收新的 Softmax 任务。 */, done /* 本次 Softmax 的全部输出已生成。 */,
+  output logic [1:0] error, // 当前任务发生长度或查表读取错误。
+  output logic [IW-1:0] input_index, // 当前需要读取的输入元素索引。
+  input  wire logic signed [7:0] input_data, // 所选输入元素的有符号八位数值。
+  output logic lut_req_valid, // 指数近似查表请求有效。
+  input  wire logic lut_req_ready, // 查表读取逻辑能够接收当前请求。
+  output logic [7:0] lut_index, // 指数近似表的读取索引。
+  input  wire logic lut_rsp_valid, // 指数近似表返回数据有效。
+  input  wire logic [31:0] lut_rsp_data, // 指数近似表返回的数值。
+  input  wire logic lut_rsp_error, // 指数近似表读取发生错误。
+  output logic exp_we, // 使能写入当前元素的指数近似值。
+  output logic [IW-1:0] exp_index, // 指数值缓存的当前读写索引。
+  output logic signed [31:0] exp_wdata, // 待写入缓存的指数近似值。
+  input  wire logic signed [31:0] exp_rdata, // 指数值缓存返回的数据。
+  output logic out_we, // 当前归一化结果的写入使能。
+  output logic [IW-1:0] out_index, // 当前归一化结果的元素索引。
+  output logic signed [7:0] out_data, // 当前元素的八位 Softmax 输出。
+  output logic signed [31:0] mul_a /* 共享乘法器的第一个有符号操作数。 */, mul_b /* 共享乘法器的第二个有符号操作数。 */,
+  input  wire logic signed [63:0] mul_product // 共享乘法器返回的完整有符号乘积。
 );
   //! 0. 辅助定义
   //! -----------
@@ -184,7 +184,9 @@ module vector_softmax #(
   assign estimate_lhs = estimate_initial_q ? 32'd1515870810 : estimate;
   assign estimate_rhs = estimate_initial_q ? reciprocal_q31 : update_saturated;
   parallel_prefix_add #(
-      .p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)
+      .p_width(32), .p_group_width(8), .p_preserve_groups(1'b1),
+      .p_dsp_split_width(16), .p_parallel_high_prefix(1'b1),
+      .p_keep_carry(1'b0), .p_preserve_grouped_unknowns(1'b1)
   ) u_estimate_add (
       .i_a(estimate_lhs), .i_b(estimate_rhs), .i_carry(1'b0),
       .o_sum(estimate_next), .o_carry(unused_estimate_carry)

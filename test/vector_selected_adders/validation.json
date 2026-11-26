@@ -1,0 +1,129 @@
+{
+  "passed": true,
+  "reference_commit": "f631498f",
+  "inputs_constrained": false,
+  "all_public_outputs_compared": true,
+  "source_sha256": {
+    "rtl/common/parallel_prefix_add.sv": "aeaeed86349c4531f486bfc7cc364f559b31e34d5f3959782b408a036defba00",
+    "rtl/common/parallel_prefix_high_group.sv": "f37805622ff8cfac2cec15d31c4bf4ceef1d73e986559d6e81f2c13a5870c70a",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+    "rtl/npu/conv/vector_reduce_alu.sv": "90b6c5277ad7c2f36b49fe0ea035407150526f868ae28d816ad846a163579b42",
+    "rtl/npu/conv/vector_softmax_accumulator.sv": "93c8d8816899c8ba2de3585e1b40e1f2aa68a502e2ce348166b8e31772897816",
+    "rtl/npu/conv/vector_softmax.sv": "1b0cecc2de8246389cf9f1178a0699aa1825aa913717ff578a2252d404ea8e0e"
+  },
+  "profiles": [
+    {
+      "module": "vector_reduce_alu",
+      "parameters": {},
+      "synthesis": false,
+      "passed": true,
+      "log_sha256": "3e78a6669bceff906427eaae09d414bf06b7e22edb33b4b7a89b6454af367b78"
+    },
+    {
+      "module": "vector_reduce_alu",
+      "parameters": {},
+      "synthesis": true,
+      "passed": true,
+      "log_sha256": "5949483613888e7a92064e13f677f78238531f20bf21258f5e79dedbac93b700"
+    },
+    {
+      "module": "vector_softmax",
+      "parameters": {
+        "MAX_DEPTH": 3,
+        "MULTIPLIER_LATENCY": 0,
+        "INPUT_REGISTERED": 0
+      },
+      "synthesis": false,
+      "passed": true,
+      "log_sha256": "b68af64e639f4999e72f6846cc8da97ddf2cb0a4930ddc0f51f68028b814c6c4"
+    },
+    {
+      "module": "vector_softmax",
+      "parameters": {
+        "MAX_DEPTH": 3,
+        "MULTIPLIER_LATENCY": 0,
+        "INPUT_REGISTERED": 0
+      },
+      "synthesis": true,
+      "passed": true,
+      "log_sha256": "47dee829c1a11662a5bc4b716adf8c2effddd13c29ebddd4abc0782dd5c2cf3d"
+    },
+    {
+      "module": "vector_softmax",
+      "parameters": {
+        "MAX_DEPTH": 16,
+        "MULTIPLIER_LATENCY": 2,
+        "INPUT_REGISTERED": 1
+      },
+      "synthesis": false,
+      "passed": true,
+      "log_sha256": "471dfbde78a9280fd838f696be06ecedcacc95cb87a819bdb5e21d69d0dc9edb"
+    },
+    {
+      "module": "vector_softmax",
+      "parameters": {
+        "MAX_DEPTH": 16,
+        "MULTIPLIER_LATENCY": 2,
+        "INPUT_REGISTERED": 1
+      },
+      "synthesis": true,
+      "passed": true,
+      "log_sha256": "40213cc27cb0efb294800e041b3dc83c32db0f875a4acd488af69916763b9272"
+    },
+    {
+      "module": "vector_softmax",
+      "parameters": {
+        "MAX_DEPTH": 32,
+        "MULTIPLIER_LATENCY": 2,
+        "INPUT_REGISTERED": 1
+      },
+      "synthesis": false,
+      "passed": true,
+      "log_sha256": "9d2eec5f16daf9cd151ca0e3a7f1582f092c4d4ca9336ca83d7be8121338d8b4"
+    },
+    {
+      "module": "vector_softmax",
+      "parameters": {
+        "MAX_DEPTH": 32,
+        "MULTIPLIER_LATENCY": 2,
+        "INPUT_REGISTERED": 1
+      },
+      "synthesis": true,
+      "passed": true,
+      "log_sha256": "1bc052c5b319d96efa54f7a41f7f47b959443964ff5841d164aa5cf6b8e2c9b1"
+    }
+  ],
+  "complete_vector_resources": {
+    "logic_lut_cells": 9915,
+    "distributed_ram_lut_sites_nominal": 120,
+    "shift_register_lut_sites_nominal": 0,
+    "lut_sites_nominal_before_packing": 10035,
+    "physical_lut_sites_after_placement": null,
+    "flip_flops": 6683,
+    "dsp48e1": 22,
+    "ramb36e1": 0,
+    "ramb18e1": 9,
+    "carry4": 542,
+    "unclassified_distributed_ram_types": [],
+    "cell_counts": {
+      "CARRY4": 542,
+      "DSP48E1": 22,
+      "FDCE": 2497,
+      "FDPE": 11,
+      "FDRE": 4165,
+      "FDSE": 10,
+      "INV": 339,
+      "LUT1": 17,
+      "LUT2": 1261,
+      "LUT3": 2242,
+      "LUT4": 870,
+      "LUT5": 2025,
+      "LUT6": 3500,
+      "MUXF7": 253,
+      "RAM32M": 30,
+      "RAMB18E1": 9
+    },
+    "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+  },
+  "complete_vector_longest_path_cells": 12
+}

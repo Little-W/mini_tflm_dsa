@@ -7,25 +7,25 @@ module vector_writeback #(
   parameter int COUNT_WIDTH=$clog2(4*TILE+1),
   parameter bit p_coalesce_bytes_only=1'b0
 )(
-  input wire logic clk, rst_n,
-  input wire logic request_valid,
-  output logic request_ready,
-  input wire logic [31:0] request_address,
-  input wire logic [COUNT_WIDTH-1:0] request_bytes,
-  input wire logic request_byte_output,
-  input wire logic [32*TILE-1:0] result_words,
-  input wire logic request_coalesce = 1'b0,
-  input wire logic request_last = 1'b1,
-  input wire logic flush = 1'b0,
-  output logic busy, done, error,
-  output logic wr_req, wr_start,
-  input wire logic wr_granted,
-  output logic [31:0] wr_base_addr, wr_row_stride, wr_rows_to_write,
-  output logic [7:0] wr_burst_len_m1,
-  output logic [BUS_WIDTH-1:0] src_wdata,
-  output logic [BUS_WIDTH/8-1:0] src_wmask,
-  output logic src_wvalid,
-  input wire logic src_wready, wr_done, wr_error
+  input wire logic clk /* 模块工作时钟。 */, rst_n /* 低有效复位输入。 */,
+  input wire logic request_valid, // 本次向量结果写回请求有效。
+  output logic request_ready, // 能够接收本次向量结果及写回描述符。
+  input wire logic [31:0] request_address, // 本次结果的目标字节地址。
+  input wire logic [COUNT_WIDTH-1:0] request_bytes, // 本次结果包含的有效字节数。
+  input wire logic request_byte_output, // 每个三十二位结果仅输出其低八位。
+  input wire logic [32*TILE-1:0] result_words, // 按通道排列的三十二位计算结果。
+  input wire logic request_coalesce = 1'b0, // 允许与相邻地址的待写结果合并。
+  input wire logic request_last = 1'b1, // 该请求为当前结果序列的最后一项。
+  input wire logic flush = 1'b0, // 将当前已缓存的结果发送到写入器。
+  output logic busy /* 仍有待发送结果或在途写事务。 */, done /* 当前结果序列的写回完成。 */, error /* 当前结果序列发生写回错误。 */,
+  output logic wr_req /* 向共享 DMA 仲裁器请求写入资源。 */, wr_start /* 在获得授权后启动本次写事务。 */,
+  input wire logic wr_granted, // 共享 DMA 仲裁器授予写入资源。
+  output logic [31:0] wr_base_addr /* 当前写事务的起始字节地址。 */, wr_row_stride /* 当前写事务相邻行的字节间隔。 */, wr_rows_to_write /* 当前写事务需要输出的行数。 */,
+  output logic [7:0] wr_burst_len_m1, // 当前写事务突发拍数减一。
+  output logic [BUS_WIDTH-1:0] src_wdata, // 当前待发送的总线数据。
+  output logic [BUS_WIDTH/8-1:0] src_wmask, // 当前总线数据的有效字节掩码。
+  output logic src_wvalid, // 当前待发送的总线数据有效。
+  input wire logic src_wready /* 下游写入器允许接收本拍数据。 */, wr_done /* 下游写入器完成当前事务。 */, wr_error /* 下游写入器报告当前事务错误。 */
 );
   //! 0. 队列存储与事务状态
   //! -----------------------

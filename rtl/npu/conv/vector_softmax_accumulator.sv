@@ -4,13 +4,13 @@
 // 指数累加器先保存数据及舍入进位，再在下一边沿更新三十二位累计结果。
 (* keep_hierarchy = "yes" *)
 module vector_softmax_accumulator (
-    input  wire logic        clk,
-    input  wire logic        rst_n,
-    input  wire logic        i_clear,
-    input  wire logic        i_vld,
-    input  wire logic [19:0] i_value,
-    input  wire logic        i_increment,
-    output logic [31:0] o_sum
+    input  wire logic        clk, // 模块工作时钟。
+    input  wire logic        rst_n, // 低有效复位输入。
+    input  wire logic        i_clear, // 清除指数累计值和待处理输入标志。
+    input  wire logic        i_vld, // 本周期的指数值及舍入进位有效。
+    input  wire logic [19:0] i_value, // 待累加的二十位指数近似值。
+    input  wire logic        i_increment, // 待累加值的舍入增量。
+    output logic [31:0] o_sum // 流水累计得到的三十二位指数和。
 );
     //! 0. 辅助定义
     //! -----------

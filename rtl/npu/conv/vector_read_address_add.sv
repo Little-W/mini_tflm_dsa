@@ -6,12 +6,12 @@
 module vector_read_address_add #(
   parameter bit p_preserve_groups = 1'b1
 ) (
-  input wire logic clk,
-  input wire logic [31:0] i_base,
-  input wire logic [31:0] i_offset,
-  input wire logic [15:0] i_channel,
-  output logic [31:0] o_address,
-  output logic [1:0] o_carry
+  input wire logic clk, // 保留的时钟接口。
+  input wire logic [31:0] i_base, // 读取范围的字节基址。
+  input wire logic [31:0] i_offset, // 读取位置相对基址的字节偏移。
+  input wire logic [15:0] i_channel, // 本次读取通道的字节偏移。
+  output logic [31:0] o_address, // 三个地址分量相加后的低三十二位。
+  output logic [1:0] o_carry // 完整地址和超出三十二位的两位高位。
 );
   logic [33:0] base_extended, offset_extended, channel_extended;
   logic [33:0] address_sum, address_carry, address_fast, address_result;
@@ -28,13 +28,31 @@ module vector_read_address_add #(
   assign partial_low = {1'b0, address_sum[17:0]} + {1'b0, address_carry[17:0]};
   assign partial_high = {1'b0, address_sum[33:18]} + {1'b0, address_carry[33:18]};
   assign address_fast[17:0] = partial_low[17:0];
-  // 低段进位与高段传播条件并行归并，各结果位分别完成修正。
-  for (genvar bit_index = 0; bit_index < 16; bit_index++) begin : g_high
-    if (bit_index == 0) begin : g_first
-      assign address_fast[18+bit_index] = partial_high[bit_index] ^ partial_low[18];
-    end else begin : g_later
-      assign address_fast[18+bit_index] = partial_high[bit_index] ^
-          (partial_low[18] & (&partial_high[bit_index-1:0]));
+  // 四位组独立生成传播条件，每组直接接收低段进位和全部低位组条件。
+  // 普通逻辑运算保持逐位四态结果，组边界限制高段修正的组合深度。
+  if (p_preserve_groups) begin : g_grouped_high
+    logic [2:0] group_propagate;
+    for (genvar group_index = 0; group_index < 3; group_index++) begin : g_propagate
+      (* keep_hierarchy = "yes" *) add_equal_reduce #(.p_width(4)) u_propagate (
+          .i_equal(partial_high[group_index*4+:4]), .o_equal(group_propagate[group_index])
+      );
+    end
+    for (genvar group_index = 0; group_index < 4; group_index++) begin : g_group
+      localparam int unsigned p_groups = group_index == 0 ? 1 : group_index;
+      parallel_prefix_high_group #(.p_bits(4), .p_groups(p_groups)) u_high (
+          .i_groups(group_index == 0 ? 1'b1 : p_groups'(group_propagate)),
+          .i_sum(partial_high[group_index*4+:4]), .i_carry(partial_low[18]), .i_invert(1'b0),
+          .o_sum(address_fast[18+group_index*4+:4])
+      );
+    end
+  end else begin : g_high
+    for (genvar bit_index = 0; bit_index < 16; bit_index++) begin : g_bit
+      if (bit_index == 0) begin : g_first
+        assign address_fast[18+bit_index] = partial_high[bit_index] ^ partial_low[18];
+      end else begin : g_later
+        assign address_fast[18+bit_index] = partial_high[bit_index] ^
+            (partial_low[18] & (&partial_high[bit_index-1:0]));
+      end
     end
   end
 

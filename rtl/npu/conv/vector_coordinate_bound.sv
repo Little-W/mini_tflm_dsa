@@ -3,9 +3,9 @@
 
 // 有符号坐标与十六位尺寸比较，三个相邻位组并行归并大小关系。
 module vector_coordinate_bound (
-  input  wire logic signed [33:0] i_coordinate,
-  input  wire logic [15:0] i_limit,
-  output logic o_in_bounds
+  input  wire logic signed [33:0] i_coordinate, // 待检查的有符号图像坐标。
+  input  wire logic [15:0] i_limit, // 该坐标方向的图像尺寸。
+  output logic o_in_bounds // 坐标非负且严格小于图像尺寸。
 );
   //! 0. 辅助定义
   //! -----------

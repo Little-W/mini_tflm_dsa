@@ -5,12 +5,12 @@ module vector_pe #(
   parameter bit ENABLE_EXTENDED_MULTIPLY=1'b1,
   parameter bit p_accumulator_preselected=1'b0
 ) (
-  input wire logic clk,
-  input wire logic i_en,
-  input wire logic [2:0] i_op,
-  input wire logic signed [15:0] i_a, i_b,
-  input wire logic signed [31:0] i_acc,
-  output logic signed [31:0] o_result
+  input wire logic clk, // 模块工作时钟。
+  input wire logic i_en, // 保存本周期操作码、操作数和累加初值。
+  input wire logic [2:0] i_op, // 选择乘加、求和、极值或扩展乘法的操作码。
+  input wire logic signed [15:0] i_a /* 第一个十六位运算输入。 */, i_b /* 第二个十六位运算输入。 */,
+  input wire logic signed [31:0] i_acc, // 三十二位累加初值或极值比较初值。
+  output logic signed [31:0] o_result // 当前已寄存操作数的三十二位计算结果。
 );
   logic [2:0] op;
   logic signed [15:0] a, b;
@@ -19,6 +19,7 @@ module vector_pe #(
   logic signed [31:0] product_ss, extended_a;
   logic signed [32:0] mac_value;
   logic acc_high_equal, acc_less_than_a;
+  (* use_dsp = "simd" *) wire [16:0] low_difference;
   logic signed [31:0] extremum;
   logic result_multiply, result_zero, result_compare;
   logic compare_select;
@@ -60,7 +61,9 @@ module vector_pe #(
   assign extended_a = {{16{a[15]}},a};
   // 高半字相等时比较低半字；高半字不等时，完整累加值的符号决定次序。
   assign acc_high_equal = acc[31:16] == {16{a[15]}};
-  assign acc_less_than_a = acc_high_equal ? (acc[15:0] < a[15:0]) : acc[31];
+  // 十七位差值覆盖低半字的完整无符号范围，最高位表示借位。
+  assign low_difference = {1'b0, acc[15:0]} - {1'b0, a[15:0]};
+  assign acc_less_than_a = acc_high_equal ? low_difference[16] : acc[31];
   assign extremum = (acc_less_than_a ^ op[0]) ? extended_a : acc;
   assign compare_select = result_compare && (acc_less_than_a ^ op[0]);
   generate

@@ -1,0 +1,166 @@
+{
+  "passed": true,
+  "reference_commit": "57b61b24",
+  "input_constraints": [],
+  "all_parent_outputs_and_state_compared": true,
+  "formal": [
+    {
+      "mode": "generic",
+      "macro_options": [
+        "-USYNTHESIS",
+        "-UXILINX_FPGA"
+      ],
+      "registered_read_phase": 0,
+      "passed": true,
+      "equivalence_points": 3182,
+      "log_sha256": "0d3bfebba94492a6df00c855542560ccd3a6f9923d731f610bd0fb5c07988926"
+    },
+    {
+      "mode": "generic",
+      "macro_options": [
+        "-USYNTHESIS",
+        "-UXILINX_FPGA"
+      ],
+      "registered_read_phase": 1,
+      "passed": true,
+      "equivalence_points": 3182,
+      "log_sha256": "0e97f18da206ec79387b8c1c182ed7b0b10da41476d5d44c05a7b7c00b2b2dc7"
+    },
+    {
+      "mode": "synthesis",
+      "macro_options": [
+        "-DSYNTHESIS=1",
+        "-UXILINX_FPGA"
+      ],
+      "registered_read_phase": 0,
+      "passed": true,
+      "equivalence_points": 2891,
+      "log_sha256": "f331f8c2168eade2acc8ba0a7be24b0e03c031d776f64cb74b2aa851b5fdf9d4"
+    },
+    {
+      "mode": "synthesis",
+      "macro_options": [
+        "-DSYNTHESIS=1",
+        "-UXILINX_FPGA"
+      ],
+      "registered_read_phase": 1,
+      "passed": true,
+      "equivalence_points": 2891,
+      "log_sha256": "9592554c4549fdedf1d56ea18562a0b0997523b347f150c251a7d4383fd3ae79"
+    },
+    {
+      "mode": "fpga",
+      "macro_options": [
+        "-USYNTHESIS",
+        "-DXILINX_FPGA=1"
+      ],
+      "registered_read_phase": 0,
+      "passed": true,
+      "equivalence_points": 3124,
+      "log_sha256": "56ebcd0bd55981bac4ba4cb254f2477b57c40276bd46fb91219440289b11c226"
+    },
+    {
+      "mode": "fpga",
+      "macro_options": [
+        "-USYNTHESIS",
+        "-DXILINX_FPGA=1"
+      ],
+      "registered_read_phase": 1,
+      "passed": true,
+      "equivalence_points": 3124,
+      "log_sha256": "882efbed834a65dcfac3cf22ac66c84cc32d50ef0614e35d3917f829469418d9"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "macro_options": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1"
+      ],
+      "registered_read_phase": 0,
+      "passed": true,
+      "equivalence_points": 2833,
+      "log_sha256": "65478f9849121dba246ff97f86bbc99465bc98dafffc4d05d46c4857ae91693b"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "macro_options": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1"
+      ],
+      "registered_read_phase": 1,
+      "passed": true,
+      "equivalence_points": 2833,
+      "log_sha256": "e0acffd5856cd09498459488fc338180cd581cb62ed051fa74bfe6adf31fc6b6"
+    }
+  ],
+  "four_state": [
+    {
+      "mode": "generic",
+      "macro_options": [
+        "-USYNTHESIS",
+        "-UXILINX_FPGA"
+      ],
+      "passed": true,
+      "comparisons": 131072,
+      "log_sha256": "aaac9293e6f9bd250971f75a7bd4c9630f1c4ecb784af38a371c7b0d164ca758"
+    },
+    {
+      "mode": "synthesis",
+      "macro_options": [
+        "-DSYNTHESIS=1",
+        "-UXILINX_FPGA"
+      ],
+      "passed": true,
+      "comparisons": 131072,
+      "log_sha256": "aaac9293e6f9bd250971f75a7bd4c9630f1c4ecb784af38a371c7b0d164ca758"
+    },
+    {
+      "mode": "fpga",
+      "macro_options": [
+        "-USYNTHESIS",
+        "-DXILINX_FPGA=1"
+      ],
+      "passed": true,
+      "comparisons": 131072,
+      "log_sha256": "aaac9293e6f9bd250971f75a7bd4c9630f1c4ecb784af38a371c7b0d164ca758"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "macro_options": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1"
+      ],
+      "passed": true,
+      "comparisons": 131072,
+      "log_sha256": "aaac9293e6f9bd250971f75a7bd4c9630f1c4ecb784af38a371c7b0d164ca758"
+    }
+  ],
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_engine_control_pkg.sv": "b90566fe45a0be8d23ee302ccd0ac055da88af1ba06e5c43c41b6dfb890bbdf8",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_engine_pkg.sv": "3b120fbc30d6d9a86296526af9b9248f69862112218de6c869e3c89c1321dc05",
+    "/workspace/scratch/5bfa47658687/experiments/vector_request_timing/address_final_proof/reference_address.sv": "6b2d00487a6392852af6a5566b31bafb71d6ad9ae018a767e653672745d19712",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_coordinate_bound.sv": "712d7834a98cbb9498e1322776dce4231a7def60984636e0b8ddd02c473d3b68",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_interval_bound.sv": "f1a595819b02e143a57641fc9e4f3bd7f5209720c11702d489c0b37ec14ae877",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_read_address_add.sv": "0a12468c4110ab263faec2c132b5dc20d0b0060bee153df89d8042eef62d8c2f",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_window_bounds.sv": "288ec26b646f1e9f4fb07f2f98e4291576fb8c38cd18384c6685306749bf7d03",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_window_count_add.sv": "d19734290f54aaff05bae066e2a9d899d6b23f83047e2e81e9965aeeaad46fb5",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_window_request_qualify.sv": "80747d55a70c4d22abeb0c9d83c7570234dd9e78bda05dc0bb68f94e0e3da7ab",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_window_count_group.sv": "941944786b14707eba3014d450cdc83269cbe67c88c4742fa76ca4fed8601313",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/npu/conv/vector_engine_address.sv": "1e5fe15e49536f4d63b0d41585efc50ff48aa4932766c1af013426c236ffb5d5",
+    "/workspace/scratch/5bfa47658687/work_vector_margin/rtl/common/parallel_equal.sv": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d"
+  },
+  "runner_sha256": "9dcc9e9f8d663d3ab5c9260d917b74f99a5cc6f7c813b7ff487cf28cf978edb9"
+}

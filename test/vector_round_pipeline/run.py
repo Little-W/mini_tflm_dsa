@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import runpy
 from pathlib import Path
 import re
 import shlex
@@ -11,6 +12,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/conv/vector_round_shift.sv')
+DEPENDENCIES = runpy.run_path(str(ROOT / "scripts/rtl/source_files.py"))["with_dependencies"]
 sys.path.insert(0, str(ROOT / 'test'))
 from rtl_reference import read_rtl_source
 
@@ -85,7 +87,7 @@ def main():
         commands = []
         for label, source, wrapper in [('reference', reference, old), ('current', candidate, new)]:
             commands += [f'read_slang -D {define}=1 --top {label}_top ' +
-                         ' '.join(shlex.quote(str(p)) for p in (source, wrapper, model)),
+                         ' '.join(shlex.quote(str(p)) for p in DEPENDENCIES([source, wrapper, model], args.source_root.resolve())),
                          f'prep -top {label}_top -flatten', 'memory_map', 'opt -full',
                          f'rename {label}_top {label}', f'design -stash {label}']
         commands += ['design -copy-from reference -as reference reference',
@@ -109,7 +111,7 @@ def main():
     for mode, define in [('fpga', 'XILINX_FPGA'), ('generic', 'ASIC_SYNTHESIS')]:
         binary = out / f'{mode}_simulation.vvp'
         run([args.iverilog, '-g2012', '-D' + define, '-s', 'tb', '-o', binary,
-             reference, candidate, model, tb], out / f'{mode}_build.log')
+             *DEPENDENCIES([reference, candidate, model], args.source_root.resolve()), tb], out / f'{mode}_build.log')
         log = out / f'{mode}_four_state.log'
         run([args.vvp, binary], log)
         text = log.read_text()

@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "strict_four_state_equivalence": true,
+  "checks": 52352,
+  "register_configurations": [
+    0,
+    1
+  ],
+  "outputs": [
+    "result",
+    "floor_value"
+  ],
+  "source_sha256": {
+    "reference": "9148e8a5c78726610f935553c52f438264b3bacdc6c1f2baf52f03a2adbb916f",
+    "current": "70a64497ee75bacf807ef02d1b286acb273a8c1fde242f3bc853ac29f21294e7"
+  },
+  "reference_revision": "86034eb498cbc841af8fdb7b720851364d54a50a",
+  "source_root": "/workspace/scratch/5bfa47658687/work_vector_queue",
+  "testbench_sha256": "c59d281599eb298633ea80353ac80527b906d7a4b3f30ab7d6c7174ce340edb5",
+  "run_log_sha256": "7e74b3f47f371d6816348ab59094c9c5a381e19b2631d255bdaf580bc04ad21e",
+  "build_command": [
+    "iverilog",
+    "-g2012",
+    "-s",
+    "tb",
+    "-o",
+    "/workspace/scratch/5bfa47658687/work_vector_queue/build/vector_activation_timing_compatibility/simulation.vvp",
+    "/workspace/scratch/5bfa47658687/work_vector_queue/build/vector_activation_timing_compatibility/reference.sv",
+    "/workspace/scratch/5bfa47658687/work_vector_queue/build/vector_activation_timing_compatibility/current.sv",
+    "/workspace/scratch/5bfa47658687/work_vector_queue/rtl/common/add_equal_reduce.sv",
+    "/workspace/scratch/5bfa47658687/work_vector_queue/build/vector_activation_timing_compatibility/tb.sv"
+  ]
+}

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
-// 根据描述符执行向量计算、量化 Add、深度卷积和池化。
+// 向量引擎顶层：连接任务控制、地址计算、操作数存储、运算单元和结果写回。
+// 支持向量归约、逐元素运算、量化加法、深度卷积、池化及 Softmax。
+// 各子模块保留独立的接收与返回周期，任务完成前接收全部已发出的存储响应。
 module vector_engine #(
   parameter int TILE = 16,
   parameter int BUS_WIDTH = 32,
@@ -14,85 +16,107 @@ module vector_engine #(
   parameter int MAX_TAPS = 49,
   parameter int POOL_MAX_TAPS = 256
 ) (
-  input wire logic clk, rst_n,
-  input wire logic start,
-  input wire vector_engine_pkg::vector_engine_cfg_t cfg,
-  output logic ready, done_valid,
-  input wire logic done_ready,
-  output logic [1:0] error,
+  input wire logic clk, // 向量引擎工作时钟
+  input wire logic rst_n, // 低有效异步复位
+  input wire logic start, // 提交新的向量任务
+  input wire vector_engine_pkg::vector_engine_cfg_t cfg, // 提交任务的完整运算配置
+  output logic ready, // 允许接收新任务
+  output logic done_valid, // 任务完成信息有效
+  input wire logic done_ready, // 接收任务完成信息
+  output logic [1:0] error, // 任务完成时的错误分类
 
-  output logic dma_cfg_valid,
-  input wire logic dma_cfg_ready,
-  output logic dma_conv_enable, dma_range_enable,
-  output conv_im2col_pkg::conv_cfg_t dma_conv_cfg,
-  output logic [31:0] dma_range_base [4],
-  output logic [32:0] dma_range_end [4],
+  output logic dma_cfg_valid, // DMA 配置请求有效
+  input wire logic dma_cfg_ready, // DMA 已准备接收配置
+  output logic dma_conv_enable, // 启用卷积窗口读取
+  output logic dma_range_enable, // 启用地址范围检查
+  output conv_im2col_pkg::conv_cfg_t dma_conv_cfg, // 卷积窗口几何和地址配置
+  output logic [31:0] dma_range_base [4], // 四个可访问地址区间的起点
+  output logic [32:0] dma_range_end [4], // 四个可访问地址区间的扩展末端
 
-  output logic win_req_valid,
-  input wire logic win_req_ready,
-  output logic [31:0] win_req_p0,win_req_q0,win_req_cols,
-  output logic [1:0] win_req_tag,
-  input wire logic win_rsp_valid,
-  output logic win_rsp_ready,
-  input wire logic [1:0] win_rsp_tag,
-  input wire logic [31:0] win_rsp_col,
-  input wire logic signed [15:0] win_rsp_data[WINDOW_LANES],
-  input wire logic [WINDOW_LANES-1:0] win_rsp_mask,
-  input wire logic win_rsp_last,win_rsp_error,win_busy,
+  output logic win_req_valid, // 窗口读取请求有效
+  input wire logic win_req_ready, // 窗口读取请求可接收
+  output logic [31:0] win_req_p0, // 窗口请求的输出空间起点
+  output logic [31:0] win_req_q0, // 窗口请求的归约维起点
+  output logic [31:0] win_req_cols, // 窗口请求的有效通道数量
+  output logic [1:0] win_req_tag, // 窗口请求使用的输入存储编号
+  input wire logic win_rsp_valid, // 窗口响应数据有效
+  output logic win_rsp_ready, // 引擎允许接收窗口响应
+  input wire logic [1:0] win_rsp_tag, // 窗口响应对应的输入存储编号
+  input wire logic [31:0] win_rsp_col, // 窗口响应的起始列编号
+  input wire logic signed [15:0] win_rsp_data[WINDOW_LANES], // 并行返回的有符号输入元素
+  input wire logic [WINDOW_LANES-1:0] win_rsp_mask, // 各返回通道的数据有效标志
+  input wire logic win_rsp_last, // 当前窗口请求的最后一次响应
+  input wire logic win_rsp_error, // 当前窗口请求发生读取错误
+  input wire logic win_busy, // 窗口读取模块仍有未完成请求
 
   // DW 请求预留结果缓冲，矩阵量化流水按标签返回全部有效通道。
-  output logic quant_req_valid,
-  input wire logic quant_req_ready = 1'b0,
-  output logic quant_req_tag,
-  output logic signed [31:0] quant_req_accumulator[TILE],
-  output logic signed [31:0] quant_req_multiplier[TILE],
-  output logic [5:0] quant_req_right[TILE],
-  output logic [TILE-1:0] quant_req_mask,
-  output logic signed [31:0] quant_req_offset, quant_req_minimum, quant_req_maximum,
-  input wire logic quant_rsp_valid = 1'b0,
-  input wire logic quant_rsp_tag = 1'b0,
-  input wire logic signed [7:0] quant_rsp_data[TILE] = '{default:8'sd0},
+  output logic quant_req_valid, // 共享量化请求有效
+  input wire logic quant_req_ready = 1'b0, // 共享量化流水允许接收请求
+  output logic quant_req_tag, // 共享量化结果存储编号
+  output logic signed [31:0] quant_req_accumulator[TILE], // 各通道待量化的累加结果
+  output logic signed [31:0] quant_req_multiplier[TILE], // 各通道的量化乘数
+  output logic [5:0] quant_req_right[TILE], // 各通道的量化右移位数
+  output logic [TILE-1:0] quant_req_mask, // 本次共享量化的有效通道
+  output logic signed [31:0] quant_req_offset, // 共享量化的输出零点偏移
+  output logic signed [31:0] quant_req_minimum, // 共享量化的激活下限
+  output logic signed [31:0] quant_req_maximum, // 共享量化的激活上限
+  input wire logic quant_rsp_valid = 1'b0, // 共享量化返回数据有效
+  input wire logic quant_rsp_tag = 1'b0, // 共享量化返回结果的存储编号
+  input wire logic signed [7:0] quant_rsp_data[TILE] = '{default:8'sd0}, // 共享量化返回的各通道字节
 
   // 权重地址以 16 字节为单位，部分和地址以 64 字节为单位；读取在下一周期返回。
-  output logic o_weight_read_en,
-  output logic [SHARED_STORAGE_ADDR_WIDTH-1:0] o_weight_read_addr,
-  input wire logic i_weight_read_valid = 1'b0,
-  input wire logic [127:0] i_weight_read_data = '0,
-  output logic o_weight_write_en,
-  output logic [SHARED_STORAGE_ADDR_WIDTH-1:0] o_weight_write_addr,
-  output logic [127:0] o_weight_write_data,
-  output logic [15:0] o_weight_write_mask,
-  output logic o_ps_read_en,
-  output logic [SHARED_STORAGE_ADDR_WIDTH-1:0] o_ps_read_addr,
-  input wire logic i_ps_read_valid = 1'b0,
-  input wire logic [511:0] i_ps_read_data = '0,
-  output logic o_ps_write_en,
-  output logic [SHARED_STORAGE_ADDR_WIDTH-1:0] o_ps_write_addr,
-  output logic [511:0] o_ps_write_data,
-  input wire logic i_storage_error = 1'b0,
+  output logic o_weight_read_en, // 共享权重存储读取使能
+  output logic [SHARED_STORAGE_ADDR_WIDTH-1:0] o_weight_read_addr, // 以十六字节为单位的权重读取地址
+  input wire logic i_weight_read_valid = 1'b0, // 共享权重读取返回有效
+  input wire logic [127:0] i_weight_read_data = '0, // 共享权重读取返回的数据
+  output logic o_weight_write_en, // 共享权重存储写入使能
+  output logic [SHARED_STORAGE_ADDR_WIDTH-1:0] o_weight_write_addr, // 以十六字节为单位的权重写入地址
+  output logic [127:0] o_weight_write_data, // 共享权重存储写入数据
+  output logic [15:0] o_weight_write_mask, // 共享权重写入的逐字节有效掩码
+  output logic o_ps_read_en, // 共享累加存储读取使能
+  output logic [SHARED_STORAGE_ADDR_WIDTH-1:0] o_ps_read_addr, // 以六十四字节为单位的累加读取地址
+  input wire logic i_ps_read_valid = 1'b0, // 共享累加读取返回有效
+  input wire logic [511:0] i_ps_read_data = '0, // 共享累加读取返回的数据
+  output logic o_ps_write_en, // 共享累加存储写入使能
+  output logic [SHARED_STORAGE_ADDR_WIDTH-1:0] o_ps_write_addr, // 以六十四字节为单位的累加写入地址
+  output logic [511:0] o_ps_write_data, // 共享累加存储写入数据
+  input wire logic i_storage_error = 1'b0, // 共享存储访问错误
 
-  output logic rd_req, rd_start,
-  input wire logic rd_granted,
-  output logic rd_im2col,
-  output logic [31:0] rd_p0, rd_q0, rd_base_addr, rd_row_stride,
-  output logic [31:0] rd_rows_to_read, rd_valid_cols,
-  output logic [7:0] rd_burst_len_m1,
-  output logic rd_use_16bits,
-  input wire logic rd_busy, rd_done, rd_error,
-  input wire logic signed [15:0] rd_data [BUS_WIDTH/8],
-  input wire logic rd_valid [BUS_WIDTH/8],
-  input wire logic [$clog2(DMA_SIZE)-1:0] rd_col_base,
-  input wire logic [BUS_WIDTH-1:0] rd_raw_data,
-  input wire logic rd_raw_valid,
+  output logic rd_req, // 申请 DMA 读取通道
+  output logic rd_start, // 启动已授权的 DMA 读取
+  input wire logic rd_granted, // DMA 读取通道已授权
+  output logic rd_im2col, // 本次 DMA 读取使用卷积窗口模式
+  output logic [31:0] rd_p0, // 卷积读取的输出空间起点
+  output logic [31:0] rd_q0, // 卷积读取的归约维起点
+  output logic [31:0] rd_base_addr, // 线性读取的字节起始地址
+  output logic [31:0] rd_row_stride, // 相邻读取行的字节地址步长
+  output logic [31:0] rd_rows_to_read, // 本次读取的行数
+  output logic [31:0] rd_valid_cols, // 每行需要保留的有效列数
+  output logic [7:0] rd_burst_len_m1, // 读取突发长度减一
+  output logic rd_use_16bits, // 输入元素采用十六位格式
+  input wire logic rd_busy, // DMA 读取仍在进行
+  input wire logic rd_done, // DMA 读取事务完成
+  input wire logic rd_error, // DMA 读取事务发生错误
+  input wire logic signed [15:0] rd_data [BUS_WIDTH/8], // DMA 返回的并行有符号元素
+  input wire logic rd_valid [BUS_WIDTH/8], // 各 DMA 返回元素的有效标志
+  input wire logic [$clog2(DMA_SIZE)-1:0] rd_col_base, // DMA 返回数据的起始列位置
+  input wire logic [BUS_WIDTH-1:0] rd_raw_data, // DMA 返回的原始总线数据
+  input wire logic rd_raw_valid, // DMA 原始总线数据有效
 
-  output logic wr_req, wr_start,
-  input wire logic wr_granted,
-  output logic [31:0] wr_base_addr, wr_row_stride, wr_rows_to_write,
-  output logic [7:0] wr_burst_len_m1,
-  output logic [BUS_WIDTH-1:0] src_wdata,
-  output logic [BUS_WIDTH/8-1:0] src_wmask,
-  output logic src_wvalid,
-  input wire logic src_wready, wr_busy, wr_done, wr_error
+  output logic wr_req, // 申请 DMA 写入通道
+  output logic wr_start, // 启动已授权的 DMA 写入
+  input wire logic wr_granted, // DMA 写入通道已授权
+  output logic [31:0] wr_base_addr, // 结果写入的字节起始地址
+  output logic [31:0] wr_row_stride, // 相邻结果行的字节地址步长
+  output logic [31:0] wr_rows_to_write, // 本次结果写入的行数
+  output logic [7:0] wr_burst_len_m1, // 结果写入突发长度减一
+  output logic [BUS_WIDTH-1:0] src_wdata, // 交给 DMA 的结果总线数据
+  output logic [BUS_WIDTH/8-1:0] src_wmask, // 结果总线的逐字节写入掩码
+  output logic src_wvalid, // 结果总线数据有效
+  input wire logic src_wready, // DMA 允许接收结果数据
+  input wire logic wr_busy, // DMA 写入仍在进行
+  input wire logic wr_done, // DMA 写入事务完成
+  input wire logic wr_error // DMA 写入事务发生错误
 );
   import vector_engine_pkg::*;
   import vector_engine_control_pkg::*;
@@ -234,18 +258,6 @@ module vector_engine #(
   logic signed [31:0] q_accumulator;
   logic signed [31:0] q_multiplier;
   logic signed [63:0] q_rounded;
-  logic [8:0] q_offset_low;
-  logic signed [8:0] q_minimum_before_offset;
-  logic signed [8:0] q_maximum_before_offset;
-  logic q_rounded_fits_s9;
-  logic q_before_offset_below;
-  logic q_before_offset_above;
-  logic q_offset_increment;
-  logic q_offset_decrement;
-  logic q_positive_overflow;
-  logic q_negative_overflow;
-  logic q_below_min;
-  logic q_above_max;
   logic signed [31:0] q_clamped_data;
   logic [6:0] q_valid;
   logic [7:0] q_clamped_q;
@@ -419,18 +431,8 @@ module vector_engine #(
   wire [5:0] rounding_amount;
   wire signed [63:0] rounding_result;
   wire signed [63:0] rounding_floor;
-  wire signed [8:0] pool_activation_min;
-  wire signed [8:0] pool_activation_max;
-  wire signed [7:0] avg_power_floor;
   wire signed [31:0] avg_power_result;
   wire signed [31:0] avg_div_result;
-  wire signed [9:0] add_adjusted;
-  logic add_below_min;
-  logic add_above_max;
-  logic add_min_high_zero;
-  logic add_min_high_ones;
-  logic add_max_high_zero;
-  logic add_max_high_ones;
   wire signed [31:0] add_clamped;
   logic result_background_write;
   logic [TILE_INDEX_W-1:0] result_background_index;
@@ -444,6 +446,14 @@ module vector_engine #(
   logic [7:0] pool_lane_value [PE_COUNT];
   logic [5:0] q_right [3];
   logic [TILE_INDEX_W-1:0] q_index [7];
+  logic signed [63:0] activation_i_quantized_value;
+  logic signed [63:0] activation_i_add_rounded_value;
+  logic signed [7:0] activation_i_average_floor;
+  logic signed [7:0] activation_i_average_rounded;
+  logic signed [8:0] activation_i_average_divided;
+  logic signed [31:0] activation_cfg_output_offset;
+  logic [1:0][31:0] activation_cfg_bounds;
+  logic [3:0][31:0] activation_o_result;
 
   vector_engine_control #(
     .p_tile(TILE),
@@ -1021,34 +1031,7 @@ module vector_engine #(
   always_ff @(posedge clk) begin
     avg_reciprocal_data <= avg_reciprocal[valid_taps];
   end
-`ifdef NPU_SIM_ASSERT
-`endif
   assign pool_response_fire = state==POOL_LOAD_WAIT && rd_valid[0];
-
-
-  // 配置检查保证量化偏移和激活范围为 S8，低八位加法保留输出字节。
-  // 高五十六位并行检查进位、借位和符号，保留完整六十四位回绕行为。
-  assign q_offset_low = {1'b0, q_rounded[7:0]} + {1'b0, c.output_offset[7:0]};
-  assign q_offset_increment = q_offset_low[8] && !c.output_offset[7];
-  assign q_offset_decrement = !q_offset_low[8] && c.output_offset[7];
-  // 配置稳定期间先扣除输出偏移，限幅比较与低字节加法并行执行。
-  always_ff @(posedge clk) begin
-    q_minimum_before_offset <= $signed({c.activation_min[7],c.activation_min[7:0]}) -
-        $signed({c.output_offset[7],c.output_offset[7:0]});
-    q_maximum_before_offset <= $signed({c.activation_max[7],c.activation_max[7:0]}) -
-        $signed({c.output_offset[7],c.output_offset[7:0]});
-  end
-  assign q_rounded_fits_s9 = q_rounded[63:9] == {55{q_rounded[8]}};
-  assign q_before_offset_below = q_rounded_fits_s9 ?
-      $signed(q_rounded[8:0]) < q_minimum_before_offset : q_rounded[63];
-  assign q_before_offset_above = q_rounded_fits_s9 ?
-      $signed(q_rounded[8:0]) > q_maximum_before_offset : !q_rounded[63];
-  // 保留六十四位补码加法在两个符号边界处的回绕结果。
-  assign q_positive_overflow = !q_rounded[63] && (&q_rounded[62:8]) && q_offset_increment;
-  assign q_negative_overflow = q_rounded[63] && !(|q_rounded[62:8]) && q_offset_decrement;
-  assign q_below_min = !q_negative_overflow && (q_positive_overflow || q_before_offset_below);
-  assign q_above_max = !q_positive_overflow && (q_negative_overflow || q_before_offset_above);
-
 
   always_comb begin
     add_multiplier = add_stage==0 ? c.add.input1_multiplier :
@@ -1258,39 +1241,36 @@ module vector_engine #(
     end
   end
 
-  assign q_clamped_data = q_below_min ? c.activation_min :
-      q_above_max ? c.activation_max : 32'($signed(q_offset_low[7:0]));
-
   // 乘法器已完成的输出直接进入舍入输入寄存器，乘积与移位量同拍保存。
   assign rounding_input = avg_pool ? $signed(64'(serial_acc_read_data)) : multiplier_product;
   assign rounding_amount = add_s8 ? add_right : avg_pool ? avg_shift : q_right[2];
   vector_round_shift #(.REGISTER_MIDDLE(1'b1),.REGISTER_INPUT(1'b1)) u_rounding (
     .clk(clk),.value(rounding_input),.amount(rounding_amount),.result(rounding_result),.floor_value(rounding_floor));
-  // 有效 S8 池化输入及激活范围使精确平均值保持在 [-128,127] 内。
-  assign pool_activation_min = {c.activation_min[7],c.activation_min[7:0]};
-  assign pool_activation_max = {c.activation_max[7],c.activation_max[7:0]};
-  assign avg_power_floor = rounding_floor[7:0];
-  // 舍入在向下取整的商上增加零或一。激活上下限均为整数，
-  // 范围检查可以与该递增运算并行执行。
-  assign avg_power_result = avg_power_floor<$signed(c.activation_min[7:0]) ? c.activation_min :
-      avg_power_floor>=$signed(c.activation_max[7:0]) ? c.activation_max : 32'($signed(rounding_result[7:0]));
-  assign avg_div_result = avg_signed_q<pool_activation_min ? c.activation_min :
-      avg_signed_q>pool_activation_max ? c.activation_max : 32'(avg_signed_q);
-  assign add_adjusted = $signed(add_rounded[9:0])+$signed({{2{c.output_offset[7]}},c.output_offset[7:0]});
-  // 十位加法结果与完整激活上下限比较，高位范围和低位大小并行判断。
-  assign add_min_high_zero = !(|c.activation_min[30:9]);
-  assign add_min_high_ones = &c.activation_min[30:9];
-  assign add_max_high_zero = !(|c.activation_max[30:9]);
-  assign add_max_high_ones = &c.activation_max[30:9];
-  assign add_below_min = c.activation_min[31] ?
-      (add_min_high_ones && (add_adjusted < $signed(c.activation_min[9:0]))) :
-      (!add_min_high_zero || (add_adjusted < $signed(c.activation_min[9:0])));
-  assign add_above_max = c.activation_max[31] ?
-      (!add_max_high_ones || (add_adjusted > $signed(c.activation_max[9:0]))) :
-      (add_max_high_zero && (add_adjusted > $signed(c.activation_max[9:0])));
-  assign add_clamped = add_rounded>64'sd255 ? c.activation_max :
-      add_rounded< -64'sd256 ? c.activation_min :
-      add_below_min ? c.activation_min : add_above_max ? c.activation_max : 32'(add_adjusted);
+  // 四类激活限幅共用配置接口，预处理寄存器由限幅子模块独立保存。
+  assign activation_i_quantized_value = q_rounded;
+  assign activation_i_add_rounded_value = add_rounded;
+  assign activation_i_average_floor = rounding_floor[7:0];
+  assign activation_i_average_rounded = rounding_result[7:0];
+  assign activation_i_average_divided = avg_signed_q;
+  assign activation_cfg_output_offset = c.output_offset;
+  assign activation_cfg_bounds[0] = c.activation_min;
+  assign activation_cfg_bounds[1] = c.activation_max;
+  assign q_clamped_data = activation_o_result[0];
+  assign add_clamped = activation_o_result[1];
+  assign avg_power_result = activation_o_result[2];
+  assign avg_div_result = activation_o_result[3];
+  vector_activation_clamp u_activation (
+    .clk(clk),
+    .cfg_output_offset(activation_cfg_output_offset),
+    .cfg_minimum(activation_cfg_bounds[0]),
+    .cfg_maximum(activation_cfg_bounds[1]),
+    .i_quantized_value(activation_i_quantized_value),
+    .i_add_rounded_value(activation_i_add_rounded_value),
+    .i_average_floor(activation_i_average_floor),
+    .i_average_rounded(activation_i_average_rounded),
+    .i_average_divided(activation_i_average_divided),
+    .o_result(activation_o_result)
+  );
 
   // 标量限幅先保存字节结果，存储写使能仅选择已经完成的数值。
   always_ff @(posedge clk) begin
@@ -1342,9 +1322,13 @@ module vector_engine #(
   // 极值池化按 PE 组提交，读取选择器与计算通道共用。
   // 每个通道保留一个八位限幅器，当前组全部字节在同一边沿写入。
   for (genvar lane=0;lane<PE_COUNT;lane++) begin : g_pool_lane_clamp
-    assign pool_lane_value[lane] = $signed(accum_lane[lane][7:0]) < $signed(c.activation_min[7:0]) ?
-        c.activation_min[7:0] : $signed(accum_lane[lane][7:0]) > $signed(c.activation_max[7:0]) ?
-        c.activation_max[7:0] : accum_lane[lane][7:0];
+    wire [7:0] value = accum_lane[lane][7:0];
+    (* use_dsp = "simd" *) wire [8:0] minimum_difference, maximum_difference;
+    // 九位补码差值包含八位输入的完整数值范围，符号位直接给出次序。
+    assign minimum_difference = {value[7],value} - {c.activation_min[7],c.activation_min[7:0]};
+    assign maximum_difference = {c.activation_max[7],c.activation_max[7:0]} - {value[7],value};
+    assign pool_lane_value[lane] = minimum_difference[8] ? c.activation_min[7:0] :
+        maximum_difference[8] ? c.activation_max[7:0] : value;
   end
   for (genvar entry=0;entry<TILE;entry++) begin : g_result_write
     localparam int LANE_INDEX = entry % PE_COUNT;
@@ -1506,7 +1490,6 @@ module vector_engine #(
       endcase
     end
   end
-
 
 endmodule
 

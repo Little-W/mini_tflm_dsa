@@ -9,18 +9,18 @@ module vector_quant_params #(
     parameter int p_active_width = $clog2(p_entries+1),
     parameter bit p_parallel_output = 1'b0
 ) (
-    input  wire logic clk,
-    input  wire logic i_wr_en,
-    input  wire logic i_wr_multiplier,
-    input  wire logic i_wr_shift,
-    input  wire logic [p_dma_index_width-1:0] i_wr_byte_index,
-    input  wire logic [p_bus_width-1:0] i_wr_data,
-    input  wire logic [p_active_width-1:0] i_active,
-    input  wire logic [p_read_index_width-1:0] i_rd_index,
-    output logic signed [31:0] o_multiplier,
-    output logic [5:0] o_right_shift,
-    output logic signed [31:0] o_multiplier_vec[p_entries],
-    output logic [5:0] o_right_shift_vec[p_entries]
+    input  wire logic clk, // 模块工作时钟。
+    input  wire logic i_wr_en, // 允许接收本周期的参数总线数据。
+    input  wire logic i_wr_multiplier, // 本次写入更新量化乘数。
+    input  wire logic i_wr_shift, // 本次写入更新量化移位参数。
+    input  wire logic [p_dma_index_width-1:0] i_wr_byte_index, // 参数数据在对应数组中的起始字节索引。
+    input  wire logic [p_bus_width-1:0] i_wr_data, // 包含连续量化参数的数据总线。
+    input  wire logic [p_active_width-1:0] i_active, // 当前分块实际使用的量化参数项数。
+    input  wire logic [p_read_index_width-1:0] i_rd_index, // 串行量化读取的通道索引。
+    output logic signed [31:0] o_multiplier, // 当前读取通道的三十二位有符号量化乘数。
+    output logic [5:0] o_right_shift, // 当前读取通道计算所用的右移位数。
+    output logic signed [31:0] o_multiplier_vec[p_entries], // 并行读取的各通道有符号量化乘数。
+    output logic [5:0] o_right_shift_vec[p_entries] // 并行读取的各通道右移位数。
 );
     //! 0. 分组尺寸与写入地址
     //! ---------------------

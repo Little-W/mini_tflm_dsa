@@ -1,0 +1,114 @@
+{
+  "source_sha256": "70a64497ee75bacf807ef02d1b286acb273a8c1fde242f3bc853ac29f21294e7",
+  "reference": "86034eb4",
+  "reference_sha256": "9148e8a5c78726610f935553c52f438264b3bacdc6c1f2baf52f03a2adbb916f",
+  "input_scope": "每周期任意 64 位有符号输入及任意 6 位移位量。",
+  "input_constraints": null,
+  "formal_runs": [
+    {
+      "implementation": "fpga",
+      "REGISTER_MIDDLE": 0,
+      "REGISTER_INPUT": 0,
+      "passed": true,
+      "outputs": [
+        "result[63:0]",
+        "floor_value[63:0]"
+      ],
+      "log_sha256": "787c0046f50efd36502f82e84756f0b631cb13c521ef041073b085d5efc388c9"
+    },
+    {
+      "implementation": "fpga",
+      "REGISTER_MIDDLE": 0,
+      "REGISTER_INPUT": 1,
+      "passed": true,
+      "outputs": [
+        "result[63:0]",
+        "floor_value[63:0]"
+      ],
+      "log_sha256": "3548c6e735d84cd466f606c9832e64612d66270cc347fb2fbe27773fb4e7d83f"
+    },
+    {
+      "implementation": "fpga",
+      "REGISTER_MIDDLE": 1,
+      "REGISTER_INPUT": 0,
+      "passed": true,
+      "outputs": [
+        "result[63:0]",
+        "floor_value[63:0]"
+      ],
+      "log_sha256": "96d616c06771f5ee83fbcb41b533f70cd725caeb88fed917e23d14b207ffdf58"
+    },
+    {
+      "implementation": "fpga",
+      "REGISTER_MIDDLE": 1,
+      "REGISTER_INPUT": 1,
+      "passed": true,
+      "outputs": [
+        "result[63:0]",
+        "floor_value[63:0]"
+      ],
+      "log_sha256": "827ae0b0da8a2792f755e7e91c153d65ba1375d7a2d61460b18b6e7119d61a70"
+    },
+    {
+      "implementation": "generic",
+      "REGISTER_MIDDLE": 0,
+      "REGISTER_INPUT": 0,
+      "passed": true,
+      "outputs": [
+        "result[63:0]",
+        "floor_value[63:0]"
+      ],
+      "log_sha256": "c93fb79d6776fc30225b02a318843cc2f19c16e4dae1e1a1c09c822224543288"
+    },
+    {
+      "implementation": "generic",
+      "REGISTER_MIDDLE": 0,
+      "REGISTER_INPUT": 1,
+      "passed": true,
+      "outputs": [
+        "result[63:0]",
+        "floor_value[63:0]"
+      ],
+      "log_sha256": "1944f2a40e6a145385f38217575a09f03696ac34c2c0885b1ddd6af455b23993"
+    },
+    {
+      "implementation": "generic",
+      "REGISTER_MIDDLE": 1,
+      "REGISTER_INPUT": 0,
+      "passed": true,
+      "outputs": [
+        "result[63:0]",
+        "floor_value[63:0]"
+      ],
+      "log_sha256": "2571451c76f99d7962dc85ec2c5268d49deadeefa0e558a74f9686c198ece9ca"
+    },
+    {
+      "implementation": "generic",
+      "REGISTER_MIDDLE": 1,
+      "REGISTER_INPUT": 1,
+      "passed": true,
+      "outputs": [
+        "result[63:0]",
+        "floor_value[63:0]"
+      ],
+      "log_sha256": "f902ae199fa10bc4e72599ad130636235196e49adf06ea05b10484eb62dba89a"
+    }
+  ],
+  "test_sha256": "2a00169087f7fafea5b35162715d5a320cb321b5b7488505f7a01a19b0f8591c",
+  "testbench_sha256": "e6452fbd1a91e4eeabce7e7dfa27c8c10d2b16025e53839b0dcb9a4f87f8face",
+  "four_state_runs": [
+    {
+      "implementation": "fpga",
+      "passed": true,
+      "log_sha256": "5fcbea67f18cfb8721f63f418262f796e29d1d45330cae09e88d0c94a34a6af1"
+    },
+    {
+      "implementation": "generic",
+      "passed": true,
+      "log_sha256": "5fcbea67f18cfb8721f63f418262f796e29d1d45330cae09e88d0c94a34a6af1"
+    }
+  ],
+  "four_state_checks": 52352,
+  "four_state_configurations": 4,
+  "passed": true
+}

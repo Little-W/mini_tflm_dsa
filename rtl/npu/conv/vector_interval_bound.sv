@@ -3,8 +3,8 @@
 
 // 符号位取反后按无符号次序比较，保持左闭右开的坐标区间。
 module vector_interval_bound (
-  input wire signed [16:0] i_coordinate, i_minimum, i_maximum,
-  output wire o_inside
+  input wire signed [16:0] i_coordinate /* 待检查的有符号坐标。 */, i_minimum /* 有效坐标区间的左端点，包含该端点。 */, i_maximum /* 有效坐标区间的右端点，不包含该端点。 */,
+  output wire o_inside // 坐标处于给定的左闭右开区间。
 );
   wire lower_less, upper_less;
   wire unused_lower_equal, unused_upper_equal;

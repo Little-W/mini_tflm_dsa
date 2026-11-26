@@ -1,0 +1,72 @@
+{
+  "passed": true,
+  "inputs_constrained": false,
+  "reference_commit": "59a1e9f3",
+  "source_sha256": {
+    "rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+    "rtl/npu/conv/vector_engine_pkg.sv": "3b120fbc30d6d9a86296526af9b9248f69862112218de6c869e3c89c1321dc05",
+    "rtl/npu/conv/vector_engine_control_pkg.sv": "b90566fe45a0be8d23ee302ccd0ac055da88af1ba06e5c43c41b6dfb890bbdf8",
+    "rtl/npu/conv/vector_engine_control.sv": "7b596ea5027dcc692f6953c73be79272c2e4cd5c8f9ebaaeba91f3abac90dbf6",
+    "rtl/npu/conv/vector_engine_error_select.sv": "9478fb28561550150194f3be20941784d7f727f1e939d8e60585080c5c142ad8",
+    "test/vector_error_status/run.py": "7a7a4fd13b1d331b3bbb7b3894263eb7779ad52535a68d59ca4cc9aa081a4d58"
+  },
+  "control_profiles": [
+    {
+      "tile": 8,
+      "shared_resources": 0,
+      "passed": true
+    },
+    {
+      "tile": 8,
+      "shared_resources": 1,
+      "passed": true
+    },
+    {
+      "tile": 16,
+      "shared_resources": 0,
+      "passed": true
+    },
+    {
+      "tile": 16,
+      "shared_resources": 1,
+      "passed": true
+    }
+  ],
+  "complete_error_function_formal": true,
+  "four_state_comparisons": 300000,
+  "mapped_control": {
+    "resources": {
+      "logic_lut_cells": 1143,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 1143,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 1788,
+      "dsp48e1": 0,
+      "ramb36e1": 0,
+      "ramb18e1": 0,
+      "carry4": 44,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 44,
+        "FDCE": 1770,
+        "FDPE": 7,
+        "FDRE": 11,
+        "INV": 26,
+        "LUT1": 1,
+        "LUT2": 226,
+        "LUT3": 108,
+        "LUT4": 199,
+        "LUT5": 371,
+        "LUT6": 238,
+        "MUXF7": 46
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "longest_register_path_cells": 9,
+    "start_to_error_cells": 1,
+    "target_delay_ps": 6667,
+    "wire_delay_ps": 300,
+    "max_lut_inputs": 8
+  }
+}

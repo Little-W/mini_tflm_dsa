@@ -3,12 +3,14 @@
 import argparse
 import hashlib
 import json
+import runpy
 from pathlib import Path
 import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/conv/vector_round_shift.sv')
+DEPENDENCIES = runpy.run_path(str(ROOT / "scripts/rtl/source_files.py"))["with_dependencies"]
 
 
 def digest(path):
@@ -99,7 +101,7 @@ endmodule
 ''')
     executable = out / 'simulation.vvp'
     command = ['iverilog', '-g2012', '-s', 'tb', '-o', str(executable),
-               *map(str, sources), str(tb)]
+               *map(str, DEPENDENCIES(sources, args.source_root.resolve())), str(tb)]
     with (out / 'build.log').open('w') as stream:
         subprocess.run(command, stdout=stream, stderr=subprocess.STDOUT, check=True)
     result = subprocess.run(['vvp', str(executable)], text=True, capture_output=True, timeout=120)

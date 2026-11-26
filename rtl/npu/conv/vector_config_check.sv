@@ -5,15 +5,47 @@ module vector_config_check #(
   parameter int MAX_TAPS=49,
   parameter int POOL_MAX_TAPS=256
 ) (
-  input logic clk,rst_n,start,
-  input logic i_input_range,
-  input vector_engine_pkg::vector_engine_cfg_t cfg,
-  output logic ready,done,error,
-  output logic [31:0] kernel_count,position_count,
-  output logic [63:0] input_bytes,output_bytes,weight_bytes,
-  output logic [32:0] o_read_end[4]
+  input logic clk /* 模块工作时钟。 */,rst_n /* 低有效复位输入。 */,start /* 启动一次向量任务配置检查。 */,
+  input logic i_input_range, // 为输入张量读取方式选择受检地址区间。
+  input vector_engine_pkg::vector_engine_cfg_t cfg, // 检查完成前保持稳定的向量任务配置。
+  output logic ready /* 能够接收新的配置检查请求。 */,done /* 本次配置检查完成。 */,error /* 配置字段、尺寸或地址范围检查失败。 */,
+  output logic [31:0] kernel_count /* 卷积核或池化窗口包含的位置总数。 */,position_count /* 输出图像的空间位置总数。 */,
+  output logic [63:0] input_bytes /* 输入数据需要占用的总字节数。 */,output_bytes /* 输出数据需要占用的总字节数。 */,weight_bytes /* 深度卷积权重需要占用的总字节数。 */,
+  output logic [32:0] o_read_end[4] // 四个受检读取区间的右端地址，不包含该地址。
 );
   import vector_engine_pkg::*;
+  // 定宽范围先检查高位扩展，再比较低位边界。
+  function automatic logic input_offset_valid(input logic signed [31:0] value);
+    logic high_zero, high_one, low_nonzero;
+    high_zero = !(|value[31:8]);
+    high_one = &value[31:8];
+    low_nonzero = |value[6:0];
+    case (^value)
+      1'b0, 1'b1: input_offset_valid =
+          (high_zero && (!value[7] || !low_nonzero)) || (high_one && value[7] && low_nonzero);
+      default: input_offset_valid = value >= -127 && value <= 128;
+    endcase
+  endfunction
+  function automatic logic output_offset_valid(input logic signed [31:0] value);
+    case (^value)
+      1'b0, 1'b1: output_offset_valid = value[31:8] == {24{value[7]}};
+      default: output_offset_valid = value >= -128 && value <= 127;
+    endcase
+  endfunction
+  function automatic logic shift_valid(input logic signed [31:0] value, input bit positive);
+    case (^value)
+      1'b0, 1'b1: shift_valid =
+          ((!(|value[31:5])) && (positive ? value[4:0] != 5'd31 : value[4:0] == 5'd0)) ||
+          ((&value[31:5]) && (|value[4:0]));
+      default: shift_valid = value >= -31 && value <= (positive ? 30 : 0);
+    endcase
+  endfunction
+  function automatic logic left_shift_valid(input logic signed [31:0] value);
+    case (^value)
+      1'b0, 1'b1: left_shift_valid = !(|value[31:5]) && value[4:0] <= 5'd22;
+      default: left_shift_valid = value >= 0 && value <= 22;
+    endcase
+  endfunction
   typedef enum logic [3:0] {IDLE,CALCULATE,CAPTURE,FIELDS,
     RANGE_SELECT,RANGE_ADD,RANGE_COMPARE,COMPLETE} state_t;
   state_t state;
@@ -107,8 +139,8 @@ module vector_config_check #(
         cfg.image.dilation_h!=0 && cfg.image.dilation_w!=0 && !cfg.image.input_s16 && !cfg.vector_s16 &&
         activation_range_ok;
       if (depthwise) begin
-        static_fields_ok=static_fields_ok && cfg.image.input_offset>=-127 && cfg.image.input_offset<=128 &&
-          cfg.output_offset>=-128 && cfg.output_offset<=127 &&
+        static_fields_ok=static_fields_ok && input_offset_valid(cfg.image.input_offset) &&
+          output_offset_valid(cfg.output_offset) &&
           cfg.multiplier_base[1:0]==0 && cfg.shift_base[1:0]==0;
         if (cfg.bias_base!=0) static_fields_ok=static_fields_ok && cfg.bias_base[1:0]==0;
       end else begin
@@ -122,14 +154,14 @@ module vector_config_check #(
       if (binary_vector && cfg.vector_s16) static_fields_ok=static_fields_ok && cfg.rhs_base[0]==0;
       if (softmax_s8) static_fields_ok=static_fields_ok && !cfg.vector_s16 && cfg.length<=32'(TILE) && cfg.rhs_base[1:0]==0;
       if (add_s8) static_fields_ok=static_fields_ok && !cfg.vector_s16 &&
-        cfg.add.input1_offset>=-127 && cfg.add.input1_offset<=128 &&
-        cfg.add.input2_offset>=-127 && cfg.add.input2_offset<=128 &&
+        input_offset_valid(cfg.add.input1_offset) &&
+        input_offset_valid(cfg.add.input2_offset) &&
         cfg.add.input1_multiplier>=0 && cfg.add.input2_multiplier>=0 && cfg.add.output_multiplier>=0 &&
-        cfg.add.input1_shift>=-31 && cfg.add.input1_shift<=0 &&
-        cfg.add.input2_shift>=-31 && cfg.add.input2_shift<=0 &&
-        cfg.add.left_shift>=0 && cfg.add.left_shift<=22 &&
-        cfg.add.output_shift>=-31 && cfg.add.output_shift<=30 &&
-        cfg.output_offset>=-128 && cfg.output_offset<=127 &&
+        shift_valid(cfg.add.input1_shift, 1'b0) &&
+        shift_valid(cfg.add.input2_shift, 1'b0) &&
+        left_shift_valid(cfg.add.left_shift) &&
+        shift_valid(cfg.add.output_shift, 1'b1) &&
+        output_offset_valid(cfg.output_offset) &&
         activation_range_ok;
     end
   end
