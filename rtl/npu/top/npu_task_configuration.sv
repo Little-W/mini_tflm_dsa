@@ -36,93 +36,93 @@ module npu_task_configuration #(
     localparam int unsigned p_s8_reserve_width = (p_oa_fifo_banks <= 1) ? 1 : $clog2(p_oa_fifo_banks + 1),
     localparam int unsigned p_s16_reserve_width = (p_oa_s16_fifo_banks <= 1) ? 1 : $clog2(p_oa_s16_fifo_banks + 1)
 ) (
-    input wire logic [p_reg_width-1:0] i_bias_base,
-    input wire logic i_cfg_16bits_ia,
-    input wire logic i_cfg_16x8,
-    input wire logic [p_reg_width-1:0] i_cfg_col_groups,
-    input wire logic [p_reg_width-1:0] i_cfg_col_tail_tiles,
-    input wire conv_im2col_pkg::conv_cfg_t i_cfg_conv,
-    input wire logic i_cfg_conv_enable,
-    input wire logic i_cfg_dataflow_mode,
-    input wire logic i_cfg_dataflow_mode_eff,
-    input wire logic [p_reg_width-1:0] i_cfg_ia_reuse_num,
-    input wire logic i_cfg_rhs_tile_packed,
-    input wire logic [p_reg_width-1:0] i_cfg_row_groups,
-    input wire logic [p_reg_width-1:0] i_cfg_row_tail_tiles,
-    input wire logic [31:0] i_cfg_shared_ia_banks,
-    input wire logic i_cfg_start_event,
-    input wire logic [p_reg_width-1:0] i_cfg_w_reuse_num,
-    input wire logic clk,
-    input wire conv_im2col_pkg::conv_cfg_t i_conv_cfg_q,
-    input wire logic rst_n,
-    input wire logic i_ctrl_sa_ready,
-    input wire logic [p_reg_width-1:0] i_dst_base,
-    input wire logic [p_reg_width-1:0] i_dst_row_stride_b,
-    input wire logic i_frame_mode_q,
-    input wire logic i_frame_scheduler_ready,
-    input wire logic [p_reg_width-1:0] i_k,
-    input wire logic [p_reg_width-1:0] i_lhs_base,
-    input wire logic [p_reg_width-1:0] i_lhs_row_stride_b,
-    input wire logic signed [p_reg_width-1:0] i_lhs_zp,
-    input wire logic [p_reg_width-1:0] i_m,
-    input wire logic [p_reg_width-1:0] i_n,
-    input wire logic [31:0] i_ps_control_q,
-    input wire logic signed [p_reg_width-1:0] i_q_mult_pt,
-    input wire logic signed [p_reg_width-1:0] i_q_shift_pt,
-    input wire logic [p_reg_width-1:0] i_rhs_base,
-    input wire logic [p_reg_width-1:0] i_rhs_col_stride_b,
-    input wire logic signed [p_reg_width-1:0] i_rhs_zp,
-    input wire logic i_run_conv,
-    input wire logic i_run_lhs_tile_packed,
-    input wire logic i_run_rhs_tile_packed,
-    input wire logic i_use_per_channel,
-    input wire logic i_use_per_channel_eff,
-    input wire logic i_vector_start_fire,
-    output logic [31:0] o_active_ia_cache_blocks,
-    output logic [31:0] o_active_ps_bank_count,
-    output logic [31:0] o_active_ps_bank_depth,
-    output logic o_cfg_16bits_ia_eff,
-    output logic o_cfg_16x8_q [0:2],
-    output logic [p_reg_width-1:0] o_cfg_ia_reuse_q [0:2],
-    output logic [p_reg_width-1:0] o_cfg_n_q [0:2],
-    output logic o_cfg_stage2_fire,
-    output logic [p_reg_width-1:0] o_cfg_stream_k_q [0:2],
-    output logic [p_reg_width-1:0] o_cfg_stream_m_q [0:2],
-    output logic o_cfg_use16_q [0:2],
-    output logic [2:0] o_cfg_valid_q,
-    output logic [p_reg_width-1:0] o_cfg_w_reuse_q [0:2],
-    output logic [31:0] o_conv_range_base [4],
-    output logic [32:0] o_conv_range_end [4],
-    output logic o_direct_output_cfg,
-    output logic [1:0] o_frame_config_error,
-    output logic [31:0] o_frame_slice_tiles_s2,
-    output logic [p_reg_width-1:0] o_ia_reuse_num_eff,
-    output logic [p_is_bias_valid_w-1:0] o_is_bias_group_rows_target,
-    output logic [4:0] o_oa_chunk_cols_pre,
-    output logic o_oa_is_coalesce_pre,
-    output logic o_oa_ws_coalesce_pre,
-    output logic [p_s8_reserve_width-1:0] o_output_reserve_banks,
-    output logic [p_s16_reserve_width-1:0] o_output_s16_ready_threshold,
-    output logic [p_s16_reserve_width-1:0] o_output_s16_reserve_banks,
-    output logic [p_s8_reserve_width-1:0] o_output_s8_ready_threshold,
-    output logic [63:0] o_ps_admission_rows,
-    output logic o_ps_force_raw_q,
-    output logic [2:0] o_ps_word_cap_q,
-    output logic o_run_16x8,
-    output logic o_run_compact,
-    output logic signed [p_reg_width-1:0] o_run_compact_offset,
-    output logic o_run_is_mode,
-    output logic [p_reg_width-1:0] o_run_k,
-    output logic [p_reg_width-1:0] o_run_m,
-    output logic [p_reg_width-1:0] o_run_n,
-    output logic o_run_use_16bits,
-    output logic o_shared_allocation_invalid,
-    output logic [31:0] o_shared_ia_banks_q,
-    output logic [p_reg_width-1:0] o_stream_k,
-    output logic [p_reg_width-1:0] o_stream_m,
-    output logic o_tiling_invalid,
-    output logic o_use_frame_commands_s2,
-    output logic [p_reg_width-1:0] o_w_reuse_num_eff
+    input wire logic [p_reg_width-1:0] i_bias_base, // 偏置数组的字节基址。
+    input wire logic i_cfg_16bits_ia, // 输入激活采用十六位元素。
+    input wire logic i_cfg_16x8, // 选择十六位输入与八位权重的计算格式。
+    input wire logic [p_reg_width-1:0] i_cfg_col_groups, // 驻留维度的分块组数，WS 对应输出列，IS 对应输出行。
+    input wire logic [p_reg_width-1:0] i_cfg_col_tail_tiles, // 最后一个驻留维度分组的有效分块数。
+    input wire conv_im2col_pkg::conv_cfg_t i_cfg_conv, // 卷积的图像、卷积核及步长配置。
+    input wire logic i_cfg_conv_enable, // 启用卷积窗口展开。
+    input wire logic i_cfg_dataflow_mode, // 请求的数据流模式，置位选择输入驻留。
+    input wire logic i_cfg_dataflow_mode_eff, // 经过能力配置筛选的数据流模式。
+    input wire logic [p_reg_width-1:0] i_cfg_ia_reuse_num, // 流式操作数分块的复用数量。
+    input wire logic i_cfg_rhs_tile_packed, // 右操作数采用分块打包存储。
+    input wire logic [p_reg_width-1:0] i_cfg_row_groups, // 流式维度的分块组数，WS 对应输出行，IS 对应输出列。
+    input wire logic [p_reg_width-1:0] i_cfg_row_tail_tiles, // 最后一个流式维度分组的有效分块数。
+    input wire logic [31:0] i_cfg_shared_ia_banks, // 为输入激活分配的共享存储分组数。
+    input wire logic i_cfg_start_event, // 本周期接收任务配置的事件。
+    input wire logic [p_reg_width-1:0] i_cfg_w_reuse_num, // 驻留操作数分块的复用数量。
+    input wire logic clk, // 模块工作时钟。
+    input wire conv_im2col_pkg::conv_cfg_t i_conv_cfg_q, // 已保存的卷积配置。
+    input wire logic rst_n, // 低有效复位输入。
+    input wire logic i_ctrl_sa_ready, // 矩阵调度控制器允许接收任务。
+    input wire logic [p_reg_width-1:0] i_dst_base, // 输出矩阵的字节基址。
+    input wire logic [p_reg_width-1:0] i_dst_row_stride_b, // 输出矩阵相邻行的字节间隔。
+    input wire logic i_frame_mode_q, // 当前任务采用帧调度方式。
+    input wire logic i_frame_scheduler_ready, // 帧调度器允许接收新任务。
+    input wire logic [p_reg_width-1:0] i_k, // 矩阵计算的输出行数。
+    input wire logic [p_reg_width-1:0] i_lhs_base, // 左操作数矩阵的字节基址。
+    input wire logic [p_reg_width-1:0] i_lhs_row_stride_b, // 左操作数相邻行的字节间隔。
+    input wire logic signed [p_reg_width-1:0] i_lhs_zp, // 左操作数的量化零点。
+    input wire logic [p_reg_width-1:0] i_m, // 矩阵计算的输出列数。
+    input wire logic [p_reg_width-1:0] i_n, // 矩阵计算的归约长度。
+    input wire logic [31:0] i_ps_control_q, // 已保存的部分和容量及格式控制字段。
+    input wire logic signed [p_reg_width-1:0] i_q_mult_pt, // 逐张量量化乘数或逐通道乘数数组地址。
+    input wire logic signed [p_reg_width-1:0] i_q_shift_pt, // 逐张量量化移位量或逐通道移位数组地址。
+    input wire logic [p_reg_width-1:0] i_rhs_base, // 右操作数矩阵的字节基址。
+    input wire logic [p_reg_width-1:0] i_rhs_col_stride_b, // 右操作数相邻列的字节间隔。
+    input wire logic signed [p_reg_width-1:0] i_rhs_zp, // 右操作数的量化零点。
+    input wire logic i_run_conv, // 当前已接收任务采用卷积模式。
+    input wire logic i_run_lhs_tile_packed, // 当前任务的左操作数采用分块打包存储。
+    input wire logic i_run_rhs_tile_packed, // 当前任务的右操作数采用分块打包存储。
+    input wire logic i_use_per_channel, // 请求使用逐通道量化参数。
+    input wire logic i_use_per_channel_eff, // 经过能力配置筛选的逐通道量化使能。
+    input wire logic i_vector_start_fire, // 本周期开始向量任务的事件。
+    output logic [31:0] o_active_ia_cache_blocks, // 当前配置可使用的输入激活缓存块数。
+    output logic [31:0] o_active_ps_bank_count, // 当前配置可使用的部分和存储分组数。
+    output logic [31:0] o_active_ps_bank_depth, // 每个部分和存储分组的可用深度。
+    output logic o_cfg_16bits_ia_eff, // 经过输入存储位宽筛选的十六位格式使能。
+    output logic o_cfg_16x8_q [0:2], // 各配置阶段采用十六位乘八位格式的标志。
+    output logic [p_reg_width-1:0] o_cfg_ia_reuse_q [0:2], // 各配置阶段保存的流式操作数分块复用数量。
+    output logic [p_reg_width-1:0] o_cfg_n_q [0:2], // 各配置阶段保存的归约长度。
+    output logic o_cfg_stage2_fire, // 配置准备的第三阶段完成事件。
+    output logic [p_reg_width-1:0] o_cfg_stream_k_q [0:2], // 各配置阶段的流式维度长度，WS 为输出行数，IS 为输出列数。
+    output logic [p_reg_width-1:0] o_cfg_stream_m_q [0:2], // 各配置阶段的驻留维度长度，WS 为输出列数，IS 为输出行数。
+    output logic o_cfg_use16_q [0:2], // 各配置阶段采用十六位输入的标志。
+    output logic [2:0] o_cfg_valid_q, // 三个配置准备阶段的有效标志。
+    output logic [p_reg_width-1:0] o_cfg_w_reuse_q [0:2], // 各配置阶段保存的驻留分块复用数量。
+    output logic [31:0] o_conv_range_base [4], // 权重、偏置、乘数和移位数组的四个读取起始地址。
+    output logic [32:0] o_conv_range_end [4], // 四个允许读取区间的右端地址，不包含该地址。
+    output logic o_direct_output_cfg, // 当前配置允许将最终结果直接送入输出处理。
+    output logic [1:0] o_frame_config_error, // 帧调度所需的配置或容量检查失败。
+    output logic [31:0] o_frame_slice_tiles_s2, // 已保存的单条帧命令沿流式维度处理的分块数。
+    output logic [p_reg_width-1:0] o_ia_reuse_num_eff, // 当前容量允许的流式操作数分块复用数量。
+    output logic [p_is_bias_valid_w-1:0] o_is_bias_group_rows_target, // 输入驻留模式下一组偏置需要覆盖的输出行数。
+    output logic [4:0] o_oa_chunk_cols_pre, // 配置阶段准备的输出合并列分块数。
+    output logic o_oa_is_coalesce_pre, // 输入驻留模式允许合并输出写入。
+    output logic o_oa_ws_coalesce_pre, // 权重驻留模式允许合并输出写入。
+    output logic [p_s8_reserve_width-1:0] o_output_reserve_banks, // 为在途八位输出结果预留的存储分组数。
+    output logic [p_s16_reserve_width-1:0] o_output_s16_ready_threshold, // 十六位输出缓存允许继续计算的空闲容量阈值。
+    output logic [p_s16_reserve_width-1:0] o_output_s16_reserve_banks, // 为在途十六位输出结果预留的存储分组数。
+    output logic [p_s8_reserve_width-1:0] o_output_s8_ready_threshold, // 八位输出缓存允许继续计算的空闲容量阈值。
+    output logic [63:0] o_ps_admission_rows, // 单帧在部分和存储中需要预留的行数。
+    output logic o_ps_force_raw_q, // 当前任务强制采用未压缩部分和格式。
+    output logic [2:0] o_ps_word_cap_q, // 当前任务每行允许的部分和数据字上限。
+    output logic o_run_16x8, // 当前任务采用十六位乘八位格式。
+    output logic o_run_compact, // 当前任务使用紧凑的八位输入存储。
+    output logic signed [p_reg_width-1:0] o_run_compact_offset, // 紧凑输入存储采用的数值偏移。
+    output logic o_run_is_mode, // 当前任务采用输入驻留数据流。
+    output logic [p_reg_width-1:0] o_run_k, // 已保存的矩阵输出行数。
+    output logic [p_reg_width-1:0] o_run_m, // 已保存的矩阵输出列数。
+    output logic [p_reg_width-1:0] o_run_n, // 已保存的矩阵归约长度。
+    output logic o_run_use_16bits, // 当前任务的输入元素为十六位。
+    output logic o_shared_allocation_invalid, // 输入激活与部分和的共享容量分配无效。
+    output logic [31:0] o_shared_ia_banks_q, // 当前任务分配给输入激活的共享存储分组数。
+    output logic [p_reg_width-1:0] o_stream_k, // 运行时流式维度长度，WS 为输出行数，IS 为输出列数。
+    output logic [p_reg_width-1:0] o_stream_m, // 运行时驻留维度长度，WS 为输出列数，IS 为输出行数。
+    output logic o_tiling_invalid, // 任务的分块数量或边界配置无效。
+    output logic o_use_frame_commands_s2, // 配置第三阶段选择帧命令调度。
+    output logic [p_reg_width-1:0] o_w_reuse_num_eff // 当前容量允许的驻留分块复用数量。
 );
 
     localparam int CAP_ROWS_W = $clog2(p_ia_reuse_num_max * p_size + 1);
@@ -184,7 +184,7 @@ module npu_task_configuration #(
     logic [24:0] conv_bias_end_low;
     logic conv_config_invalid;
     logic conv_dimension_invalid;
-    logic [31:0] conv_group_end;
+    logic conv_group_within_input;
     logic [31:0] conv_input_area;
     logic [47:0] conv_input_bytes;
     logic conv_input_end_carry;
@@ -301,6 +301,7 @@ module npu_task_configuration #(
     logic [63:0] rhs_allocation_bytes;
     logic [31:0] rhs_extent_m;
     logic [31:0] rhs_extent_n;
+    logic [31:0] rhs_extent_n_next, rhs_extent_m_next;
     logic [47:0] rhs_product_upper;
     logic [63:0] rhs_product_diagonal_next;
     logic [32:0] rhs_product_cross_next;
@@ -369,7 +370,11 @@ assign conv_parameter_bytes_low = {30'(i_m), 2'b00};
         {1'b0, conv_parameter_bytes_low[31:24]} + 9'(conv_range_end_carry[2]);
     assign conv_shift_end_high = {1'b0, 8'(i_q_shift_pt >> 24)} +
         {1'b0, conv_parameter_bytes_low[31:24]} + 9'(conv_range_end_carry[3]);
-    assign conv_group_end = 32'(i_conv_cfg_q.group_offset) + 32'(i_conv_cfg_q.group_c);
+    // 完整通道和值直接参与上限检查，各组进位并行归并。
+    unsigned_sum_le #(.p_width(16)) u_conv_group_range (
+        .i_a(i_conv_cfg_q.group_offset), .i_b(i_conv_cfg_q.group_c),
+        .i_limit(i_conv_cfg_q.input_c), .o_within(conv_group_within_input)
+    );
 assign conv_syntax_invalid = (!CONV_CORE_SUPPORTED ||
          (i_cfg_dataflow_mode && (p_enable_is_mode == 0 || p_kernel_data_width < 16)) ||
          !i_cfg_16bits_ia || i_cfg_16x8 || i_conv_cfg_q.input_s16 || i_run_lhs_tile_packed ||
@@ -379,7 +384,7 @@ assign conv_syntax_invalid = (!CONV_CORE_SUPPORTED ||
          i_conv_cfg_q.output_h == 0 || i_conv_cfg_q.output_w == 0 ||
          i_conv_cfg_q.stride_h == 0 || i_conv_cfg_q.stride_w == 0 ||
          i_conv_cfg_q.dilation_h == 0 || i_conv_cfg_q.dilation_w == 0 ||
-         (conv_group_end > 32'(i_conv_cfg_q.input_c)) ||
+         !conv_group_within_input ||
          $signed(i_conv_cfg_q.input_offset) < -127 || $signed(i_conv_cfg_q.input_offset) > 128);
 assign conv_config_invalid = i_run_conv && conv_validation_invalid;
 assign requested_shared_ia_banks = i_cfg_shared_ia_banks == 0 ?
@@ -442,13 +447,20 @@ assign cfg_ps_w_s0 = o_cfg_w_reuse_q[0] < cfg_ps_col_tiles_s0 ?
             else if (!o_cfg_valid_q[2] || o_cfg_stage2_fire) cfg_capacity_phase <= 0;
             else if (cfg_capacity_phase != 3'd7) cfg_capacity_phase <= cfg_capacity_phase + 1'b1;
         end
+        // 两个维度在配置接收前独立取整，分组进位限制输入到乘法寄存器的路径。
+        npu_packed_extent #(.p_dimension_width(p_reg_width), .p_size(p_size),
+            .p_size_shift(p_size_shift)) u_rhs_extent_n (
+            .i_dimension(i_n), .i_packed(i_cfg_rhs_tile_packed), .o_extent(rhs_extent_n_next)
+        );
+        npu_packed_extent #(.p_dimension_width(p_reg_width), .p_size(p_size),
+            .p_size_shift(p_size_shift)) u_rhs_extent_m (
+            .i_dimension(i_m), .i_packed(i_cfg_rhs_tile_packed), .o_extent(rhs_extent_m_next)
+        );
         // 配置阶段用独立的 16 位部分乘积计算张量范围，随后分段归并进位。
         always_ff @(posedge clk) begin
             if (i_cfg_start_event) begin
-                rhs_extent_n <= i_cfg_rhs_tile_packed ?
-                    32'((64'(i_n) + 64'(p_size) - 64'd1) >> p_size_shift) : 32'(i_n);
-                rhs_extent_m <= i_cfg_rhs_tile_packed ?
-                    32'((64'(i_m) + 64'(p_size) - 64'd1) >> p_size_shift) : 32'(i_m);
+                rhs_extent_n <= rhs_extent_n_next;
+                rhs_extent_m <= rhs_extent_m_next;
             end
             if (o_cfg_valid_q[0]) begin
                 rhs_product_ll <= rhs_extent_n[15:0] * rhs_extent_m[15:0];

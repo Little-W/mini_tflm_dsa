@@ -47,7 +47,11 @@ def module(content, name, width, valid):
             raise RuntimeError("缺少配置算术信号：" + identifier)
         declarations.append(match[0])
     start = content.index("    assign is_bias_group_rows_target_ext =")
-    finish = content.index("        logic unused_bias_advance_carry;", start)
+    finish_match = re.search(r"^\s*(?:logic unused_bias_advance_carry;|npu_output_bias_advance\s*#)",
+                             content[start:], re.M)
+    if finish_match is None:
+        raise RuntimeError("缺少偏置配置与分组推进之间的模块边界")
+    finish = start+finish_match.start()
     extra = content[content.index("endmodule") + len("endmodule"):]
     return f"""module {name}(
     input wire [31:0] i_exec_m,
@@ -81,6 +85,8 @@ def main():
     if save_block(candidate) != save_block(reference):
         raise RuntimeError("配置寄存器的复位或更新结构发生变化")
     common = args.source_root.resolve() / "rtl/common/unsigned_compare.sv"
+    helper = args.source_root.resolve() / "rtl/npu/top/npu_output_bias_mask.sv"
+    helpers = [common, helper] if helper.is_file() else [common]
     reports = []
     for width, valid in [(1,1),(4,3),(8,5),(16,9),(32,9),(32,10),(32,16),(32,32),(35,17),(64,9)]:
         folder = out / f"register{width}_target{valid}"
@@ -116,7 +122,7 @@ endmodule
 """)
         script = folder/"proof.ys"
         script.write_text("read_slang -DSYNTHESIS=1 --top configuration " +
-            shlex.join(map(str,[common,gate,gold,checker])) +
+            shlex.join(map(str,helpers+[gate,gold,checker])) +
             "\nsetattr -mod -unset keep_hierarchy\nsetattr -unset keep_hierarchy\n"
             "prep -top configuration -flatten\n"
             "sat -verify -prove equal 1 -show-inputs -show-outputs\n")
@@ -159,7 +165,7 @@ endmodule
 endmodule
 """)
         binary=folder/"simulation"
-        execute(["iverilog","-g2012","-s","tb","-o",binary,common,gate,gold,checker,bench],folder/"compile.log")
+        execute(["iverilog","-g2012","-s","tb","-o",binary,*helpers,gate,gold,checker,bench],folder/"compile.log")
         execute(["vvp",binary],folder/"simulation.log")
         if "BIAS_CONFIGURATION_PASS checks=30000" not in (folder/"simulation.log").read_text():
             raise RuntimeError("偏置配置的四态检查未完成")

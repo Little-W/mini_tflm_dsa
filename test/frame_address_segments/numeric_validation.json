@@ -1,0 +1,133 @@
+{
+  "passed": true,
+  "size": 16,
+  "address_width": 32,
+  "ready_mask_abort": 1,
+  "cancellation_phases": [
+    {
+      "age": 1,
+      "abort": 358,
+      "reset": 126
+    },
+    {
+      "age": 2,
+      "abort": 357,
+      "reset": 126
+    },
+    {
+      "age": 3,
+      "abort": 357,
+      "reset": 126
+    },
+    {
+      "age": 4,
+      "abort": 357,
+      "reset": 126
+    },
+    {
+      "age": 5,
+      "abort": 357,
+      "reset": 126
+    },
+    {
+      "age": 6,
+      "abort": 357,
+      "reset": 126
+    },
+    {
+      "age": 7,
+      "abort": 357,
+      "reset": 126
+    },
+    {
+      "age": 8,
+      "abort": 358,
+      "reset": 126
+    },
+    {
+      "age": 9,
+      "abort": 357,
+      "reset": 126
+    },
+    {
+      "age": 10,
+      "abort": 357,
+      "reset": 126
+    },
+    {
+      "age": 11,
+      "abort": 357,
+      "reset": 126
+    },
+    {
+      "age": 12,
+      "abort": 357,
+      "reset": 126
+    }
+  ],
+  "result_latency_cycles": 11,
+  "pipeline_products": 1,
+  "asic": false,
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/experiments/frame_address_segments/numeric/frame_address_prepare_mapped.v": "b95dbe6bf5a491e9b6883bd6d0da1a26dc8970f450d6703a7e254d0e7c128862",
+    "/workspace/scratch/5bfa47658687/experiments/frame_address_segments/numeric/frame_address_prepare.sv": "9227eae99ccf9d63913125be1127d54942be4a71e8ebe3785b53af2d492e06ac",
+    "test/frame_address/frame_address_tb.sv": "b246a86dacc6153ffe146cf5dd476aad08748be0e89f0787d99ddcabc51cb5a2",
+    "/workspace/scratch/5bfa47658687/experiments/frame_address_segments/numeric/dsp48e1.sv": "4fca9b6b873ca1a0af3e81e905bacef99999d6981ad66f34ebce01278fd7b918",
+    "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+    "test/frame_address/run.py": "dfcb9d5ddbe6db8502b7b8fff832ab68a29aac7889746c42c1a326f9ca6b979a"
+  },
+  "mapped_netlist": "/workspace/scratch/5bfa47658687/experiments/frame_address_segments/final_measure/cost/current/mapped.v",
+  "mapped_netlist_sha256": "a7cce7a3ca612db4f808bf8e1e3e4200723c25abd6b676d5c6f2355c52ff1bb1",
+  "primitive_models": [
+    "BUFG",
+    "CARRY4",
+    "DSP48E1",
+    "FDCE",
+    "FDPE",
+    "FDRE",
+    "IBUF",
+    "INV",
+    "LUT1",
+    "LUT2",
+    "LUT3",
+    "LUT4",
+    "LUT5",
+    "LUT6",
+    "MUXF7",
+    "OBUF"
+  ],
+  "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+  "binary_sha256": "3a9a079f4c0e494a33199040a3993d00bc13d0b7962814411a840775b6465bf7",
+  "command": [
+    "/workspace/scratch/5bfa47658687/task_tools/bin/verilator",
+    "--binary",
+    "--timing",
+    "--assert",
+    "-sv",
+    "-Wno-fatal",
+    "--top-module",
+    "frame_address_tb",
+    "--Mdir",
+    "/workspace/scratch/5bfa47658687/experiments/frame_address_segments/numeric/obj",
+    "-Gp_ready_mask_abort=1",
+    "-Gp_pipeline_products=1",
+    "-j",
+    "2",
+    "-CFLAGS",
+    "-std=c++20 -O1",
+    "-MAKEFLAGS",
+    "CFG_CXXFLAGS_PCH_I=-include OPT_FAST=-O1 OPT_SLOW=-O0",
+    "/workspace/scratch/5bfa47658687/experiments/frame_address_segments/numeric/frame_address_prepare_mapped.v",
+    "/workspace/scratch/5bfa47658687/experiments/frame_address_segments/numeric/frame_address_prepare.sv",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/test/frame_address/frame_address_tb.sv",
+    "/workspace/scratch/5bfa47658687/experiments/frame_address_segments/numeric/dsp48e1.sv",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv"
+  ],
+  "completed": 36746,
+  "cancelled": 4286,
+  "reset_cases": 1512,
+  "wait_checks": 185278,
+  "cycles": 712260,
+  "abort_ready_checks": 4287,
+  "idle_abort_checks": 1
+}

@@ -19,97 +19,97 @@ module npu_output_pipeline #(
     parameter int unsigned p_s16_reserve_width = 32'd3,
     parameter int unsigned p_s8_reserve_width = 32'd6
 ) (
-    input wire logic signed [31:0] i_acc_data_out [p_size],
-    input wire logic i_acc_data_valid,
-    input wire logic signed [p_reg_width-1:0] i_act_max,
-    input wire logic signed [p_reg_width-1:0] i_act_min,
-    input wire logic [p_reg_width-1:0] i_bias_base,
-    input wire logic signed [31:0] i_bias_group_scalar,
-    input wire logic i_bias_sleep,
-    input wire logic i_bias_switch,
-    input wire logic i_cfg_dataflow_mode_eff,
-    input wire logic clk,
-    input wire logic signed [31:0] i_compute_bias_latched [p_size],
-    input wire logic rst_n,
-    input wire logic i_direct_output_cfg,
-    input wire logic [p_reg_width-1:0] i_dst_row_stride_b,
-    input wire logic signed [p_reg_width-1:0] i_dst_zp,
-    input wire logic signed [31:0] i_dw_quant_accumulator [p_size],
-    input wire logic [p_size-1:0] i_dw_quant_mask,
-    input wire logic signed [31:0] i_dw_quant_maximum,
-    input wire logic signed [31:0] i_dw_quant_minimum,
-    input wire logic signed [31:0] i_dw_quant_multiplier [p_size],
-    input wire logic signed [31:0] i_dw_quant_offset,
-    input wire logic i_dw_quant_req_tag,
-    input wire logic i_dw_quant_req_valid,
-    input wire logic [5:0] i_dw_quant_right [p_size],
-    input wire logic [31:0] i_exec_dst_base,
-    input wire logic i_exec_init_oa,
-    input wire logic i_exec_init_requant,
-    input wire logic [31:0] i_exec_k,
-    input wire logic [31:0] i_exec_m,
-    input wire logic signed [31:0] i_exec_q_mult,
-    input wire logic signed [31:0] i_exec_q_shift,
-    input wire logic [31:0] i_exec_stream_k,
-    input wire logic [31:0] i_exec_stream_m,
-    input wire logic i_frame_mode_q,
-    input wire logic [p_reg_width-1:0] i_ia_reuse_num_eff,
-    input wire logic i_init_cfg_ia,
-    input wire logic i_init_cfg_oa,
-    input wire logic [p_is_bias_valid_w-1:0] i_is_bias_group_rows_target,
-    input wire logic i_is_mode,
-    input wire logic i_load_quant_granted,
-    input wire logic [4:0] i_oa_chunk_cols_pre,
-    input wire logic i_oa_dma_busy,
-    input wire logic i_oa_dma_done,
-    input wire logic i_oa_dma_src_wready,
-    input wire logic i_oa_is_coalesce_pre,
-    input wire logic i_oa_ws_coalesce_pre,
-    input wire logic [p_s8_reserve_width-1:0] i_output_reserve_banks,
-    input wire logic [p_s16_reserve_width-1:0] i_output_s16_ready_threshold,
-    input wire logic [p_s16_reserve_width-1:0] i_output_s16_reserve_banks,
-    input wire logic [p_s8_reserve_width-1:0] i_output_s8_ready_threshold,
-    input wire logic i_ps_capacity_fault,
-    input wire logic [p_bus_width-1:0] i_quant_dma_raw_data,
-    input wire logic i_quant_dma_raw_valid,
-    input wire logic [31:0] i_requant_group_rows,
-    input wire logic i_requant_group_start,
-    input wire logic i_run_16x8,
-    input wire logic i_run_vector,
-    input wire logic i_send_ia_trigger,
-    input wire logic i_tile_calc_over,
-    input wire logic i_use_per_channel_eff,
-    input wire logic i_write_oa_granted,
-    input wire logic i_ws_final_bias,
-    output logic o_direct_final_stream,
-    output logic o_dw_quant_req_ready,
-    output logic o_dw_quant_rsp_tag,
-    output logic o_dw_quant_rsp_valid,
-    output logic o_fifo_full_flag,
-    output logic [p_is_bias_row_w-1:0] o_is_bias_read_idx,
-    output logic o_load_quant_req,
-    output logic o_oa_calc_over,
-    output logic [p_reg_width-1:0] o_oa_dma_base_addr,
-    output logic [7:0] o_oa_dma_burst_len_m1,
-    output logic [p_reg_width-1:0] o_oa_dma_row_stride,
-    output logic [p_reg_width-1:0] o_oa_dma_rows_to_read,
-    output logic [p_bus_width-1:0] o_oa_dma_src_wdata,
-    output logic [p_bus_width/8-1:0] o_oa_dma_src_wmask,
-    output logic o_oa_dma_src_wvalid,
-    output logic o_oa_dma_start,
-    output logic [p_reg_width-1:0] o_quant_dma_base_addr,
-    output logic [7:0] o_quant_dma_burst_len_m1,
-    output logic signed [p_reg_width-1:0] o_quant_dma_lhs_zp,
-    output logic o_quant_dma_linear_read_mode,
-    output logic [p_reg_width-1:0] o_quant_dma_row_stride,
-    output logic [p_reg_width-1:0] o_quant_dma_rows_to_read,
-    output logic o_quant_dma_slot_id,
-    output logic o_quant_dma_start,
-    output logic o_quant_dma_use_16bits,
-    output logic o_quant_params_valid,
-    output logic o_requant_group_ready,
-    output logic signed [7:0] o_requant_out [p_size],
-    output logic o_write_oa_req
+    input wire logic signed [31:0] i_acc_data_out [p_size], // 计算阵列返回的有符号累加结果向量。
+    input wire logic i_acc_data_valid, // 计算阵列累加结果有效。
+    input wire logic signed [p_reg_width-1:0] i_act_max, // 量化输出的有符号激活上限。
+    input wire logic signed [p_reg_width-1:0] i_act_min, // 量化输出的有符号激活下限。
+    input wire logic [p_reg_width-1:0] i_bias_base, // 偏置存储首地址，零值表示未配置偏置。
+    input wire logic signed [31:0] i_bias_group_scalar, // 当前输入驻留分组同步读出的标量偏置。
+    input wire logic i_bias_sleep, // 抑制输入驻留模式的偏置分组启动。
+    input wire logic i_bias_switch, // 推进输入驻留模式的偏置分组。
+    input wire logic i_cfg_dataflow_mode_eff, // 量化使用的数据流方式，一表示输入驻留。
+    input wire logic clk, // 输出处理流水线的工作时钟。
+    input wire logic signed [31:0] i_compute_bias_latched [p_size], // 计算阶段保存的逐通道偏置向量。
+    input wire logic rst_n, // 低有效复位，清除输出处理的有效状态。
+    input wire logic i_direct_output_cfg, // 允许最终结果直接进入输出写回。
+    input wire logic [p_reg_width-1:0] i_dst_row_stride_b, // 外部输出矩阵相邻行的字节跨度。
+    input wire logic signed [p_reg_width-1:0] i_dst_zp, // 量化结果需要加上的有符号输出零点。
+    input wire logic signed [31:0] i_dw_quant_accumulator [p_size], // 深度卷积提交的有符号累加结果向量。
+    input wire logic [p_size-1:0] i_dw_quant_mask, // 深度卷积量化请求的有效通道掩码。
+    input wire logic signed [31:0] i_dw_quant_maximum, // 深度卷积量化结果的有符号上限。
+    input wire logic signed [31:0] i_dw_quant_minimum, // 深度卷积量化结果的有符号下限。
+    input wire logic signed [31:0] i_dw_quant_multiplier [p_size], // 深度卷积各通道的有符号量化乘数。
+    input wire logic signed [31:0] i_dw_quant_offset, // 深度卷积量化结果需要加上的输出零点。
+    input wire logic i_dw_quant_req_tag, // 随深度卷积量化结果返回的请求标签。
+    input wire logic i_dw_quant_req_valid, // 深度卷积量化请求有效。
+    input wire logic [5:0] i_dw_quant_right [p_size], // 深度卷积各通道乘积的右移位数。
+    input wire logic [31:0] i_exec_dst_base, // 当前执行任务的输出起始字节地址。
+    input wire logic i_exec_init_oa, // 初始化当前执行任务的输出写回控制。
+    input wire logic i_exec_init_requant, // 初始化量化配置并清除偏置加法有效状态。
+    input wire logic [31:0] i_exec_k, // 输出写回的行维度长度。
+    input wire logic [31:0] i_exec_m, // 输出写回的列维度长度及输入驻留偏置范围。
+    input wire logic signed [31:0] i_exec_q_mult, // 整张量量化乘数或逐通道乘数表首地址。
+    input wire logic signed [31:0] i_exec_q_shift, // 整张量量化移位量或逐通道移位表首地址。
+    input wire logic [31:0] i_exec_stream_k, // 量化输入流的行维度长度。
+    input wire logic [31:0] i_exec_stream_m, // 量化输入流的列维度长度。
+    input wire logic i_frame_mode_q, // 已保存的整帧输出处理模式。
+    input wire logic [p_reg_width-1:0] i_ia_reuse_num_eff, // 当前输入复用组包含的输出行分块数。
+    input wire logic i_init_cfg_ia, // 初始化输入驻留偏置读取与分组位置。
+    input wire logic i_init_cfg_oa, // 保存输出缓冲的行合并配置。
+    input wire logic [p_is_bias_valid_w-1:0] i_is_bias_group_rows_target, // 输入驻留模式每个偏置分组的目标行数。
+    input wire logic i_is_mode, // 当前任务采用输入驻留数据流。
+    input wire logic i_load_quant_granted, // 量化参数装载请求取得资源授予。
+    input wire logic [4:0] i_oa_chunk_cols_pre, // 待保存的权重驻留输出合并列数。
+    input wire logic i_oa_dma_busy, // 输出 DMA 仍在执行写入。
+    input wire logic i_oa_dma_done, // 当前输出 DMA 写入完成。
+    input wire logic i_oa_dma_src_wready, // 输出 DMA 可接收当前写入数据拍。
+    input wire logic i_oa_is_coalesce_pre, // 输入驻留模式允许合并相邻输出行。
+    input wire logic i_oa_ws_coalesce_pre, // 权重驻留模式允许合并相邻输出行。
+    input wire logic [p_s8_reserve_width-1:0] i_output_reserve_banks, // 八位输出缓冲需要预留的存储体数。
+    input wire logic [p_s16_reserve_width-1:0] i_output_s16_ready_threshold, // 十六位输出缓冲允许接收的占用阈值。
+    input wire logic [p_s16_reserve_width-1:0] i_output_s16_reserve_banks, // 十六位输出缓冲需要预留的存储体数。
+    input wire logic [p_s8_reserve_width-1:0] i_output_s8_ready_threshold, // 八位输出缓冲允许接收的占用阈值。
+    input wire logic i_ps_capacity_fault, // 部分和容量异常，清除待处理的偏置结果。
+    input wire logic [p_bus_width-1:0] i_quant_dma_raw_data, // DMA 返回的原始量化参数数据拍。
+    input wire logic i_quant_dma_raw_valid, // DMA 返回的量化参数数据拍有效。
+    input wire logic [31:0] i_requant_group_rows, // 即将送入量化器的分组行数。
+    input wire logic i_requant_group_start, // 请求量化器预留下一组输入的处理容量。
+    input wire logic i_run_16x8, // 当前任务采用十六位输出数据格式。
+    input wire logic i_run_vector, // 当前执行向量任务，可使用共享深度卷积量化。
+    input wire logic i_send_ia_trigger, // 触发当前输入分组并更新对应偏置读取位置。
+    input wire logic i_tile_calc_over, // 当前累加结果为分块最后一行。
+    input wire logic i_use_per_channel_eff, // 当前任务启用逐通道量化参数。
+    input wire logic i_write_oa_granted, // 输出写回请求取得 DMA 资源授予。
+    input wire logic i_ws_final_bias, // 当前权重驻留输出需要加入已保存偏置。
+    output logic o_direct_final_stream, // 当前最终结果采用直接写回方式。
+    output logic o_dw_quant_req_ready, // 共享量化器可接收深度卷积请求。
+    output logic o_dw_quant_rsp_tag, // 深度卷积量化返回对应的请求标签。
+    output logic o_dw_quant_rsp_valid, // 深度卷积量化结果有效。
+    output logic o_fifo_full_flag, // 当前输出缓冲已达到需要暂停接收的容量阈值。
+    output logic [p_is_bias_row_w-1:0] o_is_bias_read_idx, // 输入驻留分组下一次读取的标量偏置索引。
+    output logic o_load_quant_req, // 请求装载逐通道量化参数。
+    output logic o_oa_calc_over, // 当前任务的全部输出写回完成。
+    output logic [p_reg_width-1:0] o_oa_dma_base_addr, // 当前输出 DMA 写入的起始字节地址。
+    output logic [7:0] o_oa_dma_burst_len_m1, // 当前输出 DMA 每行的传输拍数减一。
+    output logic [p_reg_width-1:0] o_oa_dma_row_stride, // 当前输出 DMA 相邻行起点的字节跨度。
+    output logic [p_reg_width-1:0] o_oa_dma_rows_to_read, // 当前输出 DMA 需要写入的行数。
+    output logic [p_bus_width-1:0] o_oa_dma_src_wdata, // 送往输出 DMA 的写入数据拍。
+    output logic [p_bus_width/8-1:0] o_oa_dma_src_wmask, // 输出 DMA 数据拍的字节有效掩码。
+    output logic o_oa_dma_src_wvalid, // 输出 DMA 写入数据拍有效。
+    output logic o_oa_dma_start, // 启动当前输出 DMA 写入请求。
+    output logic [p_reg_width-1:0] o_quant_dma_base_addr, // 当前量化参数 DMA 读取的起始字节地址。
+    output logic [7:0] o_quant_dma_burst_len_m1, // 当前量化参数 DMA 的传输拍数减一。
+    output logic signed [p_reg_width-1:0] o_quant_dma_lhs_zp, // 量化参数 DMA 的零点输入，固定为零。
+    output logic o_quant_dma_linear_read_mode, // 量化参数 DMA 的线性读取方式标志。
+    output logic [p_reg_width-1:0] o_quant_dma_row_stride, // 量化参数 DMA 相邻行起点的字节跨度。
+    output logic [p_reg_width-1:0] o_quant_dma_rows_to_read, // 当前量化参数 DMA 需要读取的行数。
+    output logic o_quant_dma_slot_id, // 量化参数 DMA 返回的目标槽号。
+    output logic o_quant_dma_start, // 启动量化参数 DMA 读取请求。
+    output logic o_quant_dma_use_16bits, // 量化参数 DMA 的十六位元素方式标志。
+    output logic o_quant_params_valid, // 当前计算需要的量化参数已经准备完成。
+    output logic o_requant_group_ready, // 量化器可接受下一组输入。
+    output logic signed [7:0] o_requant_out [p_size], // 完成量化和激活限幅的八位结果向量。
+    output logic o_write_oa_req // 请求取得输出 DMA 写回资源。
 );
 
     localparam int unsigned p_bias_compare_width = (p_reg_width > 32) ? p_reg_width : 32;
@@ -321,27 +321,19 @@ module npu_output_pipeline #(
           !is_bias_rows_fit
               ? i_is_bias_group_rows_target
               : i_exec_m[p_is_bias_valid_w-1:0];
-        logic unused_bias_advance_carry;
-`ifdef SYNTHESIS
-        // 分组进位并行计算下一组基址，范围比较直接使用完整结果。
-        parallel_prefix_add #(.p_width(p_reg_width), .p_group_width(4),
-            .p_preserve_groups(1'b1)) u_bias_advance (
-            .i_a(is_bias_group_base), .i_b(p_reg_width'(is_bias_rows_valid)), .i_carry(1'b0),
-            .o_sum(is_bias_advance_sum), .o_carry(unused_bias_advance_carry)
+        // 下一组高段的两种范围关系并行计算，低段进位只选择最终结果。
+        npu_output_bias_advance #(
+            .p_width(p_reg_width), .p_count_width(p_is_bias_valid_w)
+        ) u_bias_advance (
+            .i_base(is_bias_group_base), .i_rows(is_bias_rows_valid),
+            .i_bound(is_bias_last_group_base), .o_sum(is_bias_advance_sum),
+            .o_less(is_bias_next_less), .o_equal(is_bias_next_equal)
         );
-`else
-        assign {unused_bias_advance_carry, is_bias_advance_sum} =
-            {1'b0, is_bias_group_base} + (p_reg_width+1)'(is_bias_rows_valid);
-`endif
         assign is_bias_group_base_plus = is_bias_advance_sum;
         // 当前组和候选下一组并行比较，回绕只选择已经完成的范围判断。
         unsigned_compare #(.p_width(p_reg_width)) u_bias_current_bound (
             .i_a(is_bias_group_base), .i_b(is_bias_last_group_base),
             .o_less(is_bias_current_less), .o_equal(is_bias_current_equal)
-        );
-        unsigned_compare #(.p_width(p_reg_width)) u_bias_next_bound (
-            .i_a(is_bias_group_base_plus), .i_b(is_bias_last_group_base),
-            .o_less(is_bias_next_less), .o_equal(is_bias_next_equal)
         );
     assign is_bias_group_wrap_step = !is_bias_current_less;
     assign is_bias_group_base_step = is_bias_group_wrap_step ? p_reg_width'(0) : is_bias_group_base_plus;
@@ -370,7 +362,10 @@ module npu_output_pipeline #(
         assign is_bias_row_step = (i_is_mode && i_acc_data_valid) ?
             (is_bias_row_wrap ? p_is_bias_row_w'(0) : is_bias_row_increment) : is_bias_row_idx;
         assign is_bias_row_clear = i_init_cfg_ia || (i_is_mode && i_send_ia_trigger && !i_bias_sleep);
-        assign is_bias_row_next = is_bias_row_clear ? p_is_bias_row_w'(0) : is_bias_row_step;
+        npu_output_bias_row_select #(.p_width(p_is_bias_row_w)) u_bias_row_select (
+            .i_step(is_bias_row_step), .i_init(i_init_cfg_ia), .i_mode(i_is_mode),
+            .i_start(i_send_ia_trigger), .i_sleep(i_bias_sleep), .o_next(is_bias_row_next)
+        );
         always_ff @(posedge clk or negedge rst_n) begin
             if (!rst_n) is_bias_row_idx <= '0;
             else is_bias_row_idx <= is_bias_row_next;
@@ -615,19 +610,6 @@ module npu_output_pipeline #(
             .oa_calc_over     (o_oa_calc_over)
         );
 
-endmodule
-
-// 完整定宽减一和零判断共用输入，输出保留模减法的回绕结果。
-(* keep_hierarchy = "yes" *)
-module npu_output_bias_mask #(
-    parameter int unsigned p_width = 10
-) (
-    input wire logic [p_width-1:0] i_target,
-    output logic [p_width-1:0] o_mask,
-    output logic o_zero
-);
-    assign o_mask = i_target - p_width'(1);
-    assign o_zero = i_target == '0;
 endmodule
 
 `default_nettype wire

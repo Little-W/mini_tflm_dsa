@@ -1,0 +1,31 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "rtl/npu/top/npu_bias_presence.sv": "5aa73c95b597037c7da99f351773b74576550919cdcfc98b1f28961aa0b3c400",
+    "rtl/npu/top/npu_matrix_engine.sv": "ac6a01d005798ffcf94c7ea4fb9c64a0e3fd0821931a8e646f7f5335920bc487"
+  },
+  "input_assumptions": [],
+  "profiles": [
+    {
+      "mode": "generic",
+      "passed": true,
+      "four_state_comparisons": 65536,
+      "formal_log_sha256": "04925e7dac102f16f71a12d04283cfb4da652fa1e7de9919335d556cb3e901b5",
+      "four_state_log_sha256": "5a0333db1a5b1b3621dcd856b36b27480a4fb677f07756d426601e62e8e8de8d"
+    },
+    {
+      "mode": "fpga",
+      "passed": true,
+      "four_state_comparisons": 65536,
+      "formal_log_sha256": "2d8469112f097e39a958d4e8a5bc636acb3443e78dce55e8e373af3408b8dfd8",
+      "four_state_log_sha256": "5a0333db1a5b1b3621dcd856b36b27480a4fb677f07756d426601e62e8e8de8d"
+    }
+  ],
+  "four_state_comparisons": 131072,
+  "test_sha256": "4762c901611825e9d7f78dfaaf65dd93015b5976c244e341701c755aa2d2abc1",
+  "parent_replacement": {
+    "reference": "3999b3ebdea27a958ff7545f03bb5e74daaf4896",
+    "ports_verified": true,
+    "complete_remaining_functional_tokens_identical": true
+  }
+}

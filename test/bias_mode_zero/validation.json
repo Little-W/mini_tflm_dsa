@@ -1,0 +1,75 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "rtl/npu/top/npu_bias_address_zero.sv": "2bb4b8fb7566ba679b73ee6be9a191d705d3f0336d7a03873e38c1034943656a",
+    "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+    "rtl/common/increment_equal.sv": "2d571f3b6f1283de82636c4dd6b311946e765677092cdf0875b5b4452cb3e286",
+    "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+    "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c"
+  },
+  "formal": [
+    {
+      "width": 1,
+      "inputs_constrained": false,
+      "passed": true,
+      "log_sha256": "a6447ce422a7ced285b84210f0aeff33e47a68e602d0172f55540ee18df2f202"
+    },
+    {
+      "width": 2,
+      "inputs_constrained": false,
+      "passed": true,
+      "log_sha256": "cd390f8550dd5be033d0d7d153fb6d0de629cdce57a7adeed4c405e57528423d"
+    },
+    {
+      "width": 3,
+      "inputs_constrained": false,
+      "passed": true,
+      "log_sha256": "fd03829f470b5a4b38c5cef3f8ea3adb0970919d5b117b5ccdf5c19f0c4d6bda"
+    },
+    {
+      "width": 7,
+      "inputs_constrained": false,
+      "passed": true,
+      "log_sha256": "deb6958855aff2b9031e0d127171d20e6685248b26b08fc6d4983437d0b374f5"
+    },
+    {
+      "width": 16,
+      "inputs_constrained": false,
+      "passed": true,
+      "log_sha256": "e3b6ea0a7e04de802f1e59ee0380337fadc204d6861a960505ca9c8526cef261"
+    },
+    {
+      "width": 31,
+      "inputs_constrained": false,
+      "passed": true,
+      "log_sha256": "753d20fd424a55ec7a4bb457e9cc5faad5ff6f436e02b57d0f4658251c229e99"
+    },
+    {
+      "width": 32,
+      "inputs_constrained": false,
+      "passed": true,
+      "log_sha256": "f0c04ce7967627a7ad635ae2189d414343dab6fbfea7bbca73190681de883706"
+    },
+    {
+      "width": 33,
+      "inputs_constrained": false,
+      "passed": true,
+      "log_sha256": "3b270ddf707f6b17c45aee3138e4225602310af6649739f08ed44453adb6d22a"
+    },
+    {
+      "width": 64,
+      "inputs_constrained": false,
+      "passed": true,
+      "log_sha256": "7710e6590676911213ccc2967c31e7dc89dc2464b4e04ce6b7dcb5806b3eb57a"
+    }
+  ],
+  "four_state_comparisons": 294912,
+  "parent_replacement": {
+    "source": "rtl/npu/top/npu_matrix_engine.sv",
+    "source_sha256": "887bc666542eeb4d9241eeb3b7dbd97efaa3141cf7fd0eed335e1459006d70ea",
+    "reference": "3f1e890234caf2b7b882bd1be2976a8797813b97",
+    "complete_remaining_functional_tokens_identical": true,
+    "ports_verified": true
+  }
+}

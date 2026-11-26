@@ -1,0 +1,1058 @@
+{
+  "reference_commit": "ee8e2fc668ef46e93632d617dc0cfede7fcde033",
+  "parameters": {
+    "REG_WIDTH": 32,
+    "SIZE": 16,
+    "BUS_WIDTH": 64,
+    "DATA_WIDTH": 8,
+    "WEIGHT_WIDTH": 8
+  },
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/experiments/controller_bias_direct/final_measurement/reference/npu_controller.sv": "8652fd14f9c94105b308ae31d43d63ba63779e519c89d365f5edf22b8262164e",
+    "/workspace/scratch/5bfa47658687/experiments/controller_bias_direct/final_measurement/reference/npu_ia_issue_select.sv": "4d233ee488138d0a8ab6a5ffd37bc1d2d4fb5835fef18d429aa017344fb88fcf",
+    "/workspace/scratch/5bfa47658687/experiments/controller_bias_direct/final_measurement/current/npu_controller.sv": "50c2f76630aa8ffbd106810c113afe4b03372224a771cfd782f1ae64027394b9",
+    "/workspace/scratch/5bfa47658687/experiments/controller_bias_direct/final_measurement/current/npu_ia_issue_select.sv": "d9dab809b52c0e63aa28e632896e236cbe6f7a056e3cb782d7aaada117820a11"
+  },
+  "cases": {
+    "reference": {
+      "summary": {
+        "manifest_sha256": "2651757a4bae70faac7fe228074fe476cc6c096f9049d95e0b3f5b8ddcef519b",
+        "lut_mapping": {
+          "mode": "physical-cost",
+          "wire_delay_ps": 300,
+          "delay_target_ps": 6667,
+          "max_lut_inputs": 8,
+          "functional_verification_required": true,
+          "retain_abc9_temporaries": false
+        },
+        "lut_library": {
+          "source_library_sha256": "77a57a5ae6e19c510bb3dfa8407a280692dbea98bae53f26a5724bfe6a4ce803",
+          "library_sha256": "d1214772e5cc4ebfa935ca7e13d0a61625595a6eb95e5f1e2457ed2d3ecb4dce",
+          "area_cost_by_input_count": {
+            "1": 1,
+            "2": 1,
+            "3": 1,
+            "4": 1,
+            "5": 1,
+            "6": 1,
+            "7": 2,
+            "8": 4
+          },
+          "pin_delays_ps": {
+            "1": [
+              "127"
+            ],
+            "2": [
+              "127",
+              "238"
+            ],
+            "3": [
+              "127",
+              "238",
+              "407"
+            ],
+            "4": [
+              "127",
+              "238",
+              "407",
+              "472"
+            ],
+            "5": [
+              "127",
+              "238",
+              "407",
+              "472",
+              "631"
+            ],
+            "6": [
+              "127",
+              "238",
+              "407",
+              "472",
+              "631",
+              "642"
+            ],
+            "7": [
+              "470",
+              "524",
+              "635",
+              "804",
+              "869",
+              "1028",
+              "1039"
+            ],
+            "8": [
+              "465",
+              "592",
+              "646",
+              "757",
+              "926",
+              "991",
+              "1150",
+              "1161"
+            ]
+          },
+          "pin_delays_preserved": true
+        },
+        "mapping_stage": {
+          "elapsed_seconds": 5.67,
+          "peak_process_tree_rss_bytes": 187760640,
+          "memory_sample_interval_seconds": 0.2,
+          "script": "03_map_lut.ys",
+          "log": "03_map_lut.log",
+          "script_sha256": "5b842d560439b92e5576e042a32e355e071f91ef41868d10513b4b3a47ecdd6c",
+          "mapped_json_sha256": "006a72bf29b58c9d3b1fc1eb74cb91ee5e2c35b408e61be6c72ece224e64f98d",
+          "mapped_verilog_sha256": "cb954a73b58cdfb40bc8f6a98793d0213f6892ead279140b38c40590c450b497",
+          "input_library_sha256": "d1214772e5cc4ebfa935ca7e13d0a61625595a6eb95e5f1e2457ed2d3ecb4dce",
+          "log_sha256": "07d64376838789c4aef56ad46bd51f26cc064d61e835586e4665140de2489eeb"
+        },
+        "functional_verification": {
+          "passed": true,
+          "method": "ABC9 &verify",
+          "log_sha256": "07d64376838789c4aef56ad46bd51f26cc064d61e835586e4665140de2489eeb"
+        },
+        "resources": {
+          "logic_lut_cells": 127,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 127,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 22,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 0,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "FDCE": 21,
+            "FDPE": 1,
+            "INV": 1,
+            "LUT2": 4,
+            "LUT3": 7,
+            "LUT4": 55,
+            "LUT5": 29,
+            "LUT6": 32,
+            "MUXF7": 14
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 4,
+        "register_path_requirement": {
+          "maximum_combinational_cells": 10,
+          "observed_combinational_cells": 4,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "physical_lut_positions": null,
+        "timing_150mhz_confirmed": null,
+        "abc_mapping_delay": {
+          "iteration_values": [
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0
+          ],
+          "unit": "ps",
+          "last_iteration_value": 6667.0,
+          "target_met": true,
+          "scope": "ABC 映射阶段的引脚和连线成本模型，实际器件频率须由布线后的完整时序模型检查。"
+        }
+      },
+      "input_to_send_paths": {
+        "ps_frame_ready": {
+          "register_to_register_paths": [
+            {
+              "combinational_cells": 1,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "ps_frame_ready",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$flatten\\u_issue_capacity.$abc$8055$lut$aiger$o0",
+                  "type": "LUT5",
+                  "input_port": "I4[0]",
+                  "output_port": "O[0]",
+                  "input_net": "ps_frame_ready",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/reference/npu_controller.sv:150.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+                }
+              ]
+            }
+          ],
+          "distinct_register_path_groups": [
+            {
+              "combinational_cells": 1,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "ps_frame_ready",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$flatten\\u_issue_capacity.$abc$8055$lut$aiger$o0",
+                  "type": "LUT5",
+                  "input_port": "I4[0]",
+                  "output_port": "O[0]",
+                  "input_net": "ps_frame_ready",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/reference/npu_controller.sv:150.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+                }
+              ]
+            }
+          ],
+          "longest_register_path_cells": 1,
+          "endpoint_port_maximum_depth_histogram": {
+            "1": 1
+          },
+          "report_limits": {
+            "paths": 1,
+            "groups": 1,
+            "minimum_combinational_cells": 0
+          },
+          "graph_nodes": 560,
+          "visited_graph_nodes": 560,
+          "combinational_cycle_nodes": [],
+          "unclassified_cell_types": {},
+          "graph_complete": true,
+          "dsp_without_output_register": [],
+          "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48, TWO24 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+        },
+        "fifo_full_flag": {
+          "register_to_register_paths": [
+            {
+              "combinational_cells": 1,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "fifo_full_flag",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$flatten\\u_issue_capacity.$abc$8055$lut$aiger$o0",
+                  "type": "LUT5",
+                  "input_port": "I0[0]",
+                  "output_port": "O[0]",
+                  "input_net": "fifo_full_flag",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/reference/npu_controller.sv:150.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+                }
+              ]
+            }
+          ],
+          "distinct_register_path_groups": [
+            {
+              "combinational_cells": 1,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "fifo_full_flag",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$flatten\\u_issue_capacity.$abc$8055$lut$aiger$o0",
+                  "type": "LUT5",
+                  "input_port": "I0[0]",
+                  "output_port": "O[0]",
+                  "input_net": "fifo_full_flag",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/reference/npu_controller.sv:150.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+                }
+              ]
+            }
+          ],
+          "longest_register_path_cells": 1,
+          "endpoint_port_maximum_depth_histogram": {
+            "1": 1
+          },
+          "report_limits": {
+            "paths": 1,
+            "groups": 1,
+            "minimum_combinational_cells": 0
+          },
+          "graph_nodes": 560,
+          "visited_graph_nodes": 560,
+          "combinational_cycle_nodes": [],
+          "unclassified_cell_types": {},
+          "graph_complete": true,
+          "dsp_without_output_register": [],
+          "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48, TWO24 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+        },
+        "bias_valid": {
+          "register_to_register_paths": [
+            {
+              "combinational_cells": 2,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "bias_valid",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$abc$8041$lut$aiger$o46",
+                  "type": "LUT4",
+                  "input_port": "I1[0]",
+                  "output_port": "O[0]",
+                  "input_net": "bias_valid",
+                  "output_net": "issue_aux_ready",
+                  "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+                },
+                {
+                  "cell": "$flatten\\u_issue_capacity.$abc$8055$lut$aiger$o0",
+                  "type": "LUT5",
+                  "input_port": "I2[0]",
+                  "output_port": "O[0]",
+                  "input_net": "issue_aux_ready",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/reference/npu_controller.sv:150.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+                }
+              ]
+            }
+          ],
+          "distinct_register_path_groups": [
+            {
+              "combinational_cells": 2,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "bias_valid",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$abc$8041$lut$aiger$o46",
+                  "type": "LUT4",
+                  "input_port": "I1[0]",
+                  "output_port": "O[0]",
+                  "input_net": "bias_valid",
+                  "output_net": "issue_aux_ready",
+                  "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+                },
+                {
+                  "cell": "$flatten\\u_issue_capacity.$abc$8055$lut$aiger$o0",
+                  "type": "LUT5",
+                  "input_port": "I2[0]",
+                  "output_port": "O[0]",
+                  "input_net": "issue_aux_ready",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/reference/npu_controller.sv:150.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+                }
+              ]
+            }
+          ],
+          "longest_register_path_cells": 2,
+          "endpoint_port_maximum_depth_histogram": {
+            "2": 1
+          },
+          "report_limits": {
+            "paths": 1,
+            "groups": 1,
+            "minimum_combinational_cells": 0
+          },
+          "graph_nodes": 560,
+          "visited_graph_nodes": 560,
+          "combinational_cycle_nodes": [],
+          "unclassified_cell_types": {},
+          "graph_complete": true,
+          "dsp_without_output_register": [],
+          "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48, TWO24 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+        },
+        "bias_sleep": {
+          "register_to_register_paths": [
+            {
+              "combinational_cells": 2,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "bias_sleep",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$abc$8041$lut$aiger$o46",
+                  "type": "LUT4",
+                  "input_port": "I0[0]",
+                  "output_port": "O[0]",
+                  "input_net": "bias_sleep",
+                  "output_net": "issue_aux_ready",
+                  "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+                },
+                {
+                  "cell": "$flatten\\u_issue_capacity.$abc$8055$lut$aiger$o0",
+                  "type": "LUT5",
+                  "input_port": "I2[0]",
+                  "output_port": "O[0]",
+                  "input_net": "issue_aux_ready",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/reference/npu_controller.sv:150.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+                }
+              ]
+            }
+          ],
+          "distinct_register_path_groups": [
+            {
+              "combinational_cells": 2,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "bias_sleep",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$abc$8041$lut$aiger$o46",
+                  "type": "LUT4",
+                  "input_port": "I0[0]",
+                  "output_port": "O[0]",
+                  "input_net": "bias_sleep",
+                  "output_net": "issue_aux_ready",
+                  "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+                },
+                {
+                  "cell": "$flatten\\u_issue_capacity.$abc$8055$lut$aiger$o0",
+                  "type": "LUT5",
+                  "input_port": "I2[0]",
+                  "output_port": "O[0]",
+                  "input_net": "issue_aux_ready",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/reference/npu_controller.sv:150.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+                }
+              ]
+            }
+          ],
+          "longest_register_path_cells": 2,
+          "endpoint_port_maximum_depth_histogram": {
+            "2": 1
+          },
+          "report_limits": {
+            "paths": 1,
+            "groups": 1,
+            "minimum_combinational_cells": 0
+          },
+          "graph_nodes": 560,
+          "visited_graph_nodes": 560,
+          "combinational_cycle_nodes": [],
+          "unclassified_cell_types": {},
+          "graph_complete": true,
+          "dsp_without_output_register": [],
+          "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48, TWO24 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+        }
+      },
+      "mapped_sha256": "006a72bf29b58c9d3b1fc1eb74cb91ee5e2c35b408e61be6c72ece224e64f98d"
+    },
+    "current": {
+      "summary": {
+        "manifest_sha256": "45763c4f61f5a5972af14dc8d25aa5ac56d4cddf4c25fe9ab5758f829d962885",
+        "lut_mapping": {
+          "mode": "physical-cost",
+          "wire_delay_ps": 300,
+          "delay_target_ps": 6667,
+          "max_lut_inputs": 8,
+          "functional_verification_required": true,
+          "retain_abc9_temporaries": false
+        },
+        "lut_library": {
+          "source_library_sha256": "77a57a5ae6e19c510bb3dfa8407a280692dbea98bae53f26a5724bfe6a4ce803",
+          "library_sha256": "d1214772e5cc4ebfa935ca7e13d0a61625595a6eb95e5f1e2457ed2d3ecb4dce",
+          "area_cost_by_input_count": {
+            "1": 1,
+            "2": 1,
+            "3": 1,
+            "4": 1,
+            "5": 1,
+            "6": 1,
+            "7": 2,
+            "8": 4
+          },
+          "pin_delays_ps": {
+            "1": [
+              "127"
+            ],
+            "2": [
+              "127",
+              "238"
+            ],
+            "3": [
+              "127",
+              "238",
+              "407"
+            ],
+            "4": [
+              "127",
+              "238",
+              "407",
+              "472"
+            ],
+            "5": [
+              "127",
+              "238",
+              "407",
+              "472",
+              "631"
+            ],
+            "6": [
+              "127",
+              "238",
+              "407",
+              "472",
+              "631",
+              "642"
+            ],
+            "7": [
+              "470",
+              "524",
+              "635",
+              "804",
+              "869",
+              "1028",
+              "1039"
+            ],
+            "8": [
+              "465",
+              "592",
+              "646",
+              "757",
+              "926",
+              "991",
+              "1150",
+              "1161"
+            ]
+          },
+          "pin_delays_preserved": true
+        },
+        "mapping_stage": {
+          "elapsed_seconds": 5.05,
+          "peak_process_tree_rss_bytes": 173248512,
+          "memory_sample_interval_seconds": 0.2,
+          "script": "03_map_lut.ys",
+          "log": "03_map_lut.log",
+          "script_sha256": "a8b6402792e272466b962510ea899fbbc530cbfb2dce5315fea5aee72af51ab5",
+          "mapped_json_sha256": "3c9e7f1a014653a510f99b37a4e36dbc7b9d94aea61dcfae505b3a642e05b95e",
+          "mapped_verilog_sha256": "7e4bcdba3acaf3bff407bf7118a49fc0eee23aa8fc50ac2d2f97dbbfb1835bd4",
+          "input_library_sha256": "d1214772e5cc4ebfa935ca7e13d0a61625595a6eb95e5f1e2457ed2d3ecb4dce",
+          "log_sha256": "49c42d2317162365e2b7fdb7c048182c2538c87ec1930a583e45e4c6703bd5c7"
+        },
+        "functional_verification": {
+          "passed": true,
+          "method": "ABC9 &verify",
+          "log_sha256": "49c42d2317162365e2b7fdb7c048182c2538c87ec1930a583e45e4c6703bd5c7"
+        },
+        "resources": {
+          "logic_lut_cells": 128,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 128,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 22,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 0,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "FDCE": 21,
+            "FDPE": 1,
+            "INV": 1,
+            "LUT2": 4,
+            "LUT3": 8,
+            "LUT4": 54,
+            "LUT5": 28,
+            "LUT6": 34,
+            "MUXF7": 15
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 4,
+        "register_path_requirement": {
+          "maximum_combinational_cells": 10,
+          "observed_combinational_cells": 4,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "physical_lut_positions": null,
+        "timing_150mhz_confirmed": null,
+        "abc_mapping_delay": {
+          "iteration_values": [
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0
+          ],
+          "unit": "ps",
+          "last_iteration_value": 6667.0,
+          "target_met": true,
+          "scope": "ABC 映射阶段的引脚和连线成本模型，实际器件频率须由布线后的完整时序模型检查。"
+        }
+      },
+      "input_to_send_paths": {
+        "ps_frame_ready": {
+          "register_to_register_paths": [
+            {
+              "combinational_cells": 1,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "ps_frame_ready",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$flatten\\u_issue_requests.$abc$8074$lut$aiger$o1",
+                  "type": "LUT6",
+                  "input_port": "I4[0]",
+                  "output_port": "O[0]",
+                  "input_net": "ps_frame_ready",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/current/npu_controller.sv:151.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+                }
+              ]
+            }
+          ],
+          "distinct_register_path_groups": [
+            {
+              "combinational_cells": 1,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "ps_frame_ready",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$flatten\\u_issue_requests.$abc$8074$lut$aiger$o1",
+                  "type": "LUT6",
+                  "input_port": "I4[0]",
+                  "output_port": "O[0]",
+                  "input_net": "ps_frame_ready",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/current/npu_controller.sv:151.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+                }
+              ]
+            }
+          ],
+          "longest_register_path_cells": 1,
+          "endpoint_port_maximum_depth_histogram": {
+            "1": 1
+          },
+          "report_limits": {
+            "paths": 1,
+            "groups": 1,
+            "minimum_combinational_cells": 0
+          },
+          "graph_nodes": 562,
+          "visited_graph_nodes": 562,
+          "combinational_cycle_nodes": [],
+          "unclassified_cell_types": {},
+          "graph_complete": true,
+          "dsp_without_output_register": [],
+          "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48, TWO24 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+        },
+        "fifo_full_flag": {
+          "register_to_register_paths": [
+            {
+              "combinational_cells": 1,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "fifo_full_flag",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$flatten\\u_issue_requests.$abc$8074$lut$aiger$o1",
+                  "type": "LUT6",
+                  "input_port": "I3[0]",
+                  "output_port": "O[0]",
+                  "input_net": "fifo_full_flag",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/current/npu_controller.sv:151.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+                }
+              ]
+            }
+          ],
+          "distinct_register_path_groups": [
+            {
+              "combinational_cells": 1,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "fifo_full_flag",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$flatten\\u_issue_requests.$abc$8074$lut$aiger$o1",
+                  "type": "LUT6",
+                  "input_port": "I3[0]",
+                  "output_port": "O[0]",
+                  "input_net": "fifo_full_flag",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/current/npu_controller.sv:151.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+                }
+              ]
+            }
+          ],
+          "longest_register_path_cells": 1,
+          "endpoint_port_maximum_depth_histogram": {
+            "1": 1
+          },
+          "report_limits": {
+            "paths": 1,
+            "groups": 1,
+            "minimum_combinational_cells": 0
+          },
+          "graph_nodes": 562,
+          "visited_graph_nodes": 562,
+          "combinational_cycle_nodes": [],
+          "unclassified_cell_types": {},
+          "graph_complete": true,
+          "dsp_without_output_register": [],
+          "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48, TWO24 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+        },
+        "bias_valid": {
+          "register_to_register_paths": [
+            {
+              "combinational_cells": 1,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "bias_valid",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$flatten\\u_issue_requests.$abc$8074$lut$aiger$o1",
+                  "type": "LUT6",
+                  "input_port": "I2[0]",
+                  "output_port": "O[0]",
+                  "input_net": "bias_valid",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/current/npu_controller.sv:151.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+                }
+              ]
+            }
+          ],
+          "distinct_register_path_groups": [
+            {
+              "combinational_cells": 1,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "bias_valid",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$flatten\\u_issue_requests.$abc$8074$lut$aiger$o1",
+                  "type": "LUT6",
+                  "input_port": "I2[0]",
+                  "output_port": "O[0]",
+                  "input_net": "bias_valid",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/current/npu_controller.sv:151.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+                }
+              ]
+            }
+          ],
+          "longest_register_path_cells": 1,
+          "endpoint_port_maximum_depth_histogram": {
+            "1": 1
+          },
+          "report_limits": {
+            "paths": 1,
+            "groups": 1,
+            "minimum_combinational_cells": 0
+          },
+          "graph_nodes": 562,
+          "visited_graph_nodes": 562,
+          "combinational_cycle_nodes": [],
+          "unclassified_cell_types": {},
+          "graph_complete": true,
+          "dsp_without_output_register": [],
+          "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48, TWO24 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+        },
+        "bias_sleep": {
+          "register_to_register_paths": [
+            {
+              "combinational_cells": 1,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "bias_sleep",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$flatten\\u_issue_requests.$abc$8074$lut$aiger$o1",
+                  "type": "LUT6",
+                  "input_port": "I0[0]",
+                  "output_port": "O[0]",
+                  "input_net": "bias_sleep",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/current/npu_controller.sv:151.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+                }
+              ]
+            }
+          ],
+          "distinct_register_path_groups": [
+            {
+              "combinational_cells": 1,
+              "startpoint": {
+                "cell": "analysis_input",
+                "type": "FDRE",
+                "port": "Q",
+                "net": "bias_sleep",
+                "detail": "register output",
+                "source": "",
+                "register_origin": null
+              },
+              "endpoint": {
+                "cell": "analysis_output",
+                "type": "FDRE",
+                "port": "D",
+                "net": "send_ia_trigger",
+                "category": "data",
+                "source": "",
+                "register_origin": null
+              },
+              "path": [
+                {
+                  "cell": "$flatten\\u_issue_requests.$abc$8074$lut$aiger$o1",
+                  "type": "LUT6",
+                  "input_port": "I0[0]",
+                  "output_port": "O[0]",
+                  "input_net": "bias_sleep",
+                  "output_net": "send_ia_trigger",
+                  "source": "../experiments/controller_bias_direct/final_measurement/current/npu_controller.sv:151.25|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+                }
+              ]
+            }
+          ],
+          "longest_register_path_cells": 1,
+          "endpoint_port_maximum_depth_histogram": {
+            "1": 1
+          },
+          "report_limits": {
+            "paths": 1,
+            "groups": 1,
+            "minimum_combinational_cells": 0
+          },
+          "graph_nodes": 562,
+          "visited_graph_nodes": 562,
+          "combinational_cycle_nodes": [],
+          "unclassified_cell_types": {},
+          "graph_complete": true,
+          "dsp_without_output_register": [],
+          "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48, TWO24 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+        }
+      },
+      "mapped_sha256": "3c9e7f1a014653a510f99b37a4e36dbc7b9d94aea61dcfae505b3a642e05b95e"
+    }
+  }
+}

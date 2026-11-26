@@ -7,32 +7,32 @@ module frame_address_prepare #(
     parameter bit p_ready_mask_abort = 1'b1,
     parameter bit p_pipeline_products = 1'b1
 ) (
-    input  wire logic clk,
-    input  wire logic rst_n,
-    input  wire logic i_start,
-    input  wire logic i_abort,
-    output logic o_start_rdy,
-    input  wire logic i_result_rdy,
-    output logic o_result_vld,
-    input  wire logic [31:0] i_p0,
-    input  wire logic [31:0] i_q0,
-    input  wire logic [31:0] i_column,
-    input  wire logic [31:0] i_total_depth,
-    input  wire logic [31:0] i_ia_base,
-    input  wire logic [31:0] i_ia_stride,
-    input  wire logic i_ia_packed,
-    input  wire logic i_ia_s16,
-    input  wire logic [31:0] i_weight_base,
-    input  wire logic [31:0] i_weight_stride,
-    input  wire logic i_weight_packed,
-    input  wire logic i_weight_s16,
-    input  wire logic [31:0] i_dst_base,
-    input  wire logic [31:0] i_dst_stride,
-    input  wire logic i_is_mode,
-    input  wire logic i_output_s16,
-    output logic [31:0] o_ia_base,
-    output logic [31:0] o_weight_base,
-    output logic [31:0] o_dst_base
+    input  wire logic clk, // 模块工作时钟。
+    input  wire logic rst_n, // 低有效复位输入。
+    input  wire logic i_start, // 提交当前帧的地址计算请求。
+    input  wire logic i_abort, // 取消当前地址计算并清除结果有效状态。
+    output logic o_start_rdy, // 能够接收新的帧地址请求。
+    input  wire logic i_result_rdy, // 调用方接收本帧的三个地址结果。
+    output logic o_result_vld, // 本帧的三个地址结果有效。
+    input  wire logic [31:0] i_p0, // 当前帧在流式矩阵维度上的起始位置。
+    input  wire logic [31:0] i_q0, // 当前帧的归约起始位置。
+    input  wire logic [31:0] i_column, // 当前帧在驻留矩阵维度上的起始位置。
+    input  wire logic [31:0] i_total_depth, // 矩阵任务的完整归约长度。
+    input  wire logic [31:0] i_ia_base, // 流式输入操作数的字节基址。
+    input  wire logic [31:0] i_ia_stride, // 流式输入操作数相邻行的字节间隔。
+    input  wire logic i_ia_packed, // 流式输入操作数采用分块打包布局。
+    input  wire logic i_ia_s16, // 流式输入元素占两个字节。
+    input  wire logic [31:0] i_weight_base, // 驻留操作数的字节基址。
+    input  wire logic [31:0] i_weight_stride, // 驻留操作数相邻列的字节间隔。
+    input  wire logic i_weight_packed, // 驻留操作数采用分块打包布局。
+    input  wire logic i_weight_s16, // 驻留操作数元素占两个字节。
+    input  wire logic [31:0] i_dst_base, // 输出矩阵的字节基址。
+    input  wire logic [31:0] i_dst_stride, // 输出矩阵相邻行的字节间隔。
+    input  wire logic i_is_mode, // 输入驻留模式下交换输出地址的行列位置。
+    input  wire logic i_output_s16, // 每个输出元素占两个字节。
+    output logic [31:0] o_ia_base, // 计算完成的本帧流式输入字节地址。
+    output logic [31:0] o_weight_base, // 计算完成的本帧驻留操作数字节地址。
+    output logic [31:0] o_dst_base // 计算完成的本帧输出字节地址。
 );
     //! 0. 地址上下文与运算状态
     //! -----------------------
@@ -124,9 +124,13 @@ module frame_address_prepare #(
             default: begin end
         endcase
     end
-    // 基址与偏移先相加，在部分积累加阶段加入地址结果。
+    // 基址与偏移按两个十六位段并行相加，低段进位修正高段后进入原有结果寄存器。
     assign addend_i_carry = 1'b0;
-    parallel_prefix_add #(.p_width(32)) u_addend (
+    parallel_prefix_add #(
+        .p_width(32), .p_group_width(8), .p_preserve_groups(1'b0),
+        .p_dsp_split_width(16), .p_keep_carry(1'b0),
+        .p_preserve_grouped_unknowns(1'b1)
+    ) u_addend (
         .i_a(selected_base), .i_b(selected_offset), .i_carry(addend_i_carry),
         .o_sum(addend), .o_carry(unused_addend_carry)
     );

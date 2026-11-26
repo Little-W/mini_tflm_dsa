@@ -1,0 +1,173 @@
+{
+  "results": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 13,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 13,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 4,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "FDCE": 3,
+          "FDRE": 1,
+          "INV": 1,
+          "LUT2": 4,
+          "LUT3": 1,
+          "LUT4": 5,
+          "LUT5": 1,
+          "LUT6": 2,
+          "MUXF7": 1
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 5,
+      "run_vector_to_vector_start": true,
+      "manifest": {
+        "top": "task_accept_property",
+        "configuration": "\u5b9e\u9645\u4efb\u52a1\u63a5\u6536\u72b6\u6001\u53ca\u5168\u90e8\u81ea\u7531\u7ec4\u5408\u8f93\u5165",
+        "parameters": {},
+        "sources_sha256": {
+          "build/task_accept_measurement_verified/context/reference.sv": "f6c667b5c1cd3e67434a2367f0789cdf2407d37e6e49f7fe10fd4da51e7b4e8c",
+          "rtl/npu/top/npu_task_accept_qualify.sv": "6b926dafe92e2f3e467dd1e151b9995f5aeab9547a0248f5002be2a311e3e6c9",
+          "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+          "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+          "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+          "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+          "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+          "rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+          "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+          "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+          "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+          "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+          "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+          "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+          "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+          "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+          "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+          "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+          "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+          "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+          "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+          "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+          "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+          "rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+          "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+        },
+        "options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "build_configuration": null,
+        "primitive_models": {
+          "library_sha256": {
+            "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+            "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+          },
+          "primitives": [],
+          "model_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        },
+        "part": "xc7a200tfbg484-3",
+        "clock_period_ns": 6.666666666666667
+      },
+      "full_metrics_sha256": "8fb351af68f55dccf9a01318ddbc4b3b37056b02ebd30847bf5a6ac4a6c0715a"
+    },
+    "candidate": {
+      "resources": {
+        "logic_lut_cells": 13,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 13,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 4,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "FDCE": 3,
+          "FDRE": 1,
+          "INV": 1,
+          "LUT2": 2,
+          "LUT3": 2,
+          "LUT4": 4,
+          "LUT5": 3,
+          "LUT6": 2,
+          "MUXF7": 1
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 4,
+      "run_vector_to_vector_start": false,
+      "manifest": {
+        "top": "task_accept_property",
+        "configuration": "\u5b9e\u9645\u4efb\u52a1\u63a5\u6536\u72b6\u6001\u53ca\u5168\u90e8\u81ea\u7531\u7ec4\u5408\u8f93\u5165",
+        "parameters": {},
+        "sources_sha256": {
+          "build/task_accept_measurement_verified/context/candidate.sv": "775640a66fb4de73805ecb0652b8d14850350cb106901f66521bd145fc381c5b",
+          "rtl/npu/top/npu_task_accept_qualify.sv": "6b926dafe92e2f3e467dd1e151b9995f5aeab9547a0248f5002be2a311e3e6c9",
+          "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+          "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+          "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+          "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+          "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+          "rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+          "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+          "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+          "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+          "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+          "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+          "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+          "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+          "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+          "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+          "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+          "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+          "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+          "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+          "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+          "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+          "rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+          "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+        },
+        "options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "build_configuration": null,
+        "primitive_models": {
+          "library_sha256": {
+            "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+            "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+          },
+          "primitives": [],
+          "model_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        },
+        "part": "xc7a200tfbg484-3",
+        "clock_period_ns": 6.666666666666667
+      },
+      "full_metrics_sha256": "b8a2122f119ab882e95f8ff7fefca185e80e608edac0c8335ebe412a41e01e9f"
+    }
+  },
+  "extraction": {
+    "reference_commit": "c42f5ff9",
+    "source": "rtl/npu/top/npu_top.sv",
+    "parent_composition_checked": true,
+    "nonstate_fanins_unconstrained": true,
+    "state_registers": "    always_ff @(posedge clk or negedge rst_n) begin\n        if (!rst_n) begin\n            task_accept_ready <= 1'b0;\n        end else if ((calc_start && sa_ready) || abort_state != AB_IDLE) begin\n            task_accept_ready <= 1'b0;\n        end else begin\n            task_accept_ready <= task_accept_conditions;\n        end\n    end\n    always_ff @(posedge clk or negedge rst_n) begin\n        if (!rst_n) begin\n            run_vector <= 1'b0;\n            vector_rejected <= 1'b0;\n        end else begin\n            if (calc_start && sa_ready) begin\n                run_vector <= cfg_vector_enable;\n                vector_rejected <= cfg_vector_enable && (!VECTOR_ENGINE_CAPABLE || cfg_conv_enable);\n            end else if (run_vector && done_valid && done_ready) begin\n                run_vector <= 1'b0;\n                vector_rejected <= 1'b0;\n            end\n        end\n    end\n",
+    "reference_assignments": "    assign sa_ready = task_accept_ready && abort_state == AB_IDLE && !task_fault;\n    assign vector_start_fire = VECTOR_ENGINE_CAPABLE && calc_start && sa_ready &&\n        cfg_vector_enable && !cfg_conv_enable;\n    assign task_fault = ps_capacity_fault || shared_ram_capacity_fault || vector_shared_store_o_error || dma_bus_error ||\n                        (frame_mode_q && inner_done_valid && (inner_err_code != 2'b00)) ||\n                        ((run_conv || run_vector) && conv_error);\n    assign task_accept_conditions = !run_vector && !vector_rejected && vector_engine_ready &&\n            ctrl_sa_ready && frame_scheduler_ready && !cfg_valid_q[0] && !cfg_valid_q[1] &&\n            !cfg_valid_q[2] && (abort_state == AB_IDLE) && !task_fault && operand_cache_idle &&\n            frame_prefetch_idle && conv_task_idle;\n",
+    "candidate_instance": "    npu_task_accept_qualify #(.p_vector_capable(VECTOR_ENGINE_CAPABLE), .p_exclusive_vector(1'b1)) u_task_accept (\n        .i_accept_ready(task_accept_ready), .i_abort_idle(abort_state == AB_IDLE),\n        .i_run_conv(run_conv), .i_run_vector(run_vector), .i_conv_error(conv_error),\n        .i_fault({ps_capacity_fault, shared_ram_capacity_fault, vector_shared_store_o_error, dma_bus_error,\n            frame_mode_q && inner_done_valid && (inner_err_code != 2'b00)}),\n        .i_calc_start(calc_start), .i_vector_enable(cfg_vector_enable), .i_conv_enable(cfg_conv_enable),\n        .o_ready(sa_ready), .o_vector_start(vector_start_fire), .o_fault(task_fault)\n    );\n",
+    "source_sha256": {
+      "reference_parent": "a52ea118142e36476368ab67d5133cfb7e33fbd8cf7f8d8613623b8d05de6d26",
+      "candidate_parent": "82a51961abfafeac415131cd2768c07e9abe1d8d58a22e9464fcb4cdc91996db",
+      "reference_context": "f6c667b5c1cd3e67434a2367f0789cdf2407d37e6e49f7fe10fd4da51e7b4e8c",
+      "candidate_context": "775640a66fb4de73805ecb0652b8d14850350cb106901f66521bd145fc381c5b"
+    }
+  }
+}

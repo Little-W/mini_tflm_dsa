@@ -1,0 +1,137 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "rtl/npu/top/npu_packed_extent.sv": "b1edeeb0d8489f70dc5af682a255e760ea21a0f11f1f19cc430b8262e23c418f",
+    "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+    "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+  },
+  "formal": [
+    {
+      "width": 1,
+      "size": 1,
+      "shift": 0,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "833608a844406a73d5d8f10875e69395351680d91e8b8bd8029152f10e37a163"
+    },
+    {
+      "width": 1,
+      "size": 16,
+      "shift": 4,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "b2b4963d30115fa79981c6b9206a98c478f40b4e9934de2c0b2845e32598dd23"
+    },
+    {
+      "width": 5,
+      "size": 32,
+      "shift": 5,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "c4f70bb516123ab3893c04a00ec66ee2728279de0dccb91685244cfd2295b972"
+    },
+    {
+      "width": 16,
+      "size": 16,
+      "shift": 4,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "21f7162296c428c9483c248de6588013d558be3bd853d048593fb928d8dcc3eb"
+    },
+    {
+      "width": 32,
+      "size": 16,
+      "shift": 4,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "26aa0c872621b08e1e7fb88d3a10fb4db5f6d7c049eaeca2e76086c64924c2f0"
+    },
+    {
+      "width": 32,
+      "size": 3,
+      "shift": 2,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "b3648a6848cd17aca98b21b04e8b311e53c7a029a30b72c5d2943bbf5bff5290"
+    },
+    {
+      "width": 32,
+      "size": 32,
+      "shift": 5,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "acc6d6e879085d97ca83d404fe8d9d98d8b0872fdc19bf51aeecbd9394e281c6"
+    },
+    {
+      "width": 32,
+      "size": 2147483648,
+      "shift": 31,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "95f02da2f60d26e7678966449f4d2ca259013ff41e6c5fa437f811d477363c38"
+    },
+    {
+      "width": 48,
+      "size": 16,
+      "shift": 4,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "ab00ad27a8f3f852090044571c9b7451bd163bd76643faeea9b32fdc6b51540d"
+    },
+    {
+      "width": 64,
+      "size": 16,
+      "shift": 4,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "79826fc4fb7fa5b156ab093ea9181f15d0a5b877f26a445bd2e15e653b4c9d04"
+    },
+    {
+      "width": 64,
+      "size": 65536,
+      "shift": 16,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "5d686d3be80be2c7b0580783f5bfd781cddd65fb45cc5af245bd53cd6576ae7a"
+    },
+    {
+      "width": 64,
+      "size": 2147483648,
+      "shift": 31,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "31977da6b4df5af41ebb39c208db2416f571b14ac5c5d012f7556ebbb23b16c9"
+    },
+    {
+      "width": 80,
+      "size": 16,
+      "shift": 4,
+      "passed": true,
+      "inputs_constrained": false,
+      "log_sha256": "aa19e2adde086a27e1978c183e299292a48353fc848f7b803dda0c291a3a02b6"
+    }
+  ],
+  "four_state_comparisons": 212992,
+  "parent": {
+    "passed": true,
+    "reference": "7eb7f3eda04b72fc976578df6463c34aa3361b0b",
+    "inputs_constrained": false,
+    "source_sha256": "e5e8120286625ad817b326444d97b39de1323889bf0b3464d69d3a28f3b01b6a",
+    "profiles": [
+      {
+        "synthesis": false,
+        "proven_points": 3098,
+        "passed": true,
+        "log_sha256": "977282adcc807e0b5e174d7dbdaf17fa06f95733bb344c29bffc6f628b2cee54"
+      },
+      {
+        "synthesis": true,
+        "proven_points": 3110,
+        "passed": true,
+        "log_sha256": "9a0c40f49c2967a20de96bdd5150f4a7715eb4ff6361c3281bf864b5343dd4e5"
+      }
+    ]
+  }
+}

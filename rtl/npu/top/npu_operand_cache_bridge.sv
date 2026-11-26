@@ -8,55 +8,55 @@ module npu_operand_cache_bridge #(
     parameter int unsigned p_reg_width = 32'd32,
     parameter int unsigned p_size_shift = 32'd4
 ) (
-    input wire logic [p_reg_width-1:0] i_cache_axi_araddr,
-    input wire logic [1:0] i_cache_axi_arburst,
-    input wire logic [7:0] i_cache_axi_arlen,
-    input wire logic [2:0] i_cache_axi_arsize,
-    input wire logic i_cache_axi_arvalid,
-    input wire logic i_cache_axi_rready,
-    input wire logic i_calc_start,
-    input wire logic i_cfg_16x8_q [0:2],
-    input wire logic i_cfg_conv_enable,
-    input wire logic i_cfg_dataflow_mode_eff,
-    input wire logic [p_reg_width-1:0] i_cfg_ia_reuse_q [0:2],
-    input wire logic i_cfg_lhs_tile_packed,
-    input wire logic i_cfg_operand_fetch64,
-    input wire logic i_cfg_rhs_tile_packed,
-    input wire logic i_cfg_stage2_fire,
-    input wire logic [p_reg_width-1:0] i_cfg_stream_k_q [0:2],
-    input wire logic [p_reg_width-1:0] i_cfg_stream_m_q [0:2],
-    input wire logic i_cfg_use16_q [0:2],
-    input wire logic i_cfg_vector_enable,
-    input wire logic [p_reg_width-1:0] i_cfg_w_reuse_q [0:2],
-    input wire logic clk,
-    input wire logic rst_n,
-    input wire logic [p_reg_width-1:0] i_k,
-    input wire logic i_legacy_axi_arready,
-    input wire logic [p_bus_width-1:0] i_legacy_axi_rdata,
-    input wire logic i_legacy_axi_rlast,
-    input wire logic [1:0] i_legacy_axi_rresp,
-    input wire logic i_legacy_axi_rvalid,
-    input wire logic [p_reg_width-1:0] i_lhs_base,
-    input wire logic [p_reg_width-1:0] i_lhs_row_stride_b,
-    input wire logic [p_reg_width-1:0] i_m,
-    input wire logic [p_reg_width-1:0] i_rhs_base,
-    input wire logic [p_reg_width-1:0] i_rhs_col_stride_b,
-    input wire logic i_run_conv,
-    input wire logic i_run_lhs_tile_packed,
-    input wire logic i_run_rhs_tile_packed,
-    input wire logic i_sa_ready,
-    output logic o_cache_axi_arready,
-    output logic [p_bus_width-1:0] o_cache_axi_rdata,
-    output logic o_cache_axi_rlast,
-    output logic [1:0] o_cache_axi_rresp,
-    output logic o_cache_axi_rvalid,
-    output logic [p_reg_width-1:0] o_legacy_axi_araddr,
-    output logic [1:0] o_legacy_axi_arburst,
-    output logic [7:0] o_legacy_axi_arlen,
-    output logic [2:0] o_legacy_axi_arsize,
-    output logic o_legacy_axi_arvalid,
-    output logic o_legacy_axi_rready,
-    output logic o_operand_cache_idle
+    input wire logic [p_reg_width-1:0] i_cache_axi_araddr, // 操作数请求侧的 AXI 接口：读事务起始字节地址。
+    input wire logic [1:0] i_cache_axi_arburst, // 操作数请求侧的 AXI 接口：读事务的突发类型。
+    input wire logic [7:0] i_cache_axi_arlen, // 操作数请求侧的 AXI 接口：读突发的传输拍数减一。
+    input wire logic [2:0] i_cache_axi_arsize, // 操作数请求侧的 AXI 接口：每拍读取字节数的二进制对数。
+    input wire logic i_cache_axi_arvalid, // 操作数请求侧的 AXI 接口：读地址请求有效。
+    input wire logic i_cache_axi_rready, // 操作数请求侧的 AXI 接口：能够接收读取响应。
+    input wire logic i_calc_start, // 开始接收新的计算任务。
+    input wire logic i_cfg_16x8_q [0:2], // 各配置阶段采用十六位乘八位格式的标志。
+    input wire logic i_cfg_conv_enable, // 启用卷积窗口展开。
+    input wire logic i_cfg_dataflow_mode_eff, // 经过能力配置筛选的数据流模式。
+    input wire logic [p_reg_width-1:0] i_cfg_ia_reuse_q [0:2], // 各配置阶段保存的输入分块复用数量。
+    input wire logic i_cfg_lhs_tile_packed, // 左操作数采用分块打包存储。
+    input wire logic i_cfg_operand_fetch64, // 启用操作数范围预读。
+    input wire logic i_cfg_rhs_tile_packed, // 右操作数采用分块打包存储。
+    input wire logic i_cfg_stage2_fire, // 配置准备的第三阶段完成事件。
+    input wire logic [p_reg_width-1:0] i_cfg_stream_k_q [0:2], // 各配置阶段的流式维度长度，WS 为输出行数，IS 为输出列数。
+    input wire logic [p_reg_width-1:0] i_cfg_stream_m_q [0:2], // 各配置阶段的驻留维度长度，WS 为输出列数，IS 为输出行数。
+    input wire logic i_cfg_use16_q [0:2], // 各配置阶段采用十六位输入的标志。
+    input wire logic i_cfg_vector_enable, // 启用向量计算任务。
+    input wire logic [p_reg_width-1:0] i_cfg_w_reuse_q [0:2], // 各配置阶段保存的驻留分块复用数量。
+    input wire logic clk, // 模块工作时钟。
+    input wire logic rst_n, // 低有效复位输入。
+    input wire logic [p_reg_width-1:0] i_k, // 矩阵计算的输出行数。
+    input wire logic i_legacy_axi_arready, // 外部读取侧的 AXI 接口：能够接收读地址请求。
+    input wire logic [p_bus_width-1:0] i_legacy_axi_rdata, // 外部读取侧的 AXI 接口：读取响应的数据。
+    input wire logic i_legacy_axi_rlast, // 外部读取侧的 AXI 接口：当前读突发的最后一拍。
+    input wire logic [1:0] i_legacy_axi_rresp, // 外部读取侧的 AXI 接口：读取响应的状态编码。
+    input wire logic i_legacy_axi_rvalid, // 外部读取侧的 AXI 接口：返回的读取数据有效。
+    input wire logic [p_reg_width-1:0] i_lhs_base, // 左操作数矩阵的字节基址。
+    input wire logic [p_reg_width-1:0] i_lhs_row_stride_b, // 左操作数相邻行的字节间隔。
+    input wire logic [p_reg_width-1:0] i_m, // 矩阵计算的输出列数。
+    input wire logic [p_reg_width-1:0] i_rhs_base, // 右操作数矩阵的字节基址。
+    input wire logic [p_reg_width-1:0] i_rhs_col_stride_b, // 右操作数相邻列的字节间隔。
+    input wire logic i_run_conv, // 当前已接收任务采用卷积模式。
+    input wire logic i_run_lhs_tile_packed, // 当前任务的左操作数采用分块打包存储。
+    input wire logic i_run_rhs_tile_packed, // 当前任务的右操作数采用分块打包存储。
+    input wire logic i_sa_ready, // 计算阵列及其控制逻辑允许接收任务。
+    output logic o_cache_axi_arready, // 操作数请求侧的 AXI 接口：能够接收读地址请求。
+    output logic [p_bus_width-1:0] o_cache_axi_rdata, // 操作数请求侧的 AXI 接口：读取响应的数据。
+    output logic o_cache_axi_rlast, // 操作数请求侧的 AXI 接口：当前读突发的最后一拍。
+    output logic [1:0] o_cache_axi_rresp, // 操作数请求侧的 AXI 接口：读取响应的状态编码。
+    output logic o_cache_axi_rvalid, // 操作数请求侧的 AXI 接口：返回的读取数据有效。
+    output logic [p_reg_width-1:0] o_legacy_axi_araddr, // 外部读取侧的 AXI 接口：读事务起始字节地址。
+    output logic [1:0] o_legacy_axi_arburst, // 外部读取侧的 AXI 接口：读事务的突发类型。
+    output logic [7:0] o_legacy_axi_arlen, // 外部读取侧的 AXI 接口：读突发的传输拍数减一。
+    output logic [2:0] o_legacy_axi_arsize, // 外部读取侧的 AXI 接口：每拍读取字节数的二进制对数。
+    output logic o_legacy_axi_arvalid, // 外部读取侧的 AXI 接口：读地址请求有效。
+    output logic o_legacy_axi_rready, // 外部读取侧的 AXI 接口：能够接收读取响应。
+    output logic o_operand_cache_idle // 操作数缓存及其读取事务均已空闲。
 );
 
     generate if (p_operand_cache_enable != 0) begin : g_operand_cache

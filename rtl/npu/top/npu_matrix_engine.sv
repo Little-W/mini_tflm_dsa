@@ -39,196 +39,196 @@ module npu_matrix_engine #(
     parameter int unsigned p_vector_shared_ia_banks = 32'd1,
     parameter bit p_fixed_ps_channels = 1'h1
 ) (
-    input wire logic i_abort_pending,
-    input wire logic signed [p_reg_width-1:0] i_act_max,
-    input wire logic signed [p_reg_width-1:0] i_act_min,
-    input wire logic [p_reg_width-1:0] i_bias_base,
-    input wire logic i_bias_dma_busy,
-    input wire logic i_bias_dma_done,
-    input wire logic [$clog2(p_bias_dma_size)-1:0] i_bias_dma_wr_col_base,
-    input wire logic signed [7:0] i_bias_dma_wr_data [p_bus_width/8],
-    input wire logic [$clog2(p_bias_dma_size)-1:0] i_bias_dma_wr_row,
-    input wire logic i_bias_dma_wr_slot,
-    input wire logic i_bias_dma_wr_use_16bits,
-    input wire logic i_bias_dma_wr_valid [p_bus_width/8],
-    input wire logic i_calc_start,
-    input wire logic i_cfg_16bits_ia,
-    input wire logic i_cfg_16x8,
-    input wire logic [p_reg_width-1:0] i_cfg_col_groups,
-    input wire logic [p_reg_width-1:0] i_cfg_col_tail_tiles,
-    input wire conv_im2col_pkg::conv_cfg_t i_cfg_conv,
-    input wire logic i_cfg_conv_enable,
-    input wire logic i_cfg_dataflow_mode,
-    input wire logic i_cfg_dataflow_mode_eff,
-    input wire logic [p_reg_width-1:0] i_cfg_ia_reuse_num,
-    input wire logic i_cfg_rhs_tile_packed,
-    input wire logic [p_reg_width-1:0] i_cfg_row_groups,
-    input wire logic [p_reg_width-1:0] i_cfg_row_tail_tiles,
-    input wire logic [31:0] i_cfg_shared_ia_banks,
-    input wire logic i_cfg_vector_enable,
-    input wire logic [p_reg_width-1:0] i_cfg_w_reuse_num,
-    input wire logic clk,
-    input wire conv_im2col_pkg::conv_cfg_t i_conv_cfg_q,
-    input wire logic rst_n,
-    input wire logic [p_reg_width-1:0] i_dst_base,
-    input wire logic [p_reg_width-1:0] i_dst_row_stride_b,
-    input wire logic signed [p_reg_width-1:0] i_dst_zp,
-    input wire logic signed [31:0] i_dw_quant_accumulator [p_size],
-    input wire logic [p_size-1:0] i_dw_quant_mask,
-    input wire logic signed [31:0] i_dw_quant_maximum,
-    input wire logic signed [31:0] i_dw_quant_minimum,
-    input wire logic signed [31:0] i_dw_quant_multiplier [p_size],
-    input wire logic signed [31:0] i_dw_quant_offset,
-    input wire logic i_dw_quant_req_tag,
-    input wire logic i_dw_quant_req_valid,
-    input wire logic [5:0] i_dw_quant_right [p_size],
-    input wire logic i_ia_dma_busy,
-    input wire logic i_ia_dma_done,
-    input wire logic [$clog2(p_size)-1:0] i_ia_dma_wr_col_base,
-    input wire logic signed [p_ia_data_width-1:0] i_ia_dma_wr_data [p_matrix_input_lanes],
-    input wire logic [$clog2(p_size)-1:0] i_ia_dma_wr_row,
-    input wire logic [p_ia_cache_slot_w-1:0] i_ia_dma_wr_slot,
-    input wire logic i_ia_dma_wr_use_16bits,
-    input wire logic i_ia_dma_wr_valid [p_matrix_input_lanes],
-    input wire logic [127:0] i_ia_ram_read_data [0:1],
-    input wire logic [p_reg_width-1:0] i_k,
-    input wire logic i_kernel_dma_busy,
-    input wire logic i_kernel_dma_done,
-    input wire logic [$clog2(p_size)-1:0] i_kernel_dma_wr_col_base,
-    input wire logic signed [p_kernel_data_width-1:0] i_kernel_dma_wr_data [p_matrix_input_lanes],
-    input wire logic [$clog2(p_size)-1:0] i_kernel_dma_wr_row,
-    input wire logic i_kernel_dma_wr_slot,
-    input wire logic i_kernel_dma_wr_valid [p_matrix_input_lanes],
-    input wire logic [p_reg_width-1:0] i_lhs_base,
-    input wire logic [p_reg_width-1:0] i_lhs_row_stride_b,
-    input wire logic signed [p_reg_width-1:0] i_lhs_zp,
-    input wire logic i_load_bias_granted,
-    input wire logic i_load_ia_granted,
-    input wire logic i_load_quant_granted,
-    input wire logic i_load_weight_granted,
-    input wire logic [p_reg_width-1:0] i_m,
-    input wire logic [p_reg_width-1:0] i_n,
-    input wire logic i_oa_dma_busy,
-    input wire logic i_oa_dma_done,
-    input wire logic i_oa_dma_src_wready,
-    input wire logic i_operand_loader_flush_q,
-    input wire logic [31:0] i_ps_control_q,
-    input wire logic [127:0] i_ps_ram_read_data [0:3],
-    input wire logic signed [p_reg_width-1:0] i_q_mult_pt,
-    input wire logic signed [p_reg_width-1:0] i_q_shift_pt,
-    input wire logic [p_bus_width-1:0] i_quant_dma_raw_data,
-    input wire logic i_quant_dma_raw_valid,
-    input wire logic [p_reg_width-1:0] i_rhs_base,
-    input wire logic [p_reg_width-1:0] i_rhs_col_stride_b,
-    input wire logic signed [p_reg_width-1:0] i_rhs_zp,
-    input wire logic i_run_conv,
-    input wire logic i_run_lhs_tile_packed,
-    input wire logic i_run_rhs_tile_packed,
-    input wire logic i_run_vector,
-    input wire logic i_sa_ready,
-    input wire logic i_task_completion_accept,
-    input wire logic i_use_per_channel,
-    input wire logic i_vector_start_fire,
-    input wire logic i_write_oa_granted,
-    output logic [p_reg_width-1:0] o_bias_dma_base_addr,
-    output logic [7:0] o_bias_dma_burst_len_m1,
-    output logic signed [p_reg_width-1:0] o_bias_dma_lhs_zp,
-    output logic o_bias_dma_linear_read_mode,
-    output logic [p_reg_width-1:0] o_bias_dma_row_stride,
-    output logic [p_reg_width-1:0] o_bias_dma_rows_to_read,
-    output logic o_bias_dma_slot_id,
-    output logic o_bias_dma_start,
-    output logic o_bias_dma_use_16bits,
-    output logic o_cfg_16x8_q [0:2],
-    output logic [p_reg_width-1:0] o_cfg_ia_reuse_q [0:2],
-    output logic o_cfg_stage2_fire,
-    output logic [p_reg_width-1:0] o_cfg_stream_k_q [0:2],
-    output logic [p_reg_width-1:0] o_cfg_stream_m_q [0:2],
-    output logic o_cfg_use16_q [0:2],
-    output logic [2:0] o_cfg_valid_q,
-    output logic [p_reg_width-1:0] o_cfg_w_reuse_q [0:2],
-    output logic o_controller_done_valid,
-    output logic [1:0] o_controller_err_code,
-    output logic [31:0] o_conv_range_base [4],
-    output logic [32:0] o_conv_range_end [4],
-    output logic o_ctrl_sa_ready,
-    output logic o_dw_quant_req_ready,
-    output logic o_dw_quant_rsp_tag,
-    output logic o_dw_quant_rsp_valid,
-    output logic o_exec_dma_job_init,
-    output logic o_frame_mode_q,
-    output logic o_frame_scheduler_ready,
-    output logic [p_reg_width-1:0] o_ia_dma_base_addr,
-    output logic [7:0] o_ia_dma_burst_len_m1,
-    output logic [p_reg_width-1:0] o_ia_dma_group,
-    output logic o_ia_dma_im2col,
-    output logic signed [p_reg_width-1:0] o_ia_dma_lhs_zp,
-    output logic o_ia_dma_linear_read_mode,
-    output logic [p_reg_width-1:0] o_ia_dma_p0,
-    output logic [p_reg_width-1:0] o_ia_dma_q0,
-    output logic [p_reg_width-1:0] o_ia_dma_row_stride,
-    output logic [p_reg_width-1:0] o_ia_dma_rows_to_read,
-    output logic [p_ia_cache_slot_w-1:0] o_ia_dma_slot_id,
-    output logic o_ia_dma_start,
-    output logic o_ia_dma_use_16bits,
-    output logic o_ia_prefetch_idle,
-    output logic [p_shared_ia_addr_width-1:0] o_ia_ram_read_addr [0:1],
-    output logic [1:0] o_ia_ram_read_en,
-    output logic [127:0] o_ia_ram_shared_write_data,
-    output logic [p_shared_ia_addr_width-1:0] o_ia_ram_write_addr [0:1],
-    output logic [127:0] o_ia_ram_write_data [0:1],
-    output logic [1:0] o_ia_ram_write_en,
-    output logic [15:0] o_ia_ram_write_mask [0:1],
-    output logic [p_reg_width-1:0] o_ia_reuse_num_eff,
-    output logic o_inner_done_valid,
-    output logic [1:0] o_inner_err_code,
-    output logic o_is_mode,
-    output logic [p_reg_width-1:0] o_kernel_dma_base_addr,
-    output logic [7:0] o_kernel_dma_burst_len_m1,
-    output logic [p_reg_width-1:0] o_kernel_dma_group,
-    output logic o_kernel_dma_im2col,
-    output logic signed [p_reg_width-1:0] o_kernel_dma_lhs_zp,
-    output logic o_kernel_dma_linear_read_mode,
-    output logic [p_reg_width-1:0] o_kernel_dma_p0,
-    output logic [p_reg_width-1:0] o_kernel_dma_q0,
-    output logic [p_reg_width-1:0] o_kernel_dma_row_stride,
-    output logic [p_reg_width-1:0] o_kernel_dma_rows_to_read,
-    output logic o_kernel_dma_slot_id,
-    output logic o_kernel_dma_start,
-    output logic o_kernel_dma_use_16bits,
-    output logic o_kernel_prefetch_idle,
-    output logic o_load_bias_req,
-    output logic o_load_ia_req,
-    output logic o_load_quant_req,
-    output logic o_load_weight_req,
-    output logic [p_reg_width-1:0] o_oa_dma_base_addr,
-    output logic [7:0] o_oa_dma_burst_len_m1,
-    output logic [p_reg_width-1:0] o_oa_dma_row_stride,
-    output logic [p_reg_width-1:0] o_oa_dma_rows_to_read,
-    output logic [p_bus_width-1:0] o_oa_dma_src_wdata,
-    output logic [p_bus_width/8-1:0] o_oa_dma_src_wmask,
-    output logic o_oa_dma_src_wvalid,
-    output logic o_oa_dma_start,
-    output logic o_ps_capacity_fault,
-    output logic [p_shared_ps_addr_width-1:0] o_ps_ram_read_addr [0:3],
-    output logic [3:0] o_ps_ram_read_en,
-    output logic [p_shared_ps_addr_width-1:0] o_ps_ram_write_addr [0:3],
-    output logic [127:0] o_ps_ram_write_data [0:3],
-    output logic [3:0] o_ps_ram_write_en,
-    output logic [p_reg_width-1:0] o_quant_dma_base_addr,
-    output logic [7:0] o_quant_dma_burst_len_m1,
-    output logic signed [p_reg_width-1:0] o_quant_dma_lhs_zp,
-    output logic o_quant_dma_linear_read_mode,
-    output logic [p_reg_width-1:0] o_quant_dma_row_stride,
-    output logic [p_reg_width-1:0] o_quant_dma_rows_to_read,
-    output logic o_quant_dma_slot_id,
-    output logic o_quant_dma_start,
-    output logic o_quant_dma_use_16bits,
-    output logic signed [7:0] o_requant_out [p_size],
-    output logic o_run_compact,
-    output logic o_shared_allocation_invalid,
-    output logic [31:0] o_shared_ia_banks_q,
-    output logic o_write_oa_req
+    input wire logic i_abort_pending, // 当前任务正在等待终止和资源释放。
+    input wire logic signed [p_reg_width-1:0] i_act_max, // 输出激活值的上限。
+    input wire logic signed [p_reg_width-1:0] i_act_min, // 输出激活值的下限。
+    input wire logic [p_reg_width-1:0] i_bias_base, // 偏置数组的字节基址。
+    input wire logic i_bias_dma_busy, // 偏置 DMA：正在执行传输。
+    input wire logic i_bias_dma_done, // 偏置 DMA：当前传输完成。
+    input wire logic [$clog2(p_bias_dma_size)-1:0] i_bias_dma_wr_col_base, // 偏置 DMA：返回数据的首个写入列号。
+    input wire logic signed [7:0] i_bias_dma_wr_data [p_bus_width/8], // 偏置 DMA：返回的逐通道写入数据。
+    input wire logic [$clog2(p_bias_dma_size)-1:0] i_bias_dma_wr_row, // 偏置 DMA：返回数据的写入行号。
+    input wire logic i_bias_dma_wr_slot, // 偏置 DMA：返回数据的缓存槽号。
+    input wire logic i_bias_dma_wr_use_16bits, // 偏置 DMA：返回数据采用十六位元素。
+    input wire logic i_bias_dma_wr_valid [p_bus_width/8], // 偏置 DMA：返回数据各通道的写入有效标志。
+    input wire logic i_calc_start, // 开始接收新的计算任务。
+    input wire logic i_cfg_16bits_ia, // 输入激活采用十六位元素。
+    input wire logic i_cfg_16x8, // 选择十六位输入与八位权重的计算格式。
+    input wire logic [p_reg_width-1:0] i_cfg_col_groups, // 驻留维度的分块组数，WS 对应输出列，IS 对应输出行。
+    input wire logic [p_reg_width-1:0] i_cfg_col_tail_tiles, // 最后一个驻留维度分组的有效分块数。
+    input wire conv_im2col_pkg::conv_cfg_t i_cfg_conv, // 卷积的图像、卷积核及步长配置。
+    input wire logic i_cfg_conv_enable, // 启用卷积窗口展开。
+    input wire logic i_cfg_dataflow_mode, // 请求的数据流模式，置位选择输入驻留。
+    input wire logic i_cfg_dataflow_mode_eff, // 经过能力配置筛选的数据流模式。
+    input wire logic [p_reg_width-1:0] i_cfg_ia_reuse_num, // 流式操作数分块的复用数量。
+    input wire logic i_cfg_rhs_tile_packed, // 右操作数采用分块打包存储。
+    input wire logic [p_reg_width-1:0] i_cfg_row_groups, // 流式维度的分块组数，WS 对应输出行，IS 对应输出列。
+    input wire logic [p_reg_width-1:0] i_cfg_row_tail_tiles, // 最后一个流式维度分组的有效分块数。
+    input wire logic [31:0] i_cfg_shared_ia_banks, // 为输入激活分配的共享存储分组数。
+    input wire logic i_cfg_vector_enable, // 启用向量计算任务。
+    input wire logic [p_reg_width-1:0] i_cfg_w_reuse_num, // 驻留操作数分块的复用数量。
+    input wire logic clk, // 模块工作时钟。
+    input wire conv_im2col_pkg::conv_cfg_t i_conv_cfg_q, // 已保存的卷积配置。
+    input wire logic rst_n, // 低有效复位输入。
+    input wire logic [p_reg_width-1:0] i_dst_base, // 输出矩阵的字节基址。
+    input wire logic [p_reg_width-1:0] i_dst_row_stride_b, // 输出矩阵相邻行的字节间隔。
+    input wire logic signed [p_reg_width-1:0] i_dst_zp, // 输出结果的量化零点。
+    input wire logic signed [31:0] i_dw_quant_accumulator [p_size], // 逐通道深度卷积累加结果。
+    input wire logic [p_size-1:0] i_dw_quant_mask, // 本次深度卷积量化请求的有效通道掩码。
+    input wire logic signed [31:0] i_dw_quant_maximum, // 深度卷积量化输出的激活上限。
+    input wire logic signed [31:0] i_dw_quant_minimum, // 深度卷积量化输出的激活下限。
+    input wire logic signed [31:0] i_dw_quant_multiplier [p_size], // 各深度卷积通道使用的量化乘数。
+    input wire logic signed [31:0] i_dw_quant_offset, // 深度卷积量化后的输出偏移。
+    input wire logic i_dw_quant_req_tag, // 深度卷积量化请求的返回标签。
+    input wire logic i_dw_quant_req_valid, // 深度卷积量化请求有效。
+    input wire logic [5:0] i_dw_quant_right [p_size], // 各深度卷积通道使用的右移位数。
+    input wire logic i_ia_dma_busy, // 输入激活 DMA：正在执行传输。
+    input wire logic i_ia_dma_done, // 输入激活 DMA：当前传输完成。
+    input wire logic [$clog2(p_size)-1:0] i_ia_dma_wr_col_base, // 输入激活 DMA：返回数据的首个写入列号。
+    input wire logic signed [p_ia_data_width-1:0] i_ia_dma_wr_data [p_matrix_input_lanes], // 输入激活 DMA：返回的逐通道写入数据。
+    input wire logic [$clog2(p_size)-1:0] i_ia_dma_wr_row, // 输入激活 DMA：返回数据的写入行号。
+    input wire logic [p_ia_cache_slot_w-1:0] i_ia_dma_wr_slot, // 输入激活 DMA：返回数据的缓存槽号。
+    input wire logic i_ia_dma_wr_use_16bits, // 输入激活 DMA：返回数据采用十六位元素。
+    input wire logic i_ia_dma_wr_valid [p_matrix_input_lanes], // 输入激活 DMA：返回数据各通道的写入有效标志。
+    input wire logic [127:0] i_ia_ram_read_data [0:1], // 输入激活共享存储：各端口返回的读取数据。
+    input wire logic [p_reg_width-1:0] i_k, // 矩阵计算的输出行数。
+    input wire logic i_kernel_dma_busy, // 卷积核 DMA：正在执行传输。
+    input wire logic i_kernel_dma_done, // 卷积核 DMA：当前传输完成。
+    input wire logic [$clog2(p_size)-1:0] i_kernel_dma_wr_col_base, // 卷积核 DMA：返回数据的首个写入列号。
+    input wire logic signed [p_kernel_data_width-1:0] i_kernel_dma_wr_data [p_matrix_input_lanes], // 卷积核 DMA：返回的逐通道写入数据。
+    input wire logic [$clog2(p_size)-1:0] i_kernel_dma_wr_row, // 卷积核 DMA：返回数据的写入行号。
+    input wire logic i_kernel_dma_wr_slot, // 卷积核 DMA：返回数据的缓存槽号。
+    input wire logic i_kernel_dma_wr_valid [p_matrix_input_lanes], // 卷积核 DMA：返回数据各通道的写入有效标志。
+    input wire logic [p_reg_width-1:0] i_lhs_base, // 左操作数矩阵的字节基址。
+    input wire logic [p_reg_width-1:0] i_lhs_row_stride_b, // 左操作数相邻行的字节间隔。
+    input wire logic signed [p_reg_width-1:0] i_lhs_zp, // 左操作数的量化零点。
+    input wire logic i_load_bias_granted, // 偏置读取已获得共享 DMA 资源授权。
+    input wire logic i_load_ia_granted, // 输入激活读取已获得共享 DMA 资源授权。
+    input wire logic i_load_quant_granted, // 量化参数读取已获得共享 DMA 资源授权。
+    input wire logic i_load_weight_granted, // 卷积核读取已获得共享 DMA 资源授权。
+    input wire logic [p_reg_width-1:0] i_m, // 矩阵计算的输出列数。
+    input wire logic [p_reg_width-1:0] i_n, // 矩阵计算的归约长度。
+    input wire logic i_oa_dma_busy, // 输出 DMA：正在执行传输。
+    input wire logic i_oa_dma_done, // 输出 DMA：当前传输完成。
+    input wire logic i_oa_dma_src_wready, // 输出 DMA：写入器能够接收新的数据。
+    input wire logic i_operand_loader_flush_q, // 清除当前任务的操作数加载状态。
+    input wire logic [31:0] i_ps_control_q, // 已保存的部分和容量及格式控制字段。
+    input wire logic [127:0] i_ps_ram_read_data [0:3], // 部分和共享存储：各端口返回的读取数据。
+    input wire logic signed [p_reg_width-1:0] i_q_mult_pt, // 逐张量量化乘数或逐通道乘数数组地址。
+    input wire logic signed [p_reg_width-1:0] i_q_shift_pt, // 逐张量量化移位量或逐通道移位数组地址。
+    input wire logic [p_bus_width-1:0] i_quant_dma_raw_data, // 量化参数 DMA 返回的原始总线数据。
+    input wire logic i_quant_dma_raw_valid, // 量化参数 DMA 原始返回数据有效。
+    input wire logic [p_reg_width-1:0] i_rhs_base, // 右操作数矩阵的字节基址。
+    input wire logic [p_reg_width-1:0] i_rhs_col_stride_b, // 右操作数相邻列的字节间隔。
+    input wire logic signed [p_reg_width-1:0] i_rhs_zp, // 右操作数的量化零点。
+    input wire logic i_run_conv, // 当前已接收任务采用卷积模式。
+    input wire logic i_run_lhs_tile_packed, // 当前任务的左操作数采用分块打包存储。
+    input wire logic i_run_rhs_tile_packed, // 当前任务的右操作数采用分块打包存储。
+    input wire logic i_run_vector, // 当前已接收任务采用向量模式。
+    input wire logic i_sa_ready, // 计算阵列及其控制逻辑允许接收任务。
+    input wire logic i_task_completion_accept, // 本周期接收任务完成响应的事件。
+    input wire logic i_use_per_channel, // 请求使用逐通道量化参数。
+    input wire logic i_vector_start_fire, // 本周期开始向量任务的事件。
+    input wire logic i_write_oa_granted, // 输出数据写入已获得共享 DMA 资源授权。
+    output logic [p_reg_width-1:0] o_bias_dma_base_addr, // 偏置 DMA：传输起始字节地址。
+    output logic [7:0] o_bias_dma_burst_len_m1, // 偏置 DMA：每行突发的传输拍数减一。
+    output logic signed [p_reg_width-1:0] o_bias_dma_lhs_zp, // 偏置 DMA：读取数据使用的量化零点。
+    output logic o_bias_dma_linear_read_mode, // 偏置 DMA：选择线性读取布局。
+    output logic [p_reg_width-1:0] o_bias_dma_row_stride, // 偏置 DMA：相邻数据行的字节间隔。
+    output logic [p_reg_width-1:0] o_bias_dma_rows_to_read, // 偏置 DMA：本次传输需要读取的行数。
+    output logic o_bias_dma_slot_id, // 偏置 DMA：读取结果写入的缓存槽号。
+    output logic o_bias_dma_start, // 偏置 DMA：启动已获授权的传输。
+    output logic o_bias_dma_use_16bits, // 偏置 DMA：按十六位元素组织读取结果。
+    output logic o_cfg_16x8_q [0:2], // 各配置阶段采用十六位乘八位格式的标志。
+    output logic [p_reg_width-1:0] o_cfg_ia_reuse_q [0:2], // 各配置阶段保存的流式操作数分块复用数量。
+    output logic o_cfg_stage2_fire, // 配置准备的第三阶段完成事件。
+    output logic [p_reg_width-1:0] o_cfg_stream_k_q [0:2], // 各配置阶段的流式维度长度，WS 为输出行数，IS 为输出列数。
+    output logic [p_reg_width-1:0] o_cfg_stream_m_q [0:2], // 各配置阶段的驻留维度长度，WS 为输出列数，IS 为输出行数。
+    output logic o_cfg_use16_q [0:2], // 各配置阶段采用十六位输入的标志。
+    output logic [2:0] o_cfg_valid_q, // 三个配置准备阶段的有效标志。
+    output logic [p_reg_width-1:0] o_cfg_w_reuse_q [0:2], // 各配置阶段保存的驻留分块复用数量。
+    output logic o_controller_done_valid, // 矩阵调度控制器的完成响应有效。
+    output logic [1:0] o_controller_err_code, // 矩阵调度控制器的完成错误码。
+    output logic [31:0] o_conv_range_base [4], // 权重、偏置、乘数和移位数组的四个读取起始地址。
+    output logic [32:0] o_conv_range_end [4], // 四个允许读取区间的右端地址，不包含该地址。
+    output logic o_ctrl_sa_ready, // 矩阵调度控制器允许接收任务。
+    output logic o_dw_quant_req_ready, // 共享量化器可以接收深度卷积请求。
+    output logic o_dw_quant_rsp_tag, // 深度卷积量化响应对应的请求标签。
+    output logic o_dw_quant_rsp_valid, // 深度卷积量化结果有效。
+    output logic o_exec_dma_job_init, // 初始化本任务的 DMA 执行状态。
+    output logic o_frame_mode_q, // 当前任务采用帧调度方式。
+    output logic o_frame_scheduler_ready, // 帧调度器允许接收新任务。
+    output logic [p_reg_width-1:0] o_ia_dma_base_addr, // 输入激活 DMA：传输起始字节地址。
+    output logic [7:0] o_ia_dma_burst_len_m1, // 输入激活 DMA：每行突发的传输拍数减一。
+    output logic [p_reg_width-1:0] o_ia_dma_group, // 输入激活 DMA：卷积请求所属的通道组号。
+    output logic o_ia_dma_im2col, // 输入激活 DMA：启用卷积窗口展开读取。
+    output logic signed [p_reg_width-1:0] o_ia_dma_lhs_zp, // 输入激活 DMA：读取数据使用的量化零点。
+    output logic o_ia_dma_linear_read_mode, // 输入激活 DMA：选择线性读取布局。
+    output logic [p_reg_width-1:0] o_ia_dma_p0, // 输入激活 DMA：卷积展开矩阵的输出位置起点。
+    output logic [p_reg_width-1:0] o_ia_dma_q0, // 输入激活 DMA：卷积展开矩阵的归约位置起点。
+    output logic [p_reg_width-1:0] o_ia_dma_row_stride, // 输入激活 DMA：相邻数据行的字节间隔。
+    output logic [p_reg_width-1:0] o_ia_dma_rows_to_read, // 输入激活 DMA：本次传输需要读取的行数。
+    output logic [p_ia_cache_slot_w-1:0] o_ia_dma_slot_id, // 输入激活 DMA：读取结果写入的缓存槽号。
+    output logic o_ia_dma_start, // 输入激活 DMA：启动已获授权的传输。
+    output logic o_ia_dma_use_16bits, // 输入激活 DMA：按十六位元素组织读取结果。
+    output logic o_ia_prefetch_idle, // 输入激活预取逻辑已空闲。
+    output logic [p_shared_ia_addr_width-1:0] o_ia_ram_read_addr [0:1], // 输入激活共享存储：各端口读取地址。
+    output logic [1:0] o_ia_ram_read_en, // 输入激活共享存储：各端口读取使能。
+    output logic [127:0] o_ia_ram_shared_write_data, // 输入激活共享存储：各写入端口共用的数据。
+    output logic [p_shared_ia_addr_width-1:0] o_ia_ram_write_addr [0:1], // 输入激活共享存储：各端口写入地址。
+    output logic [127:0] o_ia_ram_write_data [0:1], // 输入激活共享存储：各端口写入数据。
+    output logic [1:0] o_ia_ram_write_en, // 输入激活共享存储：各端口写入使能。
+    output logic [15:0] o_ia_ram_write_mask [0:1], // 输入激活共享存储：各端口的字节写入掩码。
+    output logic [p_reg_width-1:0] o_ia_reuse_num_eff, // 当前容量允许的流式操作数分块复用数量。
+    output logic o_inner_done_valid, // 内部执行控制器的完成响应有效。
+    output logic [1:0] o_inner_err_code, // 内部执行控制器的完成错误码。
+    output logic o_is_mode, // 当前矩阵任务采用输入驻留模式。
+    output logic [p_reg_width-1:0] o_kernel_dma_base_addr, // 卷积核 DMA：传输起始字节地址。
+    output logic [7:0] o_kernel_dma_burst_len_m1, // 卷积核 DMA：每行突发的传输拍数减一。
+    output logic [p_reg_width-1:0] o_kernel_dma_group, // 卷积核 DMA：卷积请求所属的通道组号。
+    output logic o_kernel_dma_im2col, // 卷积核 DMA：启用卷积窗口展开读取。
+    output logic signed [p_reg_width-1:0] o_kernel_dma_lhs_zp, // 卷积核 DMA：读取数据使用的量化零点。
+    output logic o_kernel_dma_linear_read_mode, // 卷积核 DMA：选择线性读取布局。
+    output logic [p_reg_width-1:0] o_kernel_dma_p0, // 卷积核 DMA：卷积展开矩阵的输出位置起点。
+    output logic [p_reg_width-1:0] o_kernel_dma_q0, // 卷积核 DMA：卷积展开矩阵的归约位置起点。
+    output logic [p_reg_width-1:0] o_kernel_dma_row_stride, // 卷积核 DMA：相邻数据行的字节间隔。
+    output logic [p_reg_width-1:0] o_kernel_dma_rows_to_read, // 卷积核 DMA：本次传输需要读取的行数。
+    output logic o_kernel_dma_slot_id, // 卷积核 DMA：读取结果写入的缓存槽号。
+    output logic o_kernel_dma_start, // 卷积核 DMA：启动已获授权的传输。
+    output logic o_kernel_dma_use_16bits, // 卷积核 DMA：按十六位元素组织读取结果。
+    output logic o_kernel_prefetch_idle, // 卷积核预取逻辑已空闲。
+    output logic o_load_bias_req, // 偏置读取的 DMA 资源请求。
+    output logic o_load_ia_req, // 输入激活读取的 DMA 资源请求。
+    output logic o_load_quant_req, // 量化参数读取的 DMA 资源请求。
+    output logic o_load_weight_req, // 卷积核读取的 DMA 资源请求。
+    output logic [p_reg_width-1:0] o_oa_dma_base_addr, // 输出 DMA：传输起始字节地址。
+    output logic [7:0] o_oa_dma_burst_len_m1, // 输出 DMA：每行突发的传输拍数减一。
+    output logic [p_reg_width-1:0] o_oa_dma_row_stride, // 输出 DMA：相邻数据行的字节间隔。
+    output logic [p_reg_width-1:0] o_oa_dma_rows_to_read, // 输出 DMA：本次传输需要写入的行数。
+    output logic [p_bus_width-1:0] o_oa_dma_src_wdata, // 输出 DMA：送入写入器的数据。
+    output logic [p_bus_width/8-1:0] o_oa_dma_src_wmask, // 输出 DMA：送入写入器的有效字节掩码。
+    output logic o_oa_dma_src_wvalid, // 输出 DMA：送入写入器的数据有效。
+    output logic o_oa_dma_start, // 输出 DMA：启动已获授权的传输。
+    output logic o_ps_capacity_fault, // 部分和存储容量不足或访问越界。
+    output logic [p_shared_ps_addr_width-1:0] o_ps_ram_read_addr [0:3], // 部分和共享存储：各端口读取地址。
+    output logic [3:0] o_ps_ram_read_en, // 部分和共享存储：各端口读取使能。
+    output logic [p_shared_ps_addr_width-1:0] o_ps_ram_write_addr [0:3], // 部分和共享存储：各端口写入地址。
+    output logic [127:0] o_ps_ram_write_data [0:3], // 部分和共享存储：各端口写入数据。
+    output logic [3:0] o_ps_ram_write_en, // 部分和共享存储：各端口写入使能。
+    output logic [p_reg_width-1:0] o_quant_dma_base_addr, // 量化参数 DMA：传输起始字节地址。
+    output logic [7:0] o_quant_dma_burst_len_m1, // 量化参数 DMA：每行突发的传输拍数减一。
+    output logic signed [p_reg_width-1:0] o_quant_dma_lhs_zp, // 量化参数 DMA：读取数据使用的量化零点。
+    output logic o_quant_dma_linear_read_mode, // 量化参数 DMA：选择线性读取布局。
+    output logic [p_reg_width-1:0] o_quant_dma_row_stride, // 量化参数 DMA：相邻数据行的字节间隔。
+    output logic [p_reg_width-1:0] o_quant_dma_rows_to_read, // 量化参数 DMA：本次传输需要读取的行数。
+    output logic o_quant_dma_slot_id, // 量化参数 DMA：读取结果写入的缓存槽号。
+    output logic o_quant_dma_start, // 量化参数 DMA：启动已获授权的传输。
+    output logic o_quant_dma_use_16bits, // 量化参数 DMA：按十六位元素组织读取结果。
+    output logic signed [7:0] o_requant_out [p_size], // 矩阵结果重新量化后的逐通道数据。
+    output logic o_run_compact, // 当前任务使用紧凑的八位输入存储。
+    output logic o_shared_allocation_invalid, // 输入激活与部分和的共享容量分配无效。
+    output logic [31:0] o_shared_ia_banks_q, // 当前任务分配给输入激活的共享存储分组数。
+    output logic o_write_oa_req // 输出数据写入的 DMA 资源请求。
 );
 
     localparam int unsigned IA_REUSE_NUM_MAX =
@@ -296,11 +296,9 @@ typedef struct packed {
     logic bias_sleep;
     logic bias_switch;
     logic bias_valid;
-    logic [p_controller_bias_w-1:0] bias_zero_i_base;
-    logic bias_zero_i_carry;
-    logic [p_controller_bias_w-1:0] bias_zero_i_offset;
-    logic [p_controller_bias_w-1:0] bias_zero_i_target;
     logic bias_zero_o_equal;
+    logic bias_base_nonzero;
+    logic controller_bias_base_nonzero;
     logic capture_compute_bias;
     logic cfg_16bits_ia_eff;
     logic [p_reg_width-1:0] cfg_n_q [0:2];
@@ -313,6 +311,9 @@ typedef struct packed {
     logic direct_final_stream;
     logic direct_output_cfg;
     logic [31:0] exec_bias_address;
+    logic [p_reg_width-1:0] bias_execution_address_i_base;
+    logic [31:0] bias_execution_address_i_channel;
+    logic [31:0] bias_execution_address_o_address;
     logic [31:0] exec_bias_base;
     logic exec_bias_present;
     logic [31:0] exec_channel;
@@ -329,7 +330,7 @@ typedef struct packed {
     logic signed [31:0] exec_q_mult;
     logic signed [31:0] exec_q_shift;
     logic [31:0] exec_row_groups;
-    logic [31:0] exec_row_rounded;
+    logic [31:0] exec_row_tiles;
     logic [31:0] exec_row_tail;
     logic [31:0] exec_stream_k;
     logic [31:0] exec_stream_m;
@@ -549,8 +550,11 @@ typedef struct packed {
     assign exec_m = o_frame_mode_q ? (o_is_mode ? frame_exec_rows : frame_exec_cols) : run_m;
     assign exec_w = o_frame_mode_q ? 32'd1 : w_reuse_num_eff;
     assign exec_row_groups = o_frame_mode_q ? 32'd1 : i_cfg_row_groups;
-        assign exec_row_rounded = frame_exec_rows + 32'(p_size-1);
-    assign exec_row_tail = o_frame_mode_q ? (exec_row_rounded >> p_size_shift) : i_cfg_row_tail_tiles;
+    // 帧分块数量通过并行条件加一计算，配置接收周期保持不变。
+    npu_frame_row_tiles #(.p_tile_size(p_size), .p_tile_shift(p_size_shift)) u_frame_row_tiles (
+        .i_rows(frame_exec_rows), .o_tiles(exec_row_tiles)
+    );
+    assign exec_row_tail = o_frame_mode_q ? exec_row_tiles : i_cfg_row_tail_tiles;
     assign exec_col_groups = o_frame_mode_q ? 32'd1 : i_cfg_col_groups;
     assign exec_col_tail = o_frame_mode_q ? 32'd1 : i_cfg_col_tail_tiles;
     assign exec_channel = o_is_mode ? frame_exec_p0 : frame_exec_column;
@@ -593,25 +597,67 @@ typedef struct packed {
         );
     assign exec_ia_base = o_frame_mode_q ? frame_address_o_ia_base : ia_base_eff;
     assign exec_weight_base = o_frame_mode_q ? frame_address_o_weight_base : weight_base_eff;
-        assign exec_bias_address = i_bias_base + (exec_channel << 2);
-    assign exec_bias_base = o_frame_mode_q ?
-            ((i_bias_base != 0 && ((o_is_mode || ws_final_bias) ? frame_exec_final : frame_exec_init)) ?
-                exec_bias_address : 32'd0) : i_bias_base;
-        // 控制器仅检查偏置地址是否为零，按其端口可见位宽并行检查模加结果。
-
-        assign bias_zero_i_base = p_controller_bias_w'(i_bias_base);
-        assign bias_zero_i_offset = p_controller_bias_w'(exec_channel << 2);
-        assign bias_zero_i_target = p_controller_bias_w'(0);
-        assign bias_zero_i_carry = 1'b0;
-        add_equal #(.p_width(p_controller_bias_w)) u_bias_zero (
-            .i_a(bias_zero_i_base), .i_b(bias_zero_i_offset),
-            .i_target(bias_zero_i_target), .i_carry_in(bias_zero_i_carry),
-            .o_equal(bias_zero_o_equal)
+    // 偏置原始地址按六位并行检查，所有使用方复用完整位宽的非零结果。
+    localparam int unsigned p_bias_zero_groups = (p_reg_width + 5) / 6;
+    (* keep = 1 *) logic [p_bias_zero_groups-1:0] bias_nonzero_groups;
+    logic bias_groups_zero;
+    for (genvar group_index = 0; group_index < p_bias_zero_groups; group_index++) begin : g_bias_nonzero
+        localparam int unsigned p_first = 6 * group_index;
+        localparam int unsigned p_bits = p_reg_width-p_first < 6 ? p_reg_width-p_first : 6;
+        logic group_zero;
+        zero_reduce #(.p_width(p_bits)) u_group_zero (
+            .i_value(i_bias_base[p_first +: p_bits]), .o_zero(group_zero)
         );
-        assign exec_bias_present = o_frame_mode_q ?
-            ((i_bias_base != p_reg_width'(0)) &&
-             ((o_is_mode || ws_final_bias) ? frame_exec_final : frame_exec_init) &&
-             !bias_zero_o_equal) : (p_controller_bias_w'(i_bias_base) != p_controller_bias_w'(0));
+        assign bias_nonzero_groups[group_index] = !group_zero;
+    end
+    zero_reduce #(.p_width(p_bias_zero_groups)) u_bias_groups_zero (
+        .i_value(bias_nonzero_groups), .o_zero(bias_groups_zero)
+    );
+    assign bias_base_nonzero = !bias_groups_zero;
+    if (p_controller_bias_w == p_reg_width) begin : g_same_bias_width
+        assign controller_bias_base_nonzero = bias_base_nonzero;
+    end else begin : g_controller_bias_width
+        localparam int unsigned p_groups = (p_controller_bias_w + 5) / 6;
+        (* keep = 1 *) logic [p_groups-1:0] visible_nonzero_groups;
+        logic visible_groups_zero;
+        for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_group
+            localparam int unsigned p_first = 6 * group_index;
+            localparam int unsigned p_bits = p_controller_bias_w-p_first < 6 ?
+                p_controller_bias_w-p_first : 6;
+            logic group_zero;
+            zero_reduce #(.p_width(p_bits)) u_group_zero (
+                .i_value(i_bias_base[p_first +: p_bits]), .o_zero(group_zero)
+            );
+            assign visible_nonzero_groups[group_index] = !group_zero;
+        end
+        zero_reduce #(.p_width(p_groups)) u_groups_zero (
+            .i_value(visible_nonzero_groups), .o_zero(visible_groups_zero)
+        );
+        assign controller_bias_base_nonzero = !visible_groups_zero;
+    end
+    assign bias_execution_address_i_base = i_bias_base;
+    assign bias_execution_address_i_channel = exec_channel;
+    assign exec_bias_address = bias_execution_address_o_address;
+    npu_bias_execution_address #(.p_base_width(p_reg_width)) u_bias_execution_address (
+        .i_base(bias_execution_address_i_base), .i_channel(bias_execution_address_i_channel),
+        .o_address(bias_execution_address_o_address)
+    );
+    assign exec_bias_base = o_frame_mode_q ?
+            ((bias_base_nonzero && ((o_is_mode || ws_final_bias) ? frame_exec_final : frame_exec_init)) ?
+                exec_bias_address : 32'd0) : i_bias_base;
+    // 两种数据流的地址条件并行计算，模式选择在完整零值检查之后完成。
+    npu_bias_address_zero #(.p_width(p_controller_bias_w)) u_bias_zero (
+        .i_base(p_controller_bias_w'(i_bias_base)),
+        .i_ws_channel(frame_exec_column), .i_is_channel(frame_exec_p0),
+        .i_is_mode(o_is_mode), .o_zero(bias_zero_o_equal)
+    );
+    npu_bias_presence u_bias_presence (
+        .i_frame_mode(o_frame_mode_q), .i_base_nonzero(bias_base_nonzero),
+        .i_is_mode(o_is_mode), .i_ws_final_bias(ws_final_bias),
+        .i_frame_final(frame_exec_final), .i_frame_init(frame_exec_init),
+        .i_address_zero(bias_zero_o_equal),
+        .i_visible_base_nonzero(controller_bias_base_nonzero), .o_present(exec_bias_present)
+    );
         assign controller_i_bias_base = p_reg_width'(exec_bias_present);
     assign exec_dst_base = o_frame_mode_q ? frame_address_o_dst_base : i_dst_base;
     assign exec_q_mult = i_q_mult_pt +
@@ -782,6 +828,8 @@ typedef struct packed {
                 // 输入来自双模式 DMA，使用其固定的列位置和有效通道排列。
                 .p_dma_source_layout(1'b1),
                 .p_shared_write_stage(p_shared_ram_enabled && p_fixed_ps_channels),
+                // 共享 RAM 逐字节使用写掩码，未写入字节可传递共用排列数据。
+                .p_zero_masked_write_data(!(p_shared_ram_enabled && p_fixed_ps_channels)),
                 .RAM_WORD_ADDR_WIDTH(p_shared_ia_addr_width),
                 .PS_FRAME_COUNT(p_ps_frame_count)
             ) u_ia_loader (
@@ -875,8 +923,14 @@ typedef struct packed {
             wire [31:0] depth_offset = packed_weights ?
                 ((frame_lookahead_q0 >> p_size_shift) << (2*p_size_shift + 32'(weight_use_16bits_eff))) :
                 (frame_lookahead_q0 << weight_use_16bits_eff);
-            wire prediction_start = o_frame_mode_q && frame_command_active && frame_execution_started && frame_lookahead_valid &&
-                (frame_lookahead_column != frame_command_column || frame_lookahead_q0 != frame_command_q0);
+            wire same_prediction;
+            // 两个完整坐标按组比较，预测接收资格只组合最终的一位结果。
+            parallel_equal #(.p_width(64)) u_prediction_equal (
+                .i_a({frame_lookahead_column, frame_lookahead_q0}),
+                .i_b({frame_command_column, frame_command_q0}), .o_equal(same_prediction)
+            );
+            wire prediction_start = o_frame_mode_q && frame_command_active && frame_execution_started &&
+                frame_lookahead_valid && !same_prediction;
             logic [31:0] product_low;
             logic [15:0] product_lh, product_hl;
             logic [15:0] product_high;
@@ -1063,7 +1117,7 @@ typedef struct packed {
             .ext_dma_wr_use_16bits(i_bias_dma_wr_use_16bits)
         );
   // 脉动阵列计算核心
-    assign capture_compute_bias = !o_is_mode && (i_bias_base != '0) &&
+    assign capture_compute_bias = !o_is_mode && bias_base_nonzero &&
                               ia_tile_start && !(ws_final_bias ? bias_load_sleep : compute_bias_sleep);
     // 偏置来源和同步清零共用数据选择，两组寄存器分别保存自己的写入使能。
     for (genvar bias_lane = 0; bias_lane < p_size; bias_lane++) begin : g_bias_capture
@@ -1088,7 +1142,7 @@ typedef struct packed {
   generate
     for (cb_i = 0; cb_i < p_size; cb_i = cb_i + 1) begin : gen_compute_bias_in
       assign compute_bias_in[cb_i] =
-        (o_is_mode || ws_final_bias || (i_bias_base == '0)) ? 32'sd0 : compute_bias_latched[cb_i];
+        (o_is_mode || ws_final_bias || !bias_base_nonzero) ? 32'sd0 : compute_bias_latched[cb_i];
     end
   endgenerate
     compute_core #(

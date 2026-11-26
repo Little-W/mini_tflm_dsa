@@ -1,0 +1,110 @@
+{
+  "passed": true,
+  "reference": "d7cb67be",
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/control/npu_controller.sv": "50c2f76630aa8ffbd106810c113afe4b03372224a771cfd782f1ae64027394b9",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/control/npu_ia_issue_select.sv": "d9dab809b52c0e63aa28e632896e236cbe6f7a056e3cb782d7aaada117820a11"
+  },
+  "external_input_assumptions": [],
+  "parent_proofs": [
+    {
+      "mode": "generic",
+      "reg_width": 8,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "aedc0c684ff7608ec9f1c4acca91841816f2302ef935241628f524e6b7644303"
+    },
+    {
+      "mode": "generic",
+      "reg_width": 16,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "6cbefb2df022a6bbb3ebe8234909fe85646352333dd668461a13375d664b49fb"
+    },
+    {
+      "mode": "generic",
+      "reg_width": 28,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "9d1a459657c6d74e993c71f7a8d2b4e219a3283c1bfaef59dd6cfa093f9c1512"
+    },
+    {
+      "mode": "generic",
+      "reg_width": 29,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "24e8f3cab59dfebe265402fc6816722a2da2da38691698c2fbbcfb417d53b47b"
+    },
+    {
+      "mode": "generic",
+      "reg_width": 32,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "a83f93e75170d11b59912a2b755040f35d526266e712c85b8d0725dc3e93afbd"
+    },
+    {
+      "mode": "generic",
+      "reg_width": 64,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "a40fffae12ad263193b23acebd85e07a0d5c0368f62e989e87d3d9e87dba338a"
+    },
+    {
+      "mode": "fpga",
+      "reg_width": 8,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "a9383dbaec9da754224a647b3f28486bf376c9c10aef02212979bc212187472d"
+    },
+    {
+      "mode": "fpga",
+      "reg_width": 16,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "744bd6756c4c47e6dc3102a9af08095dc482736aab9e1244eca26ec985200ad7"
+    },
+    {
+      "mode": "fpga",
+      "reg_width": 28,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "a57af15cc6b747ad2a15cc309378b06837dadd512389ca09de2db4905ac889ae"
+    },
+    {
+      "mode": "fpga",
+      "reg_width": 29,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "ecfc92e60cbe4c6a64ab2cbdf970afa7caa7527dccb0d3ea6dddb673e28a2721"
+    },
+    {
+      "mode": "fpga",
+      "reg_width": 32,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "0a315eb524b2895a701b3c23d8ef71051650189b6e795b6c53e1c3d36b2c228d"
+    },
+    {
+      "mode": "fpga",
+      "reg_width": 64,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "68234cf6f624675aa60f3a6b0a283916d341e427caf7aa31caedca75480859dc"
+    }
+  ],
+  "control_proofs": [
+    {
+      "mode": "generic",
+      "passed": true,
+      "checks": 157186,
+      "log_sha256": "17986a80416d4a69b4f82be52ca895286d0e077846fd5de30eed03762a8c3f41"
+    },
+    {
+      "mode": "fpga",
+      "passed": true,
+      "checks": 157186,
+      "log_sha256": "17986a80416d4a69b4f82be52ca895286d0e077846fd5de30eed03762a8c3f41"
+    }
+  ],
+  "test_sha256": "9a3c36a10b4fc93fb3cf517c7b965067a3879915067141d3228fd39eebff0032"
+}

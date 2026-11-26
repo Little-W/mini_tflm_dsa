@@ -14,9 +14,9 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def packed_cases(out: Path) -> list[Path]:
+def packed_cases(out: Path, manifest: dict) -> list[Path]:
     sys.path.insert(0, str(ROOT / 'test/ps_compression'))
-    from run_shared_npu import configure, npu
+    from run_shared_npu import configure, input_bank_count, npu
     out.mkdir(parents=True, exist_ok=True)
     cases = []
     for mode in (0, 1):
@@ -26,7 +26,9 @@ def packed_cases(out: Path) -> list[Path]:
                 directory = npu.precision_task(out, 16, name=name, rows=33, reduction=35, columns=51,
                     dataflow=mode, lhs_s16=wide,
                     memory_bases=(0x1003,0x20003,0x40000,0x58000,0x48000,0x50000))
-                configure(directory, banks=2 if wide else 1, r=2, w=3, control=2,
+                banks = input_bank_count(manifest, mode=mode, lhs_s16=wide,
+                                         requested_banks=2 if wide else 1)
+                configure(directory, banks=banks, r=2, w=3, control=2,
                           bank_bytes=8192, bank_count=7)
                 cfg = [int(value,16) for value in (directory/'config.mem').read_text().split()]
                 image = npu.load_sparse(directory/'init.mem')
@@ -101,7 +103,8 @@ def main() -> None:
         results[name] = json.loads((out/name/'summary.json').read_text())
     sys.path.insert(0,str(ROOT/'test/ps_compression'))
     from run_shared_npu import npu
-    cases = packed_cases(out/'packed')
+    manifest = json.loads((sim/'build.json').read_text())
+    cases = packed_cases(out/'packed', manifest)
     results['packed'] = npu.run_suite(sim/'obj/Vtb_conv_npu',out,'packed',cases,no_random=False,timeout=900)
     if not results['packed']['passed']:
         raise RuntimeError('Packed frame address validation failed')

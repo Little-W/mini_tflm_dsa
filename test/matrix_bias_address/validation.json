@@ -1,0 +1,145 @@
+{
+  "passed": true,
+  "input_constraints": [],
+  "profiles": [
+    {
+      "mode": "generic",
+      "base_width": 1,
+      "passed": true,
+      "four_state_checks": 12420,
+      "formal_log_sha256": "1261b19acbe11e06a9638326422fcac0fdf29cd6f3e304ee3d22503e6b3f4e33",
+      "four_state_log_sha256": "3d3b33ec86b88899955deea4612e2454e2bfe154eb70f1d80f9e4dc76f38064f"
+    },
+    {
+      "mode": "generic",
+      "base_width": 8,
+      "passed": true,
+      "four_state_checks": 13316,
+      "formal_log_sha256": "0a5a887337b101de8ce54e354019d0815fa2d3dc7ea50fd5a8b18ede5fe65b77",
+      "four_state_log_sha256": "ed7eb2a23e68351c7b8180c2aa17e8d25bf6a6633bf50bc7491b2f0ba0023711"
+    },
+    {
+      "mode": "generic",
+      "base_width": 16,
+      "passed": true,
+      "four_state_checks": 14340,
+      "formal_log_sha256": "0a2f810106b5d364a7d25c18da8fb65a69640521fbbc24d29083debb8da1c451",
+      "four_state_log_sha256": "6ca4e413793d6862bebc70846d5452325da33f78b0a7906bc5bbfbc4140649e0"
+    },
+    {
+      "mode": "generic",
+      "base_width": 19,
+      "passed": true,
+      "four_state_checks": 14724,
+      "formal_log_sha256": "6fe80aeedf159b99347689123e156c2bf2a2f8e852b49d8cab55be7e31cbfeee",
+      "four_state_log_sha256": "4a5f8d74480a701b579fbe9cc2235549843311e6ce6667f6f5a8992f9ed455f8"
+    },
+    {
+      "mode": "generic",
+      "base_width": 29,
+      "passed": true,
+      "four_state_checks": 16004,
+      "formal_log_sha256": "6b97d4b009e17e6504f82cdfe20f50e8964c8285e20b41ac63aa94261403ea4c",
+      "four_state_log_sha256": "1c7d99914725db6d3d6d1779a7c4a1fc6428845dace5ec7837fc30f525fbcb8d"
+    },
+    {
+      "mode": "generic",
+      "base_width": 32,
+      "passed": true,
+      "four_state_checks": 16388,
+      "formal_log_sha256": "64d86a5e25968b3f726506896154c1e21cc93226b2b895f5ffc1fd3ba216eb24",
+      "four_state_log_sha256": "061a5227202d3cb41141036bcc5cc3fae09c8c3b3be4eb3253c5fbb3d78f7514"
+    },
+    {
+      "mode": "generic",
+      "base_width": 40,
+      "passed": true,
+      "four_state_checks": 17412,
+      "formal_log_sha256": "deb61c8b154ba27ba2b7c3c0a3bf003b7dec4c0c522427879cfb9f324853fbb5",
+      "four_state_log_sha256": "29e572d12dc911ddab7240f282c6591d2d0eb58abdd99cb03276e094671c266b"
+    },
+    {
+      "mode": "generic",
+      "base_width": 64,
+      "passed": true,
+      "four_state_checks": 20484,
+      "formal_log_sha256": "11b146626fc2755240ead1ebcaa69d73e8eb143907cada5e7d925cd4a7b62951",
+      "four_state_log_sha256": "60f78a083bc7e1d3ed5076febb1427c73a0fb8013689122d1aaba16e30cb84a3"
+    },
+    {
+      "mode": "fpga",
+      "base_width": 1,
+      "passed": true,
+      "four_state_checks": 12420,
+      "formal_log_sha256": "0bd80f92765b7d456f43cd39c8d8426b3218dd0b98c339828baeb2a57c464154",
+      "four_state_log_sha256": "3d3b33ec86b88899955deea4612e2454e2bfe154eb70f1d80f9e4dc76f38064f"
+    },
+    {
+      "mode": "fpga",
+      "base_width": 8,
+      "passed": true,
+      "four_state_checks": 13316,
+      "formal_log_sha256": "1ef7b9d98894a933754d5a3e0d46016c0868b8b40a44958cb7527b773c6308cd",
+      "four_state_log_sha256": "ed7eb2a23e68351c7b8180c2aa17e8d25bf6a6633bf50bc7491b2f0ba0023711"
+    },
+    {
+      "mode": "fpga",
+      "base_width": 16,
+      "passed": true,
+      "four_state_checks": 14340,
+      "formal_log_sha256": "1b3e2d2c0d32a05fcb2595e7053da46d49bb30ea61095fd4c35026f32f5c22a7",
+      "four_state_log_sha256": "6ca4e413793d6862bebc70846d5452325da33f78b0a7906bc5bbfbc4140649e0"
+    },
+    {
+      "mode": "fpga",
+      "base_width": 19,
+      "passed": true,
+      "four_state_checks": 14724,
+      "formal_log_sha256": "a1e73e508ac0fd34ce3252be8477f0458754fe016238765062e845801b1e44ac",
+      "four_state_log_sha256": "4a5f8d74480a701b579fbe9cc2235549843311e6ce6667f6f5a8992f9ed455f8"
+    },
+    {
+      "mode": "fpga",
+      "base_width": 29,
+      "passed": true,
+      "four_state_checks": 16004,
+      "formal_log_sha256": "3c9c9cabc7887134e7f287d36e4406e57d4de7134e6d2726b762bcb0dca31c36",
+      "four_state_log_sha256": "1c7d99914725db6d3d6d1779a7c4a1fc6428845dace5ec7837fc30f525fbcb8d"
+    },
+    {
+      "mode": "fpga",
+      "base_width": 32,
+      "passed": true,
+      "four_state_checks": 16388,
+      "formal_log_sha256": "361ce34c10f3ccbdf61f2b95488af4dbec6e344ded09359766c5617e68a1d032",
+      "four_state_log_sha256": "061a5227202d3cb41141036bcc5cc3fae09c8c3b3be4eb3253c5fbb3d78f7514"
+    },
+    {
+      "mode": "fpga",
+      "base_width": 40,
+      "passed": true,
+      "four_state_checks": 17412,
+      "formal_log_sha256": "d82608c3eaa789536246d59a57bf1ddd6e00babf8606dd73d1728211b0ec927e",
+      "four_state_log_sha256": "29e572d12dc911ddab7240f282c6591d2d0eb58abdd99cb03276e094671c266b"
+    },
+    {
+      "mode": "fpga",
+      "base_width": 64,
+      "passed": true,
+      "four_state_checks": 20484,
+      "formal_log_sha256": "f478984c3ab4a3adf78e6b2db966ab3ce1073d659970768ddd1b66aecc20c622",
+      "four_state_log_sha256": "60f78a083bc7e1d3ed5076febb1427c73a0fb8013689122d1aaba16e30cb84a3"
+    }
+  ],
+  "four_state_checks": 250176,
+  "source_sha256": {
+    "rtl/npu/top/npu_bias_execution_address.sv": "f0678777c9141a2c5ea5cb3acd557cd408e5c694d8745613eab04003dda4e7c6",
+    "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+    "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+  },
+  "matrix_binding_checked": true,
+  "matrix_sha256": "7a0cad22fb1528cf82f05bea2a030f231624811ef41c894d4932dfacbf8b969a",
+  "runner_sha256": "1234a894b4a4b8fbdc1637f0cbb6f7ae6b24a825081b26b1a37bbb95228053a9"
+}

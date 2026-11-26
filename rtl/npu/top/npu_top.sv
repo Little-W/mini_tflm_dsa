@@ -58,24 +58,24 @@ module npu_top #(
 
     //==== 外部控制接口 ====
     input wire logic cfg_operand_fetch64, // 0：16 字节扇区；1：64 字节读取范围。
-    input wire logic cfg_lhs_tile_packed = 1'b0,
-    input wire logic cfg_rhs_tile_packed = 1'b0,
-    input wire logic cfg_conv_enable = 1'b0,
-    input wire conv_im2col_pkg::conv_cfg_t cfg_conv = '0,
-    input wire logic cfg_vector_enable = 1'b0,
-    input wire vector_engine_pkg::vector_engine_cfg_t cfg_vector = '0,
+    input wire logic cfg_lhs_tile_packed = 1'b0, // 左操作数采用分块打包存储。
+    input wire logic cfg_rhs_tile_packed = 1'b0, // 右操作数采用分块打包存储。
+    input wire logic cfg_conv_enable = 1'b0, // 启用卷积窗口展开。
+    input wire conv_im2col_pkg::conv_cfg_t cfg_conv = '0, // 卷积的图像、卷积核及步长配置。
+    input wire logic cfg_vector_enable = 1'b0, // 启用向量计算任务。
+    input wire vector_engine_pkg::vector_engine_cfg_t cfg_vector = '0, // 向量运算及其地址配置。
     input wire logic calc_start,  // 计算开始信号
     input wire logic cfg_16bits_ia,  // 使用16位IA数据
     input wire logic cfg_16x8,  // TFLM 16 位激活、8 位权重、32 位偏置和 16 位输出。
-    input wire logic cfg_dataflow_mode,  // 0: WS, 1: IS
+    input wire logic cfg_dataflow_mode,  // 0: WS, 1: IS 请求的数据流模式，置位选择输入驻留。
     input wire logic [REG_WIDTH-1:0] cfg_ia_reuse_num,  // IA L1 组复用深度，ABI 2: 外部写入最终生效值，0 非法
     input wire logic [REG_WIDTH-1:0] cfg_w_reuse_num,   // W 侧复用窗口，ABI 2: 外部写入最终生效值，0 非法
-    input wire logic [REG_WIDTH-1:0] cfg_row_groups,
-    input wire logic [REG_WIDTH-1:0] cfg_row_tail_tiles,
-    input wire logic [REG_WIDTH-1:0] cfg_col_groups,
-    input wire logic [REG_WIDTH-1:0] cfg_col_tail_tiles,
-    input wire logic [31:0] cfg_ps_control = 32'd0,
-    input wire logic [31:0] cfg_shared_ia_banks = 32'd0,
+    input wire logic [REG_WIDTH-1:0] cfg_row_groups, // 流式维度的分块组数，WS 对应输出行，IS 对应输出列。
+    input wire logic [REG_WIDTH-1:0] cfg_row_tail_tiles, // 最后一个流式维度分组的有效分块数。
+    input wire logic [REG_WIDTH-1:0] cfg_col_groups, // 驻留维度的分块组数，WS 对应输出列，IS 对应输出行。
+    input wire logic [REG_WIDTH-1:0] cfg_col_tail_tiles, // 最后一个驻留维度分组的有效分块数。
+    input wire logic [31:0] cfg_ps_control = 32'd0, // 部分和容量及存储格式控制字段。
+    input wire logic [31:0] cfg_shared_ia_banks = 32'd0, // 为输入激活分配的共享存储分组数。
     output logic sa_ready,  // 系统就绪信号
 
     //==== 完成握手接口 ====
@@ -109,36 +109,36 @@ module npu_top #(
     input wire logic [REG_WIDTH-1:0] rhs_col_stride_b,  // 转置后 B 的列步长（MULT_RHS_ROW_STRIDE）
 
     // 激活范围
-    input wire logic signed [REG_WIDTH-1:0] act_min,  // (MULT_ACT_MIN)
-    input wire logic signed [REG_WIDTH-1:0] act_max,  // (MULT_ACT_MAX)
+    input wire logic signed [REG_WIDTH-1:0] act_min,  // (MULT_ACT_MIN) 输出激活值的下限。
+    input wire logic signed [REG_WIDTH-1:0] act_max,  // (MULT_ACT_MAX) 输出激活值的上限。
 
     //==== AXI4 master 接口 ====
-    output logic                   m_axi_arvalid,
-    input wire logic                   m_axi_arready,
-    output logic [  REG_WIDTH-1:0] m_axi_araddr,
-    output logic [            7:0] m_axi_arlen,
-    output logic [            2:0] m_axi_arsize,
-    output logic [            1:0] m_axi_arburst,
-    input wire logic                   m_axi_rvalid,
-    output logic                   m_axi_rready,
-    input wire logic [  BUS_WIDTH-1:0] m_axi_rdata,
-    input wire logic [            1:0] m_axi_rresp,
-    input wire logic                   m_axi_rlast,
+    output logic                   m_axi_arvalid, // AXI 主接口：读地址请求有效。
+    input wire logic                   m_axi_arready, // AXI 主接口：能够接收读地址请求。
+    output logic [  REG_WIDTH-1:0] m_axi_araddr, // AXI 主接口：读事务起始字节地址。
+    output logic [            7:0] m_axi_arlen, // AXI 主接口：读突发的传输拍数减一。
+    output logic [            2:0] m_axi_arsize, // AXI 主接口：每拍读取字节数的二进制对数。
+    output logic [            1:0] m_axi_arburst, // AXI 主接口：读事务的突发类型。
+    input wire logic                   m_axi_rvalid, // AXI 主接口：返回的读取数据有效。
+    output logic                   m_axi_rready, // AXI 主接口：能够接收读取响应。
+    input wire logic [  BUS_WIDTH-1:0] m_axi_rdata, // AXI 主接口：读取响应的数据。
+    input wire logic [            1:0] m_axi_rresp, // AXI 主接口：读取响应的状态编码。
+    input wire logic                   m_axi_rlast, // AXI 主接口：当前读突发的最后一拍。
 
-    output logic                   m_axi_awvalid,
-    input wire logic                   m_axi_awready,
-    output logic [  REG_WIDTH-1:0] m_axi_awaddr,
-    output logic [            7:0] m_axi_awlen,
-    output logic [            2:0] m_axi_awsize,
-    output logic [            1:0] m_axi_awburst,
-    output logic                   m_axi_wvalid,
-    input wire logic                   m_axi_wready,
-    output logic [  BUS_WIDTH-1:0] m_axi_wdata,
-    output logic [BUS_WIDTH/8-1:0] m_axi_wstrb,
-    output logic                   m_axi_wlast,
-    input wire logic                   m_axi_bvalid,
-    output logic                   m_axi_bready,
-    input wire logic [            1:0] m_axi_bresp
+    output logic                   m_axi_awvalid, // AXI 主接口：写地址请求有效。
+    input wire logic                   m_axi_awready, // AXI 主接口：能够接收写地址请求。
+    output logic [  REG_WIDTH-1:0] m_axi_awaddr, // AXI 主接口：写事务起始字节地址。
+    output logic [            7:0] m_axi_awlen, // AXI 主接口：写突发的传输拍数减一。
+    output logic [            2:0] m_axi_awsize, // AXI 主接口：每拍写入字节数的二进制对数。
+    output logic [            1:0] m_axi_awburst, // AXI 主接口：写事务的突发类型。
+    output logic                   m_axi_wvalid, // AXI 主接口：写入数据有效。
+    input wire logic                   m_axi_wready, // AXI 主接口：能够接收写入数据。
+    output logic [  BUS_WIDTH-1:0] m_axi_wdata, // AXI 主接口：写入的数据。
+    output logic [BUS_WIDTH/8-1:0] m_axi_wstrb, // AXI 主接口：各字节的写入使能。
+    output logic                   m_axi_wlast, // AXI 主接口：当前写突发的最后一拍。
+    input wire logic                   m_axi_bvalid, // AXI 主接口：写事务的完成响应有效。
+    output logic                   m_axi_bready, // AXI 主接口：能够接收写完成响应。
+    input wire logic [            1:0] m_axi_bresp // AXI 主接口：写事务完成状态编码。
 );
 
 `ifdef GEMMORA_INT8_PROFILE
@@ -277,11 +277,8 @@ module npu_top #(
     logic [32:0] vector_dma_range_end [4];
     logic [32:0] selected_range_end [4];
 
-    assign vector_start_fire = VECTOR_ENGINE_CAPABLE && calc_start && sa_ready &&
-        cfg_vector_enable && !cfg_conv_enable;
     // 后台通道全部空闲后保存接收资格，接收新任务的边沿立即清除该状态。
     // 当前故障和中止状态继续直接禁止接收，任务字段仅在公开握手时保存。
-    assign sa_ready = task_accept_ready && abort_state == AB_IDLE && !task_fault;
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             task_accept_ready <= 1'b0;
@@ -772,10 +769,14 @@ module npu_top #(
     logic ps_capacity_fault;
     logic block_dma_arbiter_i_abort;
 
-    // 各运算来源并行汇总故障，中止状态持续保持至当前任务结束。
-    assign task_fault = ps_capacity_fault || shared_ram_capacity_fault || vector_shared_store_o_error || dma_bus_error ||
-                        (frame_mode_q && inner_done_valid && (inner_err_code != 2'b00)) ||
-                        ((run_conv || run_vector) && conv_error);
+    npu_task_accept_qualify #(.p_vector_capable(VECTOR_ENGINE_CAPABLE), .p_exclusive_vector(1'b1)) u_task_accept (
+        .i_accept_ready(task_accept_ready), .i_abort_idle(abort_state == AB_IDLE),
+        .i_run_conv(run_conv), .i_run_vector(run_vector), .i_conv_error(conv_error),
+        .i_fault({ps_capacity_fault, shared_ram_capacity_fault, vector_shared_store_o_error, dma_bus_error,
+            frame_mode_q && inner_done_valid && (inner_err_code != 2'b00)}),
+        .i_calc_start(calc_start), .i_vector_enable(cfg_vector_enable), .i_conv_enable(cfg_conv_enable),
+        .o_ready(sa_ready), .o_vector_start(vector_start_fire), .o_fault(task_fault)
+    );
     // 全局中止由已保存的任务状态驱动；总线错误仍由 DMA 本地同周期阻止接收。
     assign block_dma_arbiter_i_abort = abort_pending;
     logic controller_done_valid;
@@ -1122,7 +1123,8 @@ module npu_top #(
         vector_shared_store #(
             .p_bank_bytes(SHARED_BANK_BYTES), .p_total_bytes(SHARED_TOTAL_BYTES),
             .p_addr_width(SHARED_IA_ADDR_WIDTH), .p_bank_count_width(SHARED_PHYSICAL_BANKS_WIDTH),
-            .p_fixed_ps_channels(p_fixed_ps_channels)
+            .p_fixed_ps_channels(p_fixed_ps_channels),
+            .p_weight_nonempty_writes(1'b1)
         ) u_vector_shared_store (
             .clk(clk), .rst_n(core_rst_n),
             .i_cfg_valid(vector_shared_store_i_cfg_valid), .i_cfg_ia_banks(vector_shared_store_i_cfg_ia_banks),
@@ -1156,7 +1158,9 @@ module npu_top #(
                 .p_bank_bytes(SHARED_BANK_BYTES), .p_total_bytes(SHARED_TOTAL_BYTES),
                 .p_addr_width(SHARED_IA_ADDR_WIDTH), .p_bank_count_width(SHARED_PHYSICAL_BANKS_WIDTH),
                 .p_shared_write_stage(1'b1),
-                .p_ia_nonempty_writes(1'b1)
+                .p_ia_nonempty_writes(1'b1),
+                .p_allow_inactive_return_updates(1'b1),
+                .p_paired_ia_ports(SHARED_MAX_IA_BANKS == 2)
             ) u_ram (
                 .clk(clk), .rst_n(core_rst_n),
                 .i_access_enable(ram_access_en),

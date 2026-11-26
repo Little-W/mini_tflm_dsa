@@ -35,6 +35,8 @@
 
 `run_context_formal.py` 检查实际调度器和顶层帧参数的接收关系。`run_npu.py` 执行 FPGA 配置的功能、容量、输出和分块布局测试。ASIC 配置由 `test/asic_integration/run.py` 执行相同类型的完整 NPU 检查。
 
+分块布局集合包含十二个 `33×35×51` 矩阵任务，组合 WS/IS、INT8/INT16 左操作数，以及输入分块、权重分块和两者同时分块三种布局。任务从仿真程序 `build.json` 读取 `IA_COMPACT_ENABLE`，按实际输入格式选择共享存储块；当前非紧凑配置使用两个输入存储块。`1d2f7f6a` RTL 的 FPGA 与 ASIC 仿真程序均通过十二项任务，各检查 20,196 个 INT32 累加值，任务周期合计为 123,537。观察器检查 252 帧的地址和缓存槽号，其中 WS 为 144 帧，IS 为 108 帧，INT16 左操作数为 126 帧；每帧准备时间均为十二个周期。结果和源文件校验值保存在 `test/ps_compression/input_configuration_validation.json`。
+
 ```sh
 python3 test/frame_address/run.py --out build/frame_address/asic \
   --pipeline-products 1 --ready-mask-abort 1 --asic
