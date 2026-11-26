@@ -10,15 +10,15 @@ module ws_systolic_cell #(
     parameter int unsigned ACC_WIDTH     = 32,  // 累加/输出位宽，默认32位
     parameter bit p_exchange_weights = 1'b1
 ) (
-    input  wire logic                            clk,
-    input  wire logic                            commit_weight,
+    input  wire logic                            clk, // 模块工作时钟。
+    input  wire logic                            commit_weight, // 将预取权重切换为当前计算权重。
     input  wire logic                            store_weight_req,  // 置位时加载新权重
-    input  wire logic signed [ WEIGHT_WIDTH-1:0] weight_in,
-    input  wire logic signed [DATA_IN_WIDTH-1:0] data_in,
-    input  wire logic signed [    ACC_WIDTH-1:0] sum_in,
-    output logic signed [DATA_IN_WIDTH-1:0] data_out,
-    output logic signed [ WEIGHT_WIDTH-1:0] weight_out,
-    output logic signed [    ACC_WIDTH-1:0] sum_out
+    input  wire logic signed [ WEIGHT_WIDTH-1:0] weight_in, // 本周期装入的逐列有符号权重。
+    input  wire logic signed [DATA_IN_WIDTH-1:0] data_in, // 送入计算单元的有符号输入数据。
+    input  wire logic signed [    ACC_WIDTH-1:0] sum_in, // 各计算通道的累加初值。
+    output logic signed [DATA_IN_WIDTH-1:0] data_out, // 经过本单元寄存后传向下一行的输入数据。
+    output logic signed [ WEIGHT_WIDTH-1:0] weight_out, // 传向下一行的预取权重。
+    output logic signed [    ACC_WIDTH-1:0] sum_out // 各计算通道的乘加结果。
 );
 
     // 工作权重和预取权重分别寄存，数据及部分和按原有周期传递。

@@ -1,0 +1,162 @@
+{
+  "passed": true,
+  "source_commit": "1d2f7f6a161618f7ae4705331f7aae106b733f39",
+  "reference_commit": "685a48415e1848e108552f1bea5072636fe0b9ad",
+  "capacity_sources_equal": [
+    {
+      "path": "rtl/npu/top/npu_top.sv",
+      "reference_sha256": "39935114ca8a4b528f2ee2088e66fa8cf3b4027b4b0ef8ed5807c3cae8b46e90",
+      "tested_sha256": "39935114ca8a4b528f2ee2088e66fa8cf3b4027b4b0ef8ed5807c3cae8b46e90",
+      "equal": true
+    },
+    {
+      "path": "rtl/npu/top/npu_matrix_engine.sv",
+      "reference_sha256": "a8d9fc247198d67c8b50bb5ade58d4f9a4af3d81efeb8b42ade4850ef439db2b",
+      "tested_sha256": "a8d9fc247198d67c8b50bb5ade58d4f9a4af3d81efeb8b42ade4850ef439db2b",
+      "equal": true
+    },
+    {
+      "path": "rtl/npu/top/npu_task_configuration.sv",
+      "reference_sha256": "d1dcdb6b2ac3d7f3f01c4307d7d52118f40519a1ca39df159edffb8eb15d5057",
+      "tested_sha256": "d1dcdb6b2ac3d7f3f01c4307d7d52118f40519a1ca39df159edffb8eb15d5057",
+      "equal": true
+    },
+    {
+      "path": "rtl/npu/control/ps_capacity_limits.sv",
+      "reference_sha256": "d12894a7a56d725dd4149646868ac5a8c8e52bd92c51b2cfa0946238979b2d98",
+      "tested_sha256": "d12894a7a56d725dd4149646868ac5a8c8e52bd92c51b2cfa0946238979b2d98",
+      "equal": true
+    },
+    {
+      "path": "rtl/npu/ps_compact/ps_frame_store.sv",
+      "reference_sha256": "7e25904ac9d6dcd38f23aa074604273be77c548eb54fd8cb7516e317cfc3ef91",
+      "tested_sha256": "7e25904ac9d6dcd38f23aa074604273be77c548eb54fd8cb7516e317cfc3ef91",
+      "equal": true
+    }
+  ],
+  "runner_sources_sha256": {
+    "test/ps_capacity_limits/run_npu.py": "45d0d39c6f70a82483bb3ce877d8450e85897c40322c98cf9a992a5d6b35f758",
+    "test/ps_capacity_limits/test_runner.py": "a0bdde7b0fb514ab7ae98fcf54756700ad403914cbdee75c8ed85730f0fc2622",
+    "test/ps_capacity_limits/README.md": "fd071f6b06e283e8f1a489db000b55c8da4c4a3cbf16a53eb344a4a3aaa80419"
+  },
+  "unit_tests": {
+    "passed": true,
+    "count": 10,
+    "log": "/workspace/scratch/75105476d0fd/measurements/native_capacity_profile/unit_tests.log",
+    "log_sha256": "18994db33c6e2b2d028b632fd51c296a48f96f5202f0bfb42f5191008ad84493"
+  },
+  "runs": [
+    {
+      "mode": "fpga",
+      "passed": true,
+      "summary": "/workspace/scratch/75105476d0fd/measurements/native_capacity_profile/fpga/summary.json",
+      "summary_sha256": "8350f07b2c56362ff8475f68a5d9470afebece8ecbfd69b033e249d486d9c92c",
+      "manifest": "/workspace/scratch/75105476d0fd/measurements/native_fpga_integration/npu/s16/build.json",
+      "manifest_sha256": "2612b4f1ca302b54a95ae6927b4683b7de43b8a2fd7c90f7c4bbf77975dcbf09",
+      "binary_sha256": "33e90115c8c2fa4144593cafe50e6778c6e79ddc76931573cf413eb35dd11cb5",
+      "hardware_profile": {
+        "size": 16,
+        "shared_bank_bytes": 8192,
+        "shared_bank_count": 7,
+        "ia_compact_enable": 0,
+        "ps_frame_count": 16,
+        "ps_storage_rows": 799,
+        "oa_s16_fifo_banks_max": 4,
+        "address_width": 32,
+        "vector_pe_count": 8,
+        "ia_block_bytes": 512,
+        "ia_blocks_per_bank": 16,
+        "maximum_ia_banks": 2,
+        "maximum_ia_reuse": 16,
+        "maximum_w_reuse": 16,
+        "maximum_frame_rows": 256,
+        "physical_bank_words": 512,
+        "matrix_requant_compute_lanes": 2,
+        "minimum_noncompact_ia_banks": 2,
+        "formulas": {
+          "ia_blocks_per_bank": "shared_bank_bytes / (size * size * 2)",
+          "active_compact": "ia_compact_enable and (dataflow == IS or lhs_dtype == INT8)",
+          "input_reuse_limit": "ia_banks * ia_blocks_per_bank / (active_compact ? 1 : 2)",
+          "maximum_w_reuse": "ps_frame_count",
+          "maximum_frame_rows": "maximum_ia_reuse * size",
+          "frame_rows_limit": "min(maximum_frame_rows, floor(ps_banks * floor(physical_bank_words / frames) / 4))"
+        }
+      },
+      "completed_cases": 31,
+      "int32_checks": 192822,
+      "original_int32_checks": 173642,
+      "boundary_int32_checks": 19180,
+      "sum_case_cycles": 807053,
+      "case_specifications_match_current_generator": true,
+      "expected_errors_match": true
+    },
+    {
+      "mode": "asic",
+      "passed": true,
+      "summary": "/workspace/scratch/75105476d0fd/measurements/native_capacity_profile/asic/summary.json",
+      "summary_sha256": "60b5d0dd4a0681852b8eef2eeabb0ef4cdef4bd7f498bf221374d681c1603e80",
+      "manifest": "/workspace/scratch/75105476d0fd/measurements/native_asic_integration/npu/s16/build.json",
+      "manifest_sha256": "5a1d469ddd95acf2cbe37f8d850266f56c171d2e4c97601c86b126253995c0c8",
+      "binary_sha256": "d67b2f7adcb29f34be3903c06eefe9c4ac2d6e2d0e4aa6a1ff90a83006b2e3f6",
+      "hardware_profile": {
+        "size": 16,
+        "shared_bank_bytes": 8192,
+        "shared_bank_count": 7,
+        "ia_compact_enable": 0,
+        "ps_frame_count": 16,
+        "ps_storage_rows": 0,
+        "oa_s16_fifo_banks_max": 0,
+        "address_width": 19,
+        "vector_pe_count": 16,
+        "ia_block_bytes": 512,
+        "ia_blocks_per_bank": 16,
+        "maximum_ia_banks": 2,
+        "maximum_ia_reuse": 16,
+        "maximum_w_reuse": 16,
+        "maximum_frame_rows": 256,
+        "physical_bank_words": 512,
+        "matrix_requant_compute_lanes": 2,
+        "minimum_noncompact_ia_banks": 2,
+        "formulas": {
+          "ia_blocks_per_bank": "shared_bank_bytes / (size * size * 2)",
+          "active_compact": "ia_compact_enable and (dataflow == IS or lhs_dtype == INT8)",
+          "input_reuse_limit": "ia_banks * ia_blocks_per_bank / (active_compact ? 1 : 2)",
+          "maximum_w_reuse": "ps_frame_count",
+          "maximum_frame_rows": "maximum_ia_reuse * size",
+          "frame_rows_limit": "min(maximum_frame_rows, floor(ps_banks * floor(physical_bank_words / frames) / 4))"
+        }
+      },
+      "completed_cases": 31,
+      "int32_checks": 192822,
+      "original_int32_checks": 173642,
+      "boundary_int32_checks": 19180,
+      "sum_case_cycles": 807053,
+      "case_specifications_match_current_generator": true,
+      "expected_errors_match": true
+    }
+  ],
+  "asic_fpga_case_cycles_equal": true,
+  "original_cases": {
+    "count": 21,
+    "unchanged_input_and_numeric_reference_files": 84,
+    "summary": "/workspace/scratch/75105476d0fd/measurements/native_capacity_profile/original_inputs.json",
+    "summary_sha256": "32068002e07f37f36ca289607e402c3d0a880f24292c5207e17fd89e63e18cfe"
+  },
+  "reference_valid_capacity_cases": {
+    "passed": true,
+    "count": 18,
+    "summary": "/workspace/scratch/75105476d0fd/measurements/native_capacity_profile/reference_685_scalar/summary.json",
+    "summary_sha256": "c3adc117370a6a15764ef4e517851e0c4c00e042398b990ec0cbc83e2a952911",
+    "scope": "完整生产 NPU 的18项合法容量任务；矩阵、存储分配与窗口配置保持相同，量化采用现有参考testbench的逐张量接口",
+    "quantization": {
+      "use_per_channel": 0,
+      "output_offset": 0,
+      "multiplier": 1073741824,
+      "shift_s8": -10,
+      "shift_s16": -21,
+      "activation_min": -128,
+      "activation_max": 127,
+      "golden_calculation": "从原输入的INT32累加参考值独立执行cmsis_nn_requantize并限幅"
+    }
+  }
+}

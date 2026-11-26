@@ -1,0 +1,548 @@
+{
+  "passed": true,
+  "reference": "05c9b052",
+  "source_sha256": {
+    "rtl/npu/ps_compact/ps_frame_store.sv": "b2ec6807a027bcea52ff173b4820a94148ffaab639f87d6be52affb44ef12c8a",
+    "rtl/npu/ps_compact/ps_frame_ready_select.sv": "f58ab73fbef2e9bdf894b5b2f7c77e1f68fc7373ff4474301e4d45ccbac60919",
+    "rtl/npu/ps_compact/ps_frame_address_increment.sv": "3288752fc9390c44a3d149c92b953339a440cf749e0e8e9221b1600ecbee08d2"
+  },
+  "complete_modules": {
+    "generic": {
+      "reference": "05c9b052",
+      "compilation_mode": "generic",
+      "compilation_definitions": [
+        "-USYNTHESIS",
+        "-UXILINX_FPGA"
+      ],
+      "input_value_constraints": null,
+      "all_public_outputs_compared_each_cycle": true,
+      "runs": [
+        {
+          "case": "production",
+          "top": "ps_frame_store",
+          "parameters": {
+            "MAX_FRAME_ROWS": 256,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 49152,
+            "BANK_BYTES": 8192,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 1
+          },
+          "passed": true,
+          "equivalent_bits": 8330,
+          "source_sha256": {
+            "rtl/npu/ps_compact/ps_frame_store.sv": "b2ec6807a027bcea52ff173b4820a94148ffaab639f87d6be52affb44ef12c8a",
+            "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+            "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+            "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+            "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+            "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+            "rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+            "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+            "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+            "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+            "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+            "rtl/common/parallel_equal.sv": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d",
+            "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+            "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+            "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+            "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+            "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+            "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+            "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+            "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+            "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+            "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+            "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+            "rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+            "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+          },
+          "reference_sha256": "a35ca9144cdba08bf2f91af3fc412d608a0afbc89757967111d16e00bdbbd4ce",
+          "script_sha256": "302c00305ff3c745e52debc613e128125583ab26cbd049aabcc880d207164b83",
+          "log_sha256": "95cf74f7332a6a5903c295ee2dcb2a24dfa0b0f3848fcd25197de569ea14539f"
+        },
+        {
+          "case": "compact",
+          "top": "ps_frame_store",
+          "parameters": {
+            "MAX_FRAME_ROWS": 512,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 49152,
+            "BANK_BYTES": 8192,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 1
+          },
+          "passed": true,
+          "equivalent_bits": 8459,
+          "source_sha256": {
+            "rtl/npu/ps_compact/ps_frame_store.sv": "b2ec6807a027bcea52ff173b4820a94148ffaab639f87d6be52affb44ef12c8a",
+            "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+            "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+            "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+            "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+            "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+            "rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+            "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+            "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+            "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+            "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+            "rtl/common/parallel_equal.sv": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d",
+            "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+            "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+            "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+            "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+            "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+            "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+            "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+            "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+            "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+            "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+            "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+            "rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+            "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+          },
+          "reference_sha256": "a35ca9144cdba08bf2f91af3fc412d608a0afbc89757967111d16e00bdbbd4ce",
+          "script_sha256": "e5bec00d4c4a78b446854373187bb5f9f5dc20e3172a01955afcc4a9902985f1",
+          "log_sha256": "6b92f468c352e9c9f12cf56866b149fa534cd9f119475bfc0d174c08e2a6b106"
+        },
+        {
+          "case": "internal",
+          "top": "ps_frame_store",
+          "parameters": {
+            "MAX_FRAME_ROWS": 47,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 4096,
+            "BANK_BYTES": 2048,
+            "EXTERNAL_RAM": 0
+          },
+          "passed": true,
+          "equivalent_bits": 41284,
+          "source_sha256": {
+            "rtl/npu/ps_compact/ps_frame_store.sv": "b2ec6807a027bcea52ff173b4820a94148ffaab639f87d6be52affb44ef12c8a",
+            "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+            "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+            "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+            "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+            "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+            "rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+            "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+            "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+            "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+            "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+            "rtl/common/parallel_equal.sv": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d",
+            "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+            "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+            "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+            "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+            "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+            "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+            "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+            "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+            "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+            "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+            "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+            "rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+            "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+          },
+          "reference_sha256": "a35ca9144cdba08bf2f91af3fc412d608a0afbc89757967111d16e00bdbbd4ce",
+          "script_sha256": "efd8ca3a0f936dc61d4d932f6f51eb743799a1e083211b1e12f1fbac17c056a6",
+          "log_sha256": "2589abeab1a930d9b1b6a3336efd8353b0e5f319ece67b058cc02c0c00938fbd"
+        },
+        {
+          "case": "rotating",
+          "top": "ps_frame_store",
+          "parameters": {
+            "MAX_FRAME_ROWS": 16,
+            "FRAME_COUNT": 4,
+            "POOL_BYTES": 14336,
+            "BANK_BYTES": 2048,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 0
+          },
+          "passed": true,
+          "equivalent_bits": 6917,
+          "source_sha256": {
+            "rtl/npu/ps_compact/ps_frame_store.sv": "b2ec6807a027bcea52ff173b4820a94148ffaab639f87d6be52affb44ef12c8a",
+            "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+            "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+            "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+            "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+            "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+            "rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+            "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+            "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+            "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+            "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+            "rtl/common/parallel_equal.sv": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d",
+            "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+            "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+            "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+            "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+            "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+            "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+            "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+            "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+            "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+            "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+            "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+            "rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+            "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+          },
+          "reference_sha256": "a35ca9144cdba08bf2f91af3fc412d608a0afbc89757967111d16e00bdbbd4ce",
+          "script_sha256": "ace4774b2abe7ca547cb99a1cf786b57cc6b87df9df3377e2765d5889ef4292f",
+          "log_sha256": "da19a526ee475f5eb57958c00769aed3e5781afdd2951b0a0a3251762aeeff2e"
+        }
+      ],
+      "passed": true
+    },
+    "fpga": {
+      "reference": "05c9b052",
+      "compilation_mode": "fpga",
+      "compilation_definitions": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1"
+      ],
+      "input_value_constraints": null,
+      "all_public_outputs_compared_each_cycle": true,
+      "runs": [
+        {
+          "case": "production",
+          "top": "ps_frame_store",
+          "parameters": {
+            "MAX_FRAME_ROWS": 256,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 49152,
+            "BANK_BYTES": 8192,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 1
+          },
+          "passed": true,
+          "equivalent_bits": 8144,
+          "source_sha256": {
+            "rtl/npu/ps_compact/ps_frame_store.sv": "b2ec6807a027bcea52ff173b4820a94148ffaab639f87d6be52affb44ef12c8a",
+            "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+            "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+            "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+            "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+            "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+            "rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+            "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+            "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+            "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+            "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+            "rtl/common/parallel_equal.sv": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d",
+            "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+            "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+            "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+            "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+            "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+            "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+            "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+            "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+            "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+            "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+            "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+            "rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+            "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+          },
+          "reference_sha256": "a35ca9144cdba08bf2f91af3fc412d608a0afbc89757967111d16e00bdbbd4ce",
+          "script_sha256": "ada4d04afe859cf45a743a312e0a41baaa9535f349166cf1be882947bf8a4122",
+          "log_sha256": "6bb1f850605095f39f323c92a51bbe9347bf6bf36406d553aefcfe4b41eab695"
+        },
+        {
+          "case": "compact",
+          "top": "ps_frame_store",
+          "parameters": {
+            "MAX_FRAME_ROWS": 512,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 49152,
+            "BANK_BYTES": 8192,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 1
+          },
+          "passed": true,
+          "equivalent_bits": 8288,
+          "source_sha256": {
+            "rtl/npu/ps_compact/ps_frame_store.sv": "b2ec6807a027bcea52ff173b4820a94148ffaab639f87d6be52affb44ef12c8a",
+            "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+            "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+            "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+            "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+            "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+            "rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+            "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+            "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+            "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+            "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+            "rtl/common/parallel_equal.sv": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d",
+            "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+            "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+            "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+            "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+            "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+            "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+            "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+            "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+            "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+            "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+            "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+            "rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+            "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+          },
+          "reference_sha256": "a35ca9144cdba08bf2f91af3fc412d608a0afbc89757967111d16e00bdbbd4ce",
+          "script_sha256": "f47af91ac0abe7ab0128913c6fb9df3cfb61609e3f9cce724c47527303c3b101",
+          "log_sha256": "78eb76e56738d553df90dbcfb30f4bb9a99fcec8d6f2a37ae9be9304ff0147cb"
+        },
+        {
+          "case": "internal",
+          "top": "ps_frame_store",
+          "parameters": {
+            "MAX_FRAME_ROWS": 47,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 4096,
+            "BANK_BYTES": 2048,
+            "EXTERNAL_RAM": 0
+          },
+          "passed": true,
+          "equivalent_bits": 41082,
+          "source_sha256": {
+            "rtl/npu/ps_compact/ps_frame_store.sv": "b2ec6807a027bcea52ff173b4820a94148ffaab639f87d6be52affb44ef12c8a",
+            "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+            "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+            "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+            "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+            "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+            "rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+            "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+            "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+            "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+            "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+            "rtl/common/parallel_equal.sv": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d",
+            "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+            "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+            "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+            "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+            "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+            "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+            "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+            "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+            "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+            "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+            "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+            "rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+            "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+          },
+          "reference_sha256": "a35ca9144cdba08bf2f91af3fc412d608a0afbc89757967111d16e00bdbbd4ce",
+          "script_sha256": "994eb244286850f6fa4515fa1c794d77090cb177c1f132622a169a685938e000",
+          "log_sha256": "d21025fb814c629ed4507e1b27c44944e44a44d602b1d8b98651417ccc819122"
+        },
+        {
+          "case": "rotating",
+          "top": "ps_frame_store",
+          "parameters": {
+            "MAX_FRAME_ROWS": 16,
+            "FRAME_COUNT": 4,
+            "POOL_BYTES": 14336,
+            "BANK_BYTES": 2048,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 0
+          },
+          "passed": true,
+          "equivalent_bits": 6884,
+          "source_sha256": {
+            "rtl/npu/ps_compact/ps_frame_store.sv": "b2ec6807a027bcea52ff173b4820a94148ffaab639f87d6be52affb44ef12c8a",
+            "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+            "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+            "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+            "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+            "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+            "rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+            "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+            "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+            "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+            "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+            "rtl/common/parallel_equal.sv": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d",
+            "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+            "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+            "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+            "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+            "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+            "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+            "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+            "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+            "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+            "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+            "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+            "rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+            "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+          },
+          "reference_sha256": "a35ca9144cdba08bf2f91af3fc412d608a0afbc89757967111d16e00bdbbd4ce",
+          "script_sha256": "785c834a9579c4867168cde9dd4860be62ff6de35b6bac31ab70b9ba7c54c8ba",
+          "log_sha256": "b59ceae9443d222658ca68e9e2ff9b0d2202faed49ec1a3df3b20bb8590d1982"
+        }
+      ],
+      "passed": true
+    }
+  },
+  "control": {
+    "passed": true,
+    "reference": "05c9b052",
+    "reference_sha256": "a35ca9144cdba08bf2f91af3fc412d608a0afbc89757967111d16e00bdbbd4ce",
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_store.sv": "b2ec6807a027bcea52ff173b4820a94148ffaab639f87d6be52affb44ef12c8a",
+      "/workspace/scratch/5bfa47658687/storage_work/ps_frame_ready/explicit_control/control.sv": "9c794fb8f9bc40db8d2b76f76cda18bdab420b69643f7f5b73e64eaea7f4dca7",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_ready_select.sv": "f58ab73fbef2e9bdf894b5b2f7c77e1f68fc7373ff4474301e4d45ccbac60919"
+    },
+    "input_constraints": [],
+    "controls_compared": 6,
+    "runs": [
+      {
+        "synthesis": false,
+        "passed": true,
+        "formal_log_sha256": "ea9c6e969c22993f4f4b9c6c1eb5f23a0c7d52560c943a74931cbcba6c9fe9b4",
+        "four_state_comparisons": 92162,
+        "four_state_log_sha256": "2005d4a7dd8dfb0a53c310bcc95d625d6fdae77aaf3f99603d28fb30d34924d1"
+      },
+      {
+        "synthesis": true,
+        "passed": true,
+        "formal_log_sha256": "f27968707e5f884798541d0df79b57dbcf7afefdcdfa5484d0c1150554a8fd63",
+        "four_state_comparisons": 92162,
+        "four_state_log_sha256": "2005d4a7dd8dfb0a53c310bcc95d625d6fdae77aaf3f99603d28fb30d34924d1"
+      }
+    ],
+    "test_sha256": "51d5430f1c6a4fc19b2fc6c90dd6b88189b5652b322c1eec9892c8b228fff177"
+  },
+  "layout": {
+    "passed": true,
+    "detection_examples": 13,
+    "design_rtl_files": 293,
+    "modules": 287,
+    "packages": 6,
+    "resource_flags": 0,
+    "explicit_fpga_primitives": 0,
+    "synthesis_inference_attributes": {
+      "rtl/common/parallel_prefix_native_differences.sv": [
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\""
+      ],
+      "rtl/common/parallel_prefix_native_sums.sv": [
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\""
+      ],
+      "rtl/common/regfile.v": [
+        "ram_style = p_ram_style"
+      ],
+      "rtl/npu/buffers/ia_ps_role_ram.sv": [
+        "ram_style = \"block\""
+      ],
+      "rtl/npu/compute/registered_vector_add.sv": [
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/conv/conv_im2col_geometry.sv": [
+        "ram_style = \"distributed\""
+      ],
+      "rtl/npu/conv/conv_im2col_sample_offsets.sv": [
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/conv/vector_activation_clamp.sv": [
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/conv/vector_banked_writeback.sv": [
+        "ram_style = \"block\""
+      ],
+      "rtl/npu/conv/vector_engine.sv": [
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/conv/vector_engine_address.sv": [
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/conv/vector_pe.sv": [
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/conv/vector_read_address_add.sv": [
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/dma/axi_linear_block_dma.sv": [
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/loaders/ia_loader.sv": [
+        "ram_style = \"block\""
+      ],
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": [
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\"",
+        "ram_style = \"block\""
+      ],
+      "rtl/npu/loaders/ia_loader_ctrl.sv": [
+        "ram_style = \"distributed\""
+      ],
+      "rtl/npu/loaders/ia_row_step_register.sv": [
+        "use_dsp = \"yes\""
+      ],
+      "rtl/npu/loaders/kernel_group_step.sv": [
+        "use_dsp = \"yes\""
+      ],
+      "rtl/npu/writeback/oa_writer.sv": [
+        "use_dsp = \"yes\""
+      ],
+      "rtl/soc/soc_axi_pingpong_chan.sv": [
+        "ram_style = \"distributed\""
+      ]
+    },
+    "multiple_definition_files": 0,
+    "filelists": [
+      {
+        "path": "asic/synthesis/filelists/npu_top.f",
+        "sources": 255,
+        "sha256": "b4636d10b6a723c0808ad5dd33de0f92524e4b407d36ff9115360cc510992745"
+      },
+      {
+        "path": "veri/flist/dut_axil.f",
+        "sources": 257,
+        "sha256": "f0f581baab6c8a87d9a57751d6aa4156c65e4b52e9befb9a4df03bea10e13b51"
+      }
+    ],
+    "preferred_module_lines": 1500,
+    "maximum_npu_source_lines": 1496,
+    "sources_above_preferred_length": {},
+    "vivado_sources": 295
+  },
+  "comments": {
+    "passed": true,
+    "modules": 293,
+    "ports": 5665,
+    "profiles": [
+      "generic",
+      "synthesis",
+      "riscv_formal",
+      "simulation_assertions",
+      "synthesis_assertions"
+    ],
+    "missing_module_headers": [],
+    "missing_port_comments": []
+  },
+  "source_lists": "独立布局检查临时加入两个辅助模块，正式工程源列表由主分支维护。",
+  "compilation_definitions": {
+    "generic": [
+      "-USYNTHESIS",
+      "-UXILINX_FPGA"
+    ],
+    "fpga": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1"
+    ]
+  },
+  "runner_sha256": {
+    "run_full.py": "7dd8be69aff0ba2ff0bafb9b8f00d121782f39549c9f275cba81d5f47632bdcc",
+    "run_control.py": "51d5430f1c6a4fc19b2fc6c90dd6b88189b5652b322c1eec9892c8b228fff177"
+  }
+}

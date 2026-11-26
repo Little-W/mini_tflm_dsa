@@ -77,9 +77,11 @@ python3 test/ps_capacity_limits/run_npu.py \
   --verilator verilator-modern --jobs 2 --bus-width 64
 ```
 
-该脚本生成 21 项 WS/IS 数值、分片尺寸、共享容量与非法配置检查。独立构建将 `npu_capacity_observer.sv` 绑定到 `npu_task_configuration`，读取实际容量信号并比较完整定宽算式。原始及长期容量比较要求配置第二级有效、存储块索引位于数组范围内且配置相位不小于 1，接收容量比较要求配置相位不小于 4。构建清单记录该观察器的文件摘要。共享存储采用 7 个 8192 字节物理存储块。
+该脚本先读取仿真程序的 `build.json`，再根据 `IA_COMPACT_ENABLE`、`PS_FRAME_COUNT`、物理存储块大小和数量生成用例。基本集合包含 21 项 WS/IS 数值、INT8/INT16 输入、分片尺寸、共享容量与非法配置检查；矩阵尺寸和独立数值参考保持固定，输入存储分配及复用数使用实际硬件允许的范围。脚本进一步检查 WS/IS 的最小合法复用、最大合法复用、零复用和越界复用。非紧凑配置还分别检查单个 IA 存储块被拒绝的情况，共执行 31 项检查。
 
-可通过 `--sim /path/to/simulator_directory` 复用容量 RTL 一致的生产仿真器，或通过 `--reference-sim /path/to/simulator_directory` 检查这些用例与既有生产版本的行为。两种复用方式均检查器件参数、64 位或 32 位总线、原始部分和配置及可执行文件摘要；`--sim` 还核对 `npu_top.sv`、`npu_task_configuration.sv` 和 `ps_capacity_limits.sv` 三个文件的 SHA-256。参考版本方式在结果中单独标记为用例预期检查。程序复用直接运行已构建的可执行文件，结果记录该程序实际使用的容量源码。
+独立构建将 `npu_capacity_observer.sv` 绑定到 `npu_task_configuration`，读取实际容量信号并比较完整定宽算式。原始及长期容量比较要求配置第二级有效、存储块索引位于数组范围内且配置相位不小于 1，接收容量比较要求配置相位不小于 4。构建清单记录该观察器的文件摘要。共享存储采用 7 个 8192 字节物理存储块。
+
+可通过 `--sim /path/to/simulator_directory` 复用容量 RTL 一致的生产仿真器，或通过 `--reference-sim /path/to/simulator_directory` 检查这些用例与既有生产版本的行为。两种复用方式均检查器件参数、64 位或 32 位总线、原始部分和配置及可执行文件摘要；`--sim` 还核对 `npu_top.sv`、`npu_matrix_engine.sv`、`npu_task_configuration.sv` 和 `ps_capacity_limits.sv` 四个文件的 SHA-256。参考版本方式在结果中单独标记为用例预期检查。程序复用直接运行已构建的可执行文件，结果记录实际硬件参数、生成公式、每项合法与非法条件及容量源码。
 
 ```sh
 python3 test/ps_capacity_limits/run_npu.py \
@@ -94,7 +96,18 @@ python3 test/ps_capacity_limits/check_observer_phase.py \
 
 观察器四态测试直接提取配置相位计数、行数与帧数保存、目录行数保存以及容量计算过程，覆盖 64 次配置、62 次连续配置、复位后首次采样和 128 次等待。645 个周期中完成 1152 次容量比较，并分别确认三项断言在各自有效阶段检测到输入不一致。结果及源码摘要保存在 `summary.json`。入口单元测试覆盖源码确认、可执行文件摘要、两种程序复用方式以及独立构建的观察器来源记录。
 
-21 项用例已在 64 位总线、7 个 8192 字节物理存储块、`force_raw=True` 的生产仿真器上通过，完成 173,642 次 INT32 累加值检查。`r=32`、`w=5`、515 行的任务通过逐帧执行完成，每种 WS/IS 模式产生 594 条帧命令。两项传统窗口模式的非法行复用配置返回容量错误，其余五项非法配置返回参数错误。数值结果、观察器相位检查及源码摘要汇总于 [npu_validation.json](npu_validation.json)。
+对于 `SIZE=16`、`IA_COMPACT_ENABLE=0`、`PS_FRAME_COUNT=16` 的生产配置，每个 8192 字节 IA 存储块包含 16 个 512 字节输入块。双缓冲使每个物理存储块支持 8 个复用 tile，合法任务至少分配两个 IA 存储块，因此最大复用数为 16。紧凑输入每块支持 16 个复用 tile；IS 的流式输入为 INT8 权重，WS 使用左操作数的实际位宽。
+
+| 容量条件 | 生产配置的检查结果 |
+| --- | --- |
+| 两个 IA 存储块，`r=1` 或 `r=16` | 合法，比较完整数值输出 |
+| `r=0` 或 `r=32` | 保存的目录步长为零，返回容量错误 2 |
+| 一个非紧凑 IA 存储块，`r=8` | 返回配置错误 1 |
+| 非法存储块数量、权重窗口或控制字段 | 返回配置错误 1 |
+
+共享原始部分和路径每帧最多保存 `MAX_IA_REUSE * SIZE = 256` 行，每个物理存储块具有 512 个 128 位存储字。对于 `frames > 0`，行数上限为 `min(256, floor(ps_banks * floor(512 / frames) / 4))`。结果同时记录实际 `PS_STORAGE_ROWS`、INT16 写回 FIFO 容量和矩阵量化并行度，便于识别完整仿真配置。
+
+31 项参数化用例分别用于 ASIC 和 FPGA 编译方式，每种方式比较 192,822 个 INT32 累加值。基本 21 项保留 173,642 个数值结果，新增边界用例覆盖 19,180 个数值结果；原有 84 份输入和独立数值参考文件逐字节保持相同。`r=16`、`w=5`、515 行的任务通过逐帧执行完成，每种 WS/IS 模式产生 594 条帧命令。各次完成情况、实际参数和结果保存在 [configuration_validation.json](configuration_validation.json)。
 
 ## 有界列数计算
 

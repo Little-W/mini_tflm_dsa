@@ -1,0 +1,372 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "rtl/npu/ps_compact/ps_frame_store.sv": "5ad0049b5ab9ae88d8248d5cf2f1ad3a62f8043da64ea07a96b2aaf992e4f171",
+    "rtl/npu/ps_compact/ps_frame_prepare_branch.sv": "9f21a51299a14b14b952f98ff2f777b87e0977109cbc499df172fbada816f907",
+    "rtl/npu/ps_compact/ps_frame_prepare_enable.sv": "da143792d121e8b74c1f633f697c039b335f179788807b2103fcd54e95001329"
+  },
+  "formal": [
+    {
+      "passed": true,
+      "reference": "d7cb67be",
+      "mode": "generic",
+      "definitions": [
+        "-USYNTHESIS",
+        "-UXILINX_FPGA"
+      ],
+      "source_sha256": {
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_store.sv": "5ad0049b5ab9ae88d8248d5cf2f1ad3a62f8043da64ea07a96b2aaf992e4f171",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_address_increment.sv": "3288752fc9390c44a3d149c92b953339a440cf749e0e8e9221b1600ecbee08d2",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_prepare_branch.sv": "9f21a51299a14b14b952f98ff2f777b87e0977109cbc499df172fbada816f907",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_prepare_enable.sv": "da143792d121e8b74c1f633f697c039b335f179788807b2103fcd54e95001329",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_ready_select.sv": "f58ab73fbef2e9bdf894b5b2f7c77e1f68fc7373ff4474301e4d45ccbac60919",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_raw_address.sv": "f8961aeeaec8bf938280d22f98deeffdb18f53fb1e4a19c93f05b04e24425024",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+      },
+      "source_input_constraints": null,
+      "invariant_start": "首次采样复位，随后全部外部输入及复位自由",
+      "parent_scope": "全部公开输出、共同状态和存储内容；采用此前从完整实际模块独立证明的两项内部状态关系",
+      "parent_state_relations": [
+        "request_qualified_q == (configuration_ready && request_pending_q && request_q.legal && request_fits_q)",
+        "request_pending_q -> (request_initial_or_other_q == (request_q.init || request_q.id != frame_id_q))"
+      ],
+      "profiles": [
+        {
+          "case": "production",
+          "parameters": {
+            "MAX_FRAME_ROWS": 256,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 49152,
+            "BANK_BYTES": 8192,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 1
+          },
+          "passed": true,
+          "equivalent_bits": 8330,
+          "invariant_log_sha256": "35fc519b5541bd5d3ed0f27d6c54a7c71badc2be5d6a0f55220509adbfe8dae6",
+          "parent_log_sha256": "5c0c6bf951c740c171bac86156c7a5e99c474c7768d2dc05954ba7ddf1d78d81"
+        },
+        {
+          "case": "compact",
+          "parameters": {
+            "MAX_FRAME_ROWS": 512,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 49152,
+            "BANK_BYTES": 8192,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 1
+          },
+          "passed": true,
+          "equivalent_bits": 8459,
+          "invariant_log_sha256": "faef193e00fbfd6eda8fadf262f9032f110b0ecb206bc77398333907270821bf",
+          "parent_log_sha256": "7aca88e0493fdfd910e841aa5a1be50dd224fdaaeea7bf5820146129fa017524"
+        },
+        {
+          "case": "internal",
+          "parameters": {
+            "MAX_FRAME_ROWS": 47,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 4096,
+            "BANK_BYTES": 2048,
+            "EXTERNAL_RAM": 0
+          },
+          "passed": true,
+          "equivalent_bits": 41284,
+          "invariant_log_sha256": "f1eac732783e69ecaed85c7d20f3f42a5ae6dbf4cecd5d45323a64ef8c89825c",
+          "parent_log_sha256": "097ef46cfb38dd3a6c0b74bcdf67aa883ad42bdc7d15e6e9bddd98a723872634"
+        },
+        {
+          "case": "rotating",
+          "parameters": {
+            "MAX_FRAME_ROWS": 16,
+            "FRAME_COUNT": 4,
+            "POOL_BYTES": 14336,
+            "BANK_BYTES": 2048,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 0
+          },
+          "passed": true,
+          "equivalent_bits": 6917,
+          "invariant_log_sha256": "d48306e484004734bb3145bbb9e6cb3b6f7e40ff37d36965ce0d73de9550260d",
+          "parent_log_sha256": "57519df97216d39e24d951a4dbd828207dfefc64fc08ea23b45c5d03377fd3ad"
+        }
+      ],
+      "test_sha256": "0660a45d5e7738cbebd15f4a06cdc7f6d4bc2c1bcfb6eda2c000221bc0d4bcc2"
+    },
+    {
+      "passed": true,
+      "reference": "d7cb67be",
+      "mode": "fpga",
+      "definitions": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1"
+      ],
+      "source_sha256": {
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_store.sv": "5ad0049b5ab9ae88d8248d5cf2f1ad3a62f8043da64ea07a96b2aaf992e4f171",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_address_increment.sv": "3288752fc9390c44a3d149c92b953339a440cf749e0e8e9221b1600ecbee08d2",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_prepare_branch.sv": "9f21a51299a14b14b952f98ff2f777b87e0977109cbc499df172fbada816f907",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_prepare_enable.sv": "da143792d121e8b74c1f633f697c039b335f179788807b2103fcd54e95001329",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_ready_select.sv": "f58ab73fbef2e9bdf894b5b2f7c77e1f68fc7373ff4474301e4d45ccbac60919",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_raw_address.sv": "f8961aeeaec8bf938280d22f98deeffdb18f53fb1e4a19c93f05b04e24425024",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+      },
+      "source_input_constraints": null,
+      "invariant_start": "首次采样复位，随后全部外部输入及复位自由",
+      "parent_scope": "全部公开输出、共同状态和存储内容；采用此前从完整实际模块独立证明的两项内部状态关系",
+      "parent_state_relations": [
+        "request_qualified_q == (configuration_ready && request_pending_q && request_q.legal && request_fits_q)",
+        "request_pending_q -> (request_initial_or_other_q == (request_q.init || request_q.id != frame_id_q))"
+      ],
+      "profiles": [
+        {
+          "case": "production",
+          "parameters": {
+            "MAX_FRAME_ROWS": 256,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 49152,
+            "BANK_BYTES": 8192,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 1
+          },
+          "passed": true,
+          "equivalent_bits": 8144,
+          "invariant_log_sha256": "c82c18137d88754311ce08866082f7033562b640dbb86cc9704355216f9ec884",
+          "parent_log_sha256": "782b0270f100a242fba4337b033a295cd4cb52ae018ef1d003543d4d61be5321"
+        },
+        {
+          "case": "compact",
+          "parameters": {
+            "MAX_FRAME_ROWS": 512,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 49152,
+            "BANK_BYTES": 8192,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 1
+          },
+          "passed": true,
+          "equivalent_bits": 8288,
+          "invariant_log_sha256": "98c3db86c3d8848f497e78f94e33dfb8bec5c07d4e18e357755c243f123984ad",
+          "parent_log_sha256": "6c86a029328cd12fda92a77930091f2594179e03b9602c0c5994886ab19de876"
+        },
+        {
+          "case": "internal",
+          "parameters": {
+            "MAX_FRAME_ROWS": 47,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 4096,
+            "BANK_BYTES": 2048,
+            "EXTERNAL_RAM": 0
+          },
+          "passed": true,
+          "equivalent_bits": 41082,
+          "invariant_log_sha256": "0fc45f96262076d63bb9ac5e38d3ef1344c4a8e67e9c10c28967c61da3b2881e",
+          "parent_log_sha256": "33de0502e52e0fd98173e4e534e462ca1020b23be8caa204ae77d73471454c56"
+        },
+        {
+          "case": "rotating",
+          "parameters": {
+            "MAX_FRAME_ROWS": 16,
+            "FRAME_COUNT": 4,
+            "POOL_BYTES": 14336,
+            "BANK_BYTES": 2048,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 0
+          },
+          "passed": true,
+          "equivalent_bits": 6884,
+          "invariant_log_sha256": "7793f14f969bb53d72ca18ad54971b9839c1c08bc8fe457fa7a7b3042e98a435",
+          "parent_log_sha256": "553e19918b1116aa0b4b933da217b9a2115683604b6c65a70518247166a72dc6"
+        }
+      ],
+      "test_sha256": "0660a45d5e7738cbebd15f4a06cdc7f6d4bc2c1bcfb6eda2c000221bc0d4bcc2"
+    }
+  ],
+  "four_state": {
+    "passed": true,
+    "reference": "d7cb67be",
+    "all_public_outputs_compared_each_cycle": true,
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/storage_work/ps_request_ready/verified_four_state/current.sv": "104f4befc1525326915e087a85910c1aae539d557923df364fddccfc2ee604bf",
+      "/workspace/scratch/5bfa47658687/storage_work/ps_request_ready/verified_four_state/reference.sv": "12c539181d87086a07d4a634ae555870648ebbef448d2607048afdf3f7dd73fc",
+      "/workspace/scratch/5bfa47658687/storage_work/ps_request_ready/verified_four_state/tb.sv": "8b52eb57912745eeae4a8bdea45a0c7648cab88f54a86cc2694d26640c1ee875",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_address_increment.sv": "3288752fc9390c44a3d149c92b953339a440cf749e0e8e9221b1600ecbee08d2",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_prepare_branch.sv": "9f21a51299a14b14b952f98ff2f777b87e0977109cbc499df172fbada816f907",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_prepare_enable.sv": "da143792d121e8b74c1f633f697c039b335f179788807b2103fcd54e95001329",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_ready_select.sv": "f58ab73fbef2e9bdf894b5b2f7c77e1f68fc7373ff4474301e4d45ccbac60919",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_raw_address.sv": "f8961aeeaec8bf938280d22f98deeffdb18f53fb1e4a19c93f05b04e24425024",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+    },
+    "profiles": [
+      {
+        "mode": "generic",
+        "passed": true,
+        "profiles": [
+          "production",
+          "compact",
+          "internal",
+          "rotating"
+        ],
+        "cycles_per_profile": 8192,
+        "log_sha256": "127ffbb1bfa4140945511f9e95c7c2e8d9311726df3b4d6428566ec2772416f0"
+      },
+      {
+        "mode": "fpga",
+        "passed": true,
+        "profiles": [
+          "production",
+          "compact",
+          "internal",
+          "rotating"
+        ],
+        "cycles_per_profile": 8192,
+        "log_sha256": "127ffbb1bfa4140945511f9e95c7c2e8d9311726df3b4d6428566ec2772416f0"
+      }
+    ],
+    "test_sha256": "a97cbd78f688abc20406a802a01b2326039f66b7ed60ef7874c0ee9f4e10063a"
+  },
+  "numeric": [
+    {
+      "reference": "d7cb67be",
+      "source_sha256": {
+        "rtl/npu/ps_compact/ps_frame_store.sv": "5ad0049b5ab9ae88d8248d5cf2f1ad3a62f8043da64ea07a96b2aaf992e4f171",
+        "rtl/npu/buffers/ia_ps_shared_ram.sv": "1b1fb6e1380cf4cd0ffcd7383a9e2e1611a336250e7f0fdd1857e48a30dc192a",
+        "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+        "test/ps_channels/tb_store.sv": "ecb15087fe79f019d4d03c413309829b94609d9c6fa19dbee5d6363d4699e8bd",
+        "/workspace/scratch/5bfa47658687/storage_work/ps_request_ready/verified_numeric_generic/tb_store.sv": "ebaa4677ddfbd37cfa78e869e646495a3a173c40d35e5e6e5e0564a0598ad904",
+        "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+        "/workspace/scratch/5bfa47658687/storage_work/ps_request_ready/verified_numeric_generic/checked.sv": "52f0dae197dbaa8160cf48f3e9bd293f9c3f88ee61603519bdd4361c6be0b07a",
+        "/workspace/scratch/5bfa47658687/storage_work/ps_request_ready/verified_numeric_generic/reference.sv": "1f60cc977c8028ec8d55bf20494c1da05f6aec9a0c8f0632b6094418732fe7fb",
+        "rtl/npu/buffers/shared_ram_read_mux.sv": "7fd5ec6d3086666b59f5f7423df0049690ae6e83206e214799137a9d4ae176c5",
+        "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "rtl/npu/ps_compact/ps_frame_address_increment.sv": "3288752fc9390c44a3d149c92b953339a440cf749e0e8e9221b1600ecbee08d2",
+        "rtl/npu/ps_compact/ps_frame_prepare_branch.sv": "9f21a51299a14b14b952f98ff2f777b87e0977109cbc499df172fbada816f907",
+        "rtl/npu/ps_compact/ps_frame_prepare_enable.sv": "da143792d121e8b74c1f633f697c039b335f179788807b2103fcd54e95001329",
+        "rtl/npu/ps_compact/ps_frame_ready_select.sv": "f58ab73fbef2e9bdf894b5b2f7c77e1f68fc7373ff4474301e4d45ccbac60919",
+        "rtl/npu/ps_compact/ps_raw_address.sv": "f8961aeeaec8bf938280d22f98deeffdb18f53fb1e4a19c93f05b04e24425024",
+        "rtl/npu/buffers/ia_ps_channel_ram.sv": "f82a2a32e77a56fe20252752d2e029ff43592a7d3c225994434246aa470db478",
+        "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+        "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "rtl/npu/buffers/ia_ps_role_ram.sv": "b3764bbb255ab4a2526195a5c4c23e39cb4db7d7b14d9c03d0d72928e07d4cc5",
+        "rtl/npu/buffers/ps_channel_request_fault.sv": "72849aa48048cc97030fd87cdeae23a73c0eb48e17937c42025089498f61d61a",
+        "rtl/npu/buffers/ps_channel_write_enable.sv": "1171bb4b2ca039a8037bf1bfa9f65d95502b3cf4e2792f059ef0e49c0fc8d9de"
+      },
+      "compared_outputs": [
+        "ram_read_en",
+        "ram_read_addr",
+        "ram_write_en",
+        "ram_write_addr",
+        "ram_write_data",
+        "frame_ready",
+        "frame_pressure",
+        "capacity_fault",
+        "frame_complete",
+        "replay_data",
+        "replay_valid"
+      ],
+      "all_public_outputs_compared_each_cycle": true,
+      "max_frame_rows": 256,
+      "synthesis": false,
+      "fpga": false,
+      "runs": [
+        {
+          "banks": 7,
+          "bank_bytes": 8192,
+          "cycles": 29930,
+          "commands": 678,
+          "checked_int32": 235696,
+          "pressure_checks": 15,
+          "overlap_cycles": 7228,
+          "configurations": 14,
+          "passed": true,
+          "binary_sha256": "94d98ca2027054fe02efb727f52af84e41ba87badaa2bda557eee6e2217ca607"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "reference": "d7cb67be",
+      "source_sha256": {
+        "rtl/npu/ps_compact/ps_frame_store.sv": "5ad0049b5ab9ae88d8248d5cf2f1ad3a62f8043da64ea07a96b2aaf992e4f171",
+        "rtl/npu/buffers/ia_ps_shared_ram.sv": "1b1fb6e1380cf4cd0ffcd7383a9e2e1611a336250e7f0fdd1857e48a30dc192a",
+        "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+        "test/ps_channels/tb_store.sv": "ecb15087fe79f019d4d03c413309829b94609d9c6fa19dbee5d6363d4699e8bd",
+        "/workspace/scratch/5bfa47658687/storage_work/ps_request_ready/verified_numeric_fpga/tb_store.sv": "ebaa4677ddfbd37cfa78e869e646495a3a173c40d35e5e6e5e0564a0598ad904",
+        "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+        "/workspace/scratch/5bfa47658687/storage_work/ps_request_ready/verified_numeric_fpga/checked.sv": "52f0dae197dbaa8160cf48f3e9bd293f9c3f88ee61603519bdd4361c6be0b07a",
+        "/workspace/scratch/5bfa47658687/storage_work/ps_request_ready/verified_numeric_fpga/reference.sv": "1f60cc977c8028ec8d55bf20494c1da05f6aec9a0c8f0632b6094418732fe7fb",
+        "rtl/npu/buffers/shared_ram_read_mux.sv": "7fd5ec6d3086666b59f5f7423df0049690ae6e83206e214799137a9d4ae176c5",
+        "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "rtl/npu/ps_compact/ps_frame_address_increment.sv": "3288752fc9390c44a3d149c92b953339a440cf749e0e8e9221b1600ecbee08d2",
+        "rtl/npu/ps_compact/ps_frame_prepare_branch.sv": "9f21a51299a14b14b952f98ff2f777b87e0977109cbc499df172fbada816f907",
+        "rtl/npu/ps_compact/ps_frame_prepare_enable.sv": "da143792d121e8b74c1f633f697c039b335f179788807b2103fcd54e95001329",
+        "rtl/npu/ps_compact/ps_frame_ready_select.sv": "f58ab73fbef2e9bdf894b5b2f7c77e1f68fc7373ff4474301e4d45ccbac60919",
+        "rtl/npu/ps_compact/ps_raw_address.sv": "f8961aeeaec8bf938280d22f98deeffdb18f53fb1e4a19c93f05b04e24425024",
+        "rtl/npu/buffers/ia_ps_channel_ram.sv": "f82a2a32e77a56fe20252752d2e029ff43592a7d3c225994434246aa470db478",
+        "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+        "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "rtl/npu/buffers/ia_ps_role_ram.sv": "b3764bbb255ab4a2526195a5c4c23e39cb4db7d7b14d9c03d0d72928e07d4cc5",
+        "rtl/npu/buffers/ps_channel_request_fault.sv": "72849aa48048cc97030fd87cdeae23a73c0eb48e17937c42025089498f61d61a",
+        "rtl/npu/buffers/ps_channel_write_enable.sv": "1171bb4b2ca039a8037bf1bfa9f65d95502b3cf4e2792f059ef0e49c0fc8d9de"
+      },
+      "compared_outputs": [
+        "ram_read_en",
+        "ram_read_addr",
+        "ram_write_en",
+        "ram_write_addr",
+        "ram_write_data",
+        "frame_ready",
+        "frame_pressure",
+        "capacity_fault",
+        "frame_complete",
+        "replay_data",
+        "replay_valid"
+      ],
+      "all_public_outputs_compared_each_cycle": true,
+      "max_frame_rows": 256,
+      "synthesis": true,
+      "fpga": true,
+      "runs": [
+        {
+          "banks": 7,
+          "bank_bytes": 8192,
+          "cycles": 29930,
+          "commands": 678,
+          "checked_int32": 235696,
+          "pressure_checks": 15,
+          "overlap_cycles": 7228,
+          "configurations": 14,
+          "passed": true,
+          "binary_sha256": "6fc3eb543ccf48f89ee878f30f8c47fba802526e0ce700a464caf535b3d37269"
+        }
+      ],
+      "passed": true
+    }
+  ]
+}

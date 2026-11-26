@@ -6,9 +6,9 @@ module ps_raw_address #(
     parameter integer WIDTH=13,
     parameter integer DIVISOR=5
 ) (
-    input wire [WIDTH-1:0] linear,
-    output wire [WIDTH-1:0] quotient,
-    output wire [2:0] remainder
+    input wire [WIDTH-1:0] linear /* 部分和原始数据的线性存储字位置 */,
+    output wire [WIDTH-1:0] quotient /* 线性位置除以物理存储块数得到的块内地址 */,
+    output wire [2:0] remainder /* 线性位置对应的物理存储块编号 */
 );
     // 向上取整的定点倒数生成商估计，高位截取保留所需的整数部分。
     localparam [WIDTH:0] RECIPROCAL = (WIDTH+1)'(

@@ -4,10 +4,10 @@
 // 精确深度的同步单写单读存储，环形地址由外层控制器按 DEPTH 回绕。
 module ps_buffer_exact_ram #(
     parameter int DEPTH=16, DATA_WIDTH=512, ADDR_WIDTH=$clog2(DEPTH)
-)(input wire logic clk, ena, enb, wea,
-  input wire logic [ADDR_WIDTH-1:0] addra, addrb,
-  input wire logic [DATA_WIDTH-1:0] dia,
-  output logic [DATA_WIDTH-1:0] dob);
+)(input wire logic clk /* 工作时钟 */, ena /* 写端口总使能 */, enb /* 同步读端口使能 */, wea /* 写端口数据更新使能 */,
+  input wire logic [ADDR_WIDTH-1:0] addra /* 写端口的存储字地址 */, addrb /* 读端口的存储字地址 */,
+  input wire logic [DATA_WIDTH-1:0] dia /* 写端口输入数据 */,
+  output logic [DATA_WIDTH-1:0] dob /* 同步读端口返回的数据 */);
   logic storage_i_wr_en, storage_i_rd_en;
   logic [ADDR_WIDTH-1:0] storage_i_wr_addr, storage_i_rd_addr;
   logic [DATA_WIDTH-1:0] storage_i_wr_data, storage_o_rd_data;

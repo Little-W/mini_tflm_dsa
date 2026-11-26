@@ -1,0 +1,425 @@
+{
+  "passed": true,
+  "reference": "8cbe40d9",
+  "rtl_sha256": "ea2d1d512842231f012182245da10dadef03c4a8e5646744bb374d66990a82b5",
+  "formal_profiles": 10,
+  "state_relation_inductions": 10,
+  "equivalent_bits": 209325,
+  "four_state_cycles": 81920,
+  "numeric_commands": 1356,
+  "numeric_checked_int32": 471392,
+  "numeric_cycles": 59860,
+  "formal": [
+    {
+      "passed": true,
+      "reference": "8cbe40d9",
+      "mode": "generic",
+      "definitions": [
+        "-USYNTHESIS",
+        "-UXILINX_FPGA"
+      ],
+      "source_sha256": {
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_store.sv": "ea2d1d512842231f012182245da10dadef03c4a8e5646744bb374d66990a82b5",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_address_increment.sv": "3288752fc9390c44a3d149c92b953339a440cf749e0e8e9221b1600ecbee08d2",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_prepare_branch.sv": "9f21a51299a14b14b952f98ff2f777b87e0977109cbc499df172fbada816f907",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_prepare_enable.sv": "da143792d121e8b74c1f633f697c039b335f179788807b2103fcd54e95001329",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_ready_select.sv": "f58ab73fbef2e9bdf894b5b2f7c77e1f68fc7373ff4474301e4d45ccbac60919",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_raw_address.sv": "f8961aeeaec8bf938280d22f98deeffdb18f53fb1e4a19c93f05b04e24425024",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+      },
+      "external_input_constraints": null,
+      "invariant_start": "首次采样复位，此后全部外部输入及复位自由",
+      "parent_scope": "全部公开输出、共同状态与存储内容",
+      "parent_state_relation": "逐帧容量等于配置总行数减去该帧的定宽起始行",
+      "profiles": [
+        {
+          "case": "production",
+          "parameters": {
+            "MAX_FRAME_ROWS": 256,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 49152,
+            "BANK_BYTES": 8192,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 1
+          },
+          "passed": true,
+          "equivalent_bits": 8339,
+          "invariant_log_sha256": "8bd349c498baf47c8a498e3eb201eb5a5e1a3b7a7f75f2a753a32f55d580306f",
+          "parent_log_sha256": "9991451d55147615515303d38a55e47d9a858f467ec4afa3892eb576b44cbc13"
+        },
+        {
+          "case": "compact",
+          "parameters": {
+            "MAX_FRAME_ROWS": 512,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 49152,
+            "BANK_BYTES": 8192,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 1
+          },
+          "passed": true,
+          "equivalent_bits": 8468,
+          "invariant_log_sha256": "90f4609dda8e6f4b193f4de004443af0bc46297f3da34e2072e2bbf5682a9bcb",
+          "parent_log_sha256": "d17eb78db34b5ddd5fb48c1a6911e842b0047711291cf1e90c3f331d7585d2dd"
+        },
+        {
+          "case": "internal",
+          "parameters": {
+            "MAX_FRAME_ROWS": 47,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 4096,
+            "BANK_BYTES": 2048,
+            "EXTERNAL_RAM": 0
+          },
+          "passed": true,
+          "equivalent_bits": 41293,
+          "invariant_log_sha256": "a239369b8f98c5dfdec48279921bba5c21b04ab0d42730c29cfcd5f533fa7bfe",
+          "parent_log_sha256": "9abcfe128146a8fc93aac85ee86f0711de3b4813556348702b95d3d33fcb9530"
+        },
+        {
+          "case": "rotating",
+          "parameters": {
+            "MAX_FRAME_ROWS": 16,
+            "FRAME_COUNT": 4,
+            "POOL_BYTES": 14336,
+            "BANK_BYTES": 2048,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 0
+          },
+          "passed": true,
+          "equivalent_bits": 6926,
+          "invariant_log_sha256": "a0c68a085c84b33bb69a537bf8265db22574e529e7243575eff20f1e0ae13898",
+          "parent_log_sha256": "1408498891267abe60fce4633bf181160e0a42725b15a2741f138f24f26b7d5e"
+        },
+        {
+          "case": "odd_frames",
+          "parameters": {
+            "MAX_FRAME_ROWS": 47,
+            "FRAME_COUNT": 3,
+            "POOL_BYTES": 4096,
+            "BANK_BYTES": 2048,
+            "EXTERNAL_RAM": 0
+          },
+          "passed": true,
+          "equivalent_bits": 40000,
+          "invariant_log_sha256": "37feadca0414c5cf8f1c49b55626f9e02beab5c4d35917dc50f306f151587c8e",
+          "parent_log_sha256": "5d5396f07c57c80f6b5bf117a8c439872221e1f423e57dc555c871cb7a13b0bd"
+        }
+      ],
+      "test_sha256": "56502a1e44ed237a95ff57c73fe8cddf4a7d815dfd5428eced31797d3077fb86"
+    },
+    {
+      "passed": true,
+      "reference": "8cbe40d9",
+      "mode": "fpga",
+      "definitions": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1"
+      ],
+      "source_sha256": {
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_store.sv": "ea2d1d512842231f012182245da10dadef03c4a8e5646744bb374d66990a82b5",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_address_increment.sv": "3288752fc9390c44a3d149c92b953339a440cf749e0e8e9221b1600ecbee08d2",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_prepare_branch.sv": "9f21a51299a14b14b952f98ff2f777b87e0977109cbc499df172fbada816f907",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_prepare_enable.sv": "da143792d121e8b74c1f633f697c039b335f179788807b2103fcd54e95001329",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_ready_select.sv": "f58ab73fbef2e9bdf894b5b2f7c77e1f68fc7373ff4474301e4d45ccbac60919",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_raw_address.sv": "f8961aeeaec8bf938280d22f98deeffdb18f53fb1e4a19c93f05b04e24425024",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+        "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+      },
+      "external_input_constraints": null,
+      "invariant_start": "首次采样复位，此后全部外部输入及复位自由",
+      "parent_scope": "全部公开输出、共同状态与存储内容",
+      "parent_state_relation": "逐帧容量等于配置总行数减去该帧的定宽起始行",
+      "profiles": [
+        {
+          "case": "production",
+          "parameters": {
+            "MAX_FRAME_ROWS": 256,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 49152,
+            "BANK_BYTES": 8192,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 1
+          },
+          "passed": true,
+          "equivalent_bits": 8121,
+          "invariant_log_sha256": "0a4daa013fc88372d02aae1dc72aefada8b8384a886819ac5d5ebe04b77cc739",
+          "parent_log_sha256": "0982f09b225d33906c281761b73e1224b4d29f45e73cfb602bf3ce5481ba8243"
+        },
+        {
+          "case": "compact",
+          "parameters": {
+            "MAX_FRAME_ROWS": 512,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 49152,
+            "BANK_BYTES": 8192,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 1
+          },
+          "passed": true,
+          "equivalent_bits": 8265,
+          "invariant_log_sha256": "8576909177f520584cfd1fbe4d2cd5063ccfd935d69969e666053ac0efaa2015",
+          "parent_log_sha256": "001f77aaa8962f6a396e80d31553d34a057fdca07dbb527fc97aa9f5b2b25a4f"
+        },
+        {
+          "case": "internal",
+          "parameters": {
+            "MAX_FRAME_ROWS": 47,
+            "FRAME_COUNT": 16,
+            "POOL_BYTES": 4096,
+            "BANK_BYTES": 2048,
+            "EXTERNAL_RAM": 0
+          },
+          "passed": true,
+          "equivalent_bits": 41055,
+          "invariant_log_sha256": "c9cbb4551cbcc5088ee085a6892a958227f61b418d80ce6c840e4d9681fd7e5e",
+          "parent_log_sha256": "0f7e2eb8045b0736f7a5dd76e803b0fd9801412f4a6c68a8167f2412a664fb3c"
+        },
+        {
+          "case": "rotating",
+          "parameters": {
+            "MAX_FRAME_ROWS": 16,
+            "FRAME_COUNT": 4,
+            "POOL_BYTES": 14336,
+            "BANK_BYTES": 2048,
+            "EXTERNAL_RAM": 1,
+            "p_fixed_ps_channels": 0
+          },
+          "passed": true,
+          "equivalent_bits": 6885,
+          "invariant_log_sha256": "c26f998d63ecddad54cff319fcc268876038747d3403ae63e6d2212965a06320",
+          "parent_log_sha256": "7559e0fc882492a200e0bd844e37002fabbaa3c34f102f64c2cbee653acc550f"
+        },
+        {
+          "case": "odd_frames",
+          "parameters": {
+            "MAX_FRAME_ROWS": 47,
+            "FRAME_COUNT": 3,
+            "POOL_BYTES": 4096,
+            "BANK_BYTES": 2048,
+            "EXTERNAL_RAM": 0
+          },
+          "passed": true,
+          "equivalent_bits": 39973,
+          "invariant_log_sha256": "b103fb3518dd3901e8d89b83d2796728c9fcf1fb21ba5f3be99caf2d4f128f34",
+          "parent_log_sha256": "16d8743d1e2016df15066af672a193f27a1970be50dc2dc0214ee6c2fe0206bc"
+        }
+      ],
+      "test_sha256": "56502a1e44ed237a95ff57c73fe8cddf4a7d815dfd5428eced31797d3077fb86"
+    }
+  ],
+  "four_state": {
+    "passed": true,
+    "reference": "8cbe40d9",
+    "all_public_outputs_compared_each_cycle": true,
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/storage_work/ps_capacity_shared/verified_four_state/current.sv": "61b520974e50d254956cbe27a1d74ead145970501e354ffb5a8e19c672934e80",
+      "/workspace/scratch/5bfa47658687/storage_work/ps_capacity_shared/verified_four_state/reference.sv": "6a2a38a06b921016ed06fa5a893656729c0f098e299a342df8bdac25074d91fe",
+      "/workspace/scratch/5bfa47658687/storage_work/ps_capacity_shared/verified_four_state/tb.sv": "12faaf4d82918c292cd4933c68351e3f21a3116b93a1a05f10a2f67fc46305be",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_address_increment.sv": "3288752fc9390c44a3d149c92b953339a440cf749e0e8e9221b1600ecbee08d2",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_prepare_branch.sv": "9f21a51299a14b14b952f98ff2f777b87e0977109cbc499df172fbada816f907",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_prepare_enable.sv": "da143792d121e8b74c1f633f697c039b335f179788807b2103fcd54e95001329",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_frame_ready_select.sv": "f58ab73fbef2e9bdf894b5b2f7c77e1f68fc7373ff4474301e4d45ccbac60919",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/ps_compact/ps_raw_address.sv": "f8961aeeaec8bf938280d22f98deeffdb18f53fb1e4a19c93f05b04e24425024",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+    },
+    "profiles": [
+      {
+        "mode": "generic",
+        "passed": true,
+        "profiles": [
+          "production",
+          "compact",
+          "internal",
+          "rotating",
+          "odd_frames"
+        ],
+        "cycles_per_profile": 8192,
+        "log_sha256": "a9dc2f3df19c7bc384d9241bc0fb59e7eb963f5cc43672bcafa3e56c208567a3"
+      },
+      {
+        "mode": "fpga",
+        "passed": true,
+        "profiles": [
+          "production",
+          "compact",
+          "internal",
+          "rotating",
+          "odd_frames"
+        ],
+        "cycles_per_profile": 8192,
+        "log_sha256": "a9dc2f3df19c7bc384d9241bc0fb59e7eb963f5cc43672bcafa3e56c208567a3"
+      }
+    ],
+    "test_sha256": "bce5aba51d5d4df1bdf4a8e3fbc810ab4436836c55479a8ee257f7afc25d338b"
+  },
+  "numeric": [
+    {
+      "reference": "8cbe40d9",
+      "source_sha256": {
+        "rtl/npu/ps_compact/ps_frame_store.sv": "ea2d1d512842231f012182245da10dadef03c4a8e5646744bb374d66990a82b5",
+        "rtl/npu/buffers/ia_ps_shared_ram.sv": "1b1fb6e1380cf4cd0ffcd7383a9e2e1611a336250e7f0fdd1857e48a30dc192a",
+        "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+        "test/ps_channels/tb_store.sv": "ecb15087fe79f019d4d03c413309829b94609d9c6fa19dbee5d6363d4699e8bd",
+        "/workspace/scratch/5bfa47658687/storage_work/ps_capacity_shared/verified_numeric_generic/tb_store.sv": "ebaa4677ddfbd37cfa78e869e646495a3a173c40d35e5e6e5e0564a0598ad904",
+        "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+        "/workspace/scratch/5bfa47658687/storage_work/ps_capacity_shared/verified_numeric_generic/checked.sv": "364e601513be08650907ae7a5d49497e605a7a4364455ca833e40b45aadaa63f",
+        "/workspace/scratch/5bfa47658687/storage_work/ps_capacity_shared/verified_numeric_generic/reference.sv": "fc9db650e1a70225fb987bd1e9262a9410232ad9a90ee40c36454981039b3540",
+        "rtl/npu/buffers/shared_ram_read_mux.sv": "7fd5ec6d3086666b59f5f7423df0049690ae6e83206e214799137a9d4ae176c5",
+        "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+        "rtl/npu/ps_compact/ps_frame_address_increment.sv": "3288752fc9390c44a3d149c92b953339a440cf749e0e8e9221b1600ecbee08d2",
+        "rtl/npu/ps_compact/ps_frame_prepare_branch.sv": "9f21a51299a14b14b952f98ff2f777b87e0977109cbc499df172fbada816f907",
+        "rtl/npu/ps_compact/ps_frame_prepare_enable.sv": "da143792d121e8b74c1f633f697c039b335f179788807b2103fcd54e95001329",
+        "rtl/npu/ps_compact/ps_frame_ready_select.sv": "f58ab73fbef2e9bdf894b5b2f7c77e1f68fc7373ff4474301e4d45ccbac60919",
+        "rtl/npu/ps_compact/ps_raw_address.sv": "f8961aeeaec8bf938280d22f98deeffdb18f53fb1e4a19c93f05b04e24425024",
+        "rtl/npu/buffers/ia_ps_channel_ram.sv": "f82a2a32e77a56fe20252752d2e029ff43592a7d3c225994434246aa470db478",
+        "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+        "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+        "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+        "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+        "rtl/npu/buffers/ia_ps_role_ram.sv": "b3764bbb255ab4a2526195a5c4c23e39cb4db7d7b14d9c03d0d72928e07d4cc5",
+        "rtl/npu/buffers/ps_channel_request_fault.sv": "72849aa48048cc97030fd87cdeae23a73c0eb48e17937c42025089498f61d61a",
+        "rtl/npu/buffers/ps_channel_write_enable.sv": "1171bb4b2ca039a8037bf1bfa9f65d95502b3cf4e2792f059ef0e49c0fc8d9de",
+        "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+      },
+      "compared_outputs": [
+        "ram_read_en",
+        "ram_read_addr",
+        "ram_write_en",
+        "ram_write_addr",
+        "ram_write_data",
+        "frame_ready",
+        "frame_pressure",
+        "capacity_fault",
+        "frame_complete",
+        "replay_data",
+        "replay_valid"
+      ],
+      "all_public_outputs_compared_each_cycle": true,
+      "max_frame_rows": 256,
+      "synthesis": false,
+      "fpga": false,
+      "runs": [
+        {
+          "banks": 7,
+          "bank_bytes": 8192,
+          "cycles": 29930,
+          "commands": 678,
+          "checked_int32": 235696,
+          "pressure_checks": 15,
+          "overlap_cycles": 7228,
+          "configurations": 14,
+          "passed": true,
+          "binary_sha256": "26040981a748249980a0fe3633a92fbcc326ebbf5d5a20df32f0794f384f3262"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "reference": "8cbe40d9",
+      "source_sha256": {
+        "rtl/npu/ps_compact/ps_frame_store.sv": "ea2d1d512842231f012182245da10dadef03c4a8e5646744bb374d66990a82b5",
+        "rtl/npu/buffers/ia_ps_shared_ram.sv": "1b1fb6e1380cf4cd0ffcd7383a9e2e1611a336250e7f0fdd1857e48a30dc192a",
+        "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+        "test/ps_channels/tb_store.sv": "ecb15087fe79f019d4d03c413309829b94609d9c6fa19dbee5d6363d4699e8bd",
+        "/workspace/scratch/5bfa47658687/storage_work/ps_capacity_shared/verified_numeric_fpga/tb_store.sv": "ebaa4677ddfbd37cfa78e869e646495a3a173c40d35e5e6e5e0564a0598ad904",
+        "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+        "/workspace/scratch/5bfa47658687/storage_work/ps_capacity_shared/verified_numeric_fpga/checked.sv": "364e601513be08650907ae7a5d49497e605a7a4364455ca833e40b45aadaa63f",
+        "/workspace/scratch/5bfa47658687/storage_work/ps_capacity_shared/verified_numeric_fpga/reference.sv": "fc9db650e1a70225fb987bd1e9262a9410232ad9a90ee40c36454981039b3540",
+        "rtl/npu/buffers/shared_ram_read_mux.sv": "7fd5ec6d3086666b59f5f7423df0049690ae6e83206e214799137a9d4ae176c5",
+        "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+        "rtl/npu/ps_compact/ps_frame_address_increment.sv": "3288752fc9390c44a3d149c92b953339a440cf749e0e8e9221b1600ecbee08d2",
+        "rtl/npu/ps_compact/ps_frame_prepare_branch.sv": "9f21a51299a14b14b952f98ff2f777b87e0977109cbc499df172fbada816f907",
+        "rtl/npu/ps_compact/ps_frame_prepare_enable.sv": "da143792d121e8b74c1f633f697c039b335f179788807b2103fcd54e95001329",
+        "rtl/npu/ps_compact/ps_frame_ready_select.sv": "f58ab73fbef2e9bdf894b5b2f7c77e1f68fc7373ff4474301e4d45ccbac60919",
+        "rtl/npu/ps_compact/ps_raw_address.sv": "f8961aeeaec8bf938280d22f98deeffdb18f53fb1e4a19c93f05b04e24425024",
+        "rtl/npu/buffers/ia_ps_channel_ram.sv": "f82a2a32e77a56fe20252752d2e029ff43592a7d3c225994434246aa470db478",
+        "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+        "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+        "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+        "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+        "rtl/npu/buffers/ia_ps_role_ram.sv": "b3764bbb255ab4a2526195a5c4c23e39cb4db7d7b14d9c03d0d72928e07d4cc5",
+        "rtl/npu/buffers/ps_channel_request_fault.sv": "72849aa48048cc97030fd87cdeae23a73c0eb48e17937c42025089498f61d61a",
+        "rtl/npu/buffers/ps_channel_write_enable.sv": "1171bb4b2ca039a8037bf1bfa9f65d95502b3cf4e2792f059ef0e49c0fc8d9de",
+        "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+      },
+      "compared_outputs": [
+        "ram_read_en",
+        "ram_read_addr",
+        "ram_write_en",
+        "ram_write_addr",
+        "ram_write_data",
+        "frame_ready",
+        "frame_pressure",
+        "capacity_fault",
+        "frame_complete",
+        "replay_data",
+        "replay_valid"
+      ],
+      "all_public_outputs_compared_each_cycle": true,
+      "max_frame_rows": 256,
+      "synthesis": true,
+      "fpga": true,
+      "runs": [
+        {
+          "banks": 7,
+          "bank_bytes": 8192,
+          "cycles": 29930,
+          "commands": 678,
+          "checked_int32": 235696,
+          "pressure_checks": 15,
+          "overlap_cycles": 7228,
+          "configurations": 14,
+          "passed": true,
+          "binary_sha256": "2fe0f0e7eb6e5c820167611cfc0853f5962e72f55f32f6b31bade4fb728a4cec"
+        }
+      ],
+      "passed": true
+    }
+  ]
+}

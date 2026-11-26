@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-// 每行包含十六个小端有符号 INT32 元素，启动事件独立接收。
+// 对每行十六个小端有符号 INT32 元素执行自适应编码，启动事件独立接收。
 module ps_adaptive_encoder (
-    input  wire         clk,
-    input  wire         rst_n,
-    input  wire         start,
-    input  wire         row_first,
-    input  wire         force_raw,
-    input  wire [511:0] row_data,
-    output wire         busy,
-    output reg          done,
-    output reg  [2:0]   opcode,
-    output reg  [2:0]   words,
-    output reg  [511:0] packet
+    input  wire         clk /* 工作时钟 */,
+    input  wire         rst_n /* 低有效复位 */,
+    input  wire         start /* 接收当前部分和行并启动编码 */,
+    input  wire         row_first /* 标记新帧首行，用于独立行编码选择 */,
+    input  wire         force_raw /* 使用原始32 位元素编码 */,
+    input  wire [511:0] row_data /* 当前待编码的16 个 32 位部分和元素 */,
+    output wire         busy /* 当前行编码正在执行 */,
+    output reg          done /* 当前行的编码结果已经完成 */,
+    output reg  [2:0]   opcode /* 当前行选择的编码格式编号 */,
+    output reg  [2:0]   words /* 当前编码占用的128 位存储字数 */,
+    output reg  [511:0] packet /* 当前行编码生成的完整存储数据包 */
 );
     reg [511:0] previous;
     reg [2:0] valid;

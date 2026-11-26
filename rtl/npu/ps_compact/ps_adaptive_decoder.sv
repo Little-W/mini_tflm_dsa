@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-// 每行包含十六个小端有符号 INT32 元素，启动事件独立接收。
+// 将编码数据包恢复为十六个小端有符号 INT32 元素，启动事件独立接收。
 module ps_adaptive_decoder (
-    input  wire         clk,
-    input  wire         rst_n,
-    input  wire         start,
-    input  wire         row_first,
-    input  wire [2:0]   opcode,
-    input  wire [511:0] packet,
-    output wire         busy,
-    output reg          done,
-    output reg          fault,
-    output reg  [511:0] row_data
+    input  wire         clk /* 工作时钟 */,
+    input  wire         rst_n /* 低有效复位 */,
+    input  wire         start /* 接收当前编码数据包并启动解码 */,
+    input  wire         row_first /* 标记新帧首行，检查独立行编码资格 */,
+    input  wire [2:0]   opcode /* 当前数据包采用的编码格式编号 */,
+    input  wire [511:0] packet /* 当前待解码的完整存储数据包 */,
+    output wire         busy /* 当前行解码正在执行 */,
+    output reg          done /* 当前行的解码过程已经完成 */,
+    output reg          fault /* 当前数据包的编码格式或恢复数值不合法 */,
+    output reg  [511:0] row_data /* 恢复的16 个 32 位部分和元素 */
 );
     // parsed: fault[522], bit position[521:512], lane values[511:0].
     function automatic [522:0] parse_group;

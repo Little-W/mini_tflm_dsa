@@ -8,16 +8,16 @@ module ps_buffer_wide_fifo #(
     parameter int unsigned FRAME_COUNT = 1,
     parameter int unsigned MAX_FRAME_LEN = DEPTH
 ) (
-    input  wire logic                  clk,
-    input  wire logic                  rst_n,
-    input  wire logic [DATA_WIDTH-1:0] data_in,
-    input  wire logic                  input_valid_i,
-    input  wire logic                  ia_l1_switch_i,
-    input  wire logic                  send_ia_trigger_i,
-    input  wire logic                  replay_enable_i,
-    output logic [DATA_WIDTH-1:0] data_out,
-    output logic capacity_fault,
-    output logic replay_ready
+    input  wire logic                  clk /* 工作时钟 */,
+    input  wire logic                  rst_n /* 低有效复位 */,
+    input  wire logic [DATA_WIDTH-1:0] data_in /* 本周期写入的完整部分和行 */,
+    input  wire logic                  input_valid_i /* 本周期输入部分和行有效 */,
+    input  wire logic                  ia_l1_switch_i /* 当前输入复用分组结束并提交存储帧 */,
+    input  wire logic                  send_ia_trigger_i /* 启动下一部分和帧的顺序回放 */,
+    input  wire logic                  replay_enable_i /* 允许按照输入分组节奏读取已保存部分和 */,
+    output logic [DATA_WIDTH-1:0] data_out /* 同步读出的完整部分和行 */,
+    output logic capacity_fault /* 写入帧数量或帧长度超过存储容量 */,
+    output logic replay_ready /* 下一部分和帧已完整保存并可回放 */
 );
     localparam int unsigned ADDR_W      = (DEPTH <= 1) ? 1 : $clog2(DEPTH);
     localparam int unsigned CNT_W       = (DEPTH <= 1) ? 1 : $clog2(DEPTH + 1);

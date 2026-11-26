@@ -7,14 +7,14 @@ module ws_systolic_array #(
     parameter int unsigned ACC_WIDTH     = 32,
     parameter bit p_exchange_weights = 1'b1
 ) (
-    input  wire                              clk,
-    input  wire                              rst_n,
-    input  wire                              weight_commit,
-    input  wire                              store_weight_req,
-    input  wire signed [WEIGHT_WIDTH-1:0]    weight_in [SIZE],
-    input  wire signed [DATA_IN_WIDTH-1:0]   data_in [SIZE],
-    input  wire signed [ACC_WIDTH-1:0]       sum_in [SIZE],
-    output wire signed [ACC_WIDTH-1:0]       sum_out [SIZE]
+    input  wire                              clk, // 模块工作时钟。
+    input  wire                              rst_n, // 低有效复位输入。
+    input  wire                              weight_commit, // 提交已装入的权重块供计算使用。
+    input  wire                              store_weight_req, // 使能本周期的权重装载。
+    input  wire signed [WEIGHT_WIDTH-1:0]    weight_in [SIZE], // 本周期装入的逐列有符号权重。
+    input  wire signed [DATA_IN_WIDTH-1:0]   data_in [SIZE], // 送入计算单元的有符号输入数据。
+    input  wire signed [ACC_WIDTH-1:0]       sum_in [SIZE], // 各计算通道的累加初值。
+    output wire signed [ACC_WIDTH-1:0]       sum_out [SIZE] // 各计算通道的乘加结果。
 );
     wire signed [DATA_IN_WIDTH-1:0] data_pipe [SIZE][SIZE];
     wire signed [WEIGHT_WIDTH-1:0] weight_pipe [SIZE][SIZE];

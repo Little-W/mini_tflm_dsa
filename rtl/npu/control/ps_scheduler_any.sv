@@ -5,8 +5,8 @@
 module ps_scheduler_any #(
     parameter int p_width = 16
 ) (
-    input  wire logic [p_width-1:0] i_value,
-    output logic o_any
+    input  wire logic [p_width-1:0] i_value /* 需要执行逻辑或归并的候选标记向量 */,
+    output logic o_any /* 至少一个候选标记有效 */
 );
     localparam int p_groups = (p_width + 5) / 6;
     localparam int p_levels = $clog2(p_groups) + 1;

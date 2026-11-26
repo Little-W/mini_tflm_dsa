@@ -1,4 +1,5 @@
-// 调度物理输出帧，并保存每一帧沿 K 维度的执行进度。
+// 调度物理输出帧，并保存每一帧沿归约维度的执行进度。
+// 准备阶段保存切片取整值，互斥的候选行与下一组行共用地址计算。
 `default_nettype none
 
 module ps_window_scheduler #(
@@ -6,26 +7,26 @@ module ps_window_scheduler #(
     parameter int unsigned FRAME_COUNT = 16,
     parameter int unsigned MAX_REUSE_TILES = 0
 ) (
-    input wire logic clk, rst_n,
-    input wire logic start,
-    input wire logic [31:0] stream_rows, stationary_rows, reduction,
-    input wire logic [31:0] reuse_rows, window_frames,
-    input wire logic [31:0] slice_tiles = 32'd0,
-    input wire logic [1:0] config_error,
-    output logic ready,
-    output logic done_valid,
-    input wire logic done_ready,
-    output logic [1:0] err_code,
-    output logic command_valid,
-    input wire logic command_ready,
-    input wire logic command_pressure,
-    input wire logic command_complete,
-    output logic [((FRAME_COUNT > 1) ? $clog2(FRAME_COUNT) : 1)-1:0] frame_id,
-    output logic [31:0] p0, q0, column0, rows, cols, count_k, reserve_rows,
-    output logic frame_init, frame_final,
-    output logic command_active,
-    output logic lookahead_valid,
-    output logic [31:0] lookahead_q0, lookahead_column, lookahead_cols, lookahead_count_k);
+    input wire logic clk /* 工作时钟 */, rst_n /* 低有效复位 */,
+    input wire logic start /* 接收当前矩阵任务并启动帧调度 */,
+    input wire logic [31:0] stream_rows /* 流式操作数方向的总行数 */, stationary_rows /* 驻留操作数方向的总行数 */, reduction /* 矩阵任务的完整归约长度 */,
+    input wire logic [31:0] reuse_rows /* 每个帧沿流式方向保留的矩阵块数 */, window_frames /* 窗口内允许同时保留的部分和帧数 */,
+    input wire logic [31:0] slice_tiles = 32'd0 /* 单条帧命令沿流式行方向处理的矩阵块数 */,
+    input wire logic [1:0] config_error /* 任务配置检查产生的错误码 */,
+    output logic ready /* 调度器空闲并可接收新任务 */,
+    output logic done_valid /* 任务完成状态有效 */,
+    input wire logic done_ready /* 上层可接收任务完成状态 */,
+    output logic [1:0] err_code /* 任务正常完成或配置错误的状态码 */,
+    output logic command_valid /* 当前帧命令及其参数有效 */,
+    input wire logic command_ready /* 执行通路可接收当前帧命令 */,
+    input wire logic command_pressure /* 部分和存储要求提前结束当前帧命令 */,
+    input wire logic command_complete /* 当前帧命令已完成数据处理 */,
+    output logic [((FRAME_COUNT > 1) ? $clog2(FRAME_COUNT) : 1)-1:0] frame_id /* 当前帧命令使用的物理部分和槽号 */,
+    output logic [31:0] p0 /* 当前帧沿流式方向的起始行位置 */, q0 /* 当前帧命令的归约起点 */, column0 /* 当前帧沿驻留方向的起始位置 */, rows /* 当前帧沿流式方向的有效行数 */, cols /* 当前帧沿驻留方向的有效行数 */, count_k /* 当前帧命令处理的归约元素数 */, reserve_rows /* 当前帧命令需要预留的部分和行数 */,
+    output logic frame_init /* 当前命令开始该帧的首次归约 */, frame_final /* 当前命令完成该帧的最终归约 */,
+    output logic command_active /* 当前帧命令已经接收且尚未完成 */,
+    output logic lookahead_valid /* 下一帧预读参数有效 */,
+    output logic [31:0] lookahead_q0 /* 下一帧预读的归约起点 */, lookahead_column /* 下一帧预读的驻留方向起始位置 */, lookahead_cols /* 下一帧预读的驻留方向有效行数 */, lookahead_count_k /* 下一帧预读需要处理的归约元素数 */);
     localparam int unsigned ID_W = (FRAME_COUNT > 1) ? $clog2(FRAME_COUNT) : 1;
     localparam int unsigned SHIFT = $clog2(SIZE);
     localparam int unsigned TILE_W = 32 - SHIFT;
@@ -71,6 +72,10 @@ module ps_window_scheduler #(
     logic row_advance_i_carry, row_advance_o_carry;
     logic [31:0] stream_remaining_i_a, stream_remaining_i_b, stream_remaining_o_sum;
     logic stream_remaining_i_carry, stream_remaining_o_carry;
+    logic [31:0] stream_remaining_reference_sum, stream_remaining_fast;
+    logic unused_stream_fast_carry;
+    logic [31:0] selected_row_offset, shared_row_sum, row_update_sum;
+    logic unused_shared_row_carry;
 
     logic [TILE_W:0] next_column_tile, column_after_part;
     logic [ROW_PART_W:0] next_row_part;
@@ -120,6 +125,15 @@ module ps_window_scheduler #(
     logic [31:0] candidate_q, candidate_column;
     logic [SHIFT:0] candidate_cols, candidate_k;
     logic candidate_final;
+    logic candidate_final_match;
+    logic [1:0] candidate_final_half;
+    // 两个半字分别进行相等比较，结果同时供命令描述与恢复资格使用。
+    for (genvar half_index = 0; half_index < 2; half_index++) begin : g_candidate_final
+        parallel_equal #(.p_width(16)) u_compare (
+            .i_a(candidate_q[16*half_index+:16]), .i_b(final_q0[16*half_index+:16]),
+            .o_equal(candidate_final_half[half_index]));
+    end
+    assign candidate_final_match = &candidate_final_half;
     wire candidate_ready = candidate_found && selected_id_valid;
     logic [FRAME_COUNT-1:0] frame_open;
     logic [FRAME_COUNT-1:0] candidate_eligible, candidate_after_cursor;
@@ -130,6 +144,8 @@ module ps_window_scheduler #(
     logic [TILE_W:0] incoming_column_tiles;
     logic [TILE_W:0] remaining_columns_i_a, remaining_columns_i_b, remaining_columns_o_sum;
     logic remaining_columns_i_carry, remaining_columns_o_carry;
+    logic [TILE_W:0] remaining_columns_reference_sum, remaining_columns_fast;
+    logic unused_columns_fast_carry;
     logic [ROW_COUNT_W-1:0] current_rows;
     logic [ROW_PART_W:0] group_parts;
     logic [31:0] candidate_row, candidate_rows, initial_slice_rows;
@@ -150,8 +166,23 @@ module ps_window_scheduler #(
     assign stream_remaining_i_carry = 1'b1;
     parallel_prefix_add #(.p_width(32)) u_stream_remaining (
         .i_a(stream_remaining_i_a), .i_b(stream_remaining_i_b), .i_carry(stream_remaining_i_carry),
-        .o_sum(stream_remaining_o_sum), .o_carry(stream_remaining_o_carry)
+        .o_sum(stream_remaining_reference_sum), .o_carry(stream_remaining_o_carry)
     );
+    parallel_prefix_add #(
+        .p_width(32), .p_preserve_groups(1'b1), .p_dsp_split_width(16),
+        .p_parallel_high_prefix(1'b1), .p_keep_carry(1'b0)
+    ) u_stream_remaining_arithmetic (
+        .i_a(stream_remaining_i_a), .i_b(stream_remaining_i_b), .i_carry(1'b1),
+        .o_sum(stream_remaining_fast), .o_carry(unused_stream_fast_carry)
+    );
+    // 两段定宽算术共同形成剩余行数，未知输入使用完整分组加法的传播关系。
+    always_comb begin
+        stream_remaining_o_sum = stream_remaining_reference_sum;
+        case (^{stream_remaining_i_a, stream_remaining_i_b})
+            1'b0, 1'b1: stream_remaining_o_sum = stream_remaining_fast;
+            default: ;
+        endcase
+    end
 
     function automatic logic [31:0] minimum(input logic [31:0] a, b);
         return (a < b) ? a : b;
@@ -215,11 +246,60 @@ module ps_window_scheduler #(
         .i_a(stored_row_i_a), .i_b(stored_row_i_b), .i_carry(stored_row_i_carry),
         .o_sum(stored_row_o_sum), .o_carry(stored_row_o_carry)
     );
+    // 扫描结束时更新下一组行；存在候选帧时计算该帧行地址，两者不会同时接收。
+    assign selected_row_offset = (phase == SWEEPING && !candidate_exists) ?
+        32'(current_rows) : (selected_init_q ? initial_row_i_b : stored_row_i_b);
+    parallel_prefix_add #(
+        .p_width(32), .p_preserve_groups(1'b1), .p_dsp_split_width(16),
+        .p_parallel_high_prefix(1'b1), .p_keep_carry(1'b0)
+    ) u_shared_row_address (
+        .i_a(row_base), .i_b(selected_row_offset), .i_carry(1'b0),
+        .o_sum(shared_row_sum), .o_carry(unused_shared_row_carry)
+    );
+    always_comb begin
+        row_update_sum = row_advance_o_sum;
+        case (^{row_base, current_rows})
+            1'b0, 1'b1: row_update_sum = shared_row_sum;
+            default: ;
+        endcase
+    end
 
     // 零切片数由原有配置分支处理，其他值按幂次决定分块形状。
     logic [31:0] slice_shape_i_value;
     logic slice_shape_o_valid;
-    assign incoming_slice_invalid = incoming_slice_oversized || !slice_shape_o_valid;
+    if (MAX_REUSE_TILES > 0 && MAX_REUSE_TILES < 32'h80000000) begin : g_bounded_slice_check
+        localparam int p_slice_bits = $clog2(MAX_REUSE_TILES + 1);
+        localparam int p_high_groups = (32 - p_slice_bits + 5) / 6;
+        (* keep = 1 *) logic [p_high_groups-1:0] high_zero_groups;
+        logic low_shape_valid;
+        logic low_exceeds_reuse;
+        logic slice_invalid_binary;
+        // 复用上限和切片资格共同检查任务；高位非零直接表示切片超出容量。
+        for (genvar group_index = 0; group_index < p_high_groups; group_index++) begin : g_high_zero
+            localparam int p_first = p_slice_bits + 6 * group_index;
+            localparam int p_bits = 32-p_first < 6 ? 32-p_first : 6;
+            zero_reduce #(.p_width(p_bits)) u_zero (
+                .i_value(slice_tiles[p_first +: p_bits]), .o_zero(high_zero_groups[group_index])
+            );
+        end
+        (* keep_hierarchy = "yes" *) onehot_check #(
+            .p_width(p_slice_bits), .p_allow_zero(1'b1)
+        ) u_low_shape (
+            .i_value(slice_tiles[p_slice_bits-1:0]), .o_valid(low_shape_valid)
+        );
+        assign low_exceeds_reuse = slice_tiles[p_slice_bits-1:0] > reuse_rows[p_slice_bits-1:0];
+        assign slice_invalid_binary = !(&high_zero_groups) ||
+            !low_shape_valid || low_exceeds_reuse;
+        always_comb begin
+            incoming_slice_invalid = incoming_slice_oversized || !slice_shape_o_valid;
+            case (^{slice_tiles, reuse_rows})
+                1'b0, 1'b1: incoming_slice_invalid = slice_invalid_binary;
+                default: ;
+            endcase
+        end
+    end else begin : g_full_slice_check
+        assign incoming_slice_invalid = incoming_slice_oversized || !slice_shape_o_valid;
+    end
     assign slice_shape_i_value = slice_tiles;
     onehot_check #(.p_width(32), .p_allow_zero(1'b1)) u_slice_shape (
       .i_value(slice_shape_i_value),
@@ -232,6 +312,7 @@ module ps_window_scheduler #(
     localparam int PART_MATH_W = ROW_COUNT_W > (ROW_PART_W+1) ? ROW_COUNT_W : (ROW_PART_W+1);
     logic [PART_MATH_W-1:0] prepare_rows_extended, prepare_rows_last, prepare_rows_last_binary;
     logic [PART_MATH_W-1:0] prepare_rows_lower_nonzero;
+    logic [PART_MATH_W-1:0] prepare_rows_last_q;
     logic [PART_MATH_W-1:0] prepare_part_quotient, prepare_part_rounded;
     logic [TILE_W:0] prepare_remaining_columns;
     logic [ROW_PART_W:0] prepare_parts;
@@ -253,7 +334,7 @@ module ps_window_scheduler #(
             default: prepare_rows_last = prepare_rows_extended - PART_MATH_W'(1);
         endcase
     end
-    assign prepare_part_quotient = prepare_rows_last >> slice_shift;
+    assign prepare_part_quotient = prepare_rows_last_q >> slice_shift;
     assign prepare_part_rounded[0] = ~prepare_part_quotient[0];
     for (genvar part_bit = 1; part_bit < PART_MATH_W; part_bit++) begin : g_part_increment
         assign prepare_part_rounded[part_bit] = prepare_part_quotient[part_bit] ^
@@ -263,6 +344,9 @@ module ps_window_scheduler #(
     always_ff @(posedge clk) begin
         if (phase == PREPARING) begin
             prepare_rows <= ROW_COUNT_W'(minimum(32'(cfg_rows), stream_rows_remaining));
+            // 行数和减一结果在同一准备边沿保存，下一阶段只移位并向上取整。
+            prepare_rows_last_q <= PART_MATH_W'(ROW_COUNT_W'(
+                minimum(32'(cfg_rows), stream_rows_remaining))) - PART_MATH_W'(1);
             prepare_remaining_columns <= remaining_columns;
             if (!sliced) prepare_parts <= (ROW_PART_W+1)'(1);
         end
@@ -320,10 +404,27 @@ module ps_window_scheduler #(
     assign remaining_columns_i_a = column_tiles;
     assign remaining_columns_i_b = ~next_column_tile;
     assign remaining_columns_i_carry = 1'b1;
-    parallel_prefix_add #(.p_width(TILE_W+1)) u_remaining_columns (
+    // 剩余列数采用低、高段并行算术，保留全部列索引位和输入进位语义。
+    parallel_prefix_add #(.p_width(TILE_W+1),
+        .p_dsp_split_width(16), .p_parallel_high_prefix(1'b1),
+        .p_keep_carry(1'b0), .p_preserve_grouped_unknowns(1'b1)) u_remaining_columns (
         .i_a(remaining_columns_i_a), .i_b(remaining_columns_i_b), .i_carry(remaining_columns_i_carry),
-        .o_sum(remaining_columns_o_sum), .o_carry(remaining_columns_o_carry)
+        .o_sum(remaining_columns_reference_sum), .o_carry(remaining_columns_o_carry)
     );
+    parallel_prefix_add #(
+        .p_width(TILE_W+1), .p_preserve_groups(1'b1), .p_dsp_split_width((TILE_W+2)/2),
+        .p_parallel_high_prefix(1'b1), .p_keep_carry(1'b0)
+    ) u_remaining_columns_arithmetic (
+        .i_a(remaining_columns_i_a), .i_b(remaining_columns_i_b), .i_carry(1'b1),
+        .o_sum(remaining_columns_fast), .o_carry(unused_columns_fast_carry)
+    );
+    always_comb begin
+        remaining_columns_o_sum = remaining_columns_reference_sum;
+        case (^{remaining_columns_i_a, remaining_columns_i_b})
+            1'b0, 1'b1: remaining_columns_o_sum = remaining_columns_fast;
+            default: ;
+        endcase
+    end
     assign remaining_columns = remaining_columns_o_sum;
     assign group_parts = prepare_parts;
     assign reserve_rows = minimum(32'(cfg_slice_rows), 32'(current_rows));
@@ -379,12 +480,16 @@ module ps_window_scheduler #(
             scanned_id = candidate_after_exists ? after_first_id : eligible_first_id;
         end
         candidate_row = candidate_init ? initial_row_o_sum : stored_row_o_sum;
+        case (^{row_base, initial_row_i_b, stored_row_i_b, candidate_init})
+            1'b0, 1'b1: candidate_row = shared_row_sum;
+            default: ;
+        endcase
         candidate_rows = candidate_init ? minimum(32'(cfg_slice_rows),
             32'(next_slice_remaining)) : 32'(selected_rows);
         candidate_q = candidate_init ? 32'd0 : (32'(frame_k[candidate_id]) << SHIFT);
         candidate_column = candidate_init ? (32'(next_column_tile) << SHIFT) :
             (32'(selected_column) << SHIFT);
-        candidate_final = candidate_q == final_q0;
+        candidate_final = candidate_final_match;
         candidate_cols = candidate_column == final_column0 ? final_column_count : (SHIFT+1)'(SIZE);
         candidate_k = candidate_final ? final_k_count : (SHIFT+1)'(SIZE);
         command_valid = command_buffer_valid && !command_active;
@@ -728,7 +833,7 @@ module ps_window_scheduler #(
                 live <= '0;
                 candidate_exists <= 1'b0;
                 if (next_column_tile == column_tiles) begin
-                    row_base <= row_advance_o_sum;
+                    row_base <= row_update_sum;
                     stream_rows_remaining <= next_stream_rows_remaining;
                     next_column_tile <= '0;
                     next_row_part <= '0;

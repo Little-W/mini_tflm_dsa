@@ -1,0 +1,285 @@
+{
+  "passed": true,
+  "reference": "8b3728c0",
+  "source_sha256": {
+    "rtl/npu/ps_compact/ps_frame_store.sv": "82f24921610cdeba948fe5bffefaba59c4badd0b9c928ce2bd53a5ec37050048",
+    "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+    "rtl/common/parallel_prefix_add.sv": "3455a8c3373eda8aef1c05d6d3b3c236ae3c970dde8fd725d7b8437ad83eaf0a",
+    "rtl/npu/ps_compact/ps_raw_address.sv": "f8961aeeaec8bf938280d22f98deeffdb18f53fb1e4a19c93f05b04e24425024",
+    "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+    "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+    "rtl/common/parallel_prefix_high_group.sv": "f37805622ff8cfac2cec15d31c4bf4ceef1d73e986559d6e81f2c13a5870c70a",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+  },
+  "reference_sha256": "c036da7cd999acaf6b162fb4b606e03bc468e2c07377241681630085f6c8234f",
+  "input_constraints": null,
+  "complete_state": [
+    {
+      "case": "fixed",
+      "parameters": {
+        "MAX_FRAME_ROWS": 512,
+        "FRAME_COUNT": 16,
+        "POOL_BYTES": 57344,
+        "BANK_BYTES": 8192,
+        "EXTERNAL_RAM": 1,
+        "p_fixed_ps_channels": 1
+      },
+      "passed": true,
+      "equivalent_bits": 7267,
+      "log_sha256": "3c0c64bc9242a5f292e88379d2ea17c9677d0441a764437b935b9244abc6266c"
+    },
+    {
+      "case": "rotating",
+      "parameters": {
+        "MAX_FRAME_ROWS": 16,
+        "FRAME_COUNT": 4,
+        "POOL_BYTES": 14336,
+        "BANK_BYTES": 2048,
+        "EXTERNAL_RAM": 1,
+        "p_fixed_ps_channels": 0
+      },
+      "passed": true,
+      "equivalent_bits": 6714,
+      "log_sha256": "2469fd0681c6d83cdb7dcf683bb909194e86bcbd374ff0278cc6abd2efb1837b"
+    },
+    {
+      "case": "internal",
+      "parameters": {
+        "MAX_FRAME_ROWS": 47,
+        "FRAME_COUNT": 16,
+        "POOL_BYTES": 4096,
+        "BANK_BYTES": 2048,
+        "EXTERNAL_RAM": 0
+      },
+      "passed": true,
+      "equivalent_bits": 40322,
+      "log_sha256": "9825d58f2b7f0977c3bdd47da9e1acc3ad2c3e471870d2c129aa87e6031307a4"
+    }
+  ],
+  "qualifier_checks": [
+    {
+      "fifo_depth": 4,
+      "passed": true,
+      "four_state_checks": 60004,
+      "formal_log_sha256": "c4231a650854b70bc1c05f5529d3996f6265455476af20cd428632c406d04fbe",
+      "simulation_log_sha256": "49c77075ff6b4f99957e8f303c97e88b786be028600ef6cb4d86717147da2abe"
+    },
+    {
+      "fifo_depth": 6,
+      "passed": true,
+      "four_state_checks": 60004,
+      "formal_log_sha256": "164559a52bd9cae88a15d51c0a126908a416f115ae6a24f118d121996898239b",
+      "simulation_log_sha256": "d26fafd501bee2841f08b2070ca8581d5f3e795d2dc2e55a9e2340c045134c92"
+    },
+    {
+      "fifo_depth": 8,
+      "passed": true,
+      "four_state_checks": 60004,
+      "formal_log_sha256": "a18560854d5bf368812e0522ee24c04c2487a4cfb032c78c2fce3f122d8a368a",
+      "simulation_log_sha256": "56645e6fbbbd673903dc3a63e4dde874ddc9ed0b1b62376ea9bb5c5e5e2fd526"
+    },
+    {
+      "fifo_depth": 16,
+      "passed": true,
+      "four_state_checks": 60004,
+      "formal_log_sha256": "9ee0bddb515fea2e16da5b8bc53b41bf04ee65b44ca3cc9f622d63e36d460dc4",
+      "simulation_log_sha256": "2ba17ee1912c7bab648d05113d3afaed84ea67507be75cdcdfda2d99aa0a0305"
+    }
+  ],
+  "capacity_selection": {
+    "passed": true,
+    "input_constraints": null,
+    "runs": [
+      {
+        "frame_count": 4,
+        "capacity_width": 8,
+        "formal": true,
+        "four_state_checks": 60004,
+        "formal_log_sha256": "a74d25f3847ce4870898ee4eee2984bbcca1a723f430c66aee87141f657f5e58",
+        "simulation_log_sha256": "42ee785436c11f424d2966e9f53d0b32f9bf83594df4044a67b935fc2b4c9315"
+      },
+      {
+        "frame_count": 16,
+        "capacity_width": 13,
+        "formal": true,
+        "four_state_checks": 60004,
+        "formal_log_sha256": "d7b8e400d469b5f1be9e732d4feb5c6677057c501e194ff4e404c0ceecf6c441",
+        "simulation_log_sha256": "844f0d0419c1ff217961046bd0e3c9028311c1a8e189e3282e7a98cd927050fe"
+      },
+      {
+        "frame_count": 3,
+        "capacity_width": 10,
+        "formal": true,
+        "four_state_checks": 60004,
+        "formal_log_sha256": "7199f1d935b94cb020584d9d37929516d81cf0cbb53721744c5ac1732803ebeb",
+        "simulation_log_sha256": "3a44cf4b412d74b8ecaef17045361b7a81798c88ab8fb6800d6543b8d24a93fb"
+      }
+    ],
+    "source_sha256": "82f24921610cdeba948fe5bffefaba59c4badd0b9c928ce2bd53a5ec37050048",
+    "model_sha256": "a136733866245cd535d72aa768a5ec95323d3d386fcfaaadfa3ea563fa64880a"
+  },
+  "capacity_arithmetic": {
+    "passed": true,
+    "input_constraints": null,
+    "runs": [
+      {
+        "parameters": {
+          "FRAME_COUNT": 16,
+          "MAX_FRAME_ROWS": 512,
+          "POOL_BYTES": 57344,
+          "BANK_BYTES": 8192,
+          "EXTERNAL_RAM": 1
+        },
+        "formal_synthesis_branch": true,
+        "four_state_checks": 30004,
+        "formal_log_sha256": "c61f61c8105d89363186d59e1d69cc01ca97764337f679ada2084d210e823e05",
+        "simulation_log_sha256": "524d65d8e68e1ac39e915f66fe28348b93334ffb32ffd126eecd6dce84f7265b"
+      },
+      {
+        "parameters": {
+          "FRAME_COUNT": 16,
+          "MAX_FRAME_ROWS": 47,
+          "POOL_BYTES": 4096,
+          "BANK_BYTES": 2048,
+          "EXTERNAL_RAM": 0
+        },
+        "formal_synthesis_branch": true,
+        "four_state_checks": 30004,
+        "formal_log_sha256": "e8915325b90f5c8901a670150d1eb21952077aa0ef413536fea7995190c3b24b",
+        "simulation_log_sha256": "14e50d71d5256059ca4bb1e6f38f7abc71fc7b8df103a7487603c6227c16f59c"
+      },
+      {
+        "parameters": {
+          "FRAME_COUNT": 6,
+          "MAX_FRAME_ROWS": 33,
+          "POOL_BYTES": 8192,
+          "BANK_BYTES": 2048,
+          "EXTERNAL_RAM": 1
+        },
+        "formal_synthesis_branch": true,
+        "four_state_checks": 30004,
+        "formal_log_sha256": "2aa378f270dba0a877c99604124495507562a2e328d182a5fe72e4507d3d07f5",
+        "simulation_log_sha256": "41534ea808cdd2b4f1ca360de5e893ff0f50d493ffe1673270bf5eb962859fd2"
+      },
+      {
+        "parameters": {
+          "FRAME_COUNT": 1,
+          "MAX_FRAME_ROWS": 1,
+          "POOL_BYTES": 4096,
+          "BANK_BYTES": 2048,
+          "EXTERNAL_RAM": 0
+        },
+        "formal_synthesis_branch": true,
+        "four_state_checks": 30004,
+        "formal_log_sha256": "11cb9e6351c33848a6f7729c264efc4f881cdeae7c2cbbbbe914472b3d85e41f",
+        "simulation_log_sha256": "3244e293d6bc18793754e4cdef35a7fd94e26b5f8ab250a8c9bbf534e8ce5214"
+      }
+    ],
+    "source_sha256": "82f24921610cdeba948fe5bffefaba59c4badd0b9c928ce2bd53a5ec37050048",
+    "model_sha256": "c53f9336b86881f57f8bebb112b432ceef7eb44704d8cb46c5c4980e18189aa0"
+  },
+  "capacity_fault": {
+    "passed": true,
+    "reference": "8b3728c0",
+    "input_constraints": null,
+    "runs": [
+      {
+        "frame_id_bits": 2,
+        "formal": true,
+        "four_state_checks": 60004,
+        "formal_log_sha256": "a3c27d2d4ee6a8c71d5c62fd4a1191cf627ad53bdc5acf4f32812dd4b9780acb",
+        "simulation_log_sha256": "42ef1bbc51debb9828d475a4c4f9cdea83f29466100bffc93647d00365027473"
+      },
+      {
+        "frame_id_bits": 4,
+        "formal": true,
+        "four_state_checks": 60004,
+        "formal_log_sha256": "e950e79eeb8a235f64156696284a32553eef28e8f467b975cd3ca98d1cc56e8b",
+        "simulation_log_sha256": "94f10e4ec969bb691e9441e0e76d4b27bf02adc5a39b350421bb5e793bdb0286"
+      }
+    ],
+    "source_sha256": "82f24921610cdeba948fe5bffefaba59c4badd0b9c928ce2bd53a5ec37050048",
+    "model_sha256": "15c55bcfc47b762dbc6c86a8ceea3829b9299e6b542e8576b78b9c2382c5e3d4",
+    "reference_sha256": "c036da7cd999acaf6b162fb4b606e03bc468e2c07377241681630085f6c8234f"
+  },
+  "stream_capture": {
+    "passed": true,
+    "rtl_source_commit": "46cf4bbab7fed1ceb8cf040534bba72e59baa099",
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/work_cpu/test/ps_stream_capture/run.py": "606b6a72279947a23345349c6b1655bfae1481df05b57292340b8dd8617db25b",
+      "/workspace/scratch/5bfa47658687/work_cpu/test/ps_compression/stream_soc_trace.py": "8f8fa81d975cfdab5913f450bc8ad941236ab6a59715655a14a5ceb60a8e0c8b",
+      "/workspace/scratch/5bfa47658687/work_cpu/test/ps_stream_capture/tb.sv": "da165e2f36df79a88740b82f6a64dafe09c20df991b22752ee61817bfe30e5c8",
+      "/workspace/scratch/5bfa47658687/work_cpu/test/ps_compression/ps_stream_capture.sv": "a537813263ff183e42e288ceb84380b849839b5270904602d4227f3a30283164",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/npu/ps_compact/ps_frame_store.sv": "82f24921610cdeba948fe5bffefaba59c4badd0b9c928ce2bd53a5ec37050048",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/common/parallel_prefix_add.sv": "3455a8c3373eda8aef1c05d6d3b3c236ae3c970dde8fd725d7b8437ad83eaf0a",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/npu/ps_compact/ps_raw_address.sv": "f8961aeeaec8bf938280d22f98deeffdb18f53fb1e4a19c93f05b04e24425024",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/common/parallel_prefix_high_group.sv": "f37805622ff8cfac2cec15d31c4bf4ceef1d73e986559d6e81f2c13a5870c70a",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+    },
+    "binary_sha256": "e454b43d35f2f605079ff870537508dfa27cf1abbc530a4eddb8e049ae2494ed",
+    "compile_command": [
+      "/workspace/scratch/5bfa47658687/task_tools/bin/verilator",
+      "--binary",
+      "--timing",
+      "--assert",
+      "-Wno-fatal",
+      "--top-module",
+      "ps_stream_capture_tb",
+      "--Mdir",
+      "/workspace/scratch/5bfa47658687/storage_work/ps_native_capacity_stream/obj",
+      "-j",
+      "2",
+      "/workspace/scratch/5bfa47658687/work_cpu/test/ps_stream_capture/tb.sv",
+      "/workspace/scratch/5bfa47658687/work_cpu/test/ps_compression/ps_stream_capture.sv",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/npu/ps_compact/ps_frame_store.sv",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/common/add_equal.sv",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/common/parallel_prefix_add.sv",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/npu/ps_compact/ps_raw_address.sv",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/common/regfile.v",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/common/add_equal_bit.sv",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/common/add_equal_reduce.sv",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/common/parallel_prefix_high_group.sv",
+      "/workspace/scratch/5bfa47658687/work_cpu/rtl/common/parallel_prefix_native_sums.sv"
+    ],
+    "event_verification": {
+      "passed": true,
+      "summary": {
+        "writes": 774,
+        "reads": 774,
+        "discarded": 0,
+        "frames": 16,
+        "payload_write_bytes": 49536,
+        "payload_read_bytes": 49536,
+        "fifo_write_bytes": 0,
+        "fifo_read_bytes": 0,
+        "direct_rows": 774,
+        "peak_payload_bytes": 16384
+      },
+      "write_data_sha256": "130d0a19e2a1a0d9a01a6ee63f50faf0065963277ac35171d6bd109cbdb17499",
+      "read_data_sha256": "130d0a19e2a1a0d9a01a6ee63f50faf0065963277ac35171d6bd109cbdb17499",
+      "event_file_sha256": "72b3eb6d8bc8c460fb8191b9790b3137399dece31462c76f5d18a6d86aa0f673"
+    },
+    "assertion_cases": [
+      {
+        "case": 1,
+        "expected_assertion": "PS INT32 mismatch",
+        "rejected": true
+      },
+      {
+        "case": 2,
+        "expected_assertion": "Invalid PS observer descriptor",
+        "rejected": true
+      },
+      {
+        "case": 3,
+        "expected_assertion": "Incomplete PS frame at completion",
+        "rejected": true
+      }
+    ]
+  }
+}

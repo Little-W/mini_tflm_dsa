@@ -1,0 +1,206 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "generated/storage.sv": "c4b9aadcb1729e2b139b23e55ff93ff8a86a899c51af73e0f0a6a617ba2d9fe0",
+    "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+    "rtl/npu/buffers/ia_ps_role_ram.sv": "b3764bbb255ab4a2526195a5c4c23e39cb4db7d7b14d9c03d0d72928e07d4cc5"
+  },
+  "profiles": [
+    {
+      "depth": 32,
+      "byte_index": 0,
+      "passed": true,
+      "log_sha256": "100aa5d26988defb0d51e4f1e5e7c99b6a907c9a80dd4bcc64855aae2907b1af"
+    },
+    {
+      "depth": 32,
+      "byte_index": 1,
+      "passed": true,
+      "log_sha256": "a6c8e9d35d60fe26ad7c118cbac52d9560303ed0a9acd47b2057ea2c7d534485"
+    },
+    {
+      "depth": 32,
+      "byte_index": 2,
+      "passed": true,
+      "log_sha256": "b8485945d096edc8c33ba91807dff287f2dab35eda4f74e6588103634ad4a549"
+    },
+    {
+      "depth": 32,
+      "byte_index": 3,
+      "passed": true,
+      "log_sha256": "7900a4ea68a0b49c7c205819fa5601af6b95fcb668a673e73fec018dbe398a19"
+    },
+    {
+      "depth": 32,
+      "byte_index": 4,
+      "passed": true,
+      "log_sha256": "b447e21fe9430b67f5991b547ea9c627812bcb8b069a302f77dc1c3ebfb8e266"
+    },
+    {
+      "depth": 32,
+      "byte_index": 5,
+      "passed": true,
+      "log_sha256": "4b40658f65900f3e5131e243cfb1b6209e5d5d6769ae0249e93c411335c70049"
+    },
+    {
+      "depth": 32,
+      "byte_index": 6,
+      "passed": true,
+      "log_sha256": "6deed08e4c914f0cd1f8449f18f89777dbef21ec8b882cbafcd2284227a278ce"
+    },
+    {
+      "depth": 32,
+      "byte_index": 7,
+      "passed": true,
+      "log_sha256": "9d3e515b4a5f7584450602f6f3d325dbd74b8f14222e0abf539681fec3b2ff73"
+    },
+    {
+      "depth": 32,
+      "byte_index": 8,
+      "passed": true,
+      "log_sha256": "23b655f7a35a2793f2a37189687a7283865f3656d7deb263840f1345a3d6170b"
+    },
+    {
+      "depth": 32,
+      "byte_index": 9,
+      "passed": true,
+      "log_sha256": "eec0edb0a02c38c8cbd782eabd2c612e581870458125667c82549189f1e046f5"
+    },
+    {
+      "depth": 32,
+      "byte_index": 10,
+      "passed": true,
+      "log_sha256": "2a1900e5cd7e668099c6fff43b3efbaed1a1ce7d95aa6c4a5a4bce950c8ffa8d"
+    },
+    {
+      "depth": 32,
+      "byte_index": 11,
+      "passed": true,
+      "log_sha256": "98ab6b7a4c44d2d552602681b9a9a4039d82a4be3749d4011592e6ac94987e46"
+    },
+    {
+      "depth": 32,
+      "byte_index": 12,
+      "passed": true,
+      "log_sha256": "a5d4706a597106293c2ead329e11241fc8fe791629c6ac15f5665b6b216bbce8"
+    },
+    {
+      "depth": 32,
+      "byte_index": 13,
+      "passed": true,
+      "log_sha256": "1e09b571febeec853fa3febbaf2a438cb54842919a7cb97b1f84442141b9a0aa"
+    },
+    {
+      "depth": 32,
+      "byte_index": 14,
+      "passed": true,
+      "log_sha256": "4c553bf9b2dadc2d70c06c9078aa4cf42ab88acef6ffb2dea25803489fdb1cb5"
+    },
+    {
+      "depth": 32,
+      "byte_index": 15,
+      "passed": true,
+      "log_sha256": "1ab231edcd0ffa239c783f362e54952834ca409bdc738cabdb849e108a9b4dcb"
+    },
+    {
+      "depth": 128,
+      "byte_index": 0,
+      "passed": true,
+      "log_sha256": "29d92388460647a6eab44cf3f5690805911ac3bde02e62840e72c7b2852b5eeb"
+    },
+    {
+      "depth": 128,
+      "byte_index": 1,
+      "passed": true,
+      "log_sha256": "158a80fb9d26a874045ef34980a028a27c0eaccda00527c45a8bcd5686a23563"
+    },
+    {
+      "depth": 128,
+      "byte_index": 2,
+      "passed": true,
+      "log_sha256": "1efb9490019896cd67fb5eceea77dddddb61bb54635d4df513c2517419d77f08"
+    },
+    {
+      "depth": 128,
+      "byte_index": 3,
+      "passed": true,
+      "log_sha256": "f102a823c91b05297f1a03c2109b59eac1bd26abbdacf5bc56610f1ab2de61b6"
+    },
+    {
+      "depth": 128,
+      "byte_index": 4,
+      "passed": true,
+      "log_sha256": "2afdb8b20a2b049ebed8e476f7dbba448051c005e48c90ee638e0758ca0d1858"
+    },
+    {
+      "depth": 128,
+      "byte_index": 5,
+      "passed": true,
+      "log_sha256": "91a8c7b5887e64d2c7478713b2ca9c32dfa2a0e38d45eab251e02941687b343c"
+    },
+    {
+      "depth": 128,
+      "byte_index": 6,
+      "passed": true,
+      "log_sha256": "af3082e829c33cac3d36e51181becdc14c63403a98d708daf785e1c4d9fc675c"
+    },
+    {
+      "depth": 128,
+      "byte_index": 7,
+      "passed": true,
+      "log_sha256": "52552ce8e19151a798397dcd16b4071695a1447178e81f41ca70d33fe18c41a5"
+    },
+    {
+      "depth": 128,
+      "byte_index": 8,
+      "passed": true,
+      "log_sha256": "b231566035deeb25447bcb8e4b2448e2b1e4779ce7088d6c05a8a24d59d7ecd2"
+    },
+    {
+      "depth": 128,
+      "byte_index": 9,
+      "passed": true,
+      "log_sha256": "97a9b09af915471b2e9d3b060ee4dc5cecf622de658de6f46b9b9898765bdf43"
+    },
+    {
+      "depth": 128,
+      "byte_index": 10,
+      "passed": true,
+      "log_sha256": "9cc98345f150f94e39b2e9e9274686266dd14d801498a2c5714dede36863f3a2"
+    },
+    {
+      "depth": 128,
+      "byte_index": 11,
+      "passed": true,
+      "log_sha256": "a5b67591ff7831b6e68c89025b788bc3bdde2bcc967d17e03e584d681ea7d190"
+    },
+    {
+      "depth": 128,
+      "byte_index": 12,
+      "passed": true,
+      "log_sha256": "e043f1bb1a857d07ad7d9c955d8905a3b6b7b77a1577f1e4c5d81edbeed5515b"
+    },
+    {
+      "depth": 128,
+      "byte_index": 13,
+      "passed": true,
+      "log_sha256": "5fb61cdaebba7a27b2feddf06e785568e070f7ce72c0a322ad3b2cf301b1b3c0"
+    },
+    {
+      "depth": 128,
+      "byte_index": 14,
+      "passed": true,
+      "log_sha256": "1170ca34b0d294176595976122319b4d7bd8b8a9e39759e16c4c0f0f5f6f5357"
+    },
+    {
+      "depth": 128,
+      "byte_index": 15,
+      "passed": true,
+      "log_sha256": "e144bf6e1c15b34075ffc02126e28d5c404b309c7bb5c216a5cdf03d630d362c"
+    }
+  ],
+  "scope": "实际 128 位存储数组的每个字节及同步返回，包含同址读写和任意逐周期所有者选择",
+  "initial_state": "各字节分别证明：符号行地址任意且保持不变，第一拍该行对应字节内容相同，其他存储位任意",
+  "induction": "任意行的相同字节经一步任意输入更新后仍相同；读取该行时同步返回相同，因此覆盖全部行和连续访问",
+  "test_sha256": "a82b6d0d255c485989615dfb4440d3bc455e3653aa164595ef4ee849e3d78a5f"
+}

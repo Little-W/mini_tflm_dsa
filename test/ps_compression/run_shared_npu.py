@@ -13,6 +13,17 @@ sys.path.insert(0, str(ROOT / "test/conv_npu"))
 import run as npu
 
 
+def input_bank_count(manifest, *, mode, lhs_s16, requested_banks=1):
+    """根据实际输入格式选择满足共享读带宽的输入存储块数量。"""
+    compact_enable = manifest.get("ia_compact_enable")
+    if compact_enable not in (0, 1):
+        raise RuntimeError("Simulator must record IA_COMPACT_ENABLE as zero or one")
+    # IS 读取 INT8 权重流，WS 读取左操作数；非紧凑格式需要两个存储块。
+    compact = bool(compact_enable and (mode or not lhs_s16))
+    minimum = 1 if compact else 2
+    return max(requested_banks, minimum)
+
+
 def configure(directory, *, banks, r, w, control=0, bank_bytes=2048, bank_count=7):
     path = directory / "config.mem"
     words = [int(value, 16) for value in path.read_text().split()]

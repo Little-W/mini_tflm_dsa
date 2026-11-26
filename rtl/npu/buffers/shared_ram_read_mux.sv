@@ -8,9 +8,9 @@ module shared_ram_read_mux #(
     parameter int p_inputs = 7,
     parameter int p_select_width = $clog2(p_inputs)
 ) (
-    input  wire logic [p_width-1:0] i_data [p_inputs],
-    input  wire logic [p_select_width-1:0] i_select,
-    output logic [p_width-1:0] o_data
+    input  wire logic [p_width-1:0] i_data [p_inputs] /* 各候选物理存储体同步返回的数据 */,
+    input  wire logic [p_select_width-1:0] i_select /* 目标读取存储体的选择编号 */,
+    output logic [p_width-1:0] o_data /* 所选物理存储体的读取结果 */
 );
     //! 0. 辅助定义
     //! -----------

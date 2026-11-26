@@ -1,0 +1,225 @@
+{
+  "passed": true,
+  "reference_revision": "2551bb91",
+  "source_sha256": {
+    "rtl/npu/buffers/ia_ps_channel_ram.sv": "c8eed9167141eaf3da00e20448d1b48786bd0e39bc7abcb07eaf3c7ead33ab7d",
+    "rtl/npu/top/npu_top.sv": "9e049bff1723860300ef3528c6f4c2a3585f0edd9852d2adc9f1392ca74bd429"
+  },
+  "generic_equivalence": {
+    "passed": true,
+    "source_sha256": "c8eed9167141eaf3da00e20448d1b48786bd0e39bc7abcb07eaf3c7ead33ab7d",
+    "reference_revision": "2551bb91",
+    "reference_sha256": "cdebec2120fc1b35f494bc9eb8da8afe78b069aea03f13675306ebc28f2ae13b",
+    "formal_profiles": [
+      {
+        "bank_bytes": 2048,
+        "banks": 6,
+        "shared_write_stage": 0,
+        "passed": true,
+        "log_sha256": "1670bcba07a5120e9163645151dffde2de378a8f4bfe14aa460d89a3b3c0143c"
+      },
+      {
+        "bank_bytes": 2048,
+        "banks": 6,
+        "shared_write_stage": 1,
+        "passed": true,
+        "log_sha256": "3a0fea66b65b6f9e61509a7725dab7e68421ab3075bc20130e1f9f6e6c441444"
+      },
+      {
+        "bank_bytes": 2048,
+        "banks": 8,
+        "shared_write_stage": 0,
+        "passed": true,
+        "log_sha256": "c67c8628a1476b568186a49882623aecd384fd7d22d38a137408b3b97abe72bb"
+      },
+      {
+        "bank_bytes": 2048,
+        "banks": 8,
+        "shared_write_stage": 1,
+        "passed": true,
+        "log_sha256": "27b9c4670f92f23624d2b2946522db8817ee09b5e7a3ed4119d13e86521e12bf"
+      },
+      {
+        "bank_bytes": 8192,
+        "banks": 7,
+        "shared_write_stage": 0,
+        "passed": true,
+        "log_sha256": "84808db7c5f16aa758ca7956a6a70a836067e10b0aad6576ed8da74982ca9b71"
+      },
+      {
+        "bank_bytes": 8192,
+        "banks": 7,
+        "shared_write_stage": 1,
+        "passed": true,
+        "log_sha256": "3efb6d600d20014ed46692251e1f9f233ab9f7184bafdb296bdf5979a850c198"
+      },
+      {
+        "bank_bytes": 8192,
+        "banks": 9,
+        "shared_write_stage": 0,
+        "passed": true,
+        "log_sha256": "8c21d4ff59fc3e77b0503fafc0195b62c13d1adf9a59a847bd2065b6ff1a32c7"
+      },
+      {
+        "bank_bytes": 8192,
+        "banks": 9,
+        "shared_write_stage": 1,
+        "passed": true,
+        "log_sha256": "009409467a5991c59d576993aad5d0996b1f9fcc9975872cff6cb1a3efd52b75"
+      }
+    ],
+    "constraints": "First sampled cycle reset; all subsequent resets and inputs free",
+    "four_state_profiles": 4,
+    "four_state_cycles_per_profile": 8192,
+    "four_state_comparisons": 65536,
+    "test_sha256": "f03d5a2ea28d0a5a1adf06f027d741ad2fe6c3138a63a0943a6f1ca9de7b89a5",
+    "helper_sha256": "3bba462f2abee7dfcb90df486d4d5bf7a3f23feebcaa44760275ec2a65f136d5",
+    "four_state_log_sha256": "c0d33a130413ed41f145de77d4b781104e72cbe0f121df3aeb882ff6dceae233"
+  },
+  "paired_access": {
+    "passed": true,
+    "source_sha256": {
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "bc9e2b89566a1c921785bc2fe7262ea3f234856813fa2ff6137bddcda97600a9",
+      "rtl/npu/buffers/vector_shared_store.sv": "b453a502a3e69c63421f6764db2750f4b49046fb3e75b92f161d910c17af9218",
+      "rtl/npu/buffers/ia_ps_channel_ram.sv": "c8eed9167141eaf3da00e20448d1b48786bd0e39bc7abcb07eaf3c7ead33ab7d",
+      "rtl/npu/top/npu_task_configuration.sv": "ff24a96bdcf57d997118721fc6dea649315b62d66335d697f74a8791a9b2889a"
+    },
+    "source_properties": [
+      {
+        "passed": true,
+        "induction_depth": 1,
+        "log_sha256": "b968167082843721628786093404cff392efaae695ade5e2fdbb61415ab65bdc",
+        "script_sha256": "60f57307da4e195be5618c112a0923229b0079cf07694b02311c02d66fd6e074",
+        "module": "ia_loader_cache_mgr",
+        "parameters": {
+          "BUS_WIDTH": 32,
+          "CACHE_BLOCKS": 4,
+          "COMPACT_S8": 1,
+          "p_dma_source_layout": 0,
+          "p_shared_write_stage": 0
+        },
+        "input_constraints": null,
+        "property": "第二端口有效读写请求的地址最低位为一"
+      },
+      {
+        "passed": true,
+        "induction_depth": 1,
+        "log_sha256": "451ac09bfc7e974d8172ed498a42b883756931536d2b8c7502663485fbe05a6a",
+        "script_sha256": "2750b0063bbc4cc184f6f2518a0c05a4f6c817719e481731d6a1955871848249",
+        "module": "ia_loader_cache_mgr",
+        "parameters": {
+          "BUS_WIDTH": 64,
+          "CACHE_BLOCKS": 32,
+          "COMPACT_S8": 1,
+          "p_dma_source_layout": 1,
+          "p_shared_write_stage": 1
+        },
+        "input_constraints": null,
+        "property": "第二端口有效读写请求的地址最低位为一"
+      },
+      {
+        "passed": true,
+        "induction_depth": 1,
+        "log_sha256": "a9d1716b8e10513001c5b72b4a92920aa0e4d6d9fc0e4af935d2205e6b3f8876",
+        "script_sha256": "b993e33af393a57a96da84ab78413a72cf6da500023b83586540d1872ee370e3",
+        "module": "ia_loader_cache_mgr",
+        "parameters": {
+          "BUS_WIDTH": 64,
+          "CACHE_BLOCKS": 32,
+          "COMPACT_S8": 0,
+          "p_dma_source_layout": 1,
+          "p_shared_write_stage": 1
+        },
+        "input_constraints": null,
+        "property": "第二端口有效读写请求的地址最低位为一"
+      },
+      {
+        "passed": true,
+        "induction_depth": null,
+        "log_sha256": "4a5884108aee5e1cce28f9e80ec5719654d58d5e0a5f9218ef811db0927d1d38",
+        "script_sha256": "890be712cf251194f9e065440385fa70c191a91bfc687b352fdd07772a4a6490",
+        "module": "vector_shared_store",
+        "input_constraints": null,
+        "property": "向量任务不使用第二个 IA 端口"
+      },
+      {
+        "passed": true,
+        "induction_depth": null,
+        "log_sha256": "a8a0f543dc2fdb8c3c26dc8cdd7bba3d15d4ffd2ffdde3ac615316088feb0a8f",
+        "script_sha256": "e8af231d52a48df56e59adebfc084bbdddad9ccd6c91788c25431a252ca71805",
+        "module": "npu_task_configuration",
+        "input_constraints": null,
+        "property": "容量检查通过的宽格式配置至少分配两块 IA 存储"
+      }
+    ],
+    "memory_access_equivalence": [
+      {
+        "passed": true,
+        "induction_depth": 1,
+        "log_sha256": "feb58ad3ae45072338c18702eda7c00a3ff43981ecef8bbcf5a5b70cce8afb4b",
+        "script_sha256": "45ab0a214dcd73d818e7131adb5fca9aefec2fd8227328c5a20b321da04784bc",
+        "bank_bytes": 2048,
+        "banks": 6,
+        "shared_write_stage": 0
+      },
+      {
+        "passed": true,
+        "induction_depth": 1,
+        "log_sha256": "704e836a290c3ce9aa52d2403efeaf3a3f14c4d07141bab1068ab02e996c8b09",
+        "script_sha256": "8fddf0c05a63b2ef389cd33c7f16cc6046a5db0a3b6d7ce67a5d823e079d2697",
+        "bank_bytes": 2048,
+        "banks": 6,
+        "shared_write_stage": 1
+      },
+      {
+        "passed": true,
+        "induction_depth": 1,
+        "log_sha256": "a2733c447a9991a882eea3b647ef13bf44065f881f78219ab7a872a5ba12f2e8",
+        "script_sha256": "3a3668ed147105f02cf471080e5befe9f9b37ebb30766a8309d747afa566384d",
+        "bank_bytes": 8192,
+        "banks": 7,
+        "shared_write_stage": 0
+      },
+      {
+        "passed": true,
+        "induction_depth": 1,
+        "log_sha256": "90442b29c4e351c765f36f16226d2a59557d47daec093be2bace0077fe364f87",
+        "script_sha256": "534f53788fc74ca816c84c2ea3b4a0b1b54dfc75f6c4aa363a90f6f5417c520d",
+        "bank_bytes": 8192,
+        "banks": 7,
+        "shared_write_stage": 1
+      }
+    ],
+    "specialized_input_condition": "有效物理第二端口访问使用两块 IA 配置且地址最低位为一；其他输入自由",
+    "specialized_scope": "全部存储命令、全部配置与返回选择状态、错误输出；首次有效第二端口读取后，其返回选择固定为物理块一",
+    "reference": "2551bb91"
+  },
+  "integration": {
+    "fpga": {
+      "passed": true,
+      "tasks": 96,
+      "functional_tasks": 38,
+      "capacity_tasks": 31,
+      "output_tasks": 15,
+      "packed_tasks": 12,
+      "int32_checks": 235528,
+      "summary_sha256": "e4d0ba28e25279a88e86e515a02b0128eca0a8c142c01d77443fdbd643712832"
+    },
+    "compact": {
+      "passed": true,
+      "tasks": 38,
+      "int32_checks": 11118,
+      "summary_sha256": "2313c8d5731e4d72e6f85b20394582c2d78736888b1bda89c712ab52c9863117"
+    },
+    "compact_packed": {
+      "passed": true,
+      "tasks": 12,
+      "int32_checks": 20196,
+      "summary_sha256": "678fa2d5016c8cb3863b63332f574c82bf38d55addc6e45f72c1c651dfeea964"
+    }
+  },
+  "test_sha256": {
+    "run_control.py": "f03d5a2ea28d0a5a1adf06f027d741ad2fe6c3138a63a0943a6f1ca9de7b89a5",
+    "run_pairing.py": "f7aa2c68a0c07e0b77b92ade34a7d26017c1d411394925223bc054cdbcb180c2"
+  }
+}

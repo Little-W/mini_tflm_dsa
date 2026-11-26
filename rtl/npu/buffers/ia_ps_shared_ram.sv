@@ -11,24 +11,24 @@ module ia_ps_shared_ram #(
     parameter int PS_ADDR_BITS = $clog2(TOTAL_BYTES/16),
     parameter int BANK_COUNT_BITS = $clog2(TOTAL_BYTES/BANK_BYTES+1)
 ) (
-    input  wire logic clk,
-    input  wire logic rst_n,
-    input  wire logic cfg_valid,
-    input  wire logic [BANK_COUNT_BITS-1:0] cfg_ia_banks,
-    output logic capacity_fault,
-    input  wire logic [1:0] ia_read_en,
-    input  wire logic [1:0] ia_write_en,
-    input  wire logic [IA_ADDR_BITS-1:0] ia_read_addr [0:1],
-    input  wire logic [IA_ADDR_BITS-1:0] ia_write_addr [0:1],
-    output logic [127:0] ia_read_data [0:1],
-    input  wire logic [127:0] ia_write_data [0:1],
-    input  wire logic [15:0] ia_write_mask [0:1],
-    input  wire logic [3:0] ps_read_en,
-    input  wire logic [3:0] ps_write_en,
-    input  wire logic [PS_ADDR_BITS-1:0] ps_read_addr [0:3],
-    input  wire logic [PS_ADDR_BITS-1:0] ps_write_addr [0:3],
-    output logic [127:0] ps_read_data [0:3],
-    input  wire logic [127:0] ps_write_data [0:3]
+    input  wire logic clk /* 工作时钟 */,
+    input  wire logic rst_n /* 低有效复位 */,
+    input  wire logic cfg_valid /* 接收本次共享存储空间分配配置 */,
+    input  wire logic [BANK_COUNT_BITS-1:0] cfg_ia_banks /* 分配给输入数据的物理共享存储块数 */,
+    output logic capacity_fault /* 存储分配或访问发生越界及端口冲突 */,
+    input  wire logic [1:0] ia_read_en /* 两个输入数据通道的读使能 */,
+    input  wire logic [1:0] ia_write_en /* 两个输入数据通道的写使能 */,
+    input  wire logic [IA_ADDR_BITS-1:0] ia_read_addr [0:1] /* 两个输入数据通道的存储字读取地址 */,
+    input  wire logic [IA_ADDR_BITS-1:0] ia_write_addr [0:1] /* 两个输入数据通道的存储字写入地址 */,
+    output logic [127:0] ia_read_data [0:1] /* 两个输入数据通道同步返回的各128 位数据 */,
+    input  wire logic [127:0] ia_write_data [0:1] /* 两个输入数据通道的各128 位写数据 */,
+    input  wire logic [15:0] ia_write_mask [0:1] /* 两个输入数据通道的逐字节写使能 */,
+    input  wire logic [3:0] ps_read_en /* 四个部分和存储通道的读使能 */,
+    input  wire logic [3:0] ps_write_en /* 四个部分和存储通道的写使能 */,
+    input  wire logic [PS_ADDR_BITS-1:0] ps_read_addr [0:3] /* 四个部分和通道的存储字读取地址 */,
+    input  wire logic [PS_ADDR_BITS-1:0] ps_write_addr [0:3] /* 四个部分和通道的存储字写入地址 */,
+    output logic [127:0] ps_read_data [0:3] /* 四个部分和通道同步返回的各128 位数据 */,
+    input  wire logic [127:0] ps_write_data [0:3] /* 四个部分和通道的各128 位写数据 */
 );
     //! 0. 常量与内部信号
     //! --------------------

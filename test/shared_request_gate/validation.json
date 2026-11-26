@@ -1,0 +1,276 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "rtl/npu/buffers/ia_ps_channel_ram.sv": "f82a2a32e77a56fe20252752d2e029ff43592a7d3c225994434246aa470db478",
+    "rtl/npu/buffers/ps_channel_write_enable.sv": "1171bb4b2ca039a8037bf1bfa9f65d95502b3cf4e2792f059ef0e49c0fc8d9de",
+    "rtl/npu/buffers/ps_channel_request_fault.sv": "72849aa48048cc97030fd87cdeae23a73c0eb48e17937c42025089498f61d61a",
+    "rtl/npu/buffers/ia_ps_role_ram.sv": "b3764bbb255ab4a2526195a5c4c23e39cb4db7d7b14d9c03d0d72928e07d4cc5",
+    "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+    "test/shared_role_ram/run_memory.py": "6dd7a893f06f499c5d78aac82303b833a1ce099785f2b4ac5800aa66831962fa"
+  },
+  "reference_revision": "6d1ace4e",
+  "formal": {
+    "passed": true,
+    "reference": "6d1ace4e",
+    "source_sha256": {
+      "rtl/npu/buffers/ia_ps_channel_ram.sv": "f82a2a32e77a56fe20252752d2e029ff43592a7d3c225994434246aa470db478",
+      "rtl/npu/buffers/ps_channel_write_enable.sv": "1171bb4b2ca039a8037bf1bfa9f65d95502b3cf4e2792f059ef0e49c0fc8d9de",
+      "rtl/npu/buffers/ps_channel_request_fault.sv": "72849aa48048cc97030fd87cdeae23a73c0eb48e17937c42025089498f61d61a",
+      "rtl/npu/buffers/ia_ps_role_ram.sv": "b3764bbb255ab4a2526195a5c4c23e39cb4db7d7b14d9c03d0d72928e07d4cc5",
+      "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+      "test/shared_role_ram/run_memory.py": "6dd7a893f06f499c5d78aac82303b833a1ce099785f2b4ac5800aa66831962fa"
+    },
+    "command_proofs": [
+      {
+        "mode": "generic",
+        "parameters": {
+          "p_bank_bytes": 2048,
+          "p_total_bytes": 12288,
+          "p_shared_write_stage": 0,
+          "p_paired_ia_ports": 0,
+          "p_ia_nonempty_writes": 0,
+          "p_allow_inactive_return_updates": 0
+        },
+        "passed": true,
+        "log_sha256": "7485bd01bd160b416cee0361f353b073bde68b9472f3d23915f6e11d25df3006"
+      },
+      {
+        "mode": "generic",
+        "parameters": {
+          "p_bank_bytes": 2048,
+          "p_total_bytes": 16384,
+          "p_shared_write_stage": 1,
+          "p_paired_ia_ports": 0,
+          "p_ia_nonempty_writes": 0,
+          "p_allow_inactive_return_updates": 1
+        },
+        "passed": true,
+        "log_sha256": "8b19e858891b78bfc897634d46c6dda4f3b738c9b79ef348b493ea9b952391de"
+      },
+      {
+        "mode": "generic",
+        "parameters": {
+          "p_bank_bytes": 8192,
+          "p_total_bytes": 57344,
+          "p_shared_write_stage": 1,
+          "p_paired_ia_ports": 1,
+          "p_ia_nonempty_writes": 1,
+          "p_allow_inactive_return_updates": 1
+        },
+        "passed": true,
+        "log_sha256": "ce5839213cb9e76b4490678f53c485bbdd868ddf20cd3873fcf9f7d7ece87440"
+      },
+      {
+        "mode": "generic",
+        "parameters": {
+          "p_bank_bytes": 8192,
+          "p_total_bytes": 57344,
+          "p_shared_write_stage": 0,
+          "p_paired_ia_ports": 0,
+          "p_ia_nonempty_writes": 0,
+          "p_allow_inactive_return_updates": 0
+        },
+        "passed": true,
+        "log_sha256": "375287eb52baa1144d1da9b97e9d9980291e62e148e7b72887b8bd353f182a31"
+      },
+      {
+        "mode": "generic",
+        "parameters": {
+          "p_bank_bytes": 8192,
+          "p_total_bytes": 73728,
+          "p_shared_write_stage": 0,
+          "p_paired_ia_ports": 0,
+          "p_ia_nonempty_writes": 0,
+          "p_allow_inactive_return_updates": 1
+        },
+        "passed": true,
+        "log_sha256": "04c2c1901198d18fdbb82c7c2928c03517fa252ff13024530d99bc8c7d3f3040"
+      },
+      {
+        "mode": "fpga",
+        "parameters": {
+          "p_bank_bytes": 2048,
+          "p_total_bytes": 12288,
+          "p_shared_write_stage": 0,
+          "p_paired_ia_ports": 0,
+          "p_ia_nonempty_writes": 0,
+          "p_allow_inactive_return_updates": 0
+        },
+        "passed": true,
+        "log_sha256": "d5cb56c305d920abc286d306434da03e27b1a9b41c64083b0569429498056202"
+      },
+      {
+        "mode": "fpga",
+        "parameters": {
+          "p_bank_bytes": 2048,
+          "p_total_bytes": 16384,
+          "p_shared_write_stage": 1,
+          "p_paired_ia_ports": 0,
+          "p_ia_nonempty_writes": 0,
+          "p_allow_inactive_return_updates": 1
+        },
+        "passed": true,
+        "log_sha256": "89e5ea5bc39bbcd36df295cda00c1f516d3b4f1a4cbec74e280de1e15cd451a8"
+      },
+      {
+        "mode": "fpga",
+        "parameters": {
+          "p_bank_bytes": 8192,
+          "p_total_bytes": 57344,
+          "p_shared_write_stage": 1,
+          "p_paired_ia_ports": 1,
+          "p_ia_nonempty_writes": 1,
+          "p_allow_inactive_return_updates": 1
+        },
+        "passed": true,
+        "log_sha256": "5686068fe889e1bebc5ac9f2519d826c0b697fb00c7949099d91def0d606c85a"
+      },
+      {
+        "mode": "fpga",
+        "parameters": {
+          "p_bank_bytes": 8192,
+          "p_total_bytes": 57344,
+          "p_shared_write_stage": 0,
+          "p_paired_ia_ports": 0,
+          "p_ia_nonempty_writes": 0,
+          "p_allow_inactive_return_updates": 0
+        },
+        "passed": true,
+        "log_sha256": "213357623ea6935cae930ac6a9320b89ca5d59da0f85a2ee24723e314f2f26e6"
+      },
+      {
+        "mode": "fpga",
+        "parameters": {
+          "p_bank_bytes": 8192,
+          "p_total_bytes": 73728,
+          "p_shared_write_stage": 0,
+          "p_paired_ia_ports": 0,
+          "p_ia_nonempty_writes": 0,
+          "p_allow_inactive_return_updates": 1
+        },
+        "passed": true,
+        "log_sha256": "8a5cf000b8b4fec5bc755c1cd60e2001a58a5c7028e3817ecc12eb042157aad7"
+      }
+    ],
+    "memory_tests": [],
+    "input_constraints": "首次采样复位，随后全部输入与复位自由",
+    "proof_scope": "全部物理存储命令逐位相等；任意独立返回数据下的公开返回、配置和选择状态逐周期相等",
+    "test_sha256": "445f4f88b6d4c9bc4b9f6795e0b27453c548ffb044d3863de857db61a5eb4253"
+  },
+  "memory": {
+    "passed": true,
+    "reference": "6d1ace4e",
+    "source_sha256": {
+      "rtl/npu/buffers/ia_ps_channel_ram.sv": "f82a2a32e77a56fe20252752d2e029ff43592a7d3c225994434246aa470db478",
+      "rtl/npu/buffers/ps_channel_write_enable.sv": "1171bb4b2ca039a8037bf1bfa9f65d95502b3cf4e2792f059ef0e49c0fc8d9de",
+      "rtl/npu/buffers/ps_channel_request_fault.sv": "72849aa48048cc97030fd87cdeae23a73c0eb48e17937c42025089498f61d61a",
+      "rtl/npu/buffers/ia_ps_role_ram.sv": "b3764bbb255ab4a2526195a5c4c23e39cb4db7d7b14d9c03d0d72928e07d4cc5",
+      "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+      "test/shared_role_ram/run_memory.py": "6dd7a893f06f499c5d78aac82303b833a1ce099785f2b4ac5800aa66831962fa"
+    },
+    "command_proofs": [],
+    "memory_tests": [
+      {
+        "mode": "generic",
+        "passed": true,
+        "profiles": [
+          [
+            2048,
+            6,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            2048,
+            8,
+            1,
+            0,
+            0,
+            1
+          ],
+          [
+            8192,
+            7,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            8192,
+            7,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            8192,
+            9,
+            0,
+            0,
+            0,
+            1
+          ]
+        ],
+        "cycles_per_profile": 8192,
+        "log_sha256": "89fba1331523a7ca56e714d5b28b32ff6ae15cfdab808b1ec2175c50e8d9ef01",
+        "testbench_sha256": "880da9eca4418e5e97b6fb11e75cf8e70c1bd46b6ec57791cd0138d5b9d549b9"
+      },
+      {
+        "mode": "fpga",
+        "passed": true,
+        "profiles": [
+          [
+            2048,
+            6,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            2048,
+            8,
+            1,
+            0,
+            0,
+            1
+          ],
+          [
+            8192,
+            7,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            8192,
+            7,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            8192,
+            9,
+            0,
+            0,
+            0,
+            1
+          ]
+        ],
+        "cycles_per_profile": 8192,
+        "log_sha256": "3edc85c7c85bd2b928928aa138da9e46e960a143cdcd950759414cdb4c2d454f",
+        "testbench_sha256": "880da9eca4418e5e97b6fb11e75cf8e70c1bd46b6ec57791cd0138d5b9d549b9"
+      }
+    ],
+    "input_constraints": "首次采样复位，随后全部输入与复位自由",
+    "proof_scope": "全部物理存储命令逐位相等；任意独立返回数据下的公开返回、配置和选择状态逐周期相等",
+    "test_sha256": "445f4f88b6d4c9bc4b9f6795e0b27453c548ffb044d3863de857db61a5eb4253"
+  }
+}

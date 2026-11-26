@@ -1,0 +1,315 @@
+{
+  "passed": true,
+  "reference_revision": "f45a6c21",
+  "inputs_constrained": false,
+  "all_public_outputs_and_state_compared": true,
+  "all_memory_contents_compared": true,
+  "source_sha256": "f09024081a4fcd18033e69d05bef1d27301aaa0622a082b98a66b6ba12c27621",
+  "reference_sha256": "c50457989248ae9599e4e3451c7441c4a42a282fc17ab37689b33c97a9639498",
+  "dependency_sha256": {
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv": "556a1e5163a7bb2da066d7cfc243b0a9406cce2c5f7e3b3d43f4c6d3b557e490",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+    "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/control/ps_scheduler_priority.sv": "da745683f643b6ba2bf22435e0fdb421315f1f501886ab48464de34a238843b2"
+  },
+  "formal_profiles": [
+    {
+      "mode": "generic",
+      "parameters": {
+        "SIZE": 1,
+        "FRAME_COUNT": 1,
+        "MAX_REUSE_TILES": 1
+      },
+      "passed": true,
+      "equivalent_bits": 1739,
+      "log_sha256": "a0eb6fef8734482b8145a16dafee6e2b793b6d2094cf0a957dfae9a21ed6c666"
+    },
+    {
+      "mode": "generic",
+      "parameters": {
+        "SIZE": 4,
+        "FRAME_COUNT": 3,
+        "MAX_REUSE_TILES": 4
+      },
+      "passed": true,
+      "equivalent_bits": 2103,
+      "log_sha256": "bc6d1a7c25ae938cd6b7d435a0f091947f6f507e3b20612b1ad369c5dcb65d1b"
+    },
+    {
+      "mode": "generic",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 16
+      },
+      "passed": true,
+      "equivalent_bits": 3368,
+      "log_sha256": "4bed515f3bf986780b9146c0f6539e52ae5faf25d825314b66ef32f32401a2a2"
+    },
+    {
+      "mode": "generic",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32
+      },
+      "passed": true,
+      "equivalent_bits": 3419,
+      "log_sha256": "7ff54e9258be1224423d900909f37c12ddb3751d127cf0f100194e092a2d6890"
+    },
+    {
+      "mode": "generic",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 0
+      },
+      "passed": true,
+      "equivalent_bits": 4567,
+      "log_sha256": "081789fb925723f7485d0e6e49a86b6749ba26746d93ca95a5d7baa5fa47329c"
+    },
+    {
+      "mode": "generic",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 17,
+        "MAX_REUSE_TILES": 64
+      },
+      "passed": true,
+      "equivalent_bits": 3586,
+      "log_sha256": "1977b2ad9a089d0c635438887552a3fd3f1fee999ff3c3ec05781bd4031fb42b"
+    },
+    {
+      "mode": "fpga",
+      "parameters": {
+        "SIZE": 1,
+        "FRAME_COUNT": 1,
+        "MAX_REUSE_TILES": 1
+      },
+      "passed": true,
+      "equivalent_bits": 1751,
+      "log_sha256": "f87293dadfea33488160ffd64c09e9fef464541527c7db507c62e1a8d7a39d61"
+    },
+    {
+      "mode": "fpga",
+      "parameters": {
+        "SIZE": 4,
+        "FRAME_COUNT": 3,
+        "MAX_REUSE_TILES": 4
+      },
+      "passed": true,
+      "equivalent_bits": 2115,
+      "log_sha256": "b541c5884747e42cb87ecb3c4c6022c5a587be392af62f8ea4c33d04df4347a9"
+    },
+    {
+      "mode": "fpga",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 16
+      },
+      "passed": true,
+      "equivalent_bits": 3380,
+      "log_sha256": "e12307cf1156967c8b9dab5e479a569690fc0f870c81e475fd729d684bc3ca18"
+    },
+    {
+      "mode": "fpga",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32
+      },
+      "passed": true,
+      "equivalent_bits": 3431,
+      "log_sha256": "9dba3dd07af04cc9a061999369d6b29ebd3154d928fb85e6572489d4b3a4748f"
+    },
+    {
+      "mode": "fpga",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 0
+      },
+      "passed": true,
+      "equivalent_bits": 4579,
+      "log_sha256": "6f16f2acbef0f034b442deb6fd3b1a360ba7f75cbbdd859aa95550db439c4f30"
+    },
+    {
+      "mode": "fpga",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 17,
+        "MAX_REUSE_TILES": 64
+      },
+      "passed": true,
+      "equivalent_bits": 3598,
+      "log_sha256": "7373721db52fc57447a931e63e8edb960e4f1577be7fe052cbb752b78e55ca0e"
+    }
+  ],
+  "four_state_profiles": [
+    {
+      "mode": "generic",
+      "parameters": {
+        "SIZE": 1,
+        "FRAME_COUNT": 1,
+        "MAX_REUSE_TILES": 1
+      },
+      "passed": true,
+      "cycles": 8192,
+      "unknown_output_cycles": 14,
+      "commands": 85,
+      "log_sha256": "a3733f714563ff4c155d7733a051ed140d07e1a9caa588f67eb031dee5435030"
+    },
+    {
+      "mode": "generic",
+      "parameters": {
+        "SIZE": 4,
+        "FRAME_COUNT": 3,
+        "MAX_REUSE_TILES": 4
+      },
+      "passed": true,
+      "cycles": 8192,
+      "unknown_output_cycles": 14,
+      "commands": 102,
+      "log_sha256": "ee44e56db9c41f51019ce6d09840159117f36ed8484ae718a7eb7458545f6fff"
+    },
+    {
+      "mode": "generic",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 16
+      },
+      "passed": true,
+      "cycles": 8192,
+      "unknown_output_cycles": 14,
+      "commands": 98,
+      "log_sha256": "8762441ed5b37f84342904ad43d6e6cf988fe3ba7d34cc777925052549131bf6"
+    },
+    {
+      "mode": "generic",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32
+      },
+      "passed": true,
+      "cycles": 8192,
+      "unknown_output_cycles": 14,
+      "commands": 98,
+      "log_sha256": "8762441ed5b37f84342904ad43d6e6cf988fe3ba7d34cc777925052549131bf6"
+    },
+    {
+      "mode": "generic",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 0
+      },
+      "passed": true,
+      "cycles": 8192,
+      "unknown_output_cycles": 14,
+      "commands": 98,
+      "log_sha256": "8762441ed5b37f84342904ad43d6e6cf988fe3ba7d34cc777925052549131bf6"
+    },
+    {
+      "mode": "generic",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 17,
+        "MAX_REUSE_TILES": 64
+      },
+      "passed": true,
+      "cycles": 8192,
+      "unknown_output_cycles": 14,
+      "commands": 97,
+      "log_sha256": "de4418d00fa4520c850b80e537643646e008e0dfabe223cabd8319744d7b0b6e"
+    },
+    {
+      "mode": "fpga",
+      "parameters": {
+        "SIZE": 1,
+        "FRAME_COUNT": 1,
+        "MAX_REUSE_TILES": 1
+      },
+      "passed": true,
+      "cycles": 8192,
+      "unknown_output_cycles": 14,
+      "commands": 85,
+      "log_sha256": "a3733f714563ff4c155d7733a051ed140d07e1a9caa588f67eb031dee5435030"
+    },
+    {
+      "mode": "fpga",
+      "parameters": {
+        "SIZE": 4,
+        "FRAME_COUNT": 3,
+        "MAX_REUSE_TILES": 4
+      },
+      "passed": true,
+      "cycles": 8192,
+      "unknown_output_cycles": 14,
+      "commands": 102,
+      "log_sha256": "ee44e56db9c41f51019ce6d09840159117f36ed8484ae718a7eb7458545f6fff"
+    },
+    {
+      "mode": "fpga",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 16
+      },
+      "passed": true,
+      "cycles": 8192,
+      "unknown_output_cycles": 14,
+      "commands": 98,
+      "log_sha256": "8762441ed5b37f84342904ad43d6e6cf988fe3ba7d34cc777925052549131bf6"
+    },
+    {
+      "mode": "fpga",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32
+      },
+      "passed": true,
+      "cycles": 8192,
+      "unknown_output_cycles": 14,
+      "commands": 98,
+      "log_sha256": "8762441ed5b37f84342904ad43d6e6cf988fe3ba7d34cc777925052549131bf6"
+    },
+    {
+      "mode": "fpga",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 0
+      },
+      "passed": true,
+      "cycles": 8192,
+      "unknown_output_cycles": 14,
+      "commands": 98,
+      "log_sha256": "8762441ed5b37f84342904ad43d6e6cf988fe3ba7d34cc777925052549131bf6"
+    },
+    {
+      "mode": "fpga",
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 17,
+        "MAX_REUSE_TILES": 64
+      },
+      "passed": true,
+      "cycles": 8192,
+      "unknown_output_cycles": 14,
+      "commands": 97,
+      "log_sha256": "de4418d00fa4520c850b80e537643646e008e0dfabe223cabd8319744d7b0b6e"
+    }
+  ],
+  "formal_equivalent_bits": 37636,
+  "four_state_cycles": 98304,
+  "test_sha256": "74c9b292e9ae0ba7130731d18b71b8889879f556056b592d8c15a1571167dc2b"
+}

@@ -6,12 +6,12 @@ module select_add #(
     // 48 位端口可分为四个独立的 12 位模加通道。
     parameter bit p_split_12bit = 1'b0
 ) (
-    input  wire logic signed [p_width-1:0] i_lhs,
-    input  wire logic signed [p_width-1:0] i_rhs0,
-    input  wire logic signed [p_width-1:0] i_rhs1,
-    input  wire logic                      i_rhs_select,
-    input  wire logic                      i_add_enable,
-    output logic signed [p_width-1:0] o_sum
+    input  wire logic signed [p_width-1:0] i_lhs, // 保持直通或参与加法的左操作数。
+    input  wire logic signed [p_width-1:0] i_rhs0, // 选择条件为零时的右操作数。
+    input  wire logic signed [p_width-1:0] i_rhs1, // 选择条件为一时的右操作数。
+    input  wire logic                      i_rhs_select, // 选择第二路右操作数。
+    input  wire logic                      i_add_enable, // 使能加法，否则直接输出左操作数。
+    output logic signed [p_width-1:0] o_sum // 按选择与使能产生的定宽模加结果。
 );
     //! 0. 辅助定义
     //! -----------

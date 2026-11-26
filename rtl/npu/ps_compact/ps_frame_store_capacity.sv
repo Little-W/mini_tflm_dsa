@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-module ps_frame_store_capacity #(
+/* 根据行起点、帧行数和物理存储容量计算当前帧是否可以保留。 */ module ps_frame_store_capacity #(
     parameter int p_initial_row_width = 10,
     parameter int p_bank_words_width = 10,
     parameter int p_bank_count_width = 4
 ) (
-    input  wire logic [p_initial_row_width-1:0] i_initial_row,
-    input  wire logic [31:0]                    i_frame_rows,
-    input  wire logic [31:0]                    i_reserve_rows,
-    input  wire logic [p_bank_words_width-1:0]   i_bank_words,
-    input  wire logic [p_bank_count_width-1:0]   i_bank_count,
-    output logic                           o_rows_fit
+    input  wire logic [p_initial_row_width-1:0] i_initial_row /* 当前帧占用空间的起始行位置 */,
+    input  wire logic [31:0]                    i_frame_rows /* 当前帧的实际有效行数 */,
+    input  wire logic [31:0]                    i_reserve_rows /* 当前帧要求保留的行容量 */,
+    input  wire logic [p_bank_words_width-1:0]   i_bank_words /* 每个部分和存储块可使用的128 位字数 */,
+    input  wire logic [p_bank_count_width-1:0]   i_bank_count /* 分配给部分和的物理存储块数 */,
+    output logic                           o_rows_fit /* 实际行范围及预留行范围均在物理容量内 */
 );
     localparam int p_pool_word_width = p_bank_words_width + p_bank_count_width;
     localparam int p_rows_width = (p_initial_row_width > p_pool_word_width-2) ?

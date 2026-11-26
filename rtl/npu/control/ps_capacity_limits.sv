@@ -9,13 +9,13 @@ module ps_capacity_limits #(
     parameter int p_bank_bytes = 2048,
     parameter int p_tile_shift = 4
 ) (
-    input  wire logic [p_rows_width-1:0]   i_frame_rows,
-    input  wire logic [p_frames_width-1:0] i_frames,
-    input  wire logic [31:0]               i_bank_count,
-    input  wire logic [31:0]               i_frame_slice_tiles,
-    input  wire logic                      i_use_frame_commands,
-    output logic                      o_frames_fit,
-    output logic                      o_admission_fit
+    input  wire logic [p_rows_width-1:0]   i_frame_rows /* 一个待保留部分和帧的有效行数 */,
+    input  wire logic [p_frames_width-1:0] i_frames /* 同时保留的部分和帧数 */,
+    input  wire logic [31:0]               i_bank_count /* 当前分配给部分和的物理存储块数 */,
+    input  wire logic [31:0]               i_frame_slice_tiles /* 单条帧命令沿流式行方向处理的矩阵块数 */,
+    input  wire logic                      i_use_frame_commands /* 采用显式帧命令进行部分和调度 */,
+    output logic                      o_frames_fit /* 全部活动帧满足当前物理存储容量 */,
+    output logic                      o_admission_fit /* 单条待接收帧命令满足容量及切片限制 */
 );
     //! 0. 常量与选择信号
     //! -----------------

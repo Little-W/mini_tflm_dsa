@@ -4,16 +4,16 @@
 module registered_vector_add #(
     parameter int unsigned p_lanes = 16
 ) (
-    input  wire logic clk,
-    input  wire logic rst_n,
-    input  wire logic i_clear,
-    input  wire logic i_valid,
-    input  wire logic i_tile_done,
-    input  wire logic signed [31:0] i_lhs [p_lanes],
-    input  wire logic signed [31:0] i_rhs [p_lanes],
-    output wire logic o_valid,
-    output wire logic o_tile_done,
-    output wire logic signed [31:0] o_sum [p_lanes]
+    input  wire logic clk, // 模块工作时钟。
+    input  wire logic rst_n, // 低有效复位输入。
+    input  wire logic i_clear, // 清除加法流水的有效状态。
+    input  wire logic i_valid, // 本周期两路输入向量有效。
+    input  wire logic i_tile_done, // 本周期输入向量为分块的最后一项。
+    input  wire logic signed [31:0] i_lhs [p_lanes], // 各通道的第一个三十二位有符号加数。
+    input  wire logic signed [31:0] i_rhs [p_lanes], // 各通道的第二个三十二位有符号加数。
+    output wire logic o_valid, // 寄存后的逐通道加法结果有效。
+    output wire logic o_tile_done, // 本周期有效结果结束当前分块。
+    output wire logic signed [31:0] o_sum [p_lanes] // 寄存后各通道的三十二位模加结果。
 );
     logic valid_q, tile_done_q;
     logic [16:0] low_sum_q [p_lanes];

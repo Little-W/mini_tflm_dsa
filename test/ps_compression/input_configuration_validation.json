@@ -1,0 +1,969 @@
+{
+  "passed": true,
+  "scope": "standalone_writeback_and_packed_suites",
+  "rtl_source_commit": "1d2f7f6a161618f7ae4705331f7aae106b733f39",
+  "input_storage_selection": {
+    "active_compact": "ia_compact_enable and (dataflow == IS or lhs_dtype == INT8)",
+    "minimum_ia_banks": "active_compact ? 1 : 2",
+    "selected_ia_banks": "max(requested_ia_banks, minimum_ia_banks)"
+  },
+  "runner_sources_sha256": {
+    "test/ps_compression/run_shared_npu.py": "59b4516ec4359f7e2b9d54dd4a4064467db5295350214d3bbfcc49efc2effb04",
+    "test/ps_compression/test_input_banks.py": "6ceb96a671e1c68705204fb6c363ff73eec2de3549f3d80406fd61092fd1aaab",
+    "test/writeback_cyclic/run_npu.py": "45896b2cc205de0288073dedad1ea14adaf485559062c91dbb6e2c4c86157548",
+    "test/frame_address/run_npu.py": "0d844787edf32ce05cbc0954ba85f0e7b215b1e1300b1d0aa4f4b5552840d0e9",
+    "test/fpga_integration/run.py": "f883e506a4404ea35fd5b7608a5627b5f6fd431bdc54b6da9f2d6e63799b72d0",
+    "test/asic_integration/run.py": "6446fa5a41868b3e8be32f86b9e225f37a765a989b736d3eb5c2c62ed3037de1",
+    "test/writeback_cyclic/README.md": "bff2753de2a3c4744bfc2b6207b4f4956c08a14a7decb2728f6da3918249e307",
+    "test/frame_address/README.md": "83db42108d59001beca39b4fc17e5d68cbae0141d107abaf0689b1db6afe146d"
+  },
+  "unit_tests": [
+    {
+      "name": "input_banks",
+      "tests": 4,
+      "passed": true,
+      "log": "/workspace/scratch/75105476d0fd/measurements/native_input_profile/input_banks_unit_tests.log",
+      "log_sha256": "3b0dbb90387b342ccecc50446a0fb5e4385d86a3f467e5b97d63f8924fc08aff"
+    },
+    {
+      "name": "capacity_generator",
+      "tests": 10,
+      "passed": true,
+      "log": "/workspace/scratch/75105476d0fd/measurements/native_input_profile/capacity_generator_unit_tests.log",
+      "log_sha256": "b4e598e913e18f1f8212c068807eb3f6a7708e3f57e58fcbae3c6f57b924d2fa"
+    }
+  ],
+  "runs": [
+    {
+      "mode": "fpga",
+      "manifest": "/workspace/scratch/75105476d0fd/measurements/native_fpga_integration/npu/s16/build.json",
+      "manifest_sha256": "2612b4f1ca302b54a95ae6927b4683b7de43b8a2fd7c90f7c4bbf77975dcbf09",
+      "binary_sha256": "33e90115c8c2fa4144593cafe50e6778c6e79ddc76931573cf413eb35dd11cb5",
+      "hardware_profile": {
+        "size": 16,
+        "bus_width": 64,
+        "shared_bank_bytes": 8192,
+        "shared_bank_count": 7,
+        "ia_compact_enable": 0,
+        "ps_frame_count": 16,
+        "ps_storage_rows": 799,
+        "oa_s16_fifo_banks_max": 4,
+        "address_width": 32,
+        "vector_pe_count": 8
+      },
+      "suites": [
+        {
+          "name": "writeback",
+          "passed": true,
+          "completed_cases": 15,
+          "int32_checks": 11392,
+          "sum_case_cycles": 51371,
+          "summary": "/workspace/scratch/75105476d0fd/measurements/native_input_profile/fpga/writeback/summary.json",
+          "summary_sha256": "87542f9de912b5a8ee5900dd0ad3f0f63aaa856eec72d96a6cd7bba8ae7641a4",
+          "coverage": {
+            "cycles": 51566,
+            "coalesce_cycles": 9181,
+            "frame_cycles": 1804,
+            "ws_coalesce_cycles": 6899,
+            "is_coalesce_cycles": 2282,
+            "ws_to_is": 6,
+            "is_to_ws": 4,
+            "configurations": 15,
+            "recovery_resets": 3
+          },
+          "command_modes_passed": true
+        },
+        {
+          "name": "packed",
+          "passed": true,
+          "completed_cases": 12,
+          "int32_checks": 20196,
+          "sum_case_cycles": 123537,
+          "summary": "/workspace/scratch/75105476d0fd/measurements/native_input_profile/fpga/packed/summary.json",
+          "summary_sha256": "f49f808352973799f0e19812141105f4d8089ddf403ec7f15d075b0494833eeb",
+          "frame_coverage": [
+            {
+              "accepted": 252,
+              "started": 252,
+              "cancelled": 0,
+              "prepare_cycles": 3024,
+              "ws_frames": 144,
+              "is_frames": 108,
+              "packed_frames": 252,
+              "wide_frames": 126,
+              "context_cycles": 122169,
+              "context_consumptions": 504,
+              "cache_slot_checks": 252
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "asic",
+      "manifest": "/workspace/scratch/75105476d0fd/measurements/native_asic_integration/npu/s16/build.json",
+      "manifest_sha256": "5a1d469ddd95acf2cbe37f8d850266f56c171d2e4c97601c86b126253995c0c8",
+      "binary_sha256": "d67b2f7adcb29f34be3903c06eefe9c4ac2d6e2d0e4aa6a1ff90a83006b2e3f6",
+      "hardware_profile": {
+        "size": 16,
+        "bus_width": 64,
+        "shared_bank_bytes": 8192,
+        "shared_bank_count": 7,
+        "ia_compact_enable": 0,
+        "ps_frame_count": 16,
+        "ps_storage_rows": 0,
+        "oa_s16_fifo_banks_max": 0,
+        "address_width": 19,
+        "vector_pe_count": 16
+      },
+      "suites": [
+        {
+          "name": "writeback",
+          "passed": true,
+          "completed_cases": 15,
+          "int32_checks": 11392,
+          "sum_case_cycles": 51371,
+          "summary": "/workspace/scratch/75105476d0fd/measurements/native_input_profile/asic/writeback/summary.json",
+          "summary_sha256": "138e2d8e59d1e8881557bef5be6c18ed05067425d295345ea02a47ce8e0afd87",
+          "coverage": {
+            "cycles": 51566,
+            "coalesce_cycles": 9181,
+            "frame_cycles": 1804,
+            "ws_coalesce_cycles": 6899,
+            "is_coalesce_cycles": 2282,
+            "ws_to_is": 6,
+            "is_to_ws": 4,
+            "configurations": 15,
+            "recovery_resets": 3
+          },
+          "command_modes_passed": true
+        },
+        {
+          "name": "packed",
+          "passed": true,
+          "completed_cases": 12,
+          "int32_checks": 20196,
+          "sum_case_cycles": 123537,
+          "summary": "/workspace/scratch/75105476d0fd/measurements/native_input_profile/asic/packed/summary.json",
+          "summary_sha256": "b97c4f8ddc37cb9adad7c738e87327b33a32c37e13aeb470dc5c4cdfdfebe08f",
+          "frame_coverage": [
+            {
+              "accepted": 252,
+              "started": 252,
+              "cancelled": 0,
+              "prepare_cycles": 3024,
+              "ws_frames": 144,
+              "is_frames": 108,
+              "packed_frames": 252,
+              "wide_frames": 126,
+              "context_cycles": 122169,
+              "context_consumptions": 504,
+              "cache_slot_checks": 252
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "asic_fpga_measurements_equal": {
+    "writeback": true,
+    "packed": true
+  },
+  "numeric_input_preservation": {
+    "cases": 27,
+    "files_compared": 108,
+    "configuration_word_indices": [
+      62
+    ],
+    "matrix_dimensions_preserved": true,
+    "data_types_preserved": true,
+    "expected_errors_preserved": true,
+    "axi_response_injection_preserved": true,
+    "frame_command_expectations_preserved": true
+  },
+  "case_definitions": [
+    {
+      "suite": "writeback",
+      "case": "is_after_invalid",
+      "dimensions": {
+        "rows": 5,
+        "reduction": 16,
+        "columns": 32
+      },
+      "dataflow": "IS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 1,
+        "ps_control": 0
+      },
+      "numeric_files_sha256": {
+        "init.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18",
+        "golden.mem": "0da98d5561abb3a8297b59fc5a0a0978954ab26302b18c3c50a7247fd4a39616",
+        "acc.mem": "c89528e24c0c669b13e5c6f491e7c0af6abb3108d07382b056f36e238bf2a620",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "writeback",
+      "case": "is_frame",
+      "dimensions": {
+        "rows": 19,
+        "reduction": 35,
+        "columns": 64
+      },
+      "dataflow": "IS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 4,
+        "w": 2,
+        "ps_control": 2
+      },
+      "numeric_files_sha256": {
+        "init.mem": "a888a7258fc642793200d29ed30481493f523afd47520fc438eed113fdacf5c5",
+        "golden.mem": "dbf5ae446ed23e95fb16783639f66f67c59232fe22e8c8037658ee468cef090a",
+        "acc.mem": "3132b18e7d763634eaf0b1f20fbadf41a4dcb467dd34d3d1eaa51c1a1894e315",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "writeback",
+      "case": "is_group_tail",
+      "dimensions": {
+        "rows": 19,
+        "reduction": 35,
+        "columns": 64
+      },
+      "dataflow": "IS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 4,
+        "w": 2,
+        "ps_control": 0
+      },
+      "numeric_files_sha256": {
+        "init.mem": "a888a7258fc642793200d29ed30481493f523afd47520fc438eed113fdacf5c5",
+        "golden.mem": "dbf5ae446ed23e95fb16783639f66f67c59232fe22e8c8037658ee468cef090a",
+        "acc.mem": "3132b18e7d763634eaf0b1f20fbadf41a4dcb467dd34d3d1eaa51c1a1894e315",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "writeback",
+      "case": "is_invalid_reuse",
+      "dimensions": {
+        "rows": 5,
+        "reduction": 16,
+        "columns": 32
+      },
+      "dataflow": "IS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 2,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 3,
+        "w": 1,
+        "ps_control": 0
+      },
+      "numeric_files_sha256": {
+        "init.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18",
+        "golden.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18",
+        "acc.mem": "c89528e24c0c669b13e5c6f491e7c0af6abb3108d07382b056f36e238bf2a620",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "writeback",
+      "case": "is_read_abort",
+      "dimensions": {
+        "rows": 5,
+        "reduction": 16,
+        "columns": 32
+      },
+      "dataflow": "IS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 3,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 1,
+        "ps_control": 0
+      },
+      "numeric_files_sha256": {
+        "init.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18",
+        "golden.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18",
+        "acc.mem": "c89528e24c0c669b13e5c6f491e7c0af6abb3108d07382b056f36e238bf2a620",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "writeback",
+      "case": "is_recovery",
+      "dimensions": {
+        "rows": 19,
+        "reduction": 16,
+        "columns": 64
+      },
+      "dataflow": "IS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 4,
+        "w": 2,
+        "ps_control": 0
+      },
+      "numeric_files_sha256": {
+        "init.mem": "e4b9d4a448738611202fc429e2de78252eedf0bc0aebecab321db438975a9193",
+        "golden.mem": "ff7c7ddefebad08af98f73d3bb90954d09bb1a78f653965aa7e43524f7fa26c5",
+        "acc.mem": "66734947b101956c318c2e0c20d9aa11d80432d2d217953af39921b0eaf94a7e",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "writeback",
+      "case": "is_short",
+      "dimensions": {
+        "rows": 5,
+        "reduction": 16,
+        "columns": 32
+      },
+      "dataflow": "IS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 1,
+        "ps_control": 0
+      },
+      "numeric_files_sha256": {
+        "init.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18",
+        "golden.mem": "0da98d5561abb3a8297b59fc5a0a0978954ab26302b18c3c50a7247fd4a39616",
+        "acc.mem": "c89528e24c0c669b13e5c6f491e7c0af6abb3108d07382b056f36e238bf2a620",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "writeback",
+      "case": "ws_after_invalid",
+      "dimensions": {
+        "rows": 5,
+        "reduction": 16,
+        "columns": 32
+      },
+      "dataflow": "WS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 1,
+        "w": 2,
+        "ps_control": 0
+      },
+      "numeric_files_sha256": {
+        "init.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18",
+        "golden.mem": "0da98d5561abb3a8297b59fc5a0a0978954ab26302b18c3c50a7247fd4a39616",
+        "acc.mem": "c89528e24c0c669b13e5c6f491e7c0af6abb3108d07382b056f36e238bf2a620",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "writeback",
+      "case": "ws_after_read_abort",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 16,
+        "columns": 64
+      },
+      "dataflow": "WS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 4,
+        "ps_control": 0
+      },
+      "numeric_files_sha256": {
+        "init.mem": "d7029871d5417ae307c9d2f4d01da4fddcbf714874ae16a1e45bad6ace3ff86b",
+        "golden.mem": "d2d0368238ea7ccbb9fa0ff937b767fcdbe7dd7577ba3dff135348cfdc0b87e2",
+        "acc.mem": "c11297c6be3b764c44a37c6c87b59dd35a67b70ba75a5e24f61d8c3796c04971",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "writeback",
+      "case": "ws_frame",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 35,
+        "columns": 64
+      },
+      "dataflow": "WS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 2,
+        "ps_control": 2
+      },
+      "numeric_files_sha256": {
+        "init.mem": "fb2f7dc2078562b22b32a82b6319e8c890e290a344095a1b69305f62103dba49",
+        "golden.mem": "174fc0690a67089a17b9db153f5381e94ae6d82b260d1e8bac332e6d57c7d169",
+        "acc.mem": "4c22d31cb04274ce5052dc909d2d53bf30137d5de7a74ab1182c8efdd65f7d5d",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "writeback",
+      "case": "ws_group_tail",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 35,
+        "columns": 64
+      },
+      "dataflow": "WS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 4,
+        "ps_control": 0
+      },
+      "numeric_files_sha256": {
+        "init.mem": "fb2f7dc2078562b22b32a82b6319e8c890e290a344095a1b69305f62103dba49",
+        "golden.mem": "174fc0690a67089a17b9db153f5381e94ae6d82b260d1e8bac332e6d57c7d169",
+        "acc.mem": "4c22d31cb04274ce5052dc909d2d53bf30137d5de7a74ab1182c8efdd65f7d5d",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "writeback",
+      "case": "ws_refresh",
+      "dimensions": {
+        "rows": 5,
+        "reduction": 16,
+        "columns": 32
+      },
+      "dataflow": "WS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 1,
+        "w": 2,
+        "ps_control": 0
+      },
+      "numeric_files_sha256": {
+        "init.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18",
+        "golden.mem": "0da98d5561abb3a8297b59fc5a0a0978954ab26302b18c3c50a7247fd4a39616",
+        "acc.mem": "c89528e24c0c669b13e5c6f491e7c0af6abb3108d07382b056f36e238bf2a620",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "writeback",
+      "case": "ws_s16_output",
+      "dimensions": {
+        "rows": 19,
+        "reduction": 35,
+        "columns": 32
+      },
+      "dataflow": "WS",
+      "lhs_dtype": "int16",
+      "output_dtype": "int16",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 2,
+        "ps_control": 0
+      },
+      "numeric_files_sha256": {
+        "init.mem": "553bfbc317f4ccbafb2d4ff83e3120e74258252c3059e8dc241031737b064099",
+        "golden.mem": "577c5df47a86555e5bcaf3d97609d3ac2ede5a2f78ea56e02d7618196fce654f",
+        "acc.mem": "7a770e650e23b19b67c93f26d79bc2a3cedc81e22ab843b9c251ffb2ee3a3e1f",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "writeback",
+      "case": "ws_short",
+      "dimensions": {
+        "rows": 5,
+        "reduction": 16,
+        "columns": 32
+      },
+      "dataflow": "WS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 1,
+        "w": 2,
+        "ps_control": 0
+      },
+      "numeric_files_sha256": {
+        "init.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18",
+        "golden.mem": "0da98d5561abb3a8297b59fc5a0a0978954ab26302b18c3c50a7247fd4a39616",
+        "acc.mem": "c89528e24c0c669b13e5c6f491e7c0af6abb3108d07382b056f36e238bf2a620",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "writeback",
+      "case": "ws_write_abort",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 16,
+        "columns": 64
+      },
+      "dataflow": "WS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 3,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 4,
+        "ps_control": 0
+      },
+      "numeric_files_sha256": {
+        "init.mem": "d2d0368238ea7ccbb9fa0ff937b767fcdbe7dd7577ba3dff135348cfdc0b87e2",
+        "golden.mem": "d2d0368238ea7ccbb9fa0ff937b767fcdbe7dd7577ba3dff135348cfdc0b87e2",
+        "acc.mem": "c11297c6be3b764c44a37c6c87b59dd35a67b70ba75a5e24f61d8c3796c04971",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "packed",
+      "case": "packed_1_mode0_s160",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 35,
+        "columns": 51
+      },
+      "dataflow": "WS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 3,
+        "ps_control": 2
+      },
+      "numeric_files_sha256": {
+        "init.mem": "c1f4f0405370364418cb478d9962973c13203db1807928ee9c1b07d9818414df",
+        "golden.mem": "51110d545c38f289c5b3d6400e1e6ed6a9d02777d638a69bb60035208f2862b9",
+        "acc.mem": "131f7aed0fa7a2993004123ce3b3857df69dc81c14d8c875470c47f94f12da9c",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "packed",
+      "case": "packed_1_mode0_s161",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 35,
+        "columns": 51
+      },
+      "dataflow": "WS",
+      "lhs_dtype": "int16",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 3,
+        "ps_control": 2
+      },
+      "numeric_files_sha256": {
+        "init.mem": "8e7a569d4ff2e352f09a10ad709f25ceee8463d40827c84317d5fd28b83a79a3",
+        "golden.mem": "cec66680a5a4aa16fa5b7597e713c05d2fdfd8f80c48581c912fcb10f2b07f9f",
+        "acc.mem": "073c10b87a332009dc693c7c5752682239e065d2c105d8bd3ca2d0a1e1236836",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "packed",
+      "case": "packed_1_mode1_s160",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 35,
+        "columns": 51
+      },
+      "dataflow": "IS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 3,
+        "ps_control": 2
+      },
+      "numeric_files_sha256": {
+        "init.mem": "c1f4f0405370364418cb478d9962973c13203db1807928ee9c1b07d9818414df",
+        "golden.mem": "51110d545c38f289c5b3d6400e1e6ed6a9d02777d638a69bb60035208f2862b9",
+        "acc.mem": "131f7aed0fa7a2993004123ce3b3857df69dc81c14d8c875470c47f94f12da9c",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "packed",
+      "case": "packed_1_mode1_s161",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 35,
+        "columns": 51
+      },
+      "dataflow": "IS",
+      "lhs_dtype": "int16",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 3,
+        "ps_control": 2
+      },
+      "numeric_files_sha256": {
+        "init.mem": "8e7a569d4ff2e352f09a10ad709f25ceee8463d40827c84317d5fd28b83a79a3",
+        "golden.mem": "cec66680a5a4aa16fa5b7597e713c05d2fdfd8f80c48581c912fcb10f2b07f9f",
+        "acc.mem": "073c10b87a332009dc693c7c5752682239e065d2c105d8bd3ca2d0a1e1236836",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "packed",
+      "case": "packed_2_mode0_s160",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 35,
+        "columns": 51
+      },
+      "dataflow": "WS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 3,
+        "ps_control": 2
+      },
+      "numeric_files_sha256": {
+        "init.mem": "7d5ad6cb5321d063b745b67df3d5fdec39191f97b36816520c036579d198a8da",
+        "golden.mem": "74857a8780cd45f1150160a34dd4a1059c516050031baab7ea70974f74bec96f",
+        "acc.mem": "131f7aed0fa7a2993004123ce3b3857df69dc81c14d8c875470c47f94f12da9c",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "packed",
+      "case": "packed_2_mode0_s161",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 35,
+        "columns": 51
+      },
+      "dataflow": "WS",
+      "lhs_dtype": "int16",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 3,
+        "ps_control": 2
+      },
+      "numeric_files_sha256": {
+        "init.mem": "2b7796da4d3dcddfbaf2a6d36f8711102d4ca2035f0e0d4d395a0bc768892623",
+        "golden.mem": "217e1514427cf6bac5e6d9dccbe0edc646124f559aa65b8b7499d5abf89242ba",
+        "acc.mem": "073c10b87a332009dc693c7c5752682239e065d2c105d8bd3ca2d0a1e1236836",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "packed",
+      "case": "packed_2_mode1_s160",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 35,
+        "columns": 51
+      },
+      "dataflow": "IS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 3,
+        "ps_control": 2
+      },
+      "numeric_files_sha256": {
+        "init.mem": "7d5ad6cb5321d063b745b67df3d5fdec39191f97b36816520c036579d198a8da",
+        "golden.mem": "74857a8780cd45f1150160a34dd4a1059c516050031baab7ea70974f74bec96f",
+        "acc.mem": "131f7aed0fa7a2993004123ce3b3857df69dc81c14d8c875470c47f94f12da9c",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "packed",
+      "case": "packed_2_mode1_s161",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 35,
+        "columns": 51
+      },
+      "dataflow": "IS",
+      "lhs_dtype": "int16",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 3,
+        "ps_control": 2
+      },
+      "numeric_files_sha256": {
+        "init.mem": "2b7796da4d3dcddfbaf2a6d36f8711102d4ca2035f0e0d4d395a0bc768892623",
+        "golden.mem": "217e1514427cf6bac5e6d9dccbe0edc646124f559aa65b8b7499d5abf89242ba",
+        "acc.mem": "073c10b87a332009dc693c7c5752682239e065d2c105d8bd3ca2d0a1e1236836",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "packed",
+      "case": "packed_3_mode0_s160",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 35,
+        "columns": 51
+      },
+      "dataflow": "WS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 3,
+        "ps_control": 2
+      },
+      "numeric_files_sha256": {
+        "init.mem": "8269b124aa9bc0957a0a92705274d7fddc518b3172b595c75d150ff98e02c909",
+        "golden.mem": "df63b5246528f9ccc69b207206c8a767daa0074c7925d85b152686246231cd8e",
+        "acc.mem": "131f7aed0fa7a2993004123ce3b3857df69dc81c14d8c875470c47f94f12da9c",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "packed",
+      "case": "packed_3_mode0_s161",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 35,
+        "columns": 51
+      },
+      "dataflow": "WS",
+      "lhs_dtype": "int16",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 3,
+        "ps_control": 2
+      },
+      "numeric_files_sha256": {
+        "init.mem": "f0a6bb90b14032f75dc4b2a6c8214bf23318b48d25be38f16a5eb86a0fb24fc0",
+        "golden.mem": "f2936ecc0b6978f5fe38c39009b29bbe6509ff7db69bf0ffd8b1143b55e05ae8",
+        "acc.mem": "073c10b87a332009dc693c7c5752682239e065d2c105d8bd3ca2d0a1e1236836",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "packed",
+      "case": "packed_3_mode1_s160",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 35,
+        "columns": 51
+      },
+      "dataflow": "IS",
+      "lhs_dtype": "int8",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 3,
+        "ps_control": 2
+      },
+      "numeric_files_sha256": {
+        "init.mem": "8269b124aa9bc0957a0a92705274d7fddc518b3172b595c75d150ff98e02c909",
+        "golden.mem": "df63b5246528f9ccc69b207206c8a767daa0074c7925d85b152686246231cd8e",
+        "acc.mem": "131f7aed0fa7a2993004123ce3b3857df69dc81c14d8c875470c47f94f12da9c",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    },
+    {
+      "suite": "packed",
+      "case": "packed_3_mode1_s161",
+      "dimensions": {
+        "rows": 33,
+        "reduction": 35,
+        "columns": 51
+      },
+      "dataflow": "IS",
+      "lhs_dtype": "int16",
+      "output_dtype": "int8",
+      "expected_error": 0,
+      "configuration": {
+        "total_bytes": 57344,
+        "bank_bytes": 8192,
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "r": 2,
+        "w": 3,
+        "ps_control": 2
+      },
+      "numeric_files_sha256": {
+        "init.mem": "f0a6bb90b14032f75dc4b2a6c8214bf23318b48d25be38f16a5eb86a0fb24fc0",
+        "golden.mem": "f2936ecc0b6978f5fe38c39009b29bbe6509ff7db69bf0ffd8b1143b55e05ae8",
+        "acc.mem": "073c10b87a332009dc693c7c5752682239e065d2c105d8bd3ca2d0a1e1236836",
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48"
+      },
+      "numeric_files_match_existing_cases": true
+    }
+  ]
+}

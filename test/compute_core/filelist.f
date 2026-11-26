@@ -15,5 +15,9 @@ tb_compute_core.sv
 ../../rtl/npu/ps_compact/ps_adaptive_encoder.sv
 ../../rtl/npu/ps_compact/ps_adaptive_decoder.sv
 ../../rtl/npu/ps_compact/ps_frame_store.sv
+../../rtl/npu/ps_compact/ps_frame_prepare_branch.sv
+../../rtl/npu/ps_compact/ps_frame_prepare_enable.sv
 ../../rtl/npu/ps_compact/ps_raw_address.sv
 ../../rtl/npu/ps_compact/ps_frame_store_capacity.sv
+../../rtl/npu/ps_compact/ps_frame_ready_select.sv
+../../rtl/npu/ps_compact/ps_frame_address_increment.sv

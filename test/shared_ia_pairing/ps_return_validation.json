@@ -1,0 +1,150 @@
+{
+  "passed": true,
+  "source_sha256": "20beaccfb2d01d837915c5eb3d44dd708392f34ad8561bef7ec6326f81ab676e",
+  "generic": {
+    "passed": true,
+    "source_sha256": "20beaccfb2d01d837915c5eb3d44dd708392f34ad8561bef7ec6326f81ab676e",
+    "reference_revision": "aa246aef",
+    "reference_sha256": "c8eed9167141eaf3da00e20448d1b48786bd0e39bc7abcb07eaf3c7ead33ab7d",
+    "formal_profiles": [
+      {
+        "bank_bytes": 2048,
+        "banks": 6,
+        "shared_write_stage": 0,
+        "passed": true,
+        "log_sha256": "73c27be5c6fef1fd31f34d85b02fe620516028b9c7be2bc1c9fbba29b4b924c8"
+      },
+      {
+        "bank_bytes": 2048,
+        "banks": 6,
+        "shared_write_stage": 1,
+        "passed": true,
+        "log_sha256": "9358e4c3f1f74090f2b3af57e438ee917a23d38cc1d3ba2e5728b2cecda372af"
+      },
+      {
+        "bank_bytes": 2048,
+        "banks": 8,
+        "shared_write_stage": 0,
+        "passed": true,
+        "log_sha256": "719772578c9920c7e41d6f73d049e81fdb057034ebb97dd61d06dd47cf2716e2"
+      },
+      {
+        "bank_bytes": 2048,
+        "banks": 8,
+        "shared_write_stage": 1,
+        "passed": true,
+        "log_sha256": "711c0181d8cd73e060048af16df4f43789e07fc400d0cb5b3ea7ea3a0a409eda"
+      },
+      {
+        "bank_bytes": 8192,
+        "banks": 7,
+        "shared_write_stage": 0,
+        "passed": true,
+        "log_sha256": "fcdba5446a02b9df5064d465d958c151427f87f1f4d879c22ba18638dd88e061"
+      },
+      {
+        "bank_bytes": 8192,
+        "banks": 7,
+        "shared_write_stage": 1,
+        "passed": true,
+        "log_sha256": "aa1bc72867396f6f114920b72a8b6f84346f746364bac94e582818fed98e2fa9"
+      },
+      {
+        "bank_bytes": 8192,
+        "banks": 9,
+        "shared_write_stage": 0,
+        "passed": true,
+        "log_sha256": "0ae347ea5549d72572a65ff5f42861292432b1eebb2362615201f49b75c73385"
+      },
+      {
+        "bank_bytes": 8192,
+        "banks": 9,
+        "shared_write_stage": 1,
+        "passed": true,
+        "log_sha256": "45e14b2d32556f3cbb056b4fea3b142a1f1bd37abbd558a3ff2dc7620350d287"
+      }
+    ],
+    "constraints": "First sampled cycle reset; all subsequent resets and inputs free",
+    "four_state_profiles": 4,
+    "four_state_cycles_per_profile": 8192,
+    "four_state_comparisons": 65536,
+    "test_sha256": "f03d5a2ea28d0a5a1adf06f027d741ad2fe6c3138a63a0943a6f1ca9de7b89a5",
+    "helper_sha256": "3bba462f2abee7dfcb90df486d4d5bf7a3f23feebcaa44760275ec2a65f136d5",
+    "four_state_log_sha256": "4355bcf3c889db23da42501cf714cfeb717ff0ff224c200994f76f560a999524"
+  },
+  "paired": {
+    "passed": true,
+    "source_sha256": "20beaccfb2d01d837915c5eb3d44dd708392f34ad8561bef7ec6326f81ab676e",
+    "reference_revision": "aa246aef",
+    "paired_ia_ports": true,
+    "nonempty_ia_writes": true,
+    "reference_sha256": "c8eed9167141eaf3da00e20448d1b48786bd0e39bc7abcb07eaf3c7ead33ab7d",
+    "formal_profiles": [
+      {
+        "bank_bytes": 2048,
+        "banks": 6,
+        "shared_write_stage": 0,
+        "passed": true,
+        "log_sha256": "563d6a04844836e304ccdeb2d6a475c59e9d47644afdf01e6edb27a09a62acac"
+      },
+      {
+        "bank_bytes": 2048,
+        "banks": 6,
+        "shared_write_stage": 1,
+        "passed": true,
+        "log_sha256": "69a3469002cfb91121c180db1334e6f1ecd08ac2c29e726f94fa91af96fc351a"
+      },
+      {
+        "bank_bytes": 2048,
+        "banks": 8,
+        "shared_write_stage": 0,
+        "passed": true,
+        "log_sha256": "e63b4b50b7ae5ae1dafa507908e5f2a5a0b45af2c8d215531a1e51f741f2ba40"
+      },
+      {
+        "bank_bytes": 2048,
+        "banks": 8,
+        "shared_write_stage": 1,
+        "passed": true,
+        "log_sha256": "2984f54cdccda7eba66997ee59b801ab54ba1f7194c50bc825b0afb34a9327bb"
+      },
+      {
+        "bank_bytes": 8192,
+        "banks": 7,
+        "shared_write_stage": 0,
+        "passed": true,
+        "log_sha256": "dea62163cd2ec22e0e6366293c5c6aa7b3d0e2d59a7b56c51cb086e39fe95512"
+      },
+      {
+        "bank_bytes": 8192,
+        "banks": 7,
+        "shared_write_stage": 1,
+        "passed": true,
+        "log_sha256": "dc2999226bf3c8c0fc39a0dc69cd0f1e2b59466e1e6fa06fc5067a1bb787d3e2"
+      },
+      {
+        "bank_bytes": 8192,
+        "banks": 9,
+        "shared_write_stage": 0,
+        "passed": true,
+        "log_sha256": "ce95846bfab05aacdd56479ad16899e9faf890b3b56e055746224c76ccfdb914"
+      },
+      {
+        "bank_bytes": 8192,
+        "banks": 9,
+        "shared_write_stage": 1,
+        "passed": true,
+        "log_sha256": "22df093b3c8e1360557bf8469397a72fe7c7fd2be678d67f96ec64bd24f7aa28"
+      }
+    ],
+    "constraints": "First sampled cycle reset; all subsequent resets and inputs free",
+    "four_state_profiles": 4,
+    "four_state_cycles_per_profile": 8192,
+    "four_state_comparisons": 65536,
+    "test_sha256": "bf67d298662ed79387fde080f2d5fc70ea4e3d514af01656b02495a6fa972273",
+    "helper_sha256": "3bba462f2abee7dfcb90df486d4d5bf7a3f23feebcaa44760275ec2a65f136d5",
+    "four_state_log_sha256": "6c68731ab7a163dd733340b8de4a1ff76833d7fc026e9aa581a6745d98b0a522"
+  },
+  "total_formal_profiles": 16,
+  "total_four_state_comparisons": 131072
+}

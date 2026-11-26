@@ -6,8 +6,8 @@ module ps_scheduler_priority #(
     parameter int p_frames = 16,
     parameter int p_id_width = (p_frames <= 1) ? 1 : $clog2(p_frames)
 ) (
-    input wire [p_frames-1:0] i_eligible,
-    output logic [p_id_width-1:0] o_id
+    input wire [p_frames-1:0] i_eligible /* 各候选帧的可调度标记 */,
+    output logic [p_id_width-1:0] o_id /* 按模块优先顺序选中的候选帧编号 */
 );
     localparam int p_group_width = 4;
     localparam int p_groups = (p_frames + p_group_width - 1) / p_group_width;
