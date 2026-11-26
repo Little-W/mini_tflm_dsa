@@ -1,0 +1,131 @@
+{
+  "passed": true,
+  "module_bodies_equal": true,
+  "module_body_sha256": {
+    "conv_coordinate_step": "04370437c3ec1e49eafe44b7819b30b9eaa69b33df9edcf80912fab2c4a84e68",
+    "conv_im2col_stream_control": "8805c91e92cb78e7ffacc7d98da037f85c9a45a1ce41977faec78805f64f5f81",
+    "conv_im2col_state_control": "aaf1d14f301e8a69e484697bc13c0cc35b92f358e409c3e5877cfb30814e5e76",
+    "conv_coordinate_upper_group": "2956aee650933054556e3ea742d6e4425cf076a7bab1b48ff1deb649a012538c",
+    "conv_stream_row_request": "0a3e1826602ccb1a0e7d5018f72c07df36d3e26283b4810dacff0f299197cffb",
+    "conv_stream_tap_request": "0eb3d7660882245c3ea2ac9a89c48bd3b739c08a72be4deb7ab7f6dbdb3cacd2",
+    "conv_stream_column_request": "dcdb06e6fabe8e8f6583dc5accd40e387b89ddf2125bbfbd1e3eade900927edc"
+  },
+  "source_sha256": {
+    "rtl/npu/conv/conv_coordinate_step.sv": "d464254d2904ac109f59ee4a4263b774db75918adf29d3f790ca37ec5765502c",
+    "rtl/npu/conv/conv_im2col_stream_control.sv": "424768398ae350e0ae65f9482278ba79f08ed3e7f832f89cadadb4c82bb34657",
+    "rtl/npu/conv/conv_im2col_state_control.sv": "8f7e2e0bbf78034c34bada9dc4c6c32969ee15ce33bdbe73a83f429201d563af",
+    "rtl/npu/conv/conv_coordinate_upper_group.sv": "cd458520b861a599e796dfb6002026518c8eb5105c8c49867c575aacc72f64d0",
+    "rtl/npu/conv/conv_stream_row_request.sv": "d35c9421fa28ad66387138825fe016df87f4c5933b50b6ad861a7ee60f2ec743",
+    "rtl/npu/conv/conv_stream_tap_request.sv": "64fcd52a89559bf6bb5aabc873f8a60bfd8edc6fb462aab47e50336de79017eb",
+    "rtl/npu/conv/conv_stream_column_request.sv": "6d892b3467a674b306940af0cf498619b73023921fd951aa2a23e8f802a6e6ba"
+  },
+  "declared_source_lists": "布局检查采用包含四个新模块的源列表；正式源列表由主分支统一维护。",
+  "layout": {
+    "passed": true,
+    "detection_examples": 13,
+    "design_rtl_files": 291,
+    "modules": 285,
+    "packages": 6,
+    "resource_flags": 0,
+    "explicit_fpga_primitives": 0,
+    "synthesis_inference_attributes": {
+      "rtl/common/parallel_prefix_native_differences.sv": [
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\""
+      ],
+      "rtl/common/parallel_prefix_native_sums.sv": [
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\""
+      ],
+      "rtl/common/regfile.v": [
+        "ram_style = p_ram_style"
+      ],
+      "rtl/npu/buffers/ia_ps_role_ram.sv": [
+        "ram_style = \"block\""
+      ],
+      "rtl/npu/compute/registered_vector_add.sv": [
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/conv/conv_im2col_geometry.sv": [
+        "ram_style = \"distributed\""
+      ],
+      "rtl/npu/conv/conv_im2col_sample_offsets.sv": [
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/conv/vector_banked_writeback.sv": [
+        "ram_style = \"block\""
+      ],
+      "rtl/npu/conv/vector_engine.sv": [
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/conv/vector_engine_address.sv": [
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/conv/vector_pe.sv": [
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/conv/vector_read_address_add.sv": [
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/dma/axi_linear_block_dma.sv": [
+        "use_dsp = \"simd\""
+      ],
+      "rtl/npu/loaders/ia_loader.sv": [
+        "ram_style = \"block\""
+      ],
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": [
+        "use_dsp = \"simd\"",
+        "use_dsp = \"simd\"",
+        "ram_style = \"block\""
+      ],
+      "rtl/npu/loaders/ia_loader_ctrl.sv": [
+        "ram_style = \"distributed\""
+      ],
+      "rtl/npu/loaders/ia_row_step_register.sv": [
+        "use_dsp = \"yes\""
+      ],
+      "rtl/npu/loaders/kernel_group_step.sv": [
+        "use_dsp = \"yes\""
+      ],
+      "rtl/npu/writeback/oa_writer.sv": [
+        "use_dsp = \"yes\""
+      ],
+      "rtl/soc/soc_axi_pingpong_chan.sv": [
+        "ram_style = \"distributed\""
+      ]
+    },
+    "multiple_definition_files": 0,
+    "filelists": [
+      {
+        "path": "asic/synthesis/filelists/npu_top.f",
+        "sources": 253,
+        "sha256": "e83e2ae772cf4d383445e59b08c1f64afb2bdcc0238dbc1f84420d5b3e34764e"
+      },
+      {
+        "path": "veri/flist/dut_axil.f",
+        "sources": 255,
+        "sha256": "98180b51eb5d50f4a280bdd751c5643ba1c6942f24f3d1bbff63d753690ac562"
+      }
+    ],
+    "preferred_module_lines": 1500,
+    "maximum_npu_source_lines": 1496,
+    "sources_above_preferred_length": {},
+    "vivado_sources": 293
+  },
+  "comments": {
+    "passed": true,
+    "modules": 291,
+    "ports": 5652,
+    "profiles": [
+      "generic",
+      "synthesis",
+      "riscv_formal",
+      "simulation_assertions",
+      "synthesis_assertions"
+    ],
+    "missing_module_headers": [],
+    "missing_port_comments": []
+  }
+}

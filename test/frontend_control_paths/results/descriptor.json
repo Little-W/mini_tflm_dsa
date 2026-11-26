@@ -1,0 +1,57 @@
+{
+  "passed": true,
+  "reference": "eb466c72",
+  "input_assumptions": [],
+  "case_semantics": "标准 case 顺序选择，不使用状态互斥假设",
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_descriptor_commit.sv": "217f54223ad51f123e2bf1e61fd40546797c011d11ec0a9cef36e5a1432f090f",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/explicit_modes/descriptor/actual_conv_descriptor_commit.sv": "4f32c818ba2bcec933fb5826df16af726170aec28d1f29f48af5cd2f8a763cc7",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_descriptor_add.sv": "24861728e67755f42697b9e13b5bb10d07c233b68272c5730b05e4e25108bf85",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_descriptor_address_add.sv": "c8f8b8382f936bb5d07bebe32753e5c289c8edcc3aa0945c552a25f4f3c3d62d",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_kernel_step_equal.sv": "93b7f5e3c02da4bf72d625bebf3c4c3f42e51f6631f696d343ab30299dc30e31",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/explicit_modes/descriptor/reference_conv_descriptor_commit.sv": "2e814d770452bd7fd16eddc2f2afb6d20f7e3388d37bc210f62fa9865b518d0b",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/explicit_modes/descriptor/match.sv": "40ed47a8914112ccd1a3c6317be70eba12d84efd38ecad45a201bd186b87e0f2",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_descriptor_match.sv": "654db46960028f405fd8d0bb43f9e84d5d50403706c6b5141f9b72862c244056"
+  },
+  "formal": [
+    {
+      "name": "conv_descriptor_commit_registered0_synthesis0",
+      "passed": true,
+      "equivalence_cells": 724,
+      "log_sha256": "d35f44193a7133c88cb55d99e3b8a2f891b4fc7490d5be895ec6336b7af0a5b6"
+    },
+    {
+      "name": "conv_descriptor_commit_registered0_synthesis1",
+      "passed": true,
+      "equivalence_cells": 724,
+      "log_sha256": "fe99727885a53012ecafad7c2607cc4eea4b6b4765eb15f5d6b79817dc34b2e2"
+    },
+    {
+      "name": "conv_descriptor_commit_registered1_synthesis0",
+      "passed": true,
+      "equivalence_cells": 1022,
+      "log_sha256": "cdbf7e03eb58301de4b0db84fc55c27b9460ad56a217ed9aff3e925f179b83d7"
+    },
+    {
+      "name": "conv_descriptor_commit_registered1_synthesis1",
+      "passed": true,
+      "equivalence_cells": 920,
+      "log_sha256": "a4a5485680247ea31bcadf109cc7a2840edd7780c0a7e521aea2ce52141c03b5"
+    }
+  ],
+  "four_state": {
+    "passed": true,
+    "checks": 4194,
+    "log_sha256": "c1190a88ea260649dc0c85e19a49444d3c6204e7452ae5f8e851e4fe72a743ea"
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "passed": true,
+  "explicit_primitives": 0,
+  "modules": [
+    {
+      "path": "rtl/npu/conv/conv_channel_increment_match.sv",
+      "module": "conv_channel_increment_match",
+      "lines": 35,
+      "sha256": "9fba1d51140668415a718ea5e61208b07c4ed75817153fe5d3be5934e3ccf94f"
+    },
+    {
+      "path": "rtl/npu/conv/conv_coordinate_step.sv",
+      "module": "conv_coordinate_step",
+      "lines": 78,
+      "sha256": "d464254d2904ac109f59ee4a4263b774db75918adf29d3f790ca37ec5765502c"
+    },
+    {
+      "path": "rtl/npu/conv/conv_coordinate_upper_group.sv",
+      "module": "conv_coordinate_upper_group",
+      "lines": 21,
+      "sha256": "cd458520b861a599e796dfb6002026518c8eb5105c8c49867c575aacc72f64d0"
+    },
+    {
+      "path": "rtl/npu/conv/conv_count_threshold.sv",
+      "module": "conv_count_threshold",
+      "lines": 16,
+      "sha256": "ed2a752ad9ef8eb35220047247c18e161322e42ca44af68bd9bbdee76da17bcc"
+    },
+    {
+      "path": "rtl/npu/conv/conv_descriptor_add.sv",
+      "module": "conv_descriptor_add",
+      "lines": 86,
+      "sha256": "24861728e67755f42697b9e13b5bb10d07c233b68272c5730b05e4e25108bf85"
+    },
+    {
+      "path": "rtl/npu/conv/conv_descriptor_commit.sv",
+      "module": "conv_descriptor_commit",
+      "lines": 278,
+      "sha256": "217f54223ad51f123e2bf1e61fd40546797c011d11ec0a9cef36e5a1432f090f"
+    },
+    {
+      "path": "rtl/npu/conv/conv_history_row_increment.sv",
+      "module": "conv_history_row_increment",
+      "lines": 53,
+      "sha256": "1f84b13f968d0a369d2423159daaeee6951ec2324863c3bfe04310b4b8ff273c"
+    },
+    {
+      "path": "rtl/npu/conv/conv_im2col_frontend.sv",
+      "module": "conv_im2col_frontend",
+      "lines": 1499,
+      "sha256": "419589f9e7be21fb2b108af50bb0e49b4cd6c6fa1dd0051a812126888f9444ec"
+    },
+    {
+      "path": "rtl/npu/conv/conv_im2col_geometry.sv",
+      "module": "conv_im2col_geometry",
+      "lines": 1456,
+      "sha256": "3f00e7c46e0508c7c04b3572da24a9e7782ef2e1e11405c2cb29873659713695"
+    },
+    {
+      "path": "rtl/npu/conv/conv_im2col_runtime_registers.sv",
+      "module": "conv_im2col_runtime_registers",
+      "lines": 628,
+      "sha256": "28237cb1ac17747165182184cf8709c8d6ff3db9834fd63971f8fa8749a0a9f6"
+    },
+    {
+      "path": "rtl/npu/conv/conv_im2col_state_control.sv",
+      "module": "conv_im2col_state_control",
+      "lines": 180,
+      "sha256": "ef4b493418cd93e561528d47ff61eaaa7090a2a42bb563ce01882a3cc5742652"
+    },
+    {
+      "path": "rtl/npu/conv/conv_im2col_stream.sv",
+      "module": "conv_im2col_stream",
+      "lines": 1423,
+      "sha256": "6a10e87c72ed0c4992507b490d3c5e5a8b015ae33a47aca3f7f9aad78cf2621d"
+    },
+    {
+      "path": "rtl/npu/conv/conv_im2col_stream_control.sv",
+      "module": "conv_im2col_stream_control",
+      "lines": 126,
+      "sha256": "424768398ae350e0ae65f9482278ba79f08ed3e7f832f89cadadb4c82bb34657"
+    },
+    {
+      "path": "rtl/npu/conv/conv_im2col_wrap_state.sv",
+      "module": "conv_im2col_wrap_state",
+      "lines": 133,
+      "sha256": "cea0be3443edfddcf744996c3c6fffbecff1ee3add2cde617ae898bbf9526583"
+    },
+    {
+      "path": "rtl/npu/conv/conv_kernel_step_equal.sv",
+      "module": "conv_kernel_step_equal",
+      "lines": 29,
+      "sha256": "93b7f5e3c02da4bf72d625bebf3c4c3f42e51f6631f696d343ab30299dc30e31"
+    },
+    {
+      "path": "rtl/npu/conv/conv_stream_address_select.sv",
+      "module": "conv_stream_address_select",
+      "lines": 28,
+      "sha256": "7de66b0f26e316ba142613874b45b3a739f80de14d41a947c3d5e05b2454ca4d"
+    },
+    {
+      "path": "rtl/npu/conv/conv_stream_chunk_end.sv",
+      "module": "conv_stream_chunk_end",
+      "lines": 57,
+      "sha256": "233133a517bae3f3c631613133f3ddccbf6b618622813a41127b211a50d0154d"
+    },
+    {
+      "path": "rtl/npu/conv/conv_stream_column_request.sv",
+      "module": "conv_stream_column_request",
+      "lines": 16,
+      "sha256": "6d892b3467a674b306940af0cf498619b73023921fd951aa2a23e8f802a6e6ba"
+    },
+    {
+      "path": "rtl/npu/conv/conv_stream_group_end.sv",
+      "module": "conv_stream_group_end",
+      "lines": 83,
+      "sha256": "c4721b4445c1e0fe5f3a86e77cb759d4843d3f8c596b3e89ea71536a5184e387"
+    },
+    {
+      "path": "rtl/npu/conv/conv_stream_group_value.sv",
+      "module": "conv_stream_group_value",
+      "lines": 45,
+      "sha256": "e72c9cae0638706c2a773c2f166a79bc7eb4bd67509dd1351118189d74138c83"
+    },
+    {
+      "path": "rtl/npu/conv/conv_stream_range_after.sv",
+      "module": "conv_stream_range_after",
+      "lines": 51,
+      "sha256": "4ff932467bacf6766804ce7274af27960c8da760b7c4ed30c0b4862bab5816fc"
+    },
+    {
+      "path": "rtl/npu/conv/conv_stream_request_eligible.sv",
+      "module": "conv_stream_request_eligible",
+      "lines": 18,
+      "sha256": "cbbef9771a4c3d2036021846f15c009c0747f9f54e32c12f00a72b38d4845f1b"
+    },
+    {
+      "path": "rtl/npu/conv/conv_stream_row_request.sv",
+      "module": "conv_stream_row_request",
+      "lines": 19,
+      "sha256": "d35c9421fa28ad66387138825fe016df87f4c5933b50b6ad861a7ee60f2ec743"
+    },
+    {
+      "path": "rtl/npu/conv/conv_stream_tap_request.sv",
+      "module": "conv_stream_tap_request",
+      "lines": 19,
+      "sha256": "64fcd52a89559bf6bb5aabc873f8a60bfd8edc6fb462aab47e50336de79017eb"
+    },
+    {
+      "path": "rtl/npu/conv/conv_stream_word_select.sv",
+      "module": "conv_stream_word_select",
+      "lines": 22,
+      "sha256": "73f464aa12ee0d39c837f399e6ac9bde55b65c02d306ec4de7241171b699cd01"
+    },
+    {
+      "path": "rtl/npu/conv/conv_word_byte_range.sv",
+      "module": "conv_word_byte_range",
+      "lines": 17,
+      "sha256": "9564c3ab097b4cdee40a26a1cbc0dea6f3956a189e4c13055b436c11bf01652b"
+    },
+    {
+      "path": "rtl/npu/conv/conv_word_step_match.sv",
+      "module": "conv_word_step_match",
+      "lines": 45,
+      "sha256": "8d554eff792fe9b9e0d57587d166df8d322becbd02546fb37baa5f1dd8bf4a24"
+    }
+  ]
+}

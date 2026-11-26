@@ -1,0 +1,467 @@
+{
+  "passed": true,
+  "reference_commit": "9bd6488c",
+  "scope": "描述符与坐标四态算术的综合保留属性",
+  "rtl_sha256": {
+    "rtl/npu/conv/conv_coordinate_step_four_state.sv": "24046e5b095909ed6b6c784011c735ea608a9672e9da7be8b526da9be032daae",
+    "rtl/npu/conv/conv_descriptor_address_add.sv": "c8f8b8382f936bb5d07bebe32753e5c289c8edcc3aa0945c552a25f4f3c3d62d",
+    "rtl/npu/conv/conv_descriptor_group_steps.sv": "e0d058e3d8a75f8a4caebf3e2e4be43e00d1d6875b7bfe321481a8494805551d",
+    "rtl/npu/conv/conv_descriptor_window_target.sv": "20c8265f12b8bb6878f96528b6ad5572862423c7859b83738c07a52bfc9dbfe1"
+  },
+  "changes": [
+    "窗口目标比较保留逐位四态逻辑，关闭仅用于该回退结果的位保留属性。",
+    "坐标步进、通道组步长和地址算术的未知值计算使用可合并的分组节点。"
+  ],
+  "proofs": {
+    "window_targets": {
+      "passed": true,
+      "input_assumptions": [],
+      "source_sha256": {
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/candidate/conv_descriptor_window_target.sv": "20c8265f12b8bb6878f96528b6ad5572862423c7859b83738c07a52bfc9dbfe1",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_descriptor_match.sv": "654db46960028f405fd8d0bb43f9e84d5d50403706c6b5141f9b72862c244056",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_add.sv": "556a1e5163a7bb2da066d7cfc243b0a9406cce2c5f7e3b3d43f4c6d3b557e490",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+      },
+      "sequential_environment": "配置更新清除窗口有效位，窗口准备边沿保存归约起点；配置步长在两次配置更新之间保持。",
+      "temporal_induction": [
+        {
+          "synthesis": 0,
+          "passed": true,
+          "log_sha256": "9a74c69be1c69b066208c7e5153b1fb387ec46cdb7b6ae8d1b32a2192461b5e4"
+        },
+        {
+          "synthesis": 1,
+          "passed": true,
+          "log_sha256": "97740c9d69cbcef9583198ee49dbe48f6a4c6c5dc3b169f5ef4eb6d3d61f1ef8"
+        }
+      ],
+      "four_state": [
+        {
+          "synthesis": 0,
+          "passed": true,
+          "checks": 38804,
+          "log_sha256": "d6cde0f7518b8fc8e302792d102b2c863eabf5846909583926a019834b48d44a"
+        },
+        {
+          "synthesis": 1,
+          "passed": true,
+          "checks": 38804,
+          "log_sha256": "d6cde0f7518b8fc8e302792d102b2c863eabf5846909583926a019834b48d44a"
+        }
+      ]
+    },
+    "coordinate_step": {
+      "passed": true,
+      "reference": "54a96b45",
+      "reference_sha256": "cdb90c72dac79da53e2b1b553aedb1a5103916124b3a298f8fb9a79253fbce5c",
+      "all_outputs_compared": true,
+      "input_constraints": false,
+      "source_sha256": {
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_coordinate_step.sv": "c83585c284978b2d4bd8781b772c72f176fabdbeb15c5af9cb51d0c403285e02",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/candidate/conv_coordinate_step_four_state.sv": "24046e5b095909ed6b6c784011c735ea608a9672e9da7be8b526da9be032daae",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/coordinate_proof/reference_renamed.sv": "4416d0c85d5b4d98c2b1643773693805002435110754929ba497102b849c8a9e",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_add.sv": "556a1e5163a7bb2da066d7cfc243b0a9406cce2c5f7e3b3d43f4c6d3b557e490",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504"
+      },
+      "formal": [
+        {
+          "width": 17,
+          "synthesis": false,
+          "passed": true,
+          "log_sha256": "d2b56879a0c964b1015050226f6b1abec89cb5a0706327a4292b61a9849dd13b"
+        },
+        {
+          "width": 17,
+          "synthesis": true,
+          "passed": true,
+          "log_sha256": "ae0c6d615a35092baeab04701f14799f505c2ef41824da79f58fb703a714d48c"
+        },
+        {
+          "width": 18,
+          "synthesis": false,
+          "passed": true,
+          "log_sha256": "ae7f49ad863200fc90f9d510446fbc70bebff7dc24eaa7ba4111a67f61eb9d3b"
+        },
+        {
+          "width": 18,
+          "synthesis": true,
+          "passed": true,
+          "log_sha256": "3435c68ecc1ccd7482e94752a534d9d9886292d513776e7066d1e2293f0e4596"
+        },
+        {
+          "width": 31,
+          "synthesis": false,
+          "passed": true,
+          "log_sha256": "f5d6806d3003c61f9058b8e3bf61272f0de2046af0c02bac33283cfb60d59cea"
+        },
+        {
+          "width": 31,
+          "synthesis": true,
+          "passed": true,
+          "log_sha256": "6ccda580ebafa1a61bf9c330151e2d26693b89cbcf339ecf4294c5da227e883a"
+        },
+        {
+          "width": 32,
+          "synthesis": false,
+          "passed": true,
+          "log_sha256": "94758a0434c000716877047a45bea267dc2d42f0b0b31755e04ab1aede7caf43"
+        },
+        {
+          "width": 32,
+          "synthesis": true,
+          "passed": true,
+          "log_sha256": "089c777b6b166bb5d735a8c71c357a15523dfc9a9efb1566a686658377e7cc9b"
+        },
+        {
+          "width": 35,
+          "synthesis": false,
+          "passed": true,
+          "log_sha256": "4de115793433586b3b35daa66d85c3fd2719ca04808a3f68d876641bd3cbc8c6"
+        },
+        {
+          "width": 35,
+          "synthesis": true,
+          "passed": true,
+          "log_sha256": "a00c8e5814a30cc29f634b9ba96ce67aa24c2b7be1aa608e004bf66e7f3a0166"
+        },
+        {
+          "width": 64,
+          "synthesis": false,
+          "passed": true,
+          "log_sha256": "9b9a8bec1face148c9f9fdc1e652f4f9e63a4a0ca984ad4d4ca48f205629bfc7"
+        },
+        {
+          "width": 64,
+          "synthesis": true,
+          "passed": true,
+          "log_sha256": "e7300d0864fa1e7032bca42528fd2ee8fb4f4867e09388d5e3a5ff8d78a38805"
+        }
+      ],
+      "four_state": [
+        {
+          "synthesis": false,
+          "comparisons": 180000,
+          "passed": true,
+          "log_sha256": "7b56d8df3af8860bf645dc9ea443ce1603ff5b68960c755010c85f4326412b38"
+        },
+        {
+          "synthesis": true,
+          "comparisons": 180000,
+          "passed": true,
+          "log_sha256": "7b56d8df3af8860bf645dc9ea443ce1603ff5b68960c755010c85f4326412b38"
+        }
+      ]
+    },
+    "group_steps": {
+      "passed": true,
+      "input_assumptions": [],
+      "source_sha256": {
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/candidate/conv_descriptor_group_steps.sv": "e0d058e3d8a75f8a4caebf3e2e4be43e00d1d6875b7bfe321481a8494805551d",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/group_steps_proof/group_steps.sv": "4509cd4fe779a5b971d0c6452ab10da8fd2e59e1aea1a362ea7f840f7a1d6f23",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_add.sv": "556a1e5163a7bb2da066d7cfc243b0a9406cce2c5f7e3b3d43f4c6d3b557e490",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504"
+      },
+      "reference": "8cec74cc",
+      "reference_source_sha256": "77978f0531e84f52e8dd68b78e5255ce73bbdfd3ae11ad81de4667b410a8eda4",
+      "formal": [
+        {
+          "synthesis": 0,
+          "passed": true,
+          "log_sha256": "0260ac7ca7e6d9a41eb9154084373570e32e38decdb618e8aa1e2cdfdd11d5a7"
+        },
+        {
+          "synthesis": 1,
+          "passed": true,
+          "log_sha256": "69d8222f069a8e5ee198a9e69896923ba7679b4a2c3d987414730d3de16db465"
+        }
+      ],
+      "four_state": [
+        {
+          "synthesis": 0,
+          "passed": true,
+          "checks": 3170,
+          "log_sha256": "c896b9630d49e3bc24415bc42330c03751102e2e568815233f2ae6e7c712b027"
+        },
+        {
+          "synthesis": 1,
+          "passed": true,
+          "checks": 3170,
+          "log_sha256": "c896b9630d49e3bc24415bc42330c03751102e2e568815233f2ae6e7c712b027"
+        }
+      ]
+    },
+    "address_arithmetic": {
+      "passed": true,
+      "reference": "9bd6488c",
+      "input_assumptions": [],
+      "source_sha256": {
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_descriptor_add.sv": "2012c4efea89ae6da4f20aade559ec29389ca4bdbbfed1cb8339ebcd46d333db",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/candidate/conv_descriptor_address_add.sv": "c8f8b8382f936bb5d07bebe32753e5c289c8edcc3aa0945c552a25f4f3c3d62d",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_descriptor_commit.sv": "176c80469eb17ead2b2c43c7e62ddc4fc8b1613a47aba4ed9d3bd7377ea53da6",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_geometry_movement_add.sv": "3375dcbc394f3b2e11c4526a076f21778397f4408329885aa7bc3218fa0e3cdf",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_coordinate_step.sv": "c83585c284978b2d4bd8781b772c72f176fabdbeb15c5af9cb51d0c403285e02",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_add.sv": "556a1e5163a7bb2da066d7cfc243b0a9406cce2c5f7e3b3d43f4c6d3b557e490",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_coordinate_step_four_state.sv": "c9b8774ba9bda781a713358bd1159f152f92ea63515937c0ddfc3310fe23fafd",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "/workspace/scratch/5bfa47658687/work_frontend_cleanup/include/conv_im2col_prepared_tile.svh": "82fad7a236b4bf174779c7618c9023258d64253c4d117124df15eb69e7af73dd"
+      },
+      "formal": [
+        {
+          "name": "arithmetic_16_synthesis0",
+          "passed": true,
+          "log_sha256": "04bc83e5f213fde04660bbb17075c5262645ca3f7f9a0f67d4713626a392ecdf"
+        },
+        {
+          "name": "arithmetic_16_synthesis1",
+          "passed": true,
+          "log_sha256": "98e79a5c4c2a387d3365101d22ec8f3271f2bc243685f010d4b5da9a00c49efb"
+        },
+        {
+          "name": "arithmetic_31_synthesis0",
+          "passed": true,
+          "log_sha256": "f9f9c3595e1ec00ca28b1bbc2f374fadbb5e271c6a6d26fd0a8c9bfaef87a549"
+        },
+        {
+          "name": "arithmetic_31_synthesis1",
+          "passed": true,
+          "log_sha256": "9b3c729d87c7b5b8fb2779d0be9e454767d3d5170318e9fe3312f5c09331f14d"
+        },
+        {
+          "name": "arithmetic_32_synthesis0",
+          "passed": true,
+          "log_sha256": "8af8fae771a2ab7c3afa55c1ad602df6bbb9107eb0f4beea39a7d76940735609"
+        },
+        {
+          "name": "arithmetic_32_synthesis1",
+          "passed": true,
+          "log_sha256": "c469db68ba8809437157279952804438c3b41f340da7345af6b6561d75e35aa7"
+        },
+        {
+          "name": "arithmetic_33_synthesis0",
+          "passed": true,
+          "log_sha256": "5492439aa53e4da85991aaec99c5cfe3c06e06e52bbd1260d417b1a1509bd1f5"
+        },
+        {
+          "name": "arithmetic_33_synthesis1",
+          "passed": true,
+          "log_sha256": "64ad0e1df11e7dfcc9158ba4a79f3cbe2fa47c030302bfc2309ba9d17956f409"
+        },
+        {
+          "name": "arithmetic_35_synthesis0",
+          "passed": true,
+          "log_sha256": "3ba185ec93d9fc67e2716f094581ce684b18300c5296adc6100fa2bfb9bb643e"
+        },
+        {
+          "name": "arithmetic_35_synthesis1",
+          "passed": true,
+          "log_sha256": "dccb765cc1e20b8b9a33eaf803bdf01220951a7161f7ad31d61329d138a544d0"
+        },
+        {
+          "name": "arithmetic_48_synthesis0",
+          "passed": true,
+          "log_sha256": "9f032db1de99aba6f4afc5bc015952b8e20492ecfa2d56800ea87f74b19ea4b5"
+        },
+        {
+          "name": "arithmetic_48_synthesis1",
+          "passed": true,
+          "log_sha256": "ea2df76a95c2a984a4060771d69a7fc81321d89f4b25ebe7253de231289ebae2"
+        },
+        {
+          "name": "commit_35_registered1_synthesis1",
+          "passed": true,
+          "log_sha256": "5b8657d115f9a89a6517b1039a2cfda20167318899d4d1d76b81fcd61ce7f441"
+        },
+        {
+          "name": "commit_35_registered1_synthesis0",
+          "passed": true,
+          "log_sha256": "dd44abd6b7b5d0cea46ba24d738bfb92c307ecea914e0c0b345cd3b22d5231a3"
+        },
+        {
+          "name": "commit_32_registered1_synthesis1",
+          "passed": true,
+          "log_sha256": "03355193a16ac4f302c3d8fd54c2ed0990353cc65c871b6b006fd0ad19d55b56"
+        },
+        {
+          "name": "commit_48_registered1_synthesis1",
+          "passed": true,
+          "log_sha256": "3dacc861ba680f9f567a11ec6ca800b637ea86eb06fad47c5fe73c2b43f04adb"
+        },
+        {
+          "name": "commit_35_registered0_synthesis1",
+          "passed": true,
+          "log_sha256": "f749d4753a8ef37deb1da3f2707b7fd78ea943552c17b90c9f593337b6e50694"
+        }
+      ],
+      "four_state": [
+        {
+          "width": 16,
+          "checks": 3234,
+          "passed": true,
+          "log_sha256": "c7ca6ad7d896f9eb1895d8d16fb432fbe8736db0888c448dadf5c9f9726ec641"
+        },
+        {
+          "width": 32,
+          "checks": 5282,
+          "passed": true,
+          "log_sha256": "20a64c7a3d596340d5ad0f909e9c7f5cc5dc01cd679bcb0c2e24a205b1413ee8"
+        },
+        {
+          "width": 35,
+          "checks": 5666,
+          "passed": true,
+          "log_sha256": "e634c823a89d29d83a5e2ccfcea981b1475adbbfac71d1513e17be2767cf366c"
+        },
+        {
+          "width": 48,
+          "checks": 7330,
+          "passed": true,
+          "log_sha256": "ce7b71654cdb1dd570254fb04b049d1b1e6196dec844aefb9c454a881d83f2ad"
+        }
+      ],
+      "four_state_scope": "带进位加法和坐标范围；地址推进的四态控制由几何模块处理",
+      "reference_source_sha256": "176c80469eb17ead2b2c43c7e62ddc4fc8b1613a47aba4ed9d3bd7377ea53da6"
+    }
+  },
+  "formal_checks": 33,
+  "four_state_checks": 465460,
+  "physical_cost": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 14445,
+        "distributed_ram_lut_sites_nominal": 224,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 14669,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 7688,
+        "dsp48e1": 66,
+        "ramb36e1": 1,
+        "ramb18e1": 23,
+        "carry4": 922,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 922,
+          "DSP48E1": 66,
+          "FDCE": 2790,
+          "FDPE": 98,
+          "FDRE": 4795,
+          "FDSE": 5,
+          "INV": 439,
+          "LUT1": 140,
+          "LUT2": 2457,
+          "LUT3": 2322,
+          "LUT4": 1851,
+          "LUT5": 3050,
+          "LUT6": 4625,
+          "MUXF7": 633,
+          "RAM32M": 56,
+          "RAMB18E1": 23,
+          "RAMB36E1": 1
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 13,
+      "graph_complete": true,
+      "functional_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "8948abfc3670b9a892a58062d5a992f97c25ff6c8c7b7c7dd05c917005a9de93"
+      },
+      "metrics_sha256": "80a21ce4d3c590c700595ba19d83d905b5f1b0a2785fab9c31805eec9fc37ad0",
+      "manifest_sha256": "6800afefe94e8d41f6c4faaf005cf7359dc41302367730e5d93e32768657b1df"
+    },
+    "candidate": {
+      "resources": {
+        "logic_lut_cells": 14314,
+        "distributed_ram_lut_sites_nominal": 224,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 14538,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 7688,
+        "dsp48e1": 66,
+        "ramb36e1": 1,
+        "ramb18e1": 23,
+        "carry4": 924,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 924,
+          "DSP48E1": 66,
+          "FDCE": 2790,
+          "FDPE": 98,
+          "FDRE": 4795,
+          "FDSE": 5,
+          "INV": 438,
+          "LUT1": 139,
+          "LUT2": 2481,
+          "LUT3": 2233,
+          "LUT4": 1854,
+          "LUT5": 2997,
+          "LUT6": 4610,
+          "MUXF7": 635,
+          "RAM32M": 56,
+          "RAMB18E1": 23,
+          "RAMB36E1": 1
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 12,
+      "graph_complete": true,
+      "functional_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "da0379c2df730401e9bc2b780fb8932c1f35821b5b6733dd3a4c2579272c70ab"
+      },
+      "metrics_sha256": "f0d8689b14156662d641ed04a2f4f2fb86a64036044d465eb4e766fc4dfcc71c",
+      "manifest_sha256": "902aaaac6d13498aee3d754f3da6e9ec2e2308c42ba37056ec291749995ae361"
+    }
+  },
+  "configuration": {
+    "top": "axi_dual_block_dma",
+    "options": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1",
+      "-GSIZE=16",
+      "-GBUS_WIDTH=64",
+      "-GWINDOW_LANES=8",
+      "-GCONV_LINE_BYTES=128",
+      "-GCONV_CACHE_SETS=16",
+      "-GCONV_CACHE_WAYS=2"
+    ],
+    "REGISTER_DESCRIPTOR": 1,
+    "REGISTER_ROW_ADDRESS": 1,
+    "CACHE_RESPONSE_DEPTH": 2,
+    "part": "xc7a200tfbg484-3"
+  },
+  "source_comparison": {
+    "unchanged_source_hashes_match": true,
+    "changed_sources": [
+      "rtl/npu/conv/conv_coordinate_step_four_state.sv",
+      "rtl/npu/conv/conv_descriptor_address_add.sv",
+      "rtl/npu/conv/conv_descriptor_group_steps.sv",
+      "rtl/npu/conv/conv_descriptor_window_target.sv"
+    ]
+  },
+  "delta": {
+    "logic_lut_cells": -131,
+    "longest_register_path_cells": -1
+  }
+}

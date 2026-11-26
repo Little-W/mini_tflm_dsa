@@ -1,51 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-// 低位剩余通道数独立检查步长前后的区间。
-module conv_channel_outside_interval #(
-    parameter int unsigned p_width = 5,
-    parameter int unsigned p_step = 1,
-    parameter int unsigned p_lane = 0
-) (
-    input  wire logic [p_width-1:0] i_remaining_low,
-    output logic o_outside
-);
-    logic before_step;
-    if (p_step == 0) begin : g_same_channel
-        assign before_step = 1'b0;
-    end else begin : g_advance_channel
-        assign before_step = i_remaining_low < p_width'(p_step);
-    end
-    assign o_outside = before_step || (i_remaining_low > p_width'(p_step+p_lane));
-endmodule
-
-// 通道低位独立检查当前步长是否越过模计数边界。
-module conv_channel_wrap_threshold #(
-    parameter int unsigned p_width = 5,
-    parameter int unsigned p_step = 1
-) (
-    input  wire logic [p_width-1:0] i_channel_low,
-    output logic o_wrap
-);
-    if (p_step == 0) begin : g_same_channel
-        assign o_wrap = 1'b0;
-    end else begin : g_advance_channel
-        assign o_wrap = i_channel_low > p_width'((1 << p_width)-p_step-1);
-    end
-endmodule
-
-// 各步长与通道共享低位区间和高位状态，形成完整有效范围。
+// 合并通道组的高低位边界条件，生成当前通道的有效资格。
 module conv_channel_range_compare #(
     parameter int unsigned p_width = 5,
     parameter int unsigned p_step = 1,
     parameter int unsigned p_lane = 0
 ) (
-    input  wire logic [p_width-1:0] i_remaining_low,
-    input  wire logic [p_width-1:0] i_channel_low,
-    input  wire logic i_remaining_borrow,
-    input  wire logic i_high_nonzero,
-    input  wire logic i_channel_high_last,
-    output logic o_allowed
+    input  wire logic [p_width-1:0] i_remaining_low, // 剩余有效通道数量的低位部分
+    input  wire logic [p_width-1:0] i_channel_low, // 当前通道坐标的低位部分
+    input  wire logic i_remaining_borrow, // 剩余通道差值的借位标志
+    input  wire logic i_high_nonzero, // 剩余有效通道数量的高位非零标志
+    input  wire logic i_channel_high_last, // 当前通道所在高位组为最后一组
+    output logic o_allowed // 当前通道位于允许访问的范围内
 );
     logic outside_interval;
     logic channel_wrap_threshold;

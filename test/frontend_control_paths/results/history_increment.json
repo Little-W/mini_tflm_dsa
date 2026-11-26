@@ -1,0 +1,40 @@
+{
+  "passed": true,
+  "reference": "54a96b45",
+  "input_assumptions": [],
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_history_row_increment.sv": "1f84b13f968d0a369d2423159daaeee6951ec2324863c3bfe04310b4b8ff273c",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/explicit_modes/history_increment/history_increment.sv": "39aaffe2d00b9a785a08e3828c98abf6ef4a9910be344c0f2e5f6e0fc972982f",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+  },
+  "reference_sha256": "af87a51af12722174fdf81e18f1a54ed93f026e7e0842db47e4ce807faabd9eb",
+  "formal": [
+    {
+      "synthesis": 0,
+      "passed": true,
+      "log_sha256": "d8edd3642a4b41f5fbdfde5d31af415c617a278c44dd7c32ce343278683a45d8"
+    },
+    {
+      "synthesis": 1,
+      "passed": true,
+      "log_sha256": "27187e86527b55b09cca26337a9c9c4d3a81603dea5dab89721291db6cd170fd"
+    }
+  ],
+  "four_state": [
+    {
+      "synthesis": 0,
+      "passed": true,
+      "checks": 2146,
+      "log_sha256": "33def10aab3bd61a10c8a56b583d1222f326160d0ca135f4ef98ba1a7292daf6"
+    },
+    {
+      "synthesis": 1,
+      "passed": true,
+      "checks": 2146,
+      "log_sha256": "33def10aab3bd61a10c8a56b583d1222f326160d0ca135f4ef98ba1a7292daf6"
+    }
+  ]
+}

@@ -2,36 +2,36 @@
 // Shared, ordered AXI read port. GEMM retains its original pipelined path.
 // Conv arbitrates one burst at a time between the legacy DMA and input cache.
 // Holding the grant before ARREADY guarantees stable AR payload under stalls.
-module conv_axi_read_mux #(
+module conv_axi_read_mux #( // 共享两个请求来源的 AXI 读取端口，按突发保存响应归属及等待期间的地址。
     parameter int ADDR_W=32,
     parameter int DATA_W=32
 ) (
-    input logic clk, rst_n, enable,
-    input logic a_arvalid, output logic a_arready,
-    input logic [ADDR_W-1:0] a_araddr,
-    input logic [7:0] a_arlen,
-    input logic [2:0] a_arsize,
-    input logic [1:0] a_arburst,
-    output logic a_rvalid, input logic a_rready,
-    output logic [DATA_W-1:0] a_rdata,
-    output logic [1:0] a_rresp, output logic a_rlast,
-    input logic b_arvalid, output logic b_arready,
-    input logic [ADDR_W-1:0] b_araddr,
-    input logic [7:0] b_arlen,
-    input logic [2:0] b_arsize,
-    input logic [1:0] b_arburst,
-    output logic b_rvalid, input logic b_rready,
-    output logic [DATA_W-1:0] b_rdata,
-    output logic [1:0] b_rresp, output logic b_rlast,
-    output logic m_arvalid, input logic m_arready,
-    output logic [ADDR_W-1:0] m_araddr,
-    output logic [7:0] m_arlen,
-    output logic [2:0] m_arsize,
-    output logic [1:0] m_arburst,
-    input logic m_rvalid, output logic m_rready,
-    input logic [DATA_W-1:0] m_rdata,
-    input logic [1:0] m_rresp, input logic m_rlast,
-    output logic idle
+    input logic clk /* 模块工作时钟。 */, rst_n /* 低有效复位输入。 */, enable /* 启用两路按突发仲裁，关闭时直通 A 路。 */,
+    input logic a_arvalid /* A 路 DMA 的 AXI 接口：读地址请求有效。 */, output logic a_arready /* A 路 DMA 的 AXI 接口：能够接收读地址请求。 */,
+    input logic [ADDR_W-1:0] a_araddr, // A 路 DMA 的 AXI 接口：读事务起始字节地址。
+    input logic [7:0] a_arlen, // A 路 DMA 的 AXI 接口：读突发的传输拍数减一。
+    input logic [2:0] a_arsize, // A 路 DMA 的 AXI 接口：每拍读取字节数的二进制对数。
+    input logic [1:0] a_arburst, // A 路 DMA 的 AXI 接口：读事务的突发类型。
+    output logic a_rvalid /* A 路 DMA 的 AXI 接口：返回的读取数据有效。 */, input logic a_rready /* A 路 DMA 的 AXI 接口：能够接收读取响应。 */,
+    output logic [DATA_W-1:0] a_rdata, // A 路 DMA 的 AXI 接口：读取响应的数据。
+    output logic [1:0] a_rresp /* A 路 DMA 的 AXI 接口：读取响应的状态编码。 */, output logic a_rlast /* A 路 DMA 的 AXI 接口：当前读突发的最后一拍。 */,
+    input logic b_arvalid /* B 路输入缓存的 AXI 接口：读地址请求有效。 */, output logic b_arready /* B 路输入缓存的 AXI 接口：能够接收读地址请求。 */,
+    input logic [ADDR_W-1:0] b_araddr, // B 路输入缓存的 AXI 接口：读事务起始字节地址。
+    input logic [7:0] b_arlen, // B 路输入缓存的 AXI 接口：读突发的传输拍数减一。
+    input logic [2:0] b_arsize, // B 路输入缓存的 AXI 接口：每拍读取字节数的二进制对数。
+    input logic [1:0] b_arburst, // B 路输入缓存的 AXI 接口：读事务的突发类型。
+    output logic b_rvalid /* B 路输入缓存的 AXI 接口：返回的读取数据有效。 */, input logic b_rready /* B 路输入缓存的 AXI 接口：能够接收读取响应。 */,
+    output logic [DATA_W-1:0] b_rdata, // B 路输入缓存的 AXI 接口：读取响应的数据。
+    output logic [1:0] b_rresp /* B 路输入缓存的 AXI 接口：读取响应的状态编码。 */, output logic b_rlast /* B 路输入缓存的 AXI 接口：当前读突发的最后一拍。 */,
+    output logic m_arvalid /* 外部 AXI 接口：读地址请求有效。 */, input logic m_arready /* 外部 AXI 接口：能够接收读地址请求。 */,
+    output logic [ADDR_W-1:0] m_araddr, // 外部 AXI 接口：读事务起始字节地址。
+    output logic [7:0] m_arlen, // 外部 AXI 接口：读突发的传输拍数减一。
+    output logic [2:0] m_arsize, // 外部 AXI 接口：每拍读取字节数的二进制对数。
+    output logic [1:0] m_arburst, // 外部 AXI 接口：读事务的突发类型。
+    input logic m_rvalid /* 外部 AXI 接口：返回的读取数据有效。 */, output logic m_rready /* 外部 AXI 接口：能够接收读取响应。 */,
+    input logic [DATA_W-1:0] m_rdata, // 外部 AXI 接口：读取响应的数据。
+    input logic [1:0] m_rresp /* 外部 AXI 接口：读取响应的状态编码。 */, input logic m_rlast /* 外部 AXI 接口：当前读突发的最后一拍。 */,
+    output logic idle // 当前没有在途突发或等待接收的已选地址。
 );
     logic active, owner, hold_grant, held_owner, prefer_b;
     logic select_b, retire, address_slot;

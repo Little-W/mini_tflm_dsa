@@ -1,0 +1,178 @@
+{
+  "passed": true,
+  "input_assumptions": [],
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_word_step_match.sv": "8d554eff792fe9b9e0d57587d166df8d322becbd02546fb37baa5f1dd8bf4a24",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_channel_increment_match.sv": "9fba1d51140668415a718ea5e61208b07c4ed75817153fe5d3be5934e3ccf94f",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_descriptor_match.sv": "654db46960028f405fd8d0bb43f9e84d5d50403706c6b5141f9b72862c244056",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f"
+  },
+  "formal": [
+    {
+      "width": 1,
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "passed": true,
+      "log_sha256": "c2e164c4a21389c1602f593c70c801b99d8df1cc5b3c34139158795d57b6d774"
+    },
+    {
+      "width": 2,
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "passed": true,
+      "log_sha256": "b85294fbf3cad61f93269e542028445d764ab604190d1c7b72cf7ed5dbc679b6"
+    },
+    {
+      "width": 5,
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "passed": true,
+      "log_sha256": "c4fb3d64fcb37d9845df2c811061ee012f0dc340fa90054911a796ee46b637cd"
+    },
+    {
+      "width": 16,
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "passed": true,
+      "log_sha256": "a99f9971b5359742b6e8d03a5b92862a9ce393b12457a2c929f28619d7e9b787"
+    },
+    {
+      "width": 29,
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "passed": true,
+      "log_sha256": "93e1f7c014759115dfb324e3aabc812fc390bd9398a747e279ce25a1d72a259a"
+    },
+    {
+      "width": 32,
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "passed": true,
+      "log_sha256": "e5107ddaff57ac66bea9a229d260a3047d5fade632c536c09d0cc95375485a7b"
+    },
+    {
+      "width": 35,
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "passed": true,
+      "log_sha256": "2d79a3e2e20aed85cb0128949a2d77a2fd95260f3dc891d4c52177127c1b14fa"
+    }
+  ],
+  "four_state": [
+    {
+      "width": 1,
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "checks": 226,
+      "passed": true,
+      "log_sha256": "451b4c2d67c5fc2e630884dceadab277b62227e519826d6b3ae93254018094bb"
+    },
+    {
+      "width": 2,
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "checks": 354,
+      "passed": true,
+      "log_sha256": "d4e62dde42a8d84e239f022b314274df66912b9c1a7c0ae8d5bb2e6ae8d38f63"
+    },
+    {
+      "width": 5,
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "checks": 738,
+      "passed": true,
+      "log_sha256": "f76442afcf1516315338a370d1166698fb5c1809943faa71dc961475ce0eac56"
+    },
+    {
+      "width": 16,
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "checks": 2146,
+      "passed": true,
+      "log_sha256": "869365d962e0fe60d33799e314ac0d938da1ac95c877d0de0f6083569c16143c"
+    },
+    {
+      "width": 29,
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "checks": 3810,
+      "passed": true,
+      "log_sha256": "32e0e0bdd81745b2d3ffb39f5deb44156636734a088590426d3b805b6b690fad"
+    },
+    {
+      "width": 32,
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "checks": 4194,
+      "passed": true,
+      "log_sha256": "c2b470aa807c07726ef5b1bff2392ac0dba682e199e259136161342e5233f5c0"
+    },
+    {
+      "width": 35,
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "checks": 4578,
+      "passed": true,
+      "log_sha256": "278fdabb808bf86016bfcfde87c120f9195294cbabd0c652516524465d1078e6"
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "passed": true,
+  "reference": "9c3f2718",
+  "compilation": "both",
+  "lanes": [
+    2,
+    8
+  ],
+  "input_assumptions": [],
+  "case_semantics": "标准 case 顺序选择，不使用状态互斥假设",
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/conv_im2col_geometry.sv": "dfd6f6df7cce8f17be47c3b0325a58a868b0a6372e8c87310c5cc4bf96b18646",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_frontend_pkg.sv": "133f1bc893333aefa9d10084f4514348688579d716722ad64be72051616feb2c",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/geometry_proof/actual_conv_im2col_geometry.sv": "dfd6f6df7cce8f17be47c3b0325a58a868b0a6372e8c87310c5cc4bf96b18646",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/conv_stream_epoch_sum.sv": "229853c3e1e696b614c9dea8dc6ffabbefa107e7bc222550db4ec4ea75556771",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/conv_stream_epoch_increment.sv": "ae5939435b25be8e33b4e9da57a0c4384dc7e1adb074e77e498c92a2161242d2",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/conv_stream_epoch_carry_bit.sv": "6e8311bda18e9602891d2e23609b07529aea3910481eade2360b55971d15d137",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/conv_stream_epoch_low_carry.sv": "5e7052e7dddfaec36265d7946b7c45ec125db54ce52a7fc31e22a4b521acdb61",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_coordinate_range.sv": "aca317dca3b8bce5cb91dd99c3569aecb066aeeafd6cf9141b0288b0bde61fe1",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_coordinate_step.sv": "d464254d2904ac109f59ee4a4263b774db75918adf29d3f790ca37ec5765502c",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_descriptor_match.sv": "654db46960028f405fd8d0bb43f9e84d5d50403706c6b5141f9b72862c244056",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_full_address_add.sv": "0aa0d6a4d004c7f66fcf4dc2ece3faac85098a21d48c9d2d9aa7b592db37cd80",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_geometry_movement_add.sv": "3375dcbc394f3b2e11c4526a076f21778397f4408329885aa7bc3218fa0e3cdf",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_history_row_increment.sv": "1f84b13f968d0a369d2423159daaeee6951ec2324863c3bfe04310b4b8ff273c",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_history_wrap_select.sv": "94dc277c573d2856f71e40f4c255ba3bba38f86a5a04ad9c3fae840efa6f7a72",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_group_range_select.sv": "369bdc07587ef11f269f62d6f8c27b813187cdfaeb20810e32637e71c7aed473",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_coordinate_range_result.sv": "01464bd323304a9dc4b4f5dd8d0bb3923024c9f657a813f0b80234f4a494882b",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_coordinate_step_four_state.sv": "24046e5b095909ed6b6c784011c735ea608a9672e9da7be8b526da9be032daae",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_coordinate_upper_group.sv": "cd458520b861a599e796dfb6002026518c8eb5105c8c49867c575aacc72f64d0",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/geometry_proof/reference_conv_im2col_geometry.sv": "7e2da830350d741fb28ac6dad7fba292f964afbe5bb5cd306c51c178b009990d",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/geometry_proof/match.sv": "40ed47a8914112ccd1a3c6317be70eba12d84efd38ecad45a201bd186b87e0f2"
+  },
+  "formal": [
+    {
+      "name": "conv_im2col_geometry_lanes2_registered0_synthesis0",
+      "passed": true,
+      "equivalence_cells": 11692,
+      "log_sha256": "8b117c09ec3552823c6a371241bd392eff7dfca672a5c82651eaa6ffd3d9e18b"
+    },
+    {
+      "name": "conv_im2col_geometry_lanes2_registered0_synthesis1",
+      "passed": true,
+      "equivalence_cells": 9636,
+      "log_sha256": "e2464617ea699da469c1f28e1e0e6b0c931d1353a7fe6b01a7af2296ab898367"
+    },
+    {
+      "name": "conv_im2col_geometry_lanes2_registered1_synthesis0",
+      "passed": true,
+      "equivalence_cells": 6180,
+      "log_sha256": "6836ca4dc8c4d2e57cc3d4f1366c95782c73497174635d8225492739c1990c15"
+    },
+    {
+      "name": "conv_im2col_geometry_lanes2_registered1_synthesis1",
+      "passed": true,
+      "equivalence_cells": 5463,
+      "log_sha256": "2482a3ee634bf921b060c692ab535d9dc783e8ebba6a93eee117ce01740b025a"
+    },
+    {
+      "name": "conv_im2col_geometry_lanes8_registered0_synthesis0",
+      "passed": true,
+      "equivalence_cells": 11694,
+      "log_sha256": "858197018b458e10b13382845343ba60246658cad93b3903216443b88bf0edb2"
+    },
+    {
+      "name": "conv_im2col_geometry_lanes8_registered0_synthesis1",
+      "passed": true,
+      "equivalence_cells": 9638,
+      "log_sha256": "04ca3773649e8a08b168a72363068542edf6d6ff4cec3735bb5e75e2964a8c0a"
+    },
+    {
+      "name": "conv_im2col_geometry_lanes8_registered1_synthesis0",
+      "passed": true,
+      "equivalence_cells": 6182,
+      "log_sha256": "91a67f2a2e9ec806b3d94bf52757fd621c331ea4435f9e22b126d4c325584d25"
+    },
+    {
+      "name": "conv_im2col_geometry_lanes8_registered1_synthesis1",
+      "passed": true,
+      "equivalence_cells": 5465,
+      "log_sha256": "899417be0623000ba941ead3472afd9c79c5592a5cf5293ca197a8fa77289565"
+    }
+  ],
+  "four_state": {
+    "passed": true,
+    "checks": 4194,
+    "log_sha256": "1bcd4519e5b7714d6b70017b7560aa9951b03f42ea346b0741d76683607da6d4"
+  }
+}

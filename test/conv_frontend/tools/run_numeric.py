@@ -23,6 +23,7 @@ def main():
     parser.add_argument('--fpga', action='store_true')
     parser.add_argument('--synthesis', action='store_true')
     parser.add_argument('--register-descriptor', type=int, choices=(0, 1), default=0)
+    parser.add_argument('--cache-response-depth', type=int, choices=(1, 2, 4, 8), default=1)
     parser.add_argument('--admission', choices=('finish', 'idle'),
                         help='持续请求的接收阶段；默认在前一项完成时允许接收')
     parser.add_argument('--window', type=int, choices=(0, 1))
@@ -61,6 +62,8 @@ def main():
             bench=bench.replace('mem_active && !rvalid && lfsr[2]', 'mem_active && !rvalid')
         if args.register_descriptor is not None:
             bench=bench.replace('conv_im2col_frontend #(', 'conv_im2col_frontend #(.REGISTER_DESCRIPTOR(1\'b' + str(args.register_descriptor) + '),', 1)
+        bench=bench.replace('conv_im2col_frontend #(',
+                            f'conv_im2col_frontend #(.CACHE_RESPONSE_DEPTH({args.cache_response_depth}),', 1)
         p.write_text(bench)
         benches[name] = p
     hashes = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in [*sources, *benches.values()]}
@@ -123,6 +126,7 @@ def main():
                'cache_sets': args.cache_sets, 'line_bytes': args.line_bytes, 'xilinx_fpga': args.fpga,
                'continuous_descriptors': args.continuous, 'synthesis': args.synthesis,
                'register_descriptor': args.register_descriptor, 'admission': args.admission,
+               'cache_response_depth': args.cache_response_depth,
                'descriptor_capacity': 1 if args.register_descriptor == 0 else 2,
                'fixed_ready': args.fixed_ready,
                'source_sha256': hashes, 'configurations': results}

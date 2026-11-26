@@ -1,0 +1,181 @@
+{
+  "passed": true,
+  "compilation_definitions": {
+    "generic": [
+      "-USYNTHESIS",
+      "-UXILINX_FPGA"
+    ],
+    "fpga": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1"
+    ]
+  },
+  "state_selection": {
+    "passed": true,
+    "reference": "32379597",
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/conv/conv_im2col_frontend_pkg.sv": "133f1bc893333aefa9d10084f4514348688579d716722ad64be72051616feb2c",
+      "/workspace/scratch/5bfa47658687/storage_work/frontend_explicit_modes/state/reference.sv": "b26b9219a0167ce41b694b934766343a1b5d63f43df1093210d4e95b3955a00d",
+      "/workspace/scratch/5bfa47658687/storage_work/frontend_explicit_modes/state/current.sv": "786873d5c10bf27d3af9e017402dab5f7ef65bdf323e65f6717a8422a0ce7189",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/conv/conv_descriptor_match.sv": "654db46960028f405fd8d0bb43f9e84d5d50403706c6b5141f9b72862c244056",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/conv/conv_im2col_state_control.sv": "ef4b493418cd93e561528d47ff61eaaa7090a2a42bb563ce01882a3cc5742652"
+    },
+    "input_assumptions": [],
+    "case_semantics": "标准 case 顺序选择，任意状态位组合均参与比较。",
+    "formal": [
+      {
+        "count_width": 1,
+        "synthesis": false,
+        "slang_definitions": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "log_sha256": "eefdb6b8bbf91d7e18c1836d5d7109232527d9d5163e1849527d0dd6e628e83e"
+      },
+      {
+        "count_width": 1,
+        "synthesis": true,
+        "slang_definitions": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "log_sha256": "ef672cd23848487d87db720abcae1fe4c3414dd70f4805dfa80e8823d242fe46"
+      },
+      {
+        "count_width": 5,
+        "synthesis": false,
+        "slang_definitions": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "log_sha256": "1bcd601dabf731d50d85843da44a5a462f3d0c72d17590b3c0124047fb451010"
+      },
+      {
+        "count_width": 5,
+        "synthesis": true,
+        "slang_definitions": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "log_sha256": "d9b3fce4a2d96a818f6116dfa7ac13184a68413d179feec9f680b85a6b012844"
+      },
+      {
+        "count_width": 9,
+        "synthesis": false,
+        "slang_definitions": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "log_sha256": "8ed693bda938f288d60d43710beb7699a956dd2b34dae1e89a8b45677970f5a4"
+      },
+      {
+        "count_width": 9,
+        "synthesis": true,
+        "slang_definitions": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "log_sha256": "4ff4f676ae32f2de7d8b7d3dd5447f0a60a43e83ffcde31c0c88806343606fe8"
+      }
+    ],
+    "four_state": [
+      {
+        "count_width": 1,
+        "synthesis": false,
+        "passed": true,
+        "checks": 32768,
+        "log_sha256": "2c317408c4527d4b350ce51282b46a1b907a787c29fcce27db312535909a7dbc"
+      },
+      {
+        "count_width": 1,
+        "synthesis": true,
+        "passed": true,
+        "checks": 32768,
+        "log_sha256": "f04daa1642b2c7d94afe18d77f16a6583c2546aa6eadcc28669c13eb248c982b"
+      },
+      {
+        "count_width": 5,
+        "synthesis": false,
+        "passed": true,
+        "checks": 32768,
+        "log_sha256": "bad189d02087f3ed7604fabc5a39b52c4a3a554cf88c96a573e6effe29dfbda3"
+      },
+      {
+        "count_width": 5,
+        "synthesis": true,
+        "passed": true,
+        "checks": 32768,
+        "log_sha256": "847ac121138d4baff6ced510635aaac2bf01d3b971934ef908de909e062a60e4"
+      },
+      {
+        "count_width": 9,
+        "synthesis": false,
+        "passed": true,
+        "checks": 32768,
+        "log_sha256": "fde3f0ac995197d9b3307f9e677cd51eb8b7f8a187b395084f9600a741c841cb"
+      },
+      {
+        "count_width": 9,
+        "synthesis": true,
+        "passed": true,
+        "checks": 32768,
+        "log_sha256": "74af3273e294d7de1ff5b1323875b2c15dc9efa080aa129a1224879e6521f734"
+      }
+    ],
+    "test_sha256": "1dfb9def540cdb9f8ee8c8d62d0b8dc3440f289a532aa64929e5a31a56594266"
+  },
+  "stream_control": {
+    "passed": true,
+    "reference": "32379597",
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/conv/conv_im2col_stream_control.sv": "424768398ae350e0ae65f9482278ba79f08ed3e7f832f89cadadb4c82bb34657",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/conv/conv_im2col_frontend_pkg.sv": "133f1bc893333aefa9d10084f4514348688579d716722ad64be72051616feb2c",
+      "/workspace/scratch/5bfa47658687/storage_work/frontend_explicit_modes/stream/reference.sv": "2fd54649048b8a8244a2477f87cbf6138e3850fc92a300f92d49d5b591c91a50",
+      "/workspace/scratch/5bfa47658687/storage_work/frontend_explicit_modes/stream/current.sv": "bde65df3c95b09e3f01c0f61603afd4fb2db8fb342262d4746ff904116b33122",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/conv/conv_stream_column_request.sv": "6d892b3467a674b306940af0cf498619b73023921fd951aa2a23e8f802a6e6ba",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/conv/conv_stream_row_request.sv": "d35c9421fa28ad66387138825fe016df87f4c5933b50b6ad861a7ee60f2ec743",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/conv/conv_stream_tap_request.sv": "64fcd52a89559bf6bb5aabc873f8a60bfd8edc6fb462aab47e50336de79017eb",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972"
+    },
+    "input_assumptions": [],
+    "all_public_outputs_compared": true,
+    "profiles": [
+      {
+        "synthesis": false,
+        "slang_definitions": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "formal_log_sha256": "06c768b735efaaf4ecf2861393afd0dfb270e59ae3dac2bc25b08b761a0d8eb0",
+        "four_state_checks": 159778,
+        "four_state_log_sha256": "468c7426ea0a8cd215c85e5ed3710d29032eeb026ae83c2d7b7189eacb77fd52"
+      },
+      {
+        "synthesis": true,
+        "slang_definitions": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "formal_log_sha256": "9f6c68355a39bc6113b06548c09b3cc09dd518ad1d6f7d2160e781eb234f2b91",
+        "four_state_checks": 159778,
+        "four_state_log_sha256": "468c7426ea0a8cd215c85e5ed3710d29032eeb026ae83c2d7b7189eacb77fd52"
+      }
+    ],
+    "test_sha256": "35476e280c436b83f86ff98a2c41764de6f43e1e853986df7b49375f83c55732"
+  },
+  "runner_sha256": {
+    "run_control.py": "ac6e986b739f8e40f3bff59208c126334e66d964b4ebb4917584a87b7c9256c5",
+    "run_stream_control.py": "a19042c5d020999da62fd5d87f615c3549989d4cb15645720c9f00f5dc102e30"
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "passed": true,
+  "reference": "9bd6488c",
+  "input_assumptions": [],
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_stream.sv": "6a10e87c72ed0c4992507b490d3c5e5a8b015ae33a47aca3f7f9aad78cf2621d",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_stream_word_select.sv": "73f464aa12ee0d39c837f399e6ac9bde55b65c02d306ec4de7241171b699cd01",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/explicit_modes/word_selection/selection.sv": "16f2f8bbb4e5f2f28aa8691c56f277a213c35058ca4b870bad6c2d6735bbb7e7"
+  },
+  "formal": [
+    {
+      "width": 1,
+      "synthesis": 0,
+      "passed": true,
+      "log_sha256": "7d77b8a240d947ad9fbc8a6ba91d8ed97f810f372eafa325fbc2eb9a57bae3ca"
+    },
+    {
+      "width": 1,
+      "synthesis": 1,
+      "passed": true,
+      "log_sha256": "087b14dca92a5f48d290159fea7a014219f72ae88b1b834a6a7df71f9e6ed020"
+    },
+    {
+      "width": 4,
+      "synthesis": 0,
+      "passed": true,
+      "log_sha256": "549dd08d8748028311a91c599307f676f38a31793236de9c5c6e1aa43cca182f"
+    },
+    {
+      "width": 4,
+      "synthesis": 1,
+      "passed": true,
+      "log_sha256": "11637db740cd54a03b9aaea4ac441e61c2dd0d9accb80fce6a04aec9f2d4a3c8"
+    },
+    {
+      "width": 8,
+      "synthesis": 0,
+      "passed": true,
+      "log_sha256": "1563cf604b743d3d8aefc870e9218dc50a36c59fa9c44b2296f80461c596b82c"
+    },
+    {
+      "width": 8,
+      "synthesis": 1,
+      "passed": true,
+      "log_sha256": "aba3c9344cdd1f0a0240c590565120fa9de82ab2196c3160d4426d36f37a0845"
+    },
+    {
+      "width": 16,
+      "synthesis": 0,
+      "passed": true,
+      "log_sha256": "ab976bedbdb61d2b434852747a1090f0de814625324dbe5cee27f3cc52514b58"
+    },
+    {
+      "width": 16,
+      "synthesis": 1,
+      "passed": true,
+      "log_sha256": "90238b1f86c00667640963ea9969bc311c8aa47fbac659fc1c4717d6247f975a"
+    }
+  ],
+  "four_state": [
+    {
+      "synthesis": 0,
+      "passed": true,
+      "checks": 1048576,
+      "log_sha256": "0d84d8984760b8b8541c4c4360ce78c37a86aff0dd73799a7e6f532b68c507b6"
+    },
+    {
+      "synthesis": 1,
+      "passed": true,
+      "checks": 1048576,
+      "log_sha256": "0d84d8984760b8b8541c4c4360ce78c37a86aff0dd73799a7e6f532b68c507b6"
+    }
+  ]
+}

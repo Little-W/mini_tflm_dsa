@@ -7,7 +7,7 @@
 // This wrapper decodes each original tl_base_addr, then reads the REAL NHWC
 // tensor through conv_cfg.input_base. No virtual matrix is allocated or read.
 // A row address counter decodes virtual tile addresses.
-module conv_ia_tile_path #(
+module conv_ia_tile_path #( // 将虚拟矩阵分块地址转换为卷积窗口请求，读取实际输入张量并送入输入加载器。
   parameter int SIZE=16,
   parameter int CACHE_BLOCKS=4,
   parameter int BUS_WIDTH=32,
@@ -17,31 +17,31 @@ module conv_ia_tile_path #(
   parameter int CW=$clog2(SIZE),
   parameter int RW=$clog2(SIZE+1)
 ) (
-  input logic clk,rst_n,
-  input logic init_cfg,
-  output logic cfg_ready,
-  input conv_im2col_pkg::conv_cfg_t conv_cfg,
-  input logic [31:0] virtual_base,virtual_stride_b,
-  input logic tl_start,
-  input logic [31:0] tl_base_addr,tl_rows_to_read,
-  input logic [SW-1:0] tl_slot_id,
-  output logic tl_busy,tl_tile_done,error,
-  output logic [SW-1:0] tl_wr_slot,
-  output logic [CW-1:0] tl_wr_row,tl_wr_col_base,
-  output logic signed [15:0] tl_wr_data[4],
-  output logic tl_wr_valid[4],
-  output logic tl_wr_use_16bits,
-  output logic arvalid,
-  input logic arready,
-  output logic [31:0] araddr,
-  output logic [7:0] arlen,
-  output logic [2:0] arsize,
-  output logic [1:0] arburst,
-  input logic rvalid,
-  output logic rready,
-  input logic [BUS_WIDTH-1:0] rdata,
-  input logic [1:0] rresp,
-  input logic rlast
+  input logic clk /* 模块工作时钟。 */,rst_n /* 低有效复位输入。 */,
+  input logic init_cfg, // 接收卷积配置并初始化虚拟矩阵地址范围。
+  output logic cfg_ready, // 能够接收新的卷积及虚拟矩阵配置。
+  input conv_im2col_pkg::conv_cfg_t conv_cfg, // 实际输入图像及卷积窗口的配置。
+  input logic [31:0] virtual_base /* 虚拟展开矩阵的起始字节地址。 */,virtual_stride_b /* 虚拟展开矩阵相邻行的字节间隔。 */,
+  input logic tl_start, // 启动一个输入分块的读取。
+  input logic [31:0] tl_base_addr /* 当前分块在虚拟展开矩阵中的字节地址。 */,tl_rows_to_read /* 本分块需要读取的输出位置行数。 */,
+  input logic [SW-1:0] tl_slot_id, // 本分块数据写入的输入缓存槽号。
+  output logic tl_busy /* 当前分块路径忙或尚未具备有效配置。 */,tl_tile_done /* 当前卷积展开分块已经写入完成。 */,error /* 配置、虚拟地址或卷积前端报告错误。 */,
+  output logic [SW-1:0] tl_wr_slot, // 返回数据需要写入的输入缓存槽号。
+  output logic [CW-1:0] tl_wr_row /* 返回数据需要写入的分块行号。 */,tl_wr_col_base /* 本拍返回数据的起始分块列号。 */,
+  output logic signed [15:0] tl_wr_data[4], // 送入输入加载器的逐通道有符号数据。
+  output logic tl_wr_valid[4], // 送入输入加载器的逐通道写入有效标志。
+  output logic tl_wr_use_16bits, // 返回数据采用十六位元素格式。
+  output logic arvalid, // AXI 读取接口：读地址请求有效。
+  input logic arready, // AXI 读取接口：能够接收读地址请求。
+  output logic [31:0] araddr, // AXI 读取接口：读事务起始字节地址。
+  output logic [7:0] arlen, // AXI 读取接口：读突发的传输拍数减一。
+  output logic [2:0] arsize, // AXI 读取接口：每拍读取字节数的二进制对数。
+  output logic [1:0] arburst, // AXI 读取接口：读事务的突发类型。
+  input logic rvalid, // AXI 读取接口：返回的读取数据有效。
+  output logic rready, // AXI 读取接口：能够接收读取响应。
+  input logic [BUS_WIDTH-1:0] rdata, // AXI 读取接口：读取响应的数据。
+  input logic [1:0] rresp, // AXI 读取接口：读取响应的状态编码。
+  input logic rlast // AXI 读取接口：当前读突发的最后一拍。
 );
 
   typedef enum logic [2:0] {IDLE,DIV_START,DIV_WAIT,ISSUE,WAIT_TILE,FAULT} st_t;

@@ -37,7 +37,8 @@ def main():
         paths[label] = path
         inputs[label] = {'path': str(original), 'sha256': digest(path)}
     helpers = []
-    for name in ('regfile.v', 'add_equal.sv'):
+    for name in ('regfile.v', 'add_equal.sv', 'add_equal_bit.sv',
+                 'add_equal_reduce.sv', 'zero_reduce.sv'):
         path = out / name
         path.write_bytes((ROOT / 'rtl/common' / name).read_bytes())
         helpers.append(path)

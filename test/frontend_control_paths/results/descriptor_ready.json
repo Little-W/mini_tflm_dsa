@@ -1,0 +1,59 @@
+{
+  "passed": true,
+  "input_assumptions": [],
+  "state_encoding_assumptions": [],
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_frontend.sv": "419589f9e7be21fb2b108af50bb0e49b4cd6c6fa1dd0051a812126888f9444ec",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_descriptor.sv": "f0f0a72ab6b780517001c6e1b242d1a9ff3fe909cde15a4bd26dbe02cbfbc0cc",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_frontend_pkg.sv": "133f1bc893333aefa9d10084f4514348688579d716722ad64be72051616feb2c",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_tile_context.sv": "2375df4c16f491123659b65df017a383e7903e81af69ab155c06828ed1857d52"
+  },
+  "formal": [
+    {
+      "name": "registered0_synthesis0",
+      "passed": true,
+      "log_sha256": "6abe4f49ebc4ad66c5c5ea60378cf9737df93847e4db05d34f6960818bb592ea"
+    },
+    {
+      "name": "registered0_synthesis1",
+      "passed": true,
+      "log_sha256": "3a6eee5f954a3f642804973bb26c372e4576dd26be569b1fefac4d80b4596584"
+    },
+    {
+      "name": "registered1_synthesis0",
+      "passed": true,
+      "log_sha256": "c36f6e8ff12429703e338f17c9223260bd0eb822d33621a7e9879964d77691ea"
+    },
+    {
+      "name": "registered1_synthesis1",
+      "passed": true,
+      "log_sha256": "a47896a9ff39f1af45117c60c12a3a8b413e4a9ea417081363ad1dd083f2df0b"
+    }
+  ],
+  "four_state": [
+    {
+      "name": "registered0_synthesis0",
+      "passed": true,
+      "checks": 4194,
+      "log_sha256": "26514576691cc5ffaea70d2c417bae381d075765b1962ca4345e26f41aa74fe5"
+    },
+    {
+      "name": "registered0_synthesis1",
+      "passed": true,
+      "checks": 4194,
+      "log_sha256": "26514576691cc5ffaea70d2c417bae381d075765b1962ca4345e26f41aa74fe5"
+    },
+    {
+      "name": "registered1_synthesis0",
+      "passed": true,
+      "checks": 4194,
+      "log_sha256": "26514576691cc5ffaea70d2c417bae381d075765b1962ca4345e26f41aa74fe5"
+    },
+    {
+      "name": "registered1_synthesis1",
+      "passed": true,
+      "checks": 4194,
+      "log_sha256": "26514576691cc5ffaea70d2c417bae381d075765b1962ca4345e26f41aa74fe5"
+    }
+  ]
+}

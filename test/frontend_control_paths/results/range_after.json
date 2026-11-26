@@ -1,0 +1,66 @@
+{
+  "passed": true,
+  "input_assumptions": [],
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_stream_range_after.sv": "4ff932467bacf6766804ce7274af27960c8da760b7c4ed30c0b4862bab5816fc"
+  },
+  "formal": [
+    {
+      "lanes": 1,
+      "passed": true,
+      "log_sha256": "04875a1292102c42f05e69c9562057939d4e2791bec2ea2ecf9e89ed9f53377a"
+    },
+    {
+      "lanes": 4,
+      "passed": true,
+      "log_sha256": "424b0ae6662d2d25fb88633646a6dbc121dec5a77cfffe3f0ca8da7561186859"
+    },
+    {
+      "lanes": 8,
+      "passed": true,
+      "log_sha256": "3c548f88e5ad148ca3aa671d94ed986e3975491aaca7c127c22bd554d56f5336"
+    },
+    {
+      "lanes": 16,
+      "passed": true,
+      "log_sha256": "b7e39134f754ee406e009c8ffb1ccc8595c7252bb26b1d8410664b5f47651563"
+    },
+    {
+      "lanes": 33,
+      "passed": true,
+      "log_sha256": "666329213309bd994c90637a5621135588f08fc74a38673f183a6874be4ef02c"
+    }
+  ],
+  "four_state": [
+    {
+      "lanes": 1,
+      "passed": true,
+      "checks": 482,
+      "log_sha256": "b287fecbff5780ad3215a266616c98efcf689ad972adc0388a66b1b96a537396"
+    },
+    {
+      "lanes": 4,
+      "passed": true,
+      "checks": 994,
+      "log_sha256": "4362abdec2825d5ee2d5be27548cf1d82c1e51816de3f9195898d7f97c3f189d"
+    },
+    {
+      "lanes": 8,
+      "passed": true,
+      "checks": 1762,
+      "log_sha256": "67bf18422640ee16002b47723cab427cc00754333d6c518479013c856e668ec3"
+    },
+    {
+      "lanes": 16,
+      "passed": true,
+      "checks": 3298,
+      "log_sha256": "35a02bd4eca1017b843104c2549114858dcbd09e8b01179939bb5817a1718a24"
+    },
+    {
+      "lanes": 33,
+      "passed": true,
+      "checks": 6626,
+      "log_sha256": "fac812280c87fc996d87be53b10a5710d9a0658362aaa2309a4bcefd5e181abf"
+    }
+  ]
+}

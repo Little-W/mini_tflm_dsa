@@ -1,0 +1,138 @@
+{
+  "passed": true,
+  "source_sha256": "b41c7b7e0c35bdde8c8d989e9825f366f0baca7838176e8720907d7da31517e6",
+  "formal": {
+    "passed": true,
+    "reference_ref": "8b3728c0",
+    "inputs_constrained": false,
+    "fpga": true,
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "source_sha256": "b41c7b7e0c35bdde8c8d989e9825f366f0baca7838176e8720907d7da31517e6",
+    "reference_sha256": "32b7159b3a2d7cc89871a9223e7c7a86b8a9e1ea568c606ba3c2a1bae0b1aa35",
+    "runs": [
+      {
+        "ADDR_W": 32,
+        "DATA_W": 32,
+        "SPLIT_GEMM_4K": 0,
+        "passed": true,
+        "equivalent_bits": 814,
+        "log_sha256": "b1d058e18de5371851801b0150e5148636468103ae17aee39c35785864f6617e"
+      },
+      {
+        "ADDR_W": 32,
+        "DATA_W": 32,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 817,
+        "log_sha256": "13c728b90b1e2a6eb9d13cba016837c4079d085cfbff943445f59dd6d8f78c6a"
+      },
+      {
+        "ADDR_W": 32,
+        "DATA_W": 64,
+        "SPLIT_GEMM_4K": 0,
+        "passed": true,
+        "equivalent_bits": 949,
+        "log_sha256": "83d48ed4afde1392ceed8af8a47dd159bd2253686c6edef41734b06f5686acc8"
+      },
+      {
+        "ADDR_W": 32,
+        "DATA_W": 64,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 952,
+        "log_sha256": "fb1e5a27529957d295446b0dd1c0f83bb7d2550af6fcc7403517d98d745ed170"
+      },
+      {
+        "ADDR_W": 16,
+        "DATA_W": 16,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 701,
+        "log_sha256": "002e1a57aabca81e352a49a0891e9c04039962da430787455fdbaab23e477963"
+      },
+      {
+        "ADDR_W": 33,
+        "DATA_W": 128,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 1234,
+        "log_sha256": "ceef9de294fb1d7a65bb20fa6bdd8ccfad76c35fe8a5f7fa0246fb31340a678f"
+      },
+      {
+        "ADDR_W": 40,
+        "DATA_W": 256,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 1825,
+        "log_sha256": "3a17a446fa7ecb9ea24ebc7a31f09c4bfd14e6430a7021e40363d6ebc7606bba"
+      }
+    ]
+  },
+  "four_state": {
+    "passed": true,
+    "source_sha256": "b41c7b7e0c35bdde8c8d989e9825f366f0baca7838176e8720907d7da31517e6",
+    "reference_sha256": "32b7159b3a2d7cc89871a9223e7c7a86b8a9e1ea568c606ba3c2a1bae0b1aa35",
+    "test_sha256": "7b8a2da693cb9a61a814446a49096e692822b41dd79df1f32f287bd6e5aed7e3",
+    "testbench_sha256": "57a300efb1bfddcec127a73d7d1245c52197e42ca2c9839d1c975b04f396919c",
+    "log_sha256": "d1a8dd94d91126597722202cc1781ce8cf11617542ec38755efbf7f5e9f88c3d",
+    "cycles": 20000,
+    "configurations": 4,
+    "strict_four_state": true,
+    "simulation_type_conversion": "same-width logic state and identical enumeration values"
+  },
+  "mapping": {
+    "mode": "physical-cost",
+    "delay_target_ps": 6667,
+    "wire_delay_ps": 300,
+    "max_lut_inputs": 8,
+    "configuration": {
+      "ADDR_W": 32,
+      "DATA_W": 64,
+      "SPLIT_GEMM_4K": 1,
+      "READ_OUTSTANDING": 4
+    },
+    "results": {
+      "current": {
+        "resources": {
+          "logic_lut_cells": 929,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 929,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 392,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 77,
+          "unclassified_distributed_ram_types": []
+        },
+        "register_path_cells": 10,
+        "input_to_register_path_cells": 9,
+        "graph_complete": true,
+        "mapped_sha256": "027a33edfe65b07aa1021026e7d6bf54629608f5449623fe7b00b163ec9a2ff3",
+        "measured_source_sha256": "00e05ffc1f093fee857f3e0347c8b5cfa424fb541f220925d0e791d596c3874f"
+      },
+      "reference_2d3142b3": {
+        "resources": {
+          "logic_lut_cells": 909,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 909,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 392,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 77,
+          "unclassified_distributed_ram_types": []
+        },
+        "register_path_cells": 12,
+        "input_to_register_path_cells": 11,
+        "graph_complete": true,
+        "mapped_sha256": "d2b24de282fed569e106438fd97aca3aa42b76ab48fb15be35ab602e99ff0f6c",
+        "measured_source_sha256": "32b7159b3a2d7cc89871a9223e7c7a86b8a9e1ea568c606ba3c2a1bae0b1aa35"
+      }
+    }
+  },
+  "physical_timing_verified": false
+}

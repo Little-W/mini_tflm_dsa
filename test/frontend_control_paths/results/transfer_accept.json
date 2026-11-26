@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "input_assumptions": [],
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_frontend.sv": "419589f9e7be21fb2b108af50bb0e49b4cd6c6fa1dd0051a812126888f9444ec",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_descriptor.sv": "f0f0a72ab6b780517001c6e1b242d1a9ff3fe909cde15a4bd26dbe02cbfbc0cc",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_stream.sv": "6a10e87c72ed0c4992507b490d3c5e5a8b015ae33a47aca3f7f9aad78cf2621d",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_frontend_pkg.sv": "133f1bc893333aefa9d10084f4514348688579d716722ad64be72051616feb2c"
+  },
+  "formal": {
+    "passed": true,
+    "log_sha256": "5ed3444f78d6f7166dbf0ca8a7dd5a024d6a6bade7004637bdb8eae3f6d12b14"
+  },
+  "four_state": {
+    "passed": true,
+    "checks": 4194,
+    "log_sha256": "248a70a45e9cd468fad19dad7267b4d62e5388d90e12814d171e28f350fa8d5a"
+  }
+}

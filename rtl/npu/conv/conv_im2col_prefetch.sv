@@ -10,88 +10,88 @@ module conv_im2col_prefetch #(
   localparam int p_tile_count_w=$clog2(p_size+1),
   localparam int p_coord_w=35
 )(
-  input wire logic i_clk,
-  input wire logic i_rst_n,
-  input wire logic i_cfg_valid,
-  input wire logic i_cfg_ready,
-  input wire logic [p_rw-1:0] i_tile_rows,
-  input wire logic [p_rw-1:0] i_tile_cols,
-  input wire conv_im2col_pkg::conv_cfg_t i_c,
-  input wire logic [p_tile_count_w-1:0] i_rows_q,
-  input wire logic [p_tile_count_w-1:0] i_cols_q,
-  input wire logic [15:0] i_ky_q,
-  input wire logic [15:0] i_ky0_q,
-  input wire logic [31:0] i_ox,
-  input wire logic [31:0] i_oy,
-  input wire logic [31:0] i_kx,
-  input wire logic [31:0] i_ch,
-  input wire logic [31:0] i_kx0,
-  input wire logic [31:0] i_ch0,
-  input wire logic signed [p_coord_w-1:0] i_ix,
-  input wire logic signed [p_coord_w-1:0] i_iy,
-  input wire logic i_request_stream_context,
-  input wire logic i_request_row_context,
-  input wire logic i_incoming_context,
-  input wire logic i_incoming_next_tile_fast,
-  input wire logic i_incoming_next_position_fast,
-  input wire logic [15:0] i_window_next_x,
-  input wire logic i_cache_port_valid,
-  input wire logic [31:0] i_cache_req_addr,
-  input wire logic i_cache_port_ready,
-  input wire logic [31:0] i_request_addr_q,
-  input wire logic [31:0] i_request_index_q,
-  input wire logic [31:0] i_request_epoch_q,
-  input wire logic i_short_pixel_q,
-  input wire logic [15:0] i_retire_last_row_q,
-  input wire logic [15:0] i_second_last_row_q,
-  input wire logic [15:0] i_last_output_col_q,
-  input wire logic [15:0] i_second_last_col_q,
-  input wire logic i_request_index_valid_q,
-  input wire logic [31:0] i_incoming_ch,
-  input wire logic [31:0] i_incoming_ky,
-  input wire logic [31:0] i_incoming_kx,
-  input wire logic signed [p_coord_w-1:0] i_incoming_ix,
-  input wire logic [31:0] i_req_index,
-  input wire logic [31:0] i_req_epoch,
-  input wire logic [1:0][31:0] i_retirement_result,
-  input wire logic i_req_index_valid,
-  input wire logic [4:0] i_window_index_shift_q,
-  input wire logic [31:0] i_pf_step_base,
-  input wire logic i_fragment_image_fits,
-  input wire logic signed [p_coord_w-1:0] i_request_y,
-  input wire logic [31:0] i_request_output_y,
-  input wire logic [4:0][31:0] i_epoch_o_sum,
-  input wire logic [31:0] i_stream_channel_full,
-  input wire logic signed [32:0] i_row_pair_dx,
-  input wire logic signed [32:0] i_row_wrap_dx,
-  input wire logic signed [32:0] i_tap_wrap_dx,
-  input wire logic i_row_wrap,
-  input wire logic signed [p_coord_w-1:0] i_next_row_ix,
-  input wire logic [31:0] i_prefetch_address_sum,
-  input wire logic [31:0] i_prefetch_byte_offset,
-  input wire logic [31:0] i_prefetch_pixel_sum,
-  input wire logic [1:0][47:0] i_shared_channel_product,
-  output logic o_pf_valid,
-  output logic [31:0] o_pf_addr,
-  output logic [31:0] o_pf_index,
-  output logic [31:0] o_pf_epoch,
-  output logic o_pf_index_valid,
-  output logic [3:0] o_prefetch_phase,
-  output logic [31:0] o_pf_address_term,
-  output logic signed [p_coord_w-1:0] o_pfa_y,
-  output logic [31:0] o_pfa_channel,
-  output logic [31:0] o_pf0_x,
-  output logic [31:0] o_pf0_y,
-  output logic [31:0] o_pf1_pixel,
-  output logic [31:0] o_pf1_channel,
-  output logic [31:0] o_pf1_retire,
-  output logic [31:0] o_pf1_ref_addr,
-  output logic [31:0] o_pf1_ref_index,
-  output logic [31:0] o_pf1_ref_epoch,
-  output logic [31:0] o_pf1_ref_retire,
-  output logic o_pf1_ref_index_valid,
-  output logic o_pf1_fragment,
-  output logic o_pf1_coordinate_valid
+  input wire logic i_clk, // 模块工作时钟。
+  input wire logic i_rst_n, // 低有效复位输入。
+  input wire logic i_cfg_valid, // 上游正在提供新的卷积配置。
+  input wire logic i_cfg_ready, // 前端能够接收当前卷积配置。
+  input wire logic [p_rw-1:0] i_tile_rows, // 新描述符请求的输出位置行数。
+  input wire logic [p_rw-1:0] i_tile_cols, // 新描述符请求的归约列数。
+  input wire conv_im2col_pkg::conv_cfg_t i_c, // 当前已接收的卷积配置。
+  input wire logic [p_tile_count_w-1:0] i_rows_q, // 当前描述符保存的有效行数。
+  input wire logic [p_tile_count_w-1:0] i_cols_q, // 当前描述符保存的有效列数。
+  input wire logic [15:0] i_ky_q, // 当前采样位置的卷积核纵向坐标。
+  input wire logic [15:0] i_ky0_q, // 当前描述符起点的卷积核纵向坐标。
+  input wire logic [31:0] i_ox, // 当前采样对应的输出横坐标。
+  input wire logic [31:0] i_oy, // 当前采样对应的输出纵坐标。
+  input wire logic [31:0] i_kx, // 当前采样的卷积核横坐标。
+  input wire logic [31:0] i_ch, // 当前采样的组内输入通道号。
+  input wire logic [31:0] i_kx0, // 当前描述符起点的卷积核横坐标。
+  input wire logic [31:0] i_ch0, // 当前描述符起点的组内输入通道号。
+  input wire logic signed [p_coord_w-1:0] i_ix, // 当前采样对应的有符号输入横坐标。
+  input wire logic signed [p_coord_w-1:0] i_iy, // 当前采样对应的有符号输入纵坐标。
+  input wire logic i_request_stream_context, // 当前请求使用连续流式扫描上下文。
+  input wire logic i_request_row_context, // 当前请求使用已保存的行上下文。
+  input wire logic i_incoming_context, // 输入描述符的快速上下文有效。
+  input wire logic i_incoming_next_tile_fast, // 输入描述符可以复用下一分块上下文。
+  input wire logic i_incoming_next_position_fast, // 输入描述符可以复用下一输出位置上下文。
+  input wire logic [15:0] i_window_next_x, // 已准备窗口的下一输出横坐标。
+  input wire logic i_cache_port_valid, // 当前需求读取请求有效。
+  input wire logic [31:0] i_cache_req_addr, // 当前需求读取的字节地址。
+  input wire logic i_cache_port_ready, // 缓存端口能够接收当前需求请求。
+  input wire logic [31:0] i_request_addr_q, // 已保存需求请求的字节地址。
+  input wire logic [31:0] i_request_index_q, // 已保存需求请求的窗口索引。
+  input wire logic [31:0] i_request_epoch_q, // 已保存需求请求的代次编号。
+  input wire logic i_short_pixel_q, // 当前像素的字节数小于预取使用的缓存行范围。
+  input wire logic [15:0] i_retire_last_row_q, // 窗口回收判断使用的最后一个输出行索引。
+  input wire logic [15:0] i_second_last_row_q, // 已保存的倒数第二个输出行索引。
+  input wire logic [15:0] i_last_output_col_q, // 已保存的最后一个输出列坐标。
+  input wire logic [15:0] i_second_last_col_q, // 已保存的倒数第二个输出列坐标。
+  input wire logic i_request_index_valid_q, // 已保存需求请求的窗口索引有效。
+  input wire logic [31:0] i_incoming_ch, // 输入描述符解码得到的组内通道号。
+  input wire logic [31:0] i_incoming_ky, // 输入描述符解码得到的卷积核纵坐标。
+  input wire logic [31:0] i_incoming_kx, // 输入描述符解码得到的卷积核横坐标。
+  input wire logic signed [p_coord_w-1:0] i_incoming_ix, // 输入描述符解码得到的有符号输入横坐标。
+  input wire logic [31:0] i_req_index, // 当前请求的窗口索引。
+  input wire logic [31:0] i_req_epoch, // 当前请求的代次编号。
+  input wire logic [1:0][31:0] i_retirement_result, // 需求与预取所对应的两个退役位置结果。
+  input wire logic i_req_index_valid, // 当前请求的窗口索引有效。
+  input wire logic [4:0] i_window_index_shift_q, // 窗口索引换算采用的已保存移位量。
+  input wire logic [31:0] i_pf_step_base, // 预取扫描的基础步进量。
+  input wire logic i_fragment_image_fits, // 预取行片段未超出输入图像范围。
+  input wire logic signed [p_coord_w-1:0] i_request_y, // 当前请求对应的有符号输入纵坐标。
+  input wire logic [31:0] i_request_output_y, // 当前请求对应的输出纵坐标。
+  input wire logic [4:0][31:0] i_epoch_o_sum, // 各候选预取路径的代次计算结果。
+  input wire logic [31:0] i_stream_channel_full, // 连续流式扫描得到的完整通道位置。
+  input wire logic signed [32:0] i_row_pair_dx, // 相邻输出位置之间的输入横坐标步进。
+  input wire logic signed [32:0] i_row_wrap_dx, // 输出位置换行时的输入横坐标修正量。
+  input wire logic signed [32:0] i_tap_wrap_dx, // 卷积核位置换行时的输入横坐标修正量。
+  input wire logic i_row_wrap, // 当前输出位置步进需要换行。
+  input wire logic signed [p_coord_w-1:0] i_next_row_ix, // 下一输出行起点的输入横坐标。
+  input wire logic [31:0] i_prefetch_address_sum, // 共享地址加法器计算的预取字节地址。
+  input wire logic [31:0] i_prefetch_byte_offset, // 预取数据相对输入基址的字节偏移。
+  input wire logic [31:0] i_prefetch_pixel_sum, // 预取输入像素的线性索引。
+  input wire logic [1:0][47:0] i_shared_channel_product, // 共享乘法器计算的两组像素通道偏移。
+  output logic o_pf_valid, // 完整预取地址及元数据已经有效。
+  output logic [31:0] o_pf_addr, // 提交给缓存的预取字节地址。
+  output logic [31:0] o_pf_index, // 预取请求的窗口索引。
+  output logic [31:0] o_pf_epoch, // 预取请求的代次编号。
+  output logic o_pf_index_valid, // 预取请求携带的窗口索引有效。
+  output logic [3:0] o_prefetch_phase, // 当前预取地址准备阶段。
+  output logic [31:0] o_pf_address_term, // 预取地址加法所需的已保存偏移项。
+  output logic signed [p_coord_w-1:0] o_pfa_y, // 预取接收阶段保存的输入纵坐标。
+  output logic [31:0] o_pfa_channel, // 预取接收阶段保存的通道位置。
+  output logic [31:0] o_pf0_x, // 预取坐标推进后保存的输入横坐标。
+  output logic [31:0] o_pf0_y, // 预取坐标推进后保存的输入纵坐标。
+  output logic [31:0] o_pf1_pixel, // 预取位置对应的线性像素索引。
+  output logic [31:0] o_pf1_channel, // 地址形成阶段保存的预取通道位置。
+  output logic [31:0] o_pf1_retire, // 预取请求对应的退役位置。
+  output logic [31:0] o_pf1_ref_addr, // 发起本次预取的需求请求地址。
+  output logic [31:0] o_pf1_ref_index, // 发起本次预取的需求窗口索引。
+  output logic [31:0] o_pf1_ref_epoch, // 发起本次预取的需求代次编号。
+  output logic [31:0] o_pf1_ref_retire, // 发起本次预取的需求退役位置。
+  output logic o_pf1_ref_index_valid, // 保存的需求窗口索引有效。
+  output logic o_pf1_fragment, // 当前预取采用卷积核行片段方式。
+  output logic o_pf1_coordinate_valid // 已保存的预取坐标处于有效输入范围。
 );
   import conv_im2col_pkg::*;
   import conv_im2col_frontend_pkg::*;
@@ -204,7 +204,11 @@ module conv_im2col_prefetch #(
   assign pf_prepare_i_b = {pf_distance_q, 32'(pf_y_wrap_delta_q), 32'(pf_y_delta_q)};
   assign pf_prepare_i_carry = 1'b0;
   for (genvar source = 0; source < 3; source++) begin : g_prefetch_prepare
-    parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1), .p_dsp_split_width(source == 2 ? 16 : 0)) u_sum (
+    // 可变步长采用两个十六位段并行求和，高位修正按组同时完成。
+    parallel_prefix_add #(
+      .p_width(32), .p_group_width(8), .p_preserve_groups(1'b1),
+      .p_dsp_split_width(16), .p_parallel_high_prefix(1'b1), .p_keep_carry(1'b0)
+    ) u_sum (
       .i_a(pf_prepare_i_a[source]), .i_b(pf_prepare_i_b[source]), .i_carry(pf_prepare_i_carry),
       .o_sum(pf_prepare_o_sum[source]), .o_carry(unused_pf_prepare_carry[source])
     );
@@ -218,11 +222,17 @@ module conv_im2col_prefetch #(
     .i_a(prefetch_wrap_i_a), .i_b(prefetch_wrap_i_b), .i_carry(1'b1),
     .o_sum(prefetch_wrap_base), .o_carry(unused_prefetch_x_carry[0])
   );
-  parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_prefetch_x (
+  parallel_prefix_add #(
+    .p_width(32), .p_group_width(8), .p_preserve_groups(1'b1),
+    .p_dsp_split_width(16), .p_parallel_high_prefix(1'b1), .p_keep_carry(1'b0)
+  ) u_prefetch_x (
     .i_a(32'(accepted_coordinate_q[0])), .i_b(pf_step_q), .i_carry(1'b0),
     .o_sum(prefetch_next_x), .o_carry(unused_prefetch_x_carry[1])
   );
-  parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_prefetch_wrapped_x (
+  parallel_prefix_add #(
+    .p_width(32), .p_group_width(8), .p_preserve_groups(1'b1),
+    .p_dsp_split_width(16), .p_parallel_high_prefix(1'b1), .p_keep_carry(1'b0)
+  ) u_prefetch_wrapped_x (
     .i_a(prefetch_wrap_base_q), .i_b(pf_step_q), .i_carry(1'b0),
     .o_sum(prefetch_wrapped_x), .o_carry(unused_prefetch_x_carry[2])
   );

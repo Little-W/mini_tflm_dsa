@@ -1,0 +1,144 @@
+{
+  "passed": true,
+  "representation": "打包联合体以同一组27位同时表达枚举状态和选择结果，保持任意位组合及未知位。",
+  "source_sha256": "ef4b493418cd93e561528d47ff61eaaa7090a2a42bb563ce01882a3cc5742652",
+  "module_verification": {
+    "passed": true,
+    "reference": "32379597",
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/conv/conv_im2col_frontend_pkg.sv": "133f1bc893333aefa9d10084f4514348688579d716722ad64be72051616feb2c",
+      "/workspace/scratch/5bfa47658687/storage_work/frontend_enum/validation/reference.sv": "b26b9219a0167ce41b694b934766343a1b5d63f43df1093210d4e95b3955a00d",
+      "/workspace/scratch/5bfa47658687/storage_work/frontend_enum/validation/current.sv": "786873d5c10bf27d3af9e017402dab5f7ef65bdf323e65f6717a8422a0ce7189",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/conv/conv_descriptor_match.sv": "654db46960028f405fd8d0bb43f9e84d5d50403706c6b5141f9b72862c244056",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+      "/workspace/scratch/5bfa47658687/storage_work/frontend_enum/conv_im2col_state_control.sv": "ef4b493418cd93e561528d47ff61eaaa7090a2a42bb563ce01882a3cc5742652"
+    },
+    "input_assumptions": [],
+    "case_semantics": "标准 case 顺序选择，任意状态位组合均参与比较。",
+    "formal": [
+      {
+        "count_width": 1,
+        "synthesis": false,
+        "passed": true,
+        "log_sha256": "f1b7f2818838646da5df9f9d2606c8040d23b99e2f061ffd9ae72671eb968bd0"
+      },
+      {
+        "count_width": 1,
+        "synthesis": true,
+        "passed": true,
+        "log_sha256": "089ac7af8b3387019ff151aecea245bcba5c0fde2539442b3fc49d66bbe6201d"
+      },
+      {
+        "count_width": 5,
+        "synthesis": false,
+        "passed": true,
+        "log_sha256": "1e9ddec3689ce1c4276dba494f6ac25dea85a8dc09a50cb02de621a2f533de69"
+      },
+      {
+        "count_width": 5,
+        "synthesis": true,
+        "passed": true,
+        "log_sha256": "acf21d07c9b8f3310930008178f3189bfbcce034d50545baff432507f87c19ac"
+      },
+      {
+        "count_width": 9,
+        "synthesis": false,
+        "passed": true,
+        "log_sha256": "25854228923e64d446fd36ff1e1bc150315666fffec80b5f7e1cb1313d51996c"
+      },
+      {
+        "count_width": 9,
+        "synthesis": true,
+        "passed": true,
+        "log_sha256": "179a3014e1b9db4dcad70dc7674ed7e2d8602aadbbd3a2106ebe1d8e8143b1ae"
+      }
+    ],
+    "four_state": [
+      {
+        "count_width": 1,
+        "synthesis": false,
+        "passed": true,
+        "checks": 32768,
+        "log_sha256": "1ff82d8bb8f0f281987a1e6d21ae0c4eb1a501356ba6e50c14d1980ab91d1058"
+      },
+      {
+        "count_width": 1,
+        "synthesis": true,
+        "passed": true,
+        "checks": 32768,
+        "log_sha256": "b4aaf4c3cc78352c8846956b0de1d66dd0e2dc01ac10a930444d36e48b7f0465"
+      },
+      {
+        "count_width": 5,
+        "synthesis": false,
+        "passed": true,
+        "checks": 32768,
+        "log_sha256": "dd2adf89ad2ebf305a55652594bcfc1963131c19f1d9af54aa7894e62234e741"
+      },
+      {
+        "count_width": 5,
+        "synthesis": true,
+        "passed": true,
+        "checks": 32768,
+        "log_sha256": "ccd335bee74e6d1ab289cdf3eeb4d88585e669380d598645c38ea1beb8f8f01c"
+      },
+      {
+        "count_width": 9,
+        "synthesis": false,
+        "passed": true,
+        "checks": 32768,
+        "log_sha256": "ef5c9c2ee201fa270bc12f496be3b2da51099fc248c32e7596707fe9e2d46c24"
+      },
+      {
+        "count_width": 9,
+        "synthesis": true,
+        "passed": true,
+        "checks": 32768,
+        "log_sha256": "00de5d73c8205c1efbb0e16422e9799cf9f6aa1a10f8d305619c145eab612673"
+      }
+    ],
+    "test_sha256": "16ab90a335a29467b6582311e5a265071bd248fe093b0e30d483f76621efef5a"
+  },
+  "verilator": {
+    "passed": true,
+    "runs": [
+      {
+        "synthesis": false,
+        "passed": true,
+        "command": [
+          "verilator",
+          "--lint-only",
+          "--top-module",
+          "conv_im2col_state_control",
+          "-Wno-fatal",
+          "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/conv/conv_im2col_frontend_pkg.sv",
+          "/workspace/scratch/5bfa47658687/storage_work/frontend_enum/conv_im2col_state_control.sv",
+          "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/conv/conv_descriptor_match.sv",
+          "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/onehot_mux.sv",
+          "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/onehot_mux_group.sv"
+        ],
+        "log_sha256": "a9eeb9310e6a5bdc579448a03342a855322ea22973906be80948bc4b899167fe"
+      },
+      {
+        "synthesis": true,
+        "passed": true,
+        "command": [
+          "verilator",
+          "--lint-only",
+          "--top-module",
+          "conv_im2col_state_control",
+          "-Wno-fatal",
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/conv/conv_im2col_frontend_pkg.sv",
+          "/workspace/scratch/5bfa47658687/storage_work/frontend_enum/conv_im2col_state_control.sv",
+          "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/conv/conv_descriptor_match.sv",
+          "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/onehot_mux.sv",
+          "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/onehot_mux_group.sv"
+        ],
+        "log_sha256": "33f1302bf57a9cd822b4eac0b0decc6ba7e99b4157e8bff765a597248ba155e6"
+      }
+    ]
+  }
+}

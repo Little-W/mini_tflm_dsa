@@ -3,34 +3,34 @@
 // Parameterized AXI4 read master, single outstanding burst, fixed response ID.
 // Aligned middle: INCR bursts; unaligned prefix/suffix: byte-sized AXI reads.
 // Slave MUST support ARSIZE=0 narrow reads. No unsupported unaligned full-word reads.
-module conv_axi_span_reader #(
+module conv_axi_span_reader #( // 读取指定的完整字节区间，将边界与中间数据分别组织为窄读取和递增突发。
   parameter int BUS_WIDTH=32,
   parameter int DMA_MAX_BYTES=256*(BUS_WIDTH/8),
   parameter int MAX_REQUEST_BYTES=65535
 ) (
-  input logic clk, rst_n,
-  input logic req_valid,
-  output logic req_ready,
-  input logic [31:0] req_addr,
-  input logic [15:0] req_bytes,
-  output logic rsp_valid,
-  input logic rsp_ready,
-  output logic [31:0] rsp_word_addr,
-  output logic [BUS_WIDTH-1:0] rsp_data,
-  output logic [BUS_WIDTH/8-1:0] rsp_strb,
-  output logic rsp_last, rsp_error,
-  output logic arvalid,
-  input logic arready,
-  output logic [31:0] araddr,
-  output logic [7:0] arlen,
-  output logic [2:0] arsize,
-  output logic [1:0] arburst,
-  input logic rvalid,
-  output logic rready,
-  input logic [BUS_WIDTH-1:0] rdata,
-  input logic [1:0] rresp,
-  input logic rlast,
-  output logic busy
+  input logic clk /* 模块工作时钟。 */, rst_n /* 低有效复位输入。 */,
+  input logic req_valid, // 字节范围读取请求有效。
+  output logic req_ready, // 能够接收新的字节范围读取请求。
+  input logic [31:0] req_addr, // 所需字节范围的起始地址。
+  input logic [15:0] req_bytes, // 本次需要读取的精确字节数。
+  output logic rsp_valid, // 本拍范围读取结果有效。
+  input logic rsp_ready, // 调用方能够接收本拍结果。
+  output logic [31:0] rsp_word_addr, // 返回数据所在总线字的字节地址。
+  output logic [BUS_WIDTH-1:0] rsp_data, // 当前返回的总线字数据。
+  output logic [BUS_WIDTH/8-1:0] rsp_strb, // 当前总线字中属于请求范围的字节掩码。
+  output logic rsp_last /* 当前结果为本次字节范围的最后一拍。 */, rsp_error /* 当前字节范围读取发生协议或地址错误。 */,
+  output logic arvalid, // AXI 读取接口：读地址请求有效。
+  input logic arready, // AXI 读取接口：能够接收读地址请求。
+  output logic [31:0] araddr, // AXI 读取接口：读事务起始字节地址。
+  output logic [7:0] arlen, // AXI 读取接口：读突发的传输拍数减一。
+  output logic [2:0] arsize, // AXI 读取接口：每拍读取字节数的二进制对数。
+  output logic [1:0] arburst, // AXI 读取接口：读事务的突发类型。
+  input logic rvalid, // AXI 读取接口：返回的读取数据有效。
+  output logic rready, // AXI 读取接口：能够接收读取响应。
+  input logic [BUS_WIDTH-1:0] rdata, // AXI 读取接口：读取响应的数据。
+  input logic [1:0] rresp, // AXI 读取接口：读取响应的状态编码。
+  input logic rlast, // AXI 读取接口：当前读突发的最后一拍。
+  output logic busy // 正在处理一个字节范围读取请求。
 );
   localparam int BUS_BYTES=BUS_WIDTH/8;
   localparam int BUS_SHIFT=$clog2(BUS_BYTES);

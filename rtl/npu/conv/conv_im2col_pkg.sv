@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-package conv_im2col_pkg;
+package conv_im2col_pkg; // 定义单批次 NHWC 输入张量的尺寸、通道分组、卷积采样和缓存控制配置。
   // One immutable NHWC input tensor (one batch) per configuration.
   // Weights, accumulation and requantization remain in the existing NPU.
   typedef struct packed {

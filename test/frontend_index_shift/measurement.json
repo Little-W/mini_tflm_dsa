@@ -1,0 +1,184 @@
+{
+  "passed": true,
+  "reference": "8b3728c008e6093095c8ade34aa4516145bc6005",
+  "inputs_constrained": false,
+  "reference_source_sha256": "69e4f2fca3b886bc3b285b2eb95a182995342a78b6a97d1f5e9b08e9cf7526cc",
+  "source_sha256": {
+    "rtl/npu/conv/conv_im2col_request_index.sv": "79cb159297a45158763115165a47eff0f9bac0dbaa45854e65661861bb40f2ef",
+    "build/frontend_index_shift_release/reference_request_index.sv": "d3f5224b2806c5318ac48b5e33620bfd7bbf0850c0c7d8e562d347876a06d0b2",
+    "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+    "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972"
+  },
+  "cases": [
+    {
+      "coordinate_width": 16,
+      "registered_descriptor": false,
+      "synthesis": false,
+      "formal_passed": true,
+      "compared_output_bits": 80,
+      "formal_log_sha256": "2b928349da81344317938b9fe293a31ea69dcf5d5c135f88f4e27d55b5a0c101"
+    },
+    {
+      "coordinate_width": 16,
+      "registered_descriptor": false,
+      "synthesis": true,
+      "formal_passed": true,
+      "compared_output_bits": 80,
+      "formal_log_sha256": "e8b1b1d9ad293de492c5d1d3b26d3dfee99b30a6134cff38682d273b719c6289"
+    },
+    {
+      "coordinate_width": 16,
+      "registered_descriptor": true,
+      "synthesis": false,
+      "formal_passed": true,
+      "compared_output_bits": 80,
+      "formal_log_sha256": "33fdff6ea0176f6f30feeddb049a5cbf39c3bd0663b45e6035aabd05e6718e04"
+    },
+    {
+      "coordinate_width": 16,
+      "registered_descriptor": true,
+      "synthesis": true,
+      "formal_passed": true,
+      "compared_output_bits": 80,
+      "formal_log_sha256": "e0fd3169e3061d84f7f7892340223ce145a50506ac041638cdf84ef1b4197258"
+    },
+    {
+      "coordinate_width": 35,
+      "registered_descriptor": false,
+      "synthesis": false,
+      "formal_passed": true,
+      "compared_output_bits": 99,
+      "formal_log_sha256": "28c5abf081ab9dbbabd7bbad5efecc2219427b47cb0e131f78899134944a47ae"
+    },
+    {
+      "coordinate_width": 35,
+      "registered_descriptor": false,
+      "synthesis": true,
+      "formal_passed": true,
+      "compared_output_bits": 99,
+      "formal_log_sha256": "058bb4e12b205f6baf68b61ef3261205dc166c50e9ba8cdbd091520379054a1e"
+    },
+    {
+      "coordinate_width": 35,
+      "registered_descriptor": true,
+      "synthesis": false,
+      "formal_passed": true,
+      "compared_output_bits": 99,
+      "formal_log_sha256": "5e7c86ec7d76db8c402e78ee50b4f11162595a52c9893f259f35df2920371181"
+    },
+    {
+      "coordinate_width": 35,
+      "registered_descriptor": true,
+      "synthesis": true,
+      "formal_passed": true,
+      "compared_output_bits": 99,
+      "formal_log_sha256": "e73659cfd2d04a033332193d5ceaf1a9916cb1978cf5ed4c84c316f6da611613"
+    },
+    {
+      "coordinate_width": 48,
+      "registered_descriptor": false,
+      "synthesis": false,
+      "formal_passed": true,
+      "compared_output_bits": 112,
+      "formal_log_sha256": "c216f7fb3d20b1c1b625ee9bf01d4f844fe0d03c3379338a85bcecd28c46be09"
+    },
+    {
+      "coordinate_width": 48,
+      "registered_descriptor": false,
+      "synthesis": true,
+      "formal_passed": true,
+      "compared_output_bits": 112,
+      "formal_log_sha256": "e39aeccd0c3c5cefb9076d3eb8b380ed76a7cf2dc616bad94805ebd812a99354"
+    },
+    {
+      "coordinate_width": 48,
+      "registered_descriptor": true,
+      "synthesis": false,
+      "formal_passed": true,
+      "compared_output_bits": 112,
+      "formal_log_sha256": "b08079f54e3462d3b9ed4ddf7aabb9eece81f009826f7ee4f6638a5d64a0cfce"
+    },
+    {
+      "coordinate_width": 48,
+      "registered_descriptor": true,
+      "synthesis": true,
+      "formal_passed": true,
+      "compared_output_bits": 112,
+      "formal_log_sha256": "2f798234f035681ff0af34e835feb57a371179059bc06ce4555432b5eccc8ece"
+    }
+  ],
+  "four_state_checks": 8192,
+  "four_state_scope": "生产源提取的两路完整索引变换",
+  "all_transform_input_bits_x_z": true,
+  "simulation_log_sha256": "74e37f14c1177915031125b4d45f1e247ea16cc02cd743b1121ac3e43c89cd99",
+  "synthesis": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 809,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 809,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 989,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "FDRE": 989,
+          "LUT2": 52,
+          "LUT3": 85,
+          "LUT4": 294,
+          "LUT5": 253,
+          "LUT6": 125
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 8,
+      "graph_complete": true,
+      "register_path_requirement": {
+        "maximum_combinational_cells": 10,
+        "observed_combinational_cells": 8,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      }
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 761,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 761,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 989,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "FDRE": 989,
+          "LUT2": 43,
+          "LUT3": 97,
+          "LUT4": 272,
+          "LUT5": 208,
+          "LUT6": 141
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 8,
+      "graph_complete": true,
+      "register_path_requirement": {
+        "maximum_combinational_cells": 10,
+        "observed_combinational_cells": 8,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      }
+    }
+  }
+}

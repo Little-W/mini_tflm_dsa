@@ -19,140 +19,149 @@ module conv_im2col_descriptor #(
   localparam int p_tile_count_w=$clog2(p_size+1),
   localparam int p_saved_group_lanes=p_lanes <= 16 ? p_lane_bytes : 4,
   localparam int p_coord_w=35,
-  localparam int p_prepared_tile_width=528+3*p_tile_count_w+p_slot_w+p_saved_group_lanes-p_word_shift
+  localparam int p_prepared_tile_width=458+2*p_coord_w+3*p_tile_count_w+p_slot_w+p_saved_group_lanes-p_word_shift
 )(
-  input wire logic i_clk,
-  input wire logic i_rst_n,
-  input wire logic i_cfg_valid,
-  input wire logic i_cfg_ready,
-  input wire logic i_tile_valid,
-  input wire logic i_tile_ready,
-  input wire logic i_tile_finish,
-  input wire logic [31:0] i_tile_p0,
-  input wire logic [31:0] i_tile_q0,
-  input wire logic [p_rw-1:0] i_tile_rows,
-  input wire logic [p_rw-1:0] i_tile_cols,
-  input wire logic [p_slot_w-1:0] i_tile_slot,
-  input wire logic [31:0] i_tile_group,
-  input wire logic i_tile_narrow,
-  input wire logic i_error,
-  input wire conv_im2col_frontend_pkg::st_t i_state,
-  input wire conv_im2col_pkg::conv_cfg_t i_c,
-  input wire logic [31:0] i_reduction_len,
-  input wire logic [31:0] i_position_count,
-  input wire logic [p_row_high_w-1:0] i_position_high_minus_one_q,
-  input wire logic [15:0] i_last_group_channel_q,
-  input wire logic i_group_nonzero_q,
-  input wire logic [16:0] i_initial_group_remaining,
-  input wire logic [5:0][p_saved_group_lanes:0] i_group_range_next,
-  input wire logic [31:0] i_p0,
-  input wire logic [31:0] i_q0,
-  input wire logic [31:0] i_tap0,
-  input wire logic [32:0] i_next_group_q,
-  input wire logic [32:0] i_skip_group_q,
-  input wire logic [p_tile_count_w-1:0] i_rows_q,
-  input wire logic [p_tile_count_w-1:0] i_cols_q,
-  input wire logic [15:0] i_ox_q,
-  input wire logic [15:0] i_oy_q,
-  input wire logic [15:0] i_ky0_q,
-  input wire logic [15:0] i_kx0_q,
-  input wire logic [15:0] i_ch0_q,
-  input wire logic [31:0] i_ky0,
-  input wire logic [31:0] i_kx0,
-  input wire logic [31:0] i_ch0,
-  input wire logic signed [p_coord_w-1:0] i_ix,
-  input wire logic signed [p_coord_w-1:0] i_iy,
-  input wire logic [31:0] i_row_group_base,
-  input wire logic [31:0] i_next_row_group_base,
-  input wire logic [31:0] i_addr,
-  input wire logic [p_cache_read_width-1:0] i_word_buf,
-  input wire logic [31:0] i_word_addr,
-  input wire logic i_word_valid,
-  input wire logic i_incoming_word_hit,
-  input wire logic i_descriptor_response_forward,
-  input wire logic [1:0] i_incoming_tile_group_fits,
-  input wire logic [15:0] i_last_output_col_q,
-  input wire logic [15:0] i_last_kernel_col_q,
-  input wire logic [p_cache_read_width-1:0] i_cache_rsp_data,
-  input wire logic i_pred_enabled,
-  input wire logic [31:0] i_groups_q,
-  input wire logic i_geometry_tile,
-  input wire logic i_incoming_tap_wrap,
-  input wire logic [p_coord_w-1:0] i_bound_sum [7],
-  input wire logic [6:0] i_bound_valid,
-  input wire logic [2:0] i_skip_bound_valid,
-  input wire logic [2:0] i_window_padding,
-  input wire logic signed [32:0] i_row_wrap_dx,
-  input wire logic signed [32:0] i_tap_wrap_dx,
-  input wire logic signed [32:0] i_tap_wrap_pixels,
-  input wire logic [31:0] i_row_step_bytes,
-  input wire logic [31:0] i_tap_step_bytes,
-  input wire logic [31:0] i_row_wrap_bytes,
-  input wire logic [31:0] i_tap_wrap_bytes,
-  input wire logic signed [p_coord_w-1:0] i_tap_pair_dx,
-  input wire logic [31:0] i_tap_pair_pixels,
-  input wire logic [31:0] i_tap_pair_bytes,
-  input wire logic i_row_base_valid,
-  input wire logic i_coordinate_address_valid,
-  input wire logic signed [p_coord_w-1:0] i_row_base_ix,
-  input wire logic signed [p_coord_w-1:0] i_row_base_iy,
-  input wire logic [31:0] i_row_base_pixel,
-  input wire logic [31:0] i_row_base_addr,
-  input wire logic i_row_wrap,
-  input wire logic i_next_row_padding,
-  input wire logic i_row_next_o_equal,
-  input wire logic signed [p_coord_w-1:0] i_next_row_ix,
-  input wire logic signed [p_coord_w-1:0] i_next_row_iy,
-  input wire logic [31:0] i_next_row_pixel,
-  input wire logic [31:0] i_next_row_addr,
-  input wire logic i_tile_ready_context,
-  output logic o_tile_rows_in_range,
-  output logic o_tile_q_before_end,
-  output logic [16:0] o_window_group_remaining_q,
-  output logic o_incoming_next_tile_fast,
-  output logic o_incoming_next_position_fast,
-  output logic o_incoming_skip_tap,
-  output logic [15:0] o_window_next_x,
-  output logic [15:0] o_window_next_y,
-  output logic [15:0] o_window_next_ch,
-  output logic o_incoming_fast,
-  output logic o_incoming_padding,
-  output logic [31:0] o_incoming_ch,
-  output logic [31:0] o_incoming_ky,
-  output logic [31:0] o_incoming_kx,
-  output logic [31:0] o_incoming_addr,
-  output logic signed [p_coord_w-1:0] o_incoming_ix,
-  output logic signed [p_coord_w-1:0] o_incoming_iy,
-  output logic [31:0] o_incoming_pixel,
-  output logic [9:0][31:0] o_incoming_pixel_candidates,
-  output logic [9:0][31:0] o_incoming_address_candidates,
-  output logic [9:0][31:0] o_incoming_group_candidates,
-  output logic [9:0][15:0] o_incoming_kernel_x_candidates,
-  output logic [9:0][p_coord_w-1:0] o_incoming_y_candidates,
-  output logic [9:0] o_incoming_pixel_select,
-  output logic o_incoming_word_o_equal,
-  output logic o_incoming_live_word_o_equal,
-  output logic o_channel_accept_fire,
-  output logic [p_prepared_tile_width-1:0] o_committing_tile_packed,
-  output logic o_tile_prepared_valid,
-  output logic o_tile_commit,
-  output logic o_committing_saved_word_hit,
-  output logic o_committing_live_word_hit,
-  output logic o_descriptor_padding,
-  output logic [p_cache_read_width-1:0] o_descriptor_word_data_q,
-  output logic [1:0] o_next_row_word_match,
-  output logic [1:0] o_incoming_advanced_word_match,
-  output logic [15:0] o_kernel_decode_column,
-  output logic o_kernel_decode_last
+  input wire logic i_clk, // 描述符处理时钟
+  input wire logic i_rst_n, // 异步低有效复位
+  input wire logic i_cfg_valid, // 新配置有效
+  input wire logic i_cfg_ready, // 当前允许接收新配置
+  input wire logic i_tile_valid, // 输入描述符有效
+  input wire logic i_tile_ready, // 当前允许接收描述符
+  input wire logic i_tile_finish, // 当前分块在本周期完成
+  input wire logic [31:0] i_tile_p0, // 输入描述符的空间起点
+  input wire logic [31:0] i_tile_q0, // 输入描述符的归约起点
+  input wire logic [p_rw-1:0] i_tile_rows, // 输入描述符的有效行数
+  input wire logic [p_rw-1:0] i_tile_cols, // 输入描述符的列数，零表示完整分块
+  input wire logic [p_slot_w-1:0] i_tile_slot, // 输入描述符的目标缓存槽
+  input wire logic [31:0] i_tile_group, // 输入描述符的通道组序号
+  input wire logic i_tile_narrow, // 输入描述符采用窄输出格式
+  input wire logic i_error, // 当前任务出现错误
+  input wire conv_im2col_frontend_pkg::st_t i_state, // 前端当前运行状态
+  input wire conv_im2col_pkg::conv_cfg_t i_c, // 当前卷积配置
+  input wire logic [31:0] i_reduction_len, // 当前配置的归约长度
+  input wire logic [31:0] i_position_count, // 当前配置的空间位置数量
+  input wire logic [p_row_high_w-1:0] i_position_high_minus_one_q, // 空间位置数量高段减一的保存值
+  input wire logic [15:0] i_last_group_channel_q, // 通道组末位置的保存值
+  input wire logic i_group_nonzero_q, // 保存的通道组非零标志
+  input wire logic [16:0] i_initial_group_remaining, // 当前描述符起点的剩余通道数
+  input wire logic [5:0][p_saved_group_lanes:0] i_group_range_next, // 各候选通道位置的组内范围标志
+  input wire logic [31:0] i_p0, // 当前描述符的空间起点
+  input wire logic [31:0] i_q0, // 当前描述符的归约起点
+  input wire logic [31:0] i_tap0, // 当前描述符的卷积核位置
+  input wire logic [32:0] i_next_group_q, // 下一通道组的归约位置
+  input wire logic [32:0] i_skip_group_q, // 跳过一个通道组的归约位置
+  input wire logic [p_tile_count_w-1:0] i_rows_q, // 当前描述符保存的有效行数
+  input wire logic [p_tile_count_w-1:0] i_cols_q, // 当前描述符保存的列数
+  input wire logic [15:0] i_ox_q, // 当前输出列坐标
+  input wire logic [15:0] i_oy_q, // 当前输出行坐标
+  input wire logic [15:0] i_ky0_q, // 当前描述符的卷积核行
+  input wire logic [15:0] i_kx0_q, // 当前描述符的卷积核列
+  input wire logic [15:0] i_ch0_q, // 当前描述符的组内起始通道
+  input wire logic [31:0] i_ky0, // 扩展后的当前卷积核行
+  input wire logic [31:0] i_kx0, // 扩展后的当前卷积核列
+  input wire logic [31:0] i_ch0, // 扩展后的组内起始通道
+  input wire logic signed [p_coord_w-1:0] i_ix, // 当前输入水平坐标
+  input wire logic signed [p_coord_w-1:0] i_iy, // 当前输入垂直坐标
+  input wire logic [31:0] i_row_group_base, // 当前输出行的通道组字节基址
+  input wire logic [31:0] i_next_row_group_base, // 下一输出行的通道组字节基址
+  input wire logic [31:0] i_addr, // 当前运行通道的字节地址
+  input wire logic [p_cache_read_width-1:0] i_word_buf, // 已经返回并保存的数据字
+  input wire logic [31:0] i_word_addr, // 已经保存的数据字地址
+  input wire logic i_word_valid, // 已经保存的数据字有效
+  input wire logic i_incoming_word_hit, // 输入描述符命中可复用数据字
+  input wire logic i_descriptor_response_forward, // 当前返回数据可直接供输入描述符使用
+  input wire logic [1:0] i_incoming_tile_group_fits, // 窗口及当前通道起点满足输入描述符列范围
+  input wire logic [15:0] i_last_output_col_q, // 输出末列的保存值
+  input wire logic [15:0] i_last_kernel_col_q, // 卷积核末列的保存值
+  input wire logic [p_cache_read_width-1:0] i_cache_rsp_data, // 当前缓存返回的数据字
+  input wire logic i_pred_enabled, // 后续访问位置预测已启用
+  input wire logic [31:0] i_groups_q, // 保存的通道组数量
+  input wire logic i_geometry_tile, // 当前分块采用几何访问方式
+  input wire logic i_incoming_tap_wrap, // 输入描述符在卷积核列方向回绕
+  input wire logic [p_coord_w-1:0] i_bound_sum [7], // 各候选输入坐标的边界和值
+  input wire logic [6:0] i_bound_valid, // 各候选坐标处于图像边界内
+  input wire logic [2:0] i_skip_bound_valid, // 跳核候选坐标处于图像边界内
+  input wire logic [2:0] i_window_padding, // 保存窗口的三个移动候选需要填充
+  input wire logic signed [32:0] i_row_wrap_dx, // 输出行回绕的水平坐标增量
+  input wire logic signed [32:0] i_tap_wrap_dx, // 卷积核回绕的水平坐标增量
+  input wire logic signed [32:0] i_tap_wrap_pixels, // 卷积核回绕的像素增量
+  input wire logic [31:0] i_row_step_bytes, // 相邻输出列的字节步长
+  input wire logic [31:0] i_tap_step_bytes, // 相邻核列的字节步长
+  input wire logic [31:0] i_row_wrap_bytes, // 输出列回绕的字节步长
+  input wire logic [31:0] i_tap_wrap_bytes, // 核列回绕的字节步长
+  input wire logic signed [p_coord_w-1:0] i_tap_pair_dx, // 相邻核行之间的水平坐标增量
+  input wire logic [31:0] i_tap_pair_pixels, // 相邻核行之间的像素增量
+  input wire logic [31:0] i_tap_pair_bytes, // 相邻核行之间的字节步长
+  input wire logic i_row_base_valid, // 当前输出行的起点上下文有效
+  input wire logic i_coordinate_address_valid, // 当前坐标对应的字节地址有效
+  input wire logic signed [p_coord_w-1:0] i_row_base_ix, // 当前输出行起点的输入水平坐标
+  input wire logic signed [p_coord_w-1:0] i_row_base_iy, // 当前输出行起点的输入垂直坐标
+  input wire logic [31:0] i_row_base_pixel, // 当前输出行起点的像素位置
+  input wire logic [31:0] i_row_base_addr, // 当前输出行起点的字节地址
+  input wire logic i_row_wrap, // 当前输出列即将回绕
+  input wire logic i_next_row_padding, // 下一输出行起点需要填充
+  input wire logic i_row_next_o_equal, // 下一输出列是输出末列
+  input wire logic signed [p_coord_w-1:0] i_next_row_ix, // 下一输出行起点的输入水平坐标
+  input wire logic signed [p_coord_w-1:0] i_next_row_iy, // 下一输出行起点的输入垂直坐标
+  input wire logic [31:0] i_next_row_pixel, // 下一输出行起点的像素位置
+  input wire logic [31:0] i_next_row_addr, // 下一输出行起点的字节地址
+  input wire logic i_tile_ready_context, // 当前运行上下文允许接收描述符
+  output logic o_tile_rows_in_range, // 输入描述符的全部行处于空间范围内
+  output logic o_tile_q_before_end, // 输入归约起点小于归约长度
+  output logic [16:0] o_window_group_remaining_q, // 保存窗口起点的剩余通道数
+  output logic o_incoming_next_tile_fast, // 输入描述符可直接继承下一空间分块位置
+  output logic o_incoming_next_position_fast, // 输入描述符可复用下一空间窗口
+  output logic o_incoming_skip_tap, // 输入描述符跳过一个卷积核位置
+  output logic [15:0] o_window_next_x, // 保存窗口的输出列坐标
+  output logic [15:0] o_window_next_y, // 保存窗口的输出行坐标
+  output logic [15:0] o_window_next_ch, // 保存窗口的组内起始通道
+  output logic o_incoming_fast, // 输入描述符可复用已准备的位置上下文
+  output logic o_incoming_padding, // 输入描述符的首个位置需要填充
+  output logic [31:0] o_incoming_ch, // 输入描述符的组内起始通道
+  output logic [31:0] o_incoming_ky, // 输入描述符的卷积核行
+  output logic [31:0] o_incoming_kx, // 输入描述符的卷积核列
+  output logic [31:0] o_incoming_addr, // 输入描述符的首个字节地址
+  output logic signed [p_coord_w-1:0] o_incoming_ix, // 输入描述符的输入水平坐标
+  output logic signed [p_coord_w-1:0] o_incoming_iy, // 输入描述符的输入垂直坐标
+  output logic [31:0] o_incoming_pixel, // 输入描述符的首个像素位置
+  output logic [9:0][31:0] o_incoming_pixel_candidates, // 十种输入像素位置候选
+  output logic [9:0][31:0] o_incoming_address_candidates, // 十种输入字节地址候选
+  output logic [9:0][31:0] o_incoming_group_candidates, // 十种输入通道组地址候选
+  output logic [9:0][15:0] o_incoming_kernel_x_candidates, // 十种输入卷积核列候选
+  output logic [9:0][p_coord_w-1:0] o_incoming_y_candidates, // 十种输入垂直坐标候选
+  output logic [9:0] o_incoming_pixel_select, // 输入位置候选的独热选择
+  output logic o_incoming_word_o_equal, // 输入位置命中保存的数据字标签
+  output logic o_incoming_live_word_o_equal, // 输入位置命中运行数据字标签
+  output logic o_channel_accept_fire, // 当前周期接受快速描述符的通道状态
+  output logic [p_prepared_tile_width-1:0] o_committing_tile_packed, // 当前提交的完整描述符字段
+  output logic o_tile_prepared_valid, // 待提交描述符已经保存
+  output logic o_tile_commit, // 当前周期提交一个描述符
+  output logic o_committing_saved_word_hit, // 提交描述符命中其保存的数据字
+  output logic o_committing_live_word_hit, // 提交描述符命中当前返回的数据字
+  output logic o_descriptor_padding, // 提交描述符当前输入位置需要填充
+  output logic [p_cache_read_width-1:0] o_descriptor_word_data_q, // 提交描述符保存的数据字内容
+  output logic [1:0] o_next_row_word_match, // 下一行与保存字及运行字的标签匹配
+  output logic [1:0] o_incoming_advanced_word_match, // 窗口分块及跳核候选的数据字匹配
+  output logic [15:0] o_kernel_decode_column, // 按卷积核宽度掩码解出的核列
+  output logic o_kernel_decode_last // 解出的核列为卷积核末列
 );
+  //! 0. 辅助信号
+  //! -------------
+
   import conv_im2col_pkg::*;
   import conv_im2col_frontend_pkg::*;
   localparam int p_prepared_count_w = p_tile_count_w;
   localparam int p_prepared_slot_w = p_slot_w;
   localparam int p_prepared_coord_w = p_coord_w;
   `include "conv_im2col_prepared_tile.svh"
-  logic [3:0] tile_q_byte_before;
-  logic [3:0] tile_q_byte_equal;
+  logic [31:0] extent_i_tile_p0;
+  logic [31:0] extent_i_tile_q0;
+  logic [p_rw-1:0] extent_i_tile_rows;
+  logic [31:0] extent_i_reduction_len;
+  logic [31:0] extent_i_position_count;
+  logic [p_row_high_w-1:0] extent_i_position_high_minus_one_q;
+  logic extent_o_tile_rows_in_range;
+  logic extent_o_tile_q_before_end;
   logic [31:0] incoming_group_base;
   logic incoming_same_position_fast;
   logic incoming_position_same_tap;
@@ -197,10 +206,15 @@ module conv_im2col_descriptor #(
   logic [1:0] incoming_position_equal;
   logic incoming_q_equal;
   logic [3:0] incoming_tap_match_o_equal;
-  logic [31:0] incoming_tile_match_i_a;
-  logic [31:0] incoming_tile_match_i_b;
-  logic [31:0] incoming_tile_match_i_target;
-  logic incoming_tile_match_i_carry_in;
+  logic position_i_configure;
+  logic position_i_commit;
+  logic position_i_invalid;
+  logic [31:0] position_i_commit_position;
+  logic [p_tile_count_w-1:0] position_i_commit_rows;
+  logic [31:0] position_i_position;
+  logic [p_tile_count_w-1:0] position_i_rows;
+  logic [31:0] position_i_target;
+  logic position_o_equal;
   logic incoming_tile_match_o_equal;
   logic signed [p_coord_w-1:0] window_forward_ix;
   logic signed [p_coord_w-1:0] window_backward_ix;
@@ -247,46 +261,20 @@ module conv_im2col_descriptor #(
   logic [9:0] incoming_word_choice;
   logic [8:0] incoming_padding_choice;
   logic [1:0][31:0] prepared_address;
-  logic [31:0] committing_address_delta;
-  logic committing_address_carry;
-  logic [1:0][31:0] committing_address;
   logic signed [p_coord_w-1:0] prepared_coordinate_x;
   logic signed [p_coord_w-1:0] prepared_coordinate_y;
-  logic signed [p_coord_w-1:0] committing_coordinate_dx;
-  logic signed [p_coord_w-1:0] committing_coordinate_dy;
-  logic [1:0] committing_coordinate_carry;
-  logic [1:0][p_coord_w-1:0] committing_coordinate;
   logic [1:0] committing_coordinate_valid;
   logic [31:0] prepared_tap_base;
   logic [15:0] prepared_kernel_x_base;
   logic [15:0] prepared_kernel_y_base;
   logic [31:0] prepared_pixel_base;
-  logic signed [2:0] committing_tap_delta;
-  logic signed [2:0] committing_kernel_x_delta;
-  logic signed [2:0] committing_kernel_y_delta;
-  logic [31:0] committing_pixel_delta;
-  logic [15:0] committing_kernel_x_base;
-  logic [9:0] committing_operation;
-  logic committing_pixel_carry;
-  logic [31:0] committing_tap;
-  logic [15:0] committing_kernel_x;
-  logic [15:0] committing_kernel_y;
-  logic [31:0] committing_pixel;
   logic [p_tile_count_w-1:0] prepared_columns;
   logic [p_tile_count_w-1:0] prepared_active_columns;
   logic [31:0] descriptor_reduction;
   logic [p_tile_count_w-1:0] descriptor_columns;
   logic [32:0] prepared_next_group;
   logic [32:0] prepared_skip_group;
-  logic [32:0] prepared_group_i_a;
-  logic [32:0] prepared_group_i_b;
-  logic [6:0][1:0][31:0] incoming_address_i_a;
-  logic [6:0][1:0][31:0] incoming_address_i_b;
   logic [6:0][1:0][31:0] incoming_address_sum;
-  logic [6:0][1:0] unused_incoming_address_carry;
-  logic [6:0][1:0] incoming_candidate_word_match;
-  logic [1:0] incoming_window_word_match;
-  logic [1:0] incoming_skip_word_match;
   logic [6:0][31:0] incoming_pixel_i_a;
   logic [6:0][31:0] incoming_pixel_i_b;
   logic [6:0] incoming_pixel_i_carry;
@@ -300,7 +288,7 @@ module conv_im2col_descriptor #(
   logic [4:0] unused_incoming_tap_carry;
   logic [2:0][32:0] incoming_compare_a;
   logic [2:0][32:0] incoming_compare_b;
-  logic [2:0][10:0] incoming_part_equal;
+  (* keep = "true" *) logic [2:0][10:0] incoming_part_equal;
   logic [2:0][1:0] incoming_group_equal;
   logic [16:0] negative_group;
   logic [2:0][32:0] target_difference;
@@ -310,252 +298,136 @@ module conv_im2col_descriptor #(
   logic [6:0][p_coord_w-1:0] candidate_coordinate_sum;
   logic [6:0] candidate_coordinate_valid;
   logic incoming_kx_last;
-  logic committing_kernel_last;
   logic [15:0] kernel_decode_mask;
   logic [7:0] kernel_decode_column_equal;
-  logic [32:0] next_group_sum;
-  logic [32:0] skip_group_sum;
-  logic unused_next_group_carry;
-  logic unused_skip_group_carry;
+  logic [p_prepared_tile_width-1:0] commit_i_prepared_tile_packed;
+  logic [p_prepared_tile_width-1:0] commit_i_preparing_tile_packed;
+  conv_im2col_pkg::conv_cfg_t commit_i_c;
+  logic signed [32:0] commit_i_row_wrap_dx;
+  logic signed [32:0] commit_i_tap_wrap_dx;
+  logic signed [32:0] commit_i_tap_wrap_pixels;
+  logic signed [p_coord_w-1:0] commit_i_tap_pair_dx;
+  logic [31:0] commit_i_tap_pair_pixels;
+  logic [31:0] commit_i_tap_step_bytes;
+  logic [31:0] commit_i_tap_wrap_bytes;
+  logic [31:0] commit_i_tap_pair_bytes;
+  logic signed [p_coord_w-1:0] commit_i_ix;
+  logic signed [p_coord_w-1:0] commit_i_iy;
+  logic [15:0] commit_i_last_kernel_col_q;
+  logic [p_tile_count_w-1:0] commit_i_active_columns;
+  logic [32:0] commit_i_next_group;
+  logic [32:0] commit_i_skip_group;
+  logic [p_prepared_tile_width-1:0] commit_o_committing_tile_packed;
+  logic [1:0] commit_o_coordinate_valid;
+  logic [31:0] addresses_i_word_addr;
+  logic [31:0] addresses_i_addr;
+  logic [31:0] addresses_i_row_base_addr;
+  logic [31:0] addresses_i_row_group_base;
+  logic [31:0] addresses_i_window_addr;
+  logic [31:0] addresses_i_window_group_base;
+  logic [31:0] addresses_i_tap_step_bytes;
+  logic [31:0] addresses_i_tap_wrap_bytes;
+  logic [31:0] addresses_i_tap_pair_bytes;
+  logic [31:0] addresses_i_row_step_bytes;
+  logic [31:0] addresses_i_row_wrap_bytes;
+  logic [31:0] addresses_i_next_row_addr;
+  logic [15:0] addresses_i_kx0_q;
+  logic addresses_i_row_wrap;
+  logic addresses_i_incoming_tap_wrap;
+  logic addresses_i_q_equal;
+  logic addresses_i_position_previous_row;
+  logic addresses_i_position_forward_tap;
+  logic addresses_i_position_backward_tap;
+  logic addresses_i_next_position_fast;
+  logic addresses_i_next_tile_fast;
+  logic [6:0][1:0][31:0] addresses_o_candidate_address;
+  logic addresses_o_incoming_word_equal;
+  logic addresses_o_incoming_live_word_equal;
+  logic [1:0] addresses_o_next_row_word_match;
+  logic [1:0] addresses_o_incoming_advanced_word_match;
+  //! 1. 准备描述符字段
+  //! -------------------
+
   assign o_committing_tile_packed = committing_tile;
   // 已保存归约位置同时用于组边界和有效列数，结果直接写入运行寄存器。
   assign descriptor_reduction = p_register_descriptor ? prepared_tile_q.reduction : i_tile_q0;
   assign descriptor_columns = p_register_descriptor ? prepared_tile_q.columns : prepared_columns;
 
-  // 描述符范围比较独立完成，接收资格只组合各范围的一位结果。
-  logic tile_q_before_parallel, unused_tile_q_equal;
-  parallel_unsigned_compare #(.p_width(32)) u_tile_q_range (
-    .i_a(i_tile_q0), .i_b(i_reduction_len),
-    .o_less(tile_q_before_parallel), .o_equal(unused_tile_q_equal)
+  // 空间行范围和归约起点分别比较，接收条件直接读取各自结果。
+  assign extent_i_tile_p0 = i_tile_p0;
+  assign extent_i_tile_q0 = i_tile_q0;
+  assign extent_i_tile_rows = i_tile_rows;
+  assign extent_i_reduction_len = i_reduction_len;
+  assign extent_i_position_count = i_position_count;
+  assign extent_i_position_high_minus_one_q = i_position_high_minus_one_q;
+  assign o_tile_rows_in_range = extent_o_tile_rows_in_range;
+  assign o_tile_q_before_end = extent_o_tile_q_before_end;
+  conv_descriptor_extent #(.p_rw(p_rw)) u_extent (
+    .i_tile_p0(extent_i_tile_p0), .i_tile_q0(extent_i_tile_q0),
+    .i_tile_rows(extent_i_tile_rows), .i_reduction_len(extent_i_reduction_len),
+    .i_position_count(extent_i_position_count),
+    .i_position_high_minus_one_q(extent_i_position_high_minus_one_q),
+    .o_tile_rows_in_range(extent_o_tile_rows_in_range),
+    .o_tile_q_before_end(extent_o_tile_q_before_end)
   );
-`ifdef SYNTHESIS
-  assign o_tile_q_before_end = tile_q_before_parallel;
-`else
-  logic tile_q_before_reference;
-  for (genvar byte_index = 0; byte_index < 4; byte_index++) begin : g_tile_q_range
-    assign tile_q_byte_before[byte_index] =
-      i_tile_q0[byte_index*8 +: 8] < i_reduction_len[byte_index*8 +: 8];
-    assign tile_q_byte_equal[byte_index] =
-      i_tile_q0[byte_index*8 +: 8] == i_reduction_len[byte_index*8 +: 8];
-  end
-  assign tile_q_before_reference = tile_q_byte_before[3] ||
-    (tile_q_byte_equal[3] && tile_q_byte_before[2]) ||
-    ((&tile_q_byte_equal[3:2]) && tile_q_byte_before[1]) ||
-    ((&tile_q_byte_equal[3:1]) && tile_q_byte_before[0]);
-  always_comb begin
-    case (^{i_tile_q0, i_reduction_len})
-      1'b0, 1'b1: o_tile_q_before_end = tile_q_before_parallel;
-      default: o_tile_q_before_end = tile_q_before_reference;
-    endcase
-  end
-`endif
 
-  if (p_rw < 32) begin : g_tile_row_range
-    logic [p_row_low_w:0] row_end_low;
-    logic high_before_end, high_at_end, high_before_end_by_one, low_within_end;
-    logic high_before_parallel, high_equal_parallel;
-
-    // 描述符低位相加与高位比较并行，末端独立归并五个位条件。
-    assign row_end_low = {1'b0, i_tile_p0[p_row_low_w-1:0]} + {1'b0, i_tile_rows};
-    parallel_unsigned_compare #(.p_width(p_row_high_w)) u_high_range (
-      .i_a(i_tile_p0[31:p_row_low_w]), .i_b(i_position_count[31:p_row_low_w]),
-      .o_less(high_before_parallel), .o_equal(high_equal_parallel)
-    );
-    conv_descriptor_match #(.p_width(p_row_high_w)) u_high_last (
-      .i_a(i_tile_p0[31:p_row_low_w]), .i_b(i_position_high_minus_one_q),
-      .o_equal(high_before_end_by_one)
-    );
-`ifdef SYNTHESIS
-    assign high_before_end = high_before_parallel;
-    assign high_at_end = high_equal_parallel;
-`else
-    if (p_row_high_w <= 27) begin : g_high_range_tree
-      logic [26:0] row_high_a, row_high_b;
-      logic [8:0] leaf_before, leaf_equal;
-      logic [2:0] group_before, group_equal;
-      logic high_before_reference, high_equal_reference;
-
-      // 未知输入保留逐段关系运算的传播范围。
-      assign row_high_a = 27'(i_tile_p0[31:p_row_low_w]);
-      assign row_high_b = 27'(i_position_count[31:p_row_low_w]);
-      for (genvar part = 0; part < 9; part++) begin : g_leaf
-        assign leaf_before[part] = row_high_a[3*part +: 3] < row_high_b[3*part +: 3];
-        assign leaf_equal[part] = row_high_a[3*part +: 3] == row_high_b[3*part +: 3];
-      end
-      for (genvar part = 0; part < 3; part++) begin : g_group
-        assign group_equal[part] = &leaf_equal[3*part +: 3];
-        assign group_before[part] = leaf_before[3*part+2] ||
-          (leaf_equal[3*part+2] && leaf_before[3*part+1]) ||
-          (leaf_equal[3*part+2] && leaf_equal[3*part+1] && leaf_before[3*part]);
-      end
-      assign high_equal_reference = &group_equal;
-      assign high_before_reference = group_before[2] ||
-        (group_equal[2] && group_before[1]) ||
-        (group_equal[2] && group_equal[1] && group_before[0]);
-      always_comb begin
-        case (^{i_tile_p0[31:p_row_low_w], i_position_count[31:p_row_low_w]})
-          1'b0, 1'b1: begin
-            high_before_end = high_before_parallel;
-            high_at_end = high_equal_parallel;
-          end
-          default: begin
-            high_before_end = high_before_reference;
-            high_at_end = high_equal_reference;
-          end
-        endcase
-      end
-    end else begin : g_high_range_wide
-      assign high_before_end = high_before_parallel;
-      assign high_at_end = high_equal_parallel;
-    end
-`endif
-    assign low_within_end = row_end_low[p_row_low_w-1:0] <= i_position_count[p_row_low_w-1:0];
-    conv_descriptor_row_range_result u_result (
-      .i_high_before(high_before_end), .i_high_equal(high_at_end),
-      .i_high_last(high_before_end_by_one), .i_low_carry(row_end_low[p_row_low_w]),
-      .i_low_within(low_within_end), .o_within(o_tile_rows_in_range)
-    );
-  end else begin : g_tile_row_range_wide
-    assign o_tile_rows_in_range = {1'b0, i_tile_p0} + 33'(i_tile_rows) <= {1'b0, i_position_count};
-  end
-
-  // 直连描述符在接收周期完成数据字匹配，寄存描述符使用提交后的检查周期。
-  if (!p_register_descriptor) begin : g_direct_incoming_word
-    logic [1:0] base_word_match, selected_word_match;
-    for (genvar target = 0; target < 2; target++) begin : g_target
-      logic [31-p_word_shift:0] target_word;
-      assign target_word = target == 0 ? i_word_addr[31:p_word_shift] : i_addr[31:p_word_shift];
-      conv_descriptor_match #(.p_width(32-p_word_shift)) u_base_match (
-        .i_a(i_row_base_addr[31:p_word_shift]), .i_b(target_word),
-        .o_equal(base_word_match[target])
-      );
-      // 基址、核步进和核换行分别完成比较，归约位置只选择一位结果。
-      assign selected_word_match[target] = incoming_q_equal ? base_word_match[target] :
-          (i_incoming_tap_wrap ? incoming_candidate_word_match[1][target] :
-                                incoming_candidate_word_match[0][target]);
-    end
-`ifdef SYNTHESIS
-    assign {o_incoming_live_word_o_equal, o_incoming_word_o_equal} = selected_word_match;
-`else
-    logic [31:0] incoming_delta;
-    logic [p_word_shift:0] incoming_step_low_sum, incoming_wrap_low_sum;
-    logic [31-p_word_shift:0] incoming_word_i_a, incoming_word_i_b, incoming_word_i_target;
-    logic [31-p_word_shift:0] incoming_live_word_i_target;
-    logic incoming_word_i_carry_in;
-    logic [1:0] reference_word_match;
-    assign incoming_delta = incoming_q_equal ? 32'd0 :
-      (i_incoming_tap_wrap ? i_tap_wrap_bytes : i_tap_step_bytes);
-    assign incoming_word_i_carry_in = !incoming_q_equal &&
-      (i_incoming_tap_wrap ? incoming_wrap_low_sum[p_word_shift] : incoming_step_low_sum[p_word_shift]);
-    // 两种步长的低位进位并行计算，晚到的描述符比较只选择进位结果。
-    assign incoming_step_low_sum = {1'b0, i_row_base_addr[p_word_shift-1:0]} + {1'b0, i_tap_step_bytes[p_word_shift-1:0]};
-    assign incoming_wrap_low_sum = {1'b0, i_row_base_addr[p_word_shift-1:0]} + {1'b0, i_tap_wrap_bytes[p_word_shift-1:0]};
-    assign incoming_word_i_a = i_row_base_addr[31:p_word_shift];
-    assign incoming_word_i_b = incoming_delta[31:p_word_shift];
-    assign incoming_word_i_target = i_word_addr[31:p_word_shift];
-    add_equal #(.p_width(32-p_word_shift)) u_incoming_word (
-      .i_a(incoming_word_i_a), .i_b(incoming_word_i_b), .i_target(incoming_word_i_target),
-      .i_carry_in(incoming_word_i_carry_in), .o_equal(reference_word_match[0])
-    );
-    // 两个来源的数据字提前完成比较，当前传输的完成条件只选择一位命中结果。
-    assign incoming_live_word_i_target = i_addr[31:p_word_shift];
-    add_equal #(.p_width(32-p_word_shift)) u_incoming_live_word (
-      .i_a(incoming_word_i_a), .i_b(incoming_word_i_b), .i_target(incoming_live_word_i_target),
-      .i_carry_in(incoming_word_i_carry_in), .o_equal(reference_word_match[1])
-    );
-    always_comb begin
-      // 未知位继续使用完整加法等值关系，已知地址采用并行匹配结果。
-      case (^{i_row_base_addr, i_tap_step_bytes, i_tap_wrap_bytes,
-              i_word_addr, i_addr, incoming_q_equal, i_incoming_tap_wrap})
-        1'b0, 1'b1: {o_incoming_live_word_o_equal, o_incoming_word_o_equal} = selected_word_match;
-        default: {o_incoming_live_word_o_equal, o_incoming_word_o_equal} = reference_word_match;
-      endcase
-    end
-`endif
-  end else begin : g_prepared_incoming_word
-    assign o_incoming_word_o_equal = 1'b0;
-    assign o_incoming_live_word_o_equal = 1'b0;
-  end
-
-  // 七种地址候选依次为核步进、核换行、跨两个核列、跨核行及列、
-  // 已保存窗口的前向、后向、上一核行；两个端口分别计算数据和通道组地址。
-  for (genvar candidate = 0; candidate < 7; candidate++) begin : g_incoming_address
-    for (genvar base = 0; base < 2; base++) begin : g_base
-      assign incoming_address_i_a[candidate][base] = candidate < 4 ?
-        (base == 0 ? i_row_base_addr : i_row_group_base) :
-        (base == 0 ? window_next_addr : window_next_group_base);
-      assign incoming_address_i_b[candidate][base] =
-        candidate == 1 ? i_tap_wrap_bytes : candidate == 3 ? i_tap_pair_bytes :
-        candidate == 2 ? i_tap_step_bytes << 1 :
-        candidate == 5 ? ~i_tap_step_bytes : candidate == 6 ? ~i_tap_pair_bytes : i_tap_step_bytes;
-      if (!p_register_descriptor) begin : g_direct_sum
-      parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1),
-          .p_carry_select_width(16), .p_dsp_split_width(16)) u_sum (
-        .i_a(incoming_address_i_a[candidate][base]), .i_b(incoming_address_i_b[candidate][base]),
-        .i_carry((candidate == 5 || candidate == 6)), .o_sum(incoming_address_sum[candidate][base]),
-        .o_carry(unused_incoming_address_carry[candidate][base])
-      );
-      end else begin : g_saved_operands
-        assign incoming_address_sum[candidate][base] = '0;
-        assign unused_incoming_address_carry[candidate][base] = 1'b0;
-      end
-    end
-    if (!p_register_descriptor) begin : g_direct_word_match
-    for (genvar target = 0; target < 2; target++) begin : g_word_match
-      logic [p_word_shift:0] low_sum;
-      logic [31-p_word_shift:0] high_i_a, high_i_b, high_i_target;
-      logic high_i_carry;
-      assign low_sum = {1'b0, incoming_address_i_a[candidate][0][p_word_shift-1:0]} +
-        {1'b0, incoming_address_i_b[candidate][0][p_word_shift-1:0]} +
-        (p_word_shift+1)'((candidate == 5 || candidate == 6));
-      assign high_i_a = incoming_address_i_a[candidate][0][31:p_word_shift];
-      assign high_i_b = incoming_address_i_b[candidate][0][31:p_word_shift];
-      assign high_i_target = target == 0 ? i_word_addr[31:p_word_shift] : i_addr[31:p_word_shift];
-      assign high_i_carry = low_sum[p_word_shift];
-      add_equal #(.p_width(32-p_word_shift), .p_preserve_bits(1'b1)) u_match (
-        .i_a(high_i_a), .i_b(high_i_b), .i_target(high_i_target),
-        .i_carry_in(high_i_carry), .o_equal(incoming_candidate_word_match[candidate][target])
-      );
-    end
-    end else begin : g_saved_word_match
-      assign incoming_candidate_word_match[candidate] = '0;
-    end
-  end
-  for (genvar target = 0; target < 2; target++) begin : g_next_row_match
-    logic [31-p_word_shift:0] high_i_target;
-    logic [1:0] row_match;
-    assign high_i_target = target == 0 ? i_word_addr[31:p_word_shift] : i_addr[31:p_word_shift];
-    // 两种行步长先完成字标签比较，行末状态只选择一位匹配结果。
-    for (genvar wrap = 0; wrap < 2; wrap++) begin : g_step
-      logic [31:0] byte_step;
-      logic [p_word_shift:0] low_sum;
-      assign byte_step = wrap == 0 ? i_row_step_bytes : i_row_wrap_bytes;
-      assign low_sum = {1'b0, i_row_base_addr[p_word_shift-1:0]} +
-          {1'b0, byte_step[p_word_shift-1:0]};
-      add_equal #(.p_width(32-p_word_shift), .p_preserve_bits(1'b1)) u_match (
-        .i_a(i_row_base_addr[31:p_word_shift]), .i_b(byte_step[31:p_word_shift]),
-        .i_target(high_i_target), .i_carry_in(low_sum[p_word_shift]), .o_equal(row_match[wrap])
-      );
-    end
-`ifdef SYNTHESIS
-    assign o_next_row_word_match[target] = i_row_wrap ? row_match[1] : row_match[0];
-`else
-    always_comb begin
-      case (^{i_row_base_addr, i_row_step_bytes, i_row_wrap_bytes, i_row_wrap, high_i_target})
-        1'b0, 1'b1: o_next_row_word_match[target] = i_row_wrap ? row_match[1] : row_match[0];
-        default: o_next_row_word_match[target] = i_next_row_addr[31:p_word_shift] == high_i_target;
-      endcase
-    end
-`endif
-    assign incoming_window_word_match[target] = incoming_position_previous_row ? incoming_candidate_word_match[6][target] :
-      incoming_position_forward_tap ? incoming_candidate_word_match[4][target] :
-      incoming_position_backward_tap ? incoming_candidate_word_match[5][target] :
-      window_next_addr[31:p_word_shift] == high_i_target;
-    assign incoming_skip_word_match[target] = i_kx0_q != 16'd0 ?
-      incoming_candidate_word_match[3][target] : incoming_candidate_word_match[2][target];
-    assign o_incoming_advanced_word_match[target] = o_incoming_next_position_fast ? incoming_window_word_match[target] :
-      o_incoming_next_tile_fast ? o_next_row_word_match[target] : incoming_skip_word_match[target];
-  end
+  // 候选地址与字标签共用各自的起点和步长，接收控制只选择比较结果。
+  assign addresses_i_word_addr = i_word_addr;
+  assign addresses_i_addr = i_addr;
+  assign addresses_i_row_base_addr = i_row_base_addr;
+  assign addresses_i_row_group_base = i_row_group_base;
+  assign addresses_i_window_addr = window_next_addr;
+  assign addresses_i_window_group_base = window_next_group_base;
+  assign addresses_i_tap_step_bytes = i_tap_step_bytes;
+  assign addresses_i_tap_wrap_bytes = i_tap_wrap_bytes;
+  assign addresses_i_tap_pair_bytes = i_tap_pair_bytes;
+  assign addresses_i_row_step_bytes = i_row_step_bytes;
+  assign addresses_i_row_wrap_bytes = i_row_wrap_bytes;
+  assign addresses_i_next_row_addr = i_next_row_addr;
+  assign addresses_i_kx0_q = i_kx0_q;
+  assign addresses_i_row_wrap = i_row_wrap;
+  assign addresses_i_incoming_tap_wrap = i_incoming_tap_wrap;
+  assign addresses_i_q_equal = incoming_q_equal;
+  assign addresses_i_position_previous_row = incoming_position_previous_row;
+  assign addresses_i_position_forward_tap = incoming_position_forward_tap;
+  assign addresses_i_position_backward_tap = incoming_position_backward_tap;
+  assign addresses_i_next_position_fast = o_incoming_next_position_fast;
+  assign addresses_i_next_tile_fast = o_incoming_next_tile_fast;
+  assign incoming_address_sum = addresses_o_candidate_address;
+  assign o_incoming_word_o_equal = addresses_o_incoming_word_equal;
+  assign o_incoming_live_word_o_equal = addresses_o_incoming_live_word_equal;
+  assign o_next_row_word_match = addresses_o_next_row_word_match;
+  assign o_incoming_advanced_word_match = addresses_o_incoming_advanced_word_match;
+  conv_descriptor_addresses #(
+    .p_word_shift(p_word_shift), .p_register_descriptor(p_register_descriptor)
+  ) u_addresses (
+    .i_word_addr(addresses_i_word_addr),
+    .i_addr(addresses_i_addr),
+    .i_row_base_addr(addresses_i_row_base_addr),
+    .i_row_group_base(addresses_i_row_group_base),
+    .i_window_addr(addresses_i_window_addr),
+    .i_window_group_base(addresses_i_window_group_base),
+    .i_tap_step_bytes(addresses_i_tap_step_bytes),
+    .i_tap_wrap_bytes(addresses_i_tap_wrap_bytes),
+    .i_tap_pair_bytes(addresses_i_tap_pair_bytes),
+    .i_row_step_bytes(addresses_i_row_step_bytes),
+    .i_row_wrap_bytes(addresses_i_row_wrap_bytes),
+    .i_next_row_addr(addresses_i_next_row_addr),
+    .i_kx0_q(addresses_i_kx0_q),
+    .i_row_wrap(addresses_i_row_wrap),
+    .i_incoming_tap_wrap(addresses_i_incoming_tap_wrap),
+    .i_q_equal(addresses_i_q_equal),
+    .i_position_previous_row(addresses_i_position_previous_row),
+    .i_position_forward_tap(addresses_i_position_forward_tap),
+    .i_position_backward_tap(addresses_i_position_backward_tap),
+    .i_next_position_fast(addresses_i_next_position_fast),
+    .i_next_tile_fast(addresses_i_next_tile_fast),
+    .o_candidate_address(addresses_o_candidate_address),
+    .o_incoming_word_equal(addresses_o_incoming_word_equal),
+    .o_incoming_live_word_equal(addresses_o_incoming_live_word_equal),
+    .o_next_row_word_match(addresses_o_next_row_word_match),
+    .o_incoming_advanced_word_match(addresses_o_incoming_advanced_word_match)
+  );
 
   // 普通核步进和换行分别完成像素加法，换行条件只选择结果。
   assign incoming_pixel_next = i_incoming_tap_wrap ? incoming_pixel_candidate[5] : incoming_pixel_candidate[6];
@@ -729,11 +601,11 @@ module conv_im2col_descriptor #(
     assign incoming_group_equal[value][1] = &incoming_part_equal[value][10:6];
   end
   assign incoming_position_equal = incoming_group_equal[0];
-  conv_descriptor_match #(.p_width(32)) u_current_reduction_match (
+  conv_descriptor_match #(.p_width(32), .p_preserve_groups(1'b1)) u_current_reduction_match (
     .i_a(i_tile_q0), .i_b(i_q0), .o_equal(incoming_q_equal)
   );
   // 两个核位置的目标序号随描述符保存，后续接收直接比较目标序号。
-  conv_descriptor_match #(.p_width(33)) u_skip_reduction_match (
+  conv_descriptor_match #(.p_width(33), .p_preserve_groups(1'b1)) u_skip_reduction_match (
     .i_a(i_skip_group_q), .i_b({1'b0, i_tile_q0}), .o_equal(incoming_tap_match_o_equal[0])
   );
 
@@ -769,11 +641,11 @@ module conv_im2col_descriptor #(
           target_eligible <= target_eligible_nxt;
         end
       end
-      conv_descriptor_match #(.p_width(32)) u_target_low_match (
+      conv_descriptor_match #(.p_width(32), .p_preserve_groups(1'b1)) u_target_low_match (
         .i_a(target_q[31:0]), .i_b(i_tile_q0), .o_equal(target_low_equal)
       );
       assign target_prepared_match[target] = target_eligible && target_low_equal;
-      conv_descriptor_match #(.p_width(33)) u_target_match (
+      conv_descriptor_match #(.p_width(33), .p_preserve_groups(1'b1)) u_target_match (
         .i_a(target_q), .i_b({1'b0, i_tile_q0}), .o_equal(target_difference_match[target])
       );
 `ifdef NPU_SIM_ASSERT
@@ -787,9 +659,10 @@ module conv_im2col_descriptor #(
       end
 `endif
     end else begin : g_direct
-      add_equal #(.p_width(33), .p_preserve_bits(1'b1)) u_match (
-        .i_a({1'b0, window_next_q}), .i_b(target_difference[target]),
-        .i_target({1'b0, i_tile_q0}), .i_carry_in(1'b0),
+      conv_descriptor_window_target u_match (
+        .i_clk(i_clk), .i_write(i_rst_n && window_prepare_write),
+        .i_preparing_reduction(i_q0), .i_saved_reduction(window_next_q),
+        .i_step(target_difference[target]), .i_target(i_tile_q0),
         .o_equal(target_difference_match[target])
       );
       assign target_prepared_match[target] = target_difference_match[target];
@@ -806,15 +679,22 @@ module conv_im2col_descriptor #(
     end
 `endif
   end
-  // 空间分块起点保留三十二位模加结果，溢出行为与描述符地址宽度一致。
-  assign incoming_tile_match_i_a = i_p0;
-  assign incoming_tile_match_i_b = 32'(i_rows_q);
-  assign incoming_tile_match_i_target = i_tile_p0;
-  assign incoming_tile_match_i_carry_in = 1'b0;
-  add_equal #(.p_width(32), .p_preserve_bits(1'b1)) u_incoming_tile_match (
-    .i_a(incoming_tile_match_i_a), .i_b(incoming_tile_match_i_b),
-    .i_target(incoming_tile_match_i_target), .i_carry_in(incoming_tile_match_i_carry_in),
-    .o_equal(incoming_tile_match_o_equal)
+  // 下一空间起点与当前描述符同边沿更新，待接收位置只进入相等比较。
+  assign position_i_configure = i_cfg_valid && i_cfg_ready;
+  assign position_i_commit = o_tile_commit;
+  assign position_i_invalid = committing_tile.invalid;
+  assign position_i_commit_position = committing_tile.position;
+  assign position_i_commit_rows = committing_tile.rows;
+  assign position_i_position = i_p0;
+  assign position_i_rows = i_rows_q;
+  assign position_i_target = i_tile_p0;
+  assign incoming_tile_match_o_equal = position_o_equal;
+  conv_descriptor_position #(.p_count_width(p_tile_count_w)) u_position (
+    .clk(i_clk), .rst_n(i_rst_n),
+    .i_configure(position_i_configure), .i_commit(position_i_commit),
+    .i_invalid(position_i_invalid), .i_commit_position(position_i_commit_position),
+    .i_commit_rows(position_i_commit_rows), .i_position(position_i_position),
+    .i_rows(position_i_rows), .i_target(position_i_target), .o_equal(position_o_equal)
   );
   assign o_incoming_skip_tap = i_c.kernel_w == 16'd3 && incoming_tap_match_o_equal[0];
   assign incoming_q_fast = incoming_q_equal || (&incoming_group_equal[2]) || o_incoming_skip_tap;
@@ -826,7 +706,7 @@ module conv_im2col_descriptor #(
   assign incoming_fast_i_flags[5] = incoming_q_fast;
   assign incoming_same_position_fast = p_cache_policy == 3 && (&incoming_fast_i_flags);
   // 相邻空间位置可从同一核行的前后一个有效位置开始，列边界只调整水平步长。
-  conv_descriptor_match #(.p_width(32)) u_window_reduction_match (
+  conv_descriptor_match #(.p_width(32), .p_preserve_groups(1'b1)) u_window_reduction_match (
     .i_a(i_tile_q0), .i_b(window_next_q), .o_equal(incoming_position_same_tap)
   );
   // 直接描述符使用同一准备边沿保存的许可；寄存描述符继续按原窗口状态选择。
@@ -845,7 +725,7 @@ module conv_im2col_descriptor #(
   assign incoming_position_previous_row = window_match_select[3] &&
       incoming_tap_match_o_equal[3];
   // 完整坐标比较先独立完成，运行资格只归并各比较的一位结果。
-  conv_descriptor_match #(.p_width(32)) u_window_position_match (
+  conv_descriptor_match #(.p_width(32), .p_preserve_groups(1'b1)) u_window_position_match (
     .i_a(i_tile_p0), .i_b(window_next_p), .o_equal(incoming_window_position_match)
   );
   conv_descriptor_match #(.p_width(p_rw)) u_single_row_match (
@@ -900,37 +780,6 @@ module conv_im2col_descriptor #(
       window_prepare_write = 1'b1;
     end
   end
-  always_ff @(posedge i_clk or negedge i_rst_n) begin
-    if (!i_rst_n) window_next_valid <= 1'b0;
-    else if (i_cfg_valid && i_cfg_ready) window_next_valid <= 1'b0;
-    else if (window_prepare_write) window_next_valid <= next_position < i_position_count;
-  end
-  always_ff @(posedge i_clk) begin
-    if (!i_rst_n) begin
-    end else if (window_prepare_write) begin
-      window_next_p <= next_position;
-      window_next_q <= i_q0;
-      window_next_tap <= i_tap0;
-      o_window_next_ch <= i_ch0_q;
-      o_window_group_remaining_q <= i_initial_group_remaining;
-      window_next_kx <= i_kx0_q;
-      window_forward_allowed_q <= i_kx0_q < i_last_kernel_col_q;
-      window_backward_allowed_q <= i_kx0_q != 16'd0;
-      window_previous_allowed_q <= i_c.kernel_w == 16'd3 && i_kx0_q == 16'd0 && i_ky0_q != 16'd0;
-      window_next_ky <= i_ky0_q;
-      o_window_next_x <= i_row_wrap ? 16'd0 : i_ox_q + 16'd1;
-      o_window_next_y <= i_row_wrap ? i_oy_q + 16'd1 : i_oy_q;
-      window_next_last_col <= i_row_wrap ? i_last_output_col_q==16'd0 : i_row_next_o_equal;
-      window_next_ix <= i_next_row_ix;
-      window_next_iy <= i_next_row_iy;
-      window_next_pixel <= i_next_row_pixel;
-      window_next_addr <= i_next_row_addr;
-      window_next_group_base <= i_next_row_group_base;
-      window_next_padding <= i_next_row_padding;
-      window_next_channel_range <= i_group_range_next[1];
-    end
-  end
-
   if (!p_register_descriptor) begin : g_direct_candidate_geometry
   logic [6:0][p_coord_w-1:0] candidate_coordinate_i_a, candidate_coordinate_i_b;
   logic [6:0] candidate_coordinate_carry, unused_candidate_coordinate_carry;
@@ -1069,20 +918,6 @@ module conv_im2col_descriptor #(
 
   end else begin : g_saved_kernel_end
     assign incoming_kx_last = 1'b0;
-  end
-
-  if (p_register_descriptor) begin : g_commit_kernel_end
-    logic [5:0] kernel_group_equal;
-    for (genvar group_index = 0; group_index < 6; group_index++) begin : g_group
-      localparam int p_first = group_index * 3;
-      localparam int p_width = 16 - p_first < 3 ? 16 - p_first : 3;
-      assign kernel_group_equal[group_index] =
-          committing_kernel_x[p_first +: p_width] == i_last_kernel_col_q[p_first +: p_width];
-    end
-    // 末列判断使用已经保存的核坐标，描述符选择不进入等值归并。
-    assign committing_kernel_last = &kernel_group_equal;
-  end else begin : g_direct_commit_kernel_end
-    assign committing_kernel_last = 1'b0;
   end
 
   assign kernel_decode_mask = i_last_kernel_col_q;
@@ -1241,10 +1076,10 @@ module conv_im2col_descriptor #(
     assign high_i_b = '0;
     assign high_i_target = i_reduction_len[31:p_tile_count_w];
     // 高位的两个完整比较同时准备，低位借位只选择已经完成的一位结果。
-    conv_descriptor_match #(.p_width(p_high_width)) u_distance_high_equal (
+    conv_descriptor_match #(.p_width(p_high_width), .p_preserve_groups(1'b1)) u_distance_high_equal (
       .i_a(high_i_a), .i_b(high_i_target), .o_equal(high_equal)
     );
-    increment_equal #(.p_width(p_high_width)) u_distance_high_increment (
+    conv_channel_increment_match #(.p_width(p_high_width)) u_distance_high_increment (
       .i_a(high_i_a), .i_target(high_i_target), .o_equal(high_increment_equal)
     );
 `ifdef SYNTHESIS
@@ -1269,21 +1104,10 @@ module conv_im2col_descriptor #(
     assign prepared_active_columns = i_reduction_len - descriptor_reduction < 32'(descriptor_columns) ?
       p_tile_count_w'(i_reduction_len - descriptor_reduction) : descriptor_columns;
   end
-  assign prepared_group_i_a = {1'b0, descriptor_reduction};
-  assign prepared_group_i_b = {17'd0, i_c.group_c};
-
-  parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1)) u_next_group (
-    .i_a(prepared_group_i_a), .i_b(prepared_group_i_b), .i_carry(1'b0),
-    .o_sum(next_group_sum), .o_carry(unused_next_group_carry)
+  conv_descriptor_group_steps u_group_steps (
+    .i_reduction(descriptor_reduction), .i_group_channels(i_c.group_c),
+    .o_next_group(prepared_next_group), .o_skip_group(prepared_skip_group)
   );
-  // 双组步长占低十七位，高段的两种结果提前计算，低段进位仅选择结果。
-  parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1),
-      .p_carry_select_width(17)) u_skip_group (
-    .i_a(prepared_group_i_a), .i_b({16'd0, i_c.group_c, 1'b0}), .i_carry(1'b0),
-    .o_sum(skip_group_sum), .o_carry(unused_skip_group_carry)
-  );
-  assign prepared_next_group = next_group_sum;
-  assign prepared_skip_group = skip_group_sum;
   // 准备项保存坐标起点与操作类型，提交时使用当前任务的步长。
   // 配置只在没有准备项时更新，因此步长在描述符接收至提交期间保持。
   always_comb begin
@@ -1294,67 +1118,6 @@ module conv_im2col_descriptor #(
       prepared_coordinate_y = window_next_iy;
     end
   end
-  assign committing_operation = prepared_tile_q.operation;
-  always_comb begin
-    committing_coordinate_dx = '0;
-    committing_coordinate_dy = '0;
-    committing_coordinate_carry = '0;
-    unique case (1'b1)
-      committing_operation[1], committing_operation[7]: begin
-        committing_coordinate_dx = p_coord_w'(i_c.dilation_w);
-      end
-      committing_operation[2]: begin
-        committing_coordinate_dx = p_coord_w'(i_tap_wrap_dx);
-        committing_coordinate_dy = p_coord_w'(i_c.dilation_h);
-      end
-      committing_operation[3]: begin
-        committing_coordinate_dx = p_coord_w'(i_c.dilation_w) << 1;
-      end
-      committing_operation[4]: begin
-        committing_coordinate_dx = i_tap_pair_dx;
-        committing_coordinate_dy = p_coord_w'(i_c.dilation_h);
-      end
-      committing_operation[5]: begin
-        committing_coordinate_dx = prepared_tile_q.row_wrap ? p_coord_w'(i_row_wrap_dx) : p_coord_w'(i_c.stride_w);
-        committing_coordinate_dy = prepared_tile_q.row_wrap ? p_coord_w'(i_c.stride_h) : '0;
-      end
-      committing_operation[8]: begin
-        committing_coordinate_dx = ~p_coord_w'(i_c.dilation_w);
-        committing_coordinate_carry[0] = 1'b1;
-      end
-      committing_operation[9]: begin
-        committing_coordinate_dx = p_coord_w'(i_c.dilation_w);
-        committing_coordinate_dy = ~p_coord_w'(i_c.dilation_h);
-        committing_coordinate_carry[1] = 1'b1;
-      end
-      default: ;
-    endcase
-  end
-  for (genvar axis = 0; axis < 2; axis++) begin : g_commit_coordinate
-    logic [p_coord_w-1:0] coordinate_i_a, coordinate_i_b;
-    logic coordinate_i_carry;
-    assign coordinate_i_a = axis == 0 ? prepared_tile_q.input_x : prepared_tile_q.input_y;
-    assign coordinate_i_b = axis == 0 ? committing_coordinate_dx : committing_coordinate_dy;
-    assign coordinate_i_carry = committing_coordinate_carry[axis];
-    logic [p_coord_w-1:0] coordinate_sum;
-    // 完整坐标先进入运行寄存器，范围检查读取下一拍的坐标。
-    assign coordinate_sum = coordinate_i_a + coordinate_i_b + p_coord_w'(coordinate_i_carry);
-    assign committing_coordinate[axis] = coordinate_sum;
-  end
-  for (genvar axis = 0; axis < 2; axis++) begin : g_commit_bound
-    if (p_register_descriptor) begin : g_saved
-      logic unused_equal;
-      unsigned_compare #(.p_width(p_coord_w)) u_limit (
-        .i_a(axis == 0 ? $unsigned(i_ix) : $unsigned(i_iy)),
-        .i_b(p_coord_w'(axis == 0 ? i_c.input_w : i_c.input_h)),
-        .o_less(committing_coordinate_valid[axis]), .o_equal(unused_equal)
-      );
-    end else begin : g_direct
-      assign committing_coordinate_valid[axis] = 1'b0;
-    end
-  end
-  // 已保存窗口保留原填充标志，其余描述符统一检查提交坐标的边界。
-
   assign prepared_padding_value = {window_previous_padding, window_backward_padding,
     window_forward_padding, window_next_padding, i_next_row_padding, incoming_skip_padding,
     incoming_wrap_padding, incoming_step_padding, incoming_base_padding};
@@ -1521,64 +1284,6 @@ module conv_im2col_descriptor #(
       prepared_pixel_base = i_next_row_pixel;
     end
   end
-  always_comb begin
-    committing_kernel_x_base = prepared_tile_q.kernel_x;
-    committing_tap_delta = 3'sd0;
-    committing_kernel_x_delta = 3'sd0;
-    committing_kernel_y_delta = 3'sd0;
-    committing_pixel_delta = 32'd0;
-    committing_pixel_carry = 1'b0;
-    unique case (1'b1)
-      committing_operation[1]: begin
-        committing_tap_delta = 3'sd1;
-        committing_kernel_x_delta = 3'sd1;
-        committing_pixel_delta = {16'd0, i_c.dilation_w};
-      end
-      committing_operation[2]: begin
-        committing_tap_delta = 3'sd1;
-        committing_kernel_x_base = 16'd0;
-        committing_kernel_y_delta = 3'sd1;
-        committing_pixel_delta = 32'(i_tap_wrap_pixels);
-      end
-      committing_operation[3]: begin
-        committing_tap_delta = 3'sd2;
-        committing_kernel_x_base = 16'd0;
-        committing_kernel_x_delta = 3'sd2;
-        committing_pixel_delta = {16'd0, i_c.dilation_w} << 1;
-      end
-      committing_operation[4]: begin
-        committing_tap_delta = 3'sd2;
-        committing_kernel_x_delta = -3'sd1;
-        committing_kernel_y_delta = 3'sd1;
-        committing_pixel_delta = i_tap_pair_pixels;
-      end
-      committing_operation[7]: begin
-        committing_tap_delta = 3'sd1;
-        committing_kernel_x_delta = 3'sd1;
-        committing_pixel_delta = {16'd0, i_c.dilation_w};
-      end
-      committing_operation[8]: begin
-        committing_tap_delta = -3'sd1;
-        committing_kernel_x_delta = -3'sd1;
-        committing_pixel_delta = ~{16'd0, i_c.dilation_w};
-        committing_pixel_carry = 1'b1;
-      end
-      committing_operation[9]: begin
-        committing_tap_delta = -3'sd2;
-        committing_kernel_x_base = 16'd0;
-        committing_kernel_x_delta = 3'sd1;
-        committing_kernel_y_delta = -3'sd1;
-        committing_pixel_delta = ~i_tap_pair_pixels;
-        committing_pixel_carry = 1'b1;
-      end
-      default: ;
-    endcase
-  end
-  assign committing_tap = prepared_tile_q.tap + 32'($signed(committing_tap_delta));
-  assign committing_kernel_x = committing_kernel_x_base + 16'($signed(committing_kernel_x_delta));
-  assign committing_kernel_y = prepared_tile_q.kernel_y + 16'($signed(committing_kernel_y_delta));
-  assign committing_pixel = prepared_tile_q.pixel + committing_pixel_delta + 32'(committing_pixel_carry);
-
   // 两个地址共用同一来源，操作类型决定提交时的地址增量。
   always_comb begin
     prepared_address = {i_row_group_base, i_row_base_addr};
@@ -1587,45 +1292,52 @@ module conv_im2col_descriptor #(
     else if (o_incoming_next_tile_fast)
       prepared_address = {i_next_row_group_base, i_next_row_addr};
   end
-  always_comb begin
-    committing_address_delta = '0;
-    committing_address_carry = 1'b0;
-    unique case (1'b1)
-      committing_operation[1], committing_operation[7]: committing_address_delta = i_tap_step_bytes;
-      committing_operation[2]: committing_address_delta = i_tap_wrap_bytes;
-      committing_operation[3]: committing_address_delta = i_tap_step_bytes << 1;
-      committing_operation[4]: committing_address_delta = i_tap_pair_bytes;
-      committing_operation[8]: begin
-        committing_address_delta = ~i_tap_step_bytes;
-        committing_address_carry = 1'b1;
-      end
-      committing_operation[9]: begin
-        committing_address_delta = ~i_tap_pair_bytes;
-        committing_address_carry = 1'b1;
-      end
-      default: ;
-    endcase
-  end
-  for (genvar address_port = 0; address_port < 2; address_port++) begin : g_commit_address
-    if (p_register_descriptor) begin : g_registered
-      logic [31:0] address_i_a, address_i_b;
-      logic address_i_carry;
-      logic [31:0] address_sum;
-      logic unused_address_carry;
+  // 提交算术读取完整准备字段，直连模式直接输出当拍准备结果。
+  assign commit_i_prepared_tile_packed = prepared_tile_q;
+  assign commit_i_preparing_tile_packed = preparing_tile;
+  assign commit_i_c = i_c;
+  assign commit_i_row_wrap_dx = i_row_wrap_dx;
+  assign commit_i_tap_wrap_dx = i_tap_wrap_dx;
+  assign commit_i_tap_wrap_pixels = i_tap_wrap_pixels;
+  assign commit_i_tap_pair_dx = i_tap_pair_dx;
+  assign commit_i_tap_pair_pixels = i_tap_pair_pixels;
+  assign commit_i_tap_step_bytes = i_tap_step_bytes;
+  assign commit_i_tap_wrap_bytes = i_tap_wrap_bytes;
+  assign commit_i_tap_pair_bytes = i_tap_pair_bytes;
+  assign commit_i_ix = i_ix;
+  assign commit_i_iy = i_iy;
+  assign commit_i_last_kernel_col_q = i_last_kernel_col_q;
+  assign commit_i_active_columns = prepared_active_columns;
+  assign commit_i_next_group = prepared_next_group;
+  assign commit_i_skip_group = prepared_skip_group;
+  assign committing_tile = prepared_tile_t'(commit_o_committing_tile_packed);
+  assign committing_coordinate_valid = commit_o_coordinate_valid;
+  conv_descriptor_commit #(
+    .p_size(p_size), .p_slot_w(p_slot_w), .p_lanes(p_lanes),
+    .p_line_bytes(p_line_bytes), .p_register_descriptor(p_register_descriptor),
+    .p_coord_w(p_coord_w)
+  ) u_commit (
+    .i_prepared_tile_packed(commit_i_prepared_tile_packed),
+    .i_preparing_tile_packed(commit_i_preparing_tile_packed),
+    .i_c(commit_i_c),
+    .i_row_wrap_dx(commit_i_row_wrap_dx),
+    .i_tap_wrap_dx(commit_i_tap_wrap_dx),
+    .i_tap_wrap_pixels(commit_i_tap_wrap_pixels),
+    .i_tap_pair_dx(commit_i_tap_pair_dx),
+    .i_tap_pair_pixels(commit_i_tap_pair_pixels),
+    .i_tap_step_bytes(commit_i_tap_step_bytes),
+    .i_tap_wrap_bytes(commit_i_tap_wrap_bytes),
+    .i_tap_pair_bytes(commit_i_tap_pair_bytes),
+    .i_ix(commit_i_ix),
+    .i_iy(commit_i_iy),
+    .i_last_kernel_col_q(commit_i_last_kernel_col_q),
+    .i_active_columns(commit_i_active_columns),
+    .i_next_group(commit_i_next_group),
+    .i_skip_group(commit_i_skip_group),
+    .o_committing_tile_packed(commit_o_committing_tile_packed),
+    .o_coordinate_valid(commit_o_coordinate_valid)
+  );
 
-      assign address_i_a = address_port == 0 ? prepared_tile_q.address : prepared_tile_q.group_address;
-      assign address_i_b = committing_address_delta;
-      assign address_i_carry = committing_address_carry;
-      // 登记描述符在提交周期计算地址，与先前的数据字匹配独立执行。
-      parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_address_sum (
-        .i_a(address_i_a), .i_b(address_i_b), .i_carry(address_i_carry),
-        .o_sum(address_sum), .o_carry(unused_address_carry)
-      );
-      assign committing_address[address_port] = address_sum;
-    end else begin : g_direct
-      assign committing_address[address_port] = '0;
-    end
-  end
   always_comb begin
     preparing_tile = '0;
     preparing_tile.operation = prepared_word_select;
@@ -1670,7 +1382,7 @@ module conv_im2col_descriptor #(
       i_row_wrap ? i_last_output_col_q == 16'd0 : i_row_next_o_equal;
   end
   assign tile_capture = i_tile_valid && i_tile_ready;
-  // Commit a prepared descriptor when the current tile releases its state.
+  // 当前分块释放状态时提交已准备描述符，保持原有接收与提交周期。
   assign o_tile_commit = p_register_descriptor ?
     (o_tile_prepared_valid && !i_error && (i_state[$clog2(IDLE)] || i_tile_finish)) : tile_capture;
   // 检查阶段读取已保存地址，描述符输入队列可以同时保存后续准备项。
@@ -1682,7 +1394,7 @@ module conv_im2col_descriptor #(
     localparam int p_tag_width = 32 - p_word_shift;
     localparam int p_group_count = (p_tag_width + 2) / 3;
     logic [p_tag_width-1:0] target_tag;
-    logic [p_group_count-1:0] tag_group_equal;
+    (* keep = "true" *) logic [p_group_count-1:0] tag_group_equal;
     assign target_tag = target == 0 ? descriptor_word_address_q : i_word_addr[31:p_word_shift];
     for (genvar part = 0; part < p_group_count; part++) begin : g_group
       localparam int p_first = part * 3;
@@ -1698,25 +1410,40 @@ module conv_im2col_descriptor #(
   end
   // 当前数据字也可供下一描述符复用，标签和有效位均来自已经完成的返回。
   assign o_committing_live_word_hit = i_word_valid && prepared_live_word_match;
-  always_comb begin
-    committing_tile = p_register_descriptor ? prepared_tile_q : preparing_tile;
-    if (p_register_descriptor) begin
-      committing_tile.active_columns = prepared_active_columns;
-      committing_tile.next_group = prepared_next_group;
-      committing_tile.skip_group = prepared_skip_group;
-      committing_tile.address = committing_address[0];
-      committing_tile.group_address = committing_address[1];
-      committing_tile.input_x = $signed(committing_coordinate[0]);
-      committing_tile.input_y = $signed(committing_coordinate[1]);
-      committing_tile.kernel_last = committing_kernel_last;
-      committing_tile.tap = committing_tap;
-      committing_tile.kernel_x = committing_kernel_x;
-      committing_tile.kernel_y = committing_kernel_y;
-      committing_tile.pixel = committing_pixel;
-      committing_tile.padding = 1'b0;
-      committing_tile.word_hit = 1'b0;
+  //! 2. 保存窗口及描述符
+  //! ---------------------
+
+  always_ff @(posedge i_clk or negedge i_rst_n) begin
+    if (!i_rst_n) window_next_valid <= 1'b0;
+    else if (i_cfg_valid && i_cfg_ready) window_next_valid <= 1'b0;
+    else if (window_prepare_write) window_next_valid <= next_position < i_position_count;
+  end
+  always_ff @(posedge i_clk) begin
+    if (!i_rst_n) begin
+    end else if (window_prepare_write) begin
+      window_next_p <= next_position;
+      window_next_q <= i_q0;
+      window_next_tap <= i_tap0;
+      o_window_next_ch <= i_ch0_q;
+      o_window_group_remaining_q <= i_initial_group_remaining;
+      window_next_kx <= i_kx0_q;
+      window_forward_allowed_q <= i_kx0_q < i_last_kernel_col_q;
+      window_backward_allowed_q <= i_kx0_q != 16'd0;
+      window_previous_allowed_q <= i_c.kernel_w == 16'd3 && i_kx0_q == 16'd0 && i_ky0_q != 16'd0;
+      window_next_ky <= i_ky0_q;
+      o_window_next_x <= i_row_wrap ? 16'd0 : i_ox_q + 16'd1;
+      o_window_next_y <= i_row_wrap ? i_oy_q + 16'd1 : i_oy_q;
+      window_next_last_col <= i_row_wrap ? i_last_output_col_q==16'd0 : i_row_next_o_equal;
+      window_next_ix <= i_next_row_ix;
+      window_next_iy <= i_next_row_iy;
+      window_next_pixel <= i_next_row_pixel;
+      window_next_addr <= i_next_row_addr;
+      window_next_group_base <= i_next_row_group_base;
+      window_next_padding <= i_next_row_padding;
+      window_next_channel_range <= i_group_range_next[1];
     end
   end
+
   always_ff @(posedge i_clk or negedge i_rst_n) begin
     if (!i_rst_n) o_tile_prepared_valid <= 1'b0;
     else if ((i_cfg_valid && i_cfg_ready) || i_error) o_tile_prepared_valid <= 1'b0;
@@ -1742,6 +1469,9 @@ module conv_im2col_descriptor #(
     end
   end
 
+  //! 3. 输出接收资格
+  //! -----------------
+
   assign channel_descriptor_valid = i_tile_rows != p_rw'(0) && 32'(i_tile_rows) <= p_size &&
     32'(i_tile_cols) <= p_size && o_tile_q_before_end && o_tile_rows_in_range;
   assign channel_accept_i_flags = {1'b1, o_incoming_fast, channel_descriptor_valid,
@@ -1750,42 +1480,4 @@ module conv_im2col_descriptor #(
     o_tile_commit && !committing_tile.invalid && committing_tile.fast : &channel_accept_i_flags;
 
 endmodule
-
-// 原始字段完整比较后输出一位结果，控制资格在外部独立组合。
-module conv_descriptor_match #(
-  parameter int unsigned p_width = 32
-) (
-  input wire logic [p_width-1:0] i_a,
-  input wire logic [p_width-1:0] i_b,
-  output logic o_equal
-);
-  // 完整比较表达式允许综合器与使用结果的资格条件共同优化。
-  assign o_equal = i_a == i_b;
-endmodule
-
-// 单个候选独立归并全部资格，保持各候选的并行关系。
-module conv_descriptor_qualify #(
-  parameter int unsigned p_flags = 6,
-  parameter logic [p_flags-1:0] p_expected = '1,
-  parameter bit p_window_priority = 1'b0
-) (
-  input wire logic [p_flags-1:0] i_flags,
-  input wire logic [1:0] i_window,
-  output logic o_valid
-);
-  assign o_valid = (&(i_flags ~^ p_expected)) && (!p_window_priority || !(i_window[1] && i_window[0]));
-endmodule
-
-
-// 高低段范围已经完成，低位进位只参与最后一层边界组合。
-module conv_descriptor_row_range_result (
-  input wire logic i_high_before, i_high_equal, i_high_last,
-  input wire logic i_low_carry, i_low_within,
-  output logic o_within
-);
-  assign o_within =
-      (i_high_before && (!i_low_carry || !i_high_last || i_low_within)) ||
-      (i_high_equal && !i_low_carry && i_low_within);
-endmodule
-
 `default_nettype wire

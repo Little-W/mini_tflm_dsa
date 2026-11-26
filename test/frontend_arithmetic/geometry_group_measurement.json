@@ -1,0 +1,199 @@
+{
+  "passed": true,
+  "reference_commit": "9bd6488c",
+  "scope": "几何模块的通道组上限与基本配置检查",
+  "rtl_sha256": {
+    "rtl/npu/conv/conv_im2col_geometry.sv": "c109b8b647a160d58b2084f368331c5ebf2e1404e1555beabe9c619c7bcba252",
+    "rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f"
+  },
+  "helper_commit": "4dfae422",
+  "proof": {
+    "passed": true,
+    "reference": "9bd6488c",
+    "input_assumptions": [],
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_frontend_pkg.sv": "133f1bc893333aefa9d10084f4514348688579d716722ad64be72051616feb2c",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/group_fit_parallel/proof/reference_geometry.sv": "e5cf819a29bc4050d0d54e781e79941cf775ad98b714423ff715188956edb9f6",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_coordinate_range.sv": "aca317dca3b8bce5cb91dd99c3569aecb066aeeafd6cf9141b0288b0bde61fe1",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_coordinate_step.sv": "c83585c284978b2d4bd8781b772c72f176fabdbeb15c5af9cb51d0c403285e02",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_descriptor_match.sv": "654db46960028f405fd8d0bb43f9e84d5d50403706c6b5141f9b72862c244056",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_geometry_movement_add.sv": "3375dcbc394f3b2e11c4526a076f21778397f4408329885aa7bc3218fa0e3cdf",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_history_wrap_select.sv": "94dc277c573d2856f71e40f4c255ba3bba38f86a5a04ad9c3fae840efa6f7a72",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_add.sv": "556a1e5163a7bb2da066d7cfc243b0a9406cce2c5f7e3b3d43f4c6d3b557e490",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_unsigned_compare.sv": "b9c7a195baefca188edd03f160d0519515f0ed2a0fb5acbba82a495aa7bfa5fe",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_coordinate_range_result.sv": "01464bd323304a9dc4b4f5dd8d0bb3923024c9f657a813f0b80234f4a494882b",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_coordinate_step_four_state.sv": "24046e5b095909ed6b6c784011c735ea608a9672e9da7be8b526da9be032daae",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/group_fit_parallel/conv_im2col_geometry.sv": "c109b8b647a160d58b2084f368331c5ebf2e1404e1555beabe9c619c7bcba252",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/group_fit_parallel/proof/group_comparison.sv": "c2bc063260d73d5d94dced517e1114bf48ef665f95c2a4dbb1555bfd8455120b",
+      "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/group_fit_parallel/proof/tb.sv": "5262cfc30d1488a65c151268b77db2f01f84032f70c4a5330ccccd892f954e0b"
+    },
+    "formal": [
+      {
+        "name": "lanes2_registered0_synthesis0",
+        "passed": true,
+        "equivalence_cells": 9008,
+        "log_sha256": "93a05f502c16605ac0b6d11c265b4bd2bdc9b6514c377a5237b6e9966ab081d5"
+      },
+      {
+        "name": "lanes2_registered0_synthesis1",
+        "passed": true,
+        "equivalence_cells": 9008,
+        "log_sha256": "4158ee41749df6da4952130b7c2f3c00d54818b0af6260552929248bd6e86f6a"
+      },
+      {
+        "name": "lanes2_registered1_synthesis0",
+        "passed": true,
+        "equivalence_cells": 5531,
+        "log_sha256": "ed4a137b05dcd6b99bc2fce328e253c8d5d36e9bfd3c451f8d77f6c2c4cb7a3f"
+      },
+      {
+        "name": "lanes2_registered1_synthesis1",
+        "passed": true,
+        "equivalence_cells": 5531,
+        "log_sha256": "0c4ec168adf4c83e2bffa7c0c8693c0e7dba8645bd7354ff6dc1c3d4833ad39f"
+      },
+      {
+        "name": "lanes8_registered0_synthesis0",
+        "passed": true,
+        "equivalence_cells": 9134,
+        "log_sha256": "8985335f308479a94fe9d16026f8a8bd75c5ed9a8afb2cec5d0a25760ca56531"
+      },
+      {
+        "name": "lanes8_registered0_synthesis1",
+        "passed": true,
+        "equivalence_cells": 9134,
+        "log_sha256": "1ff26a73b3893cf0c20aad49ba05aacad0e31e51d11b9d9af4d4d2c39c920090"
+      },
+      {
+        "name": "lanes8_registered1_synthesis0",
+        "passed": true,
+        "equivalence_cells": 5657,
+        "log_sha256": "4b64748aa5245680502528da1a872a4822461b364ba199da891c9938e196679c"
+      },
+      {
+        "name": "lanes8_registered1_synthesis1",
+        "passed": true,
+        "equivalence_cells": 5657,
+        "log_sha256": "cdafc2e2161d1106bcfb0559610cbefa2c4dc19ae19656ae010a7d8896f171d1"
+      }
+    ],
+    "four_state": [
+      {
+        "synthesis": 0,
+        "passed": true,
+        "checks": 3170,
+        "log_sha256": "f0f1cf488e7805aaeb438bb42c3c0433e727ea93ae3cf597968304448936d1c5"
+      },
+      {
+        "synthesis": 1,
+        "passed": true,
+        "checks": 3170,
+        "log_sha256": "f0f1cf488e7805aaeb438bb42c3c0433e727ea93ae3cf597968304448936d1c5"
+      }
+    ]
+  },
+  "physical_cost": {
+    "scope": "完整几何模块实例的配置输入和基本有效输出增加寄存边界；所有配置字段均可独立变化，其余输入接零，观察 o_cfg_basic_valid。",
+    "wrapper_sha256": "fd45cffaf3c4ab6e6b4830216bbd04219c728f0c2fe7476c6ea520a3f5f7df85",
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 193,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 193,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 227,
+        "dsp48e1": 6,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 9,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 9,
+          "DSP48E1": 6,
+          "FDRE": 227,
+          "INV": 2,
+          "LUT2": 17,
+          "LUT3": 4,
+          "LUT4": 45,
+          "LUT5": 22,
+          "LUT6": 105
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 9,
+      "graph_complete": true,
+      "functional_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "f7a808a931fca40210cf4b59bf8cce7c49b71bc7f08da68a616d30d2303731a5"
+      },
+      "metrics_sha256": "fcb6bb8ad7417719a40e342ed90cebf39c4dc09f84fc481392aa32fba3e9bb30",
+      "manifest_sha256": "4bdc7955ae978141be64d2c19e4fee0d00c3bc4658a86fd12f15fb61411b26ae"
+    },
+    "candidate": {
+      "resources": {
+        "logic_lut_cells": 200,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 200,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 227,
+        "dsp48e1": 6,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 2,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 2,
+          "DSP48E1": 6,
+          "FDRE": 227,
+          "INV": 2,
+          "LUT1": 2,
+          "LUT2": 1,
+          "LUT3": 12,
+          "LUT4": 40,
+          "LUT5": 17,
+          "LUT6": 128,
+          "MUXF7": 5
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 7,
+      "graph_complete": true,
+      "functional_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "7a53d864306b8d317cdb54c62c9dd75f8b05de00508afdbc490a7439e8acc157"
+      },
+      "metrics_sha256": "e428bc38416eb9f7cd67673c05698612a6c1b1aa93fe92054d671b749b4b1517",
+      "manifest_sha256": "d4e7faa5ae3f92e0ac4e191ed131a4dc18c722cbb6bb4f46ec6fd5529afebd00"
+    }
+  },
+  "delta": {
+    "logic_lut_cells": 7,
+    "longest_register_path_cells": -2
+  },
+  "configuration": {
+    "p_lanes": 8,
+    "p_line_bytes": 128,
+    "p_register_descriptor": 1,
+    "synthesis": true,
+    "xilinx_fpga": true
+  }
+}

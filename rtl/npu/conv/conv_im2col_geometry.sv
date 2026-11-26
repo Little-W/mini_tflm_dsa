@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-// 配置准备、共享坐标运算和历史位置解码。
+// 检查卷积配置并准备坐标、通道、窗口回收和缓存索引参数。
+// 共享乘法结果用于运行地址与预取地址计算，历史位置用于加速描述符解码。
 module conv_im2col_geometry #(
   parameter int p_size=16,
   parameter int p_slot_w=3,
@@ -20,151 +21,151 @@ module conv_im2col_geometry #(
   localparam int p_prefetch_count_width=$clog2(p_line_bytes + 2),
   localparam int p_prepared_tile_width=528+3*p_tile_count_w+p_slot_w+p_saved_group_lanes-p_word_shift
 )(
-  input wire logic i_clk,
-  input wire logic i_rst_n,
-  input wire logic i_cfg_valid,
-  input wire logic i_cfg_ready,
-  input wire conv_im2col_pkg::conv_cfg_t i_cfg,
-  input wire conv_im2col_frontend_pkg::st_t i_state,
-  input wire conv_im2col_pkg::conv_cfg_t i_c,
-  input wire logic [31:0] i_p0,
-  input wire logic [31:0] i_q0,
-  input wire logic [31:0] i_tap0,
-  input wire logic [15:0] i_ox_q,
-  input wire logic [15:0] i_oy_q,
-  input wire logic [15:0] i_ky_q,
-  input wire logic [15:0] i_kx_q,
-  input wire logic [15:0] i_ch_q,
-  input wire logic [15:0] i_kx0_q,
-  input wire logic [15:0] i_ch0_q,
-  input wire logic [31:0] i_ch,
-  input wire logic signed [p_coord_w-1:0] i_ix,
-  input wire logic signed [p_coord_w-1:0] i_iy,
-  input wire logic [31:0] i_pixel_index,
-  input wire logic [3:0][31:0] i_coordinate_product_q,
-  input wire logic [1:0][32:0] i_coordinate_sum_q,
-  input wire logic [1:0] i_coordinate_borrow_q,
-  input wire logic [31:0] i_channel_product,
-  input wire logic [31:0] i_group_base_addr,
-  input wire logic [31:0] i_tap_group_base,
-  input wire logic [31:0] i_row_group_base,
-  input wire logic [31:0] i_addr,
-  input wire logic [p_chunk_count_w-1:0] i_chunk_count,
-  input wire logic [p_lanes:0] i_chunk_selected,
-  input wire logic [31:0] i_decode_index,
-  input wire logic [31:0] i_decode_outer,
-  input wire logic [31:0] i_decode_inner,
-  input wire logic i_incoming_next_position_fast,
-  input wire logic [15:0] i_window_next_ch,
-  input wire logic [15:0] i_request_y_q,
-  input wire logic [3:0] i_p_cache_valid,
-  input wire logic i_last_p_valid,
-  input wire logic [31:0] i_last_p,
-  input wire logic i_last_p_overflow_q,
-  input wire logic [15:0] i_last_y,
-  input wire logic [15:0] i_last_x,
-  input wire logic [31:0] i_incoming_pixel,
-  input wire logic [3:0] i_prefetch_phase,
-  input wire logic [31:0] i_pf_address_term,
-  input wire logic signed [p_coord_w-1:0] i_pfa_y,
-  input wire logic [31:0] i_pfa_channel,
-  input wire logic [31:0] i_pf0_x,
-  input wire logic [31:0] i_pf0_y,
-  input wire logic [31:0] i_pf1_pixel,
-  input wire logic [31:0] i_pf1_channel,
-  input wire logic signed [p_coord_w-1:0] i_request_y,
-  input wire logic [1:0] i_address_step_phase,
-  input wire logic signed [32:0] i_row_wrap_dx,
-  input wire logic signed [32:0] i_tap_wrap_dx,
-  input wire logic signed [32:0] i_row_wrap_pixels,
-  input wire logic signed [32:0] i_tap_wrap_pixels,
-  input wire logic [31:0] i_row_step_bytes,
-  input wire logic [31:0] i_tap_step_bytes,
-  input wire logic [31:0] i_row_wrap_bytes,
-  input wire logic [31:0] i_tap_wrap_bytes,
-  input wire logic signed [p_coord_w-1:0] i_row_base_ix,
-  input wire logic signed [p_coord_w-1:0] i_row_base_iy,
-  input wire logic [31:0] i_row_base_pixel,
-  input wire logic [31:0] i_row_base_addr,
-  input wire logic i_row_wrap_q,
-  input wire logic i_tap_wrap_q,
-  input wire logic [p_prepared_tile_width-1:0] i_committing_tile_packed,
-  input wire logic i_tile_commit,
-  output logic o_cfg_ok,
-  output logic o_cfg_basic_valid,
-  output logic [2:0] o_cfg_prepare_phase,
-  output logic [63:0] o_cfg_input_bytes,
-  output logic [31:0] o_cfg_red,
-  output logic [31:0] o_cfg_positions,
-  output logic [15:0] o_last_group_channel_q,
-  output logic o_group_nonzero_q,
-  output logic [31:0] o_channel_addr,
-  output logic [31:0] o_next_row_group_base,
-  output logic [2:0] o_decode_end_o_equal,
-  output logic o_short_pixel_q,
-  output logic [15:0] o_retire_last_row_q,
-  output logic [15:0] o_second_last_row_q,
-  output logic [15:0] o_last_output_col_q,
-  output logic [15:0] o_second_last_col_q,
-  output logic [15:0] o_last_kernel_col_q,
-  output logic o_kernel_width_valid_q,
-  output logic o_history_limit_carry,
-  output logic o_p_fast_valid,
-  output logic o_p_fast_wrap,
-  output logic [31:0] o_p_fast_y,
-  output logic [31:0] o_p_fast_x,
-  output logic [1:0] o_p_cache_select,
-  output logic [31:0] o_request_retire,
-  output logic [1:0][31:0] o_retirement_result,
-  output logic o_window_index_valid_q,
-  output logic [4:0] o_window_index_shift_q,
-  output logic [31:0] o_pf_step_base,
-  output logic [4:0] o_current_q_div3,
-  output logic [15:0] o_current_q_remainder,
-  output logic [31:0] o_incoming_req_index,
-  output logic [31:0] o_incoming_req_epoch,
-  output logic [4:0][31:0] o_epoch_o_sum,
-  output logic [31:0] o_stream_channel_full,
-  output logic [p_coord_w-1:0] o_bound_sum [7],
-  output logic [6:0] o_bound_valid,
-  output logic [2:0] o_skip_bound_valid,
-  output logic [2:0] o_window_padding,
-  output logic o_next_word_o_equal,
-  output logic signed [p_coord_w-1:0] o_tap_pair_dx,
-  output logic [31:0] o_tap_pair_pixels,
-  output logic [31:0] o_tap_pair_bytes,
-  output logic o_row_wrap,
-  output logic o_tap_wrap,
-  output logic o_next_row_padding,
-  output logic o_next_tap_padding,
-  output logic o_tap_next_o_equal,
-  output logic o_row_next_o_equal,
-  output logic signed [p_coord_w-1:0] o_next_row_ix,
-  output logic signed [p_coord_w-1:0] o_next_row_iy,
-  output logic signed [p_coord_w-1:0] o_next_tap_ix,
-  output logic signed [p_coord_w-1:0] o_next_tap_iy,
-  output logic [31:0] o_next_row_pixel,
-  output logic [31:0] o_next_tap_pixel,
-  output logic [31:0] o_next_row_addr,
-  output logic [31:0] o_next_tap_addr,
-  output logic o_cfg_output_last,
-  output logic o_cfg_kernel_last,
-  output logic o_cfg_incoming_kernel_last,
-  output logic o_group_shape_o_valid,
-  output logic o_kernel_shape_o_valid,
-  output logic [4:0] o_group_width_shift,
-  output logic [4:0] o_kernel_width_shift,
-  output logic [5:0] o_k_decode_value,
-  output logic [1:0][32:0] o_coordinate_product_sum,
-  output logic [1:0][16:0] o_coordinate_low_difference,
-  output logic signed [p_coord_w-1:0] o_coordinate_padded_x,
-  output logic signed [p_coord_w-1:0] o_coordinate_padded_y,
-  output logic [31:0] o_group_address_sum,
-  output logic [31:0] o_prefetch_address_sum,
-  output logic [31:0] o_prefetch_byte_offset,
-  output logic [31:0] o_prefetch_pixel_sum,
-  output logic [3:0][31:0] o_shared_coordinate_product,
-  output logic [1:0][47:0] o_shared_channel_product
+  input wire logic i_clk, // 回绕状态寄存器的工作时钟。
+  input wire logic i_rst_n, // 低有效异步复位。
+  input wire logic i_cfg_valid, // 新卷积配置有效。
+  input wire logic i_cfg_ready, // 新卷积配置可被接收。
+  input wire conv_im2col_pkg::conv_cfg_t i_cfg, // 待接收的卷积配置。
+  input wire conv_im2col_frontend_pkg::st_t i_state, // 当前运行状态。
+  input wire conv_im2col_pkg::conv_cfg_t i_c, // 已保存的卷积配置。
+  input wire logic [31:0] i_p0, // 分块起始输出位置。
+  input wire logic [31:0] i_q0, // 分块起始归约位置。
+  input wire logic [31:0] i_tap0, // 分块初始卷积核位置。
+  input wire logic [15:0] i_ox_q, // 当前输出列坐标。
+  input wire logic [15:0] i_oy_q, // 当前输出行坐标。
+  input wire logic [15:0] i_ky_q, // 当前卷积核行坐标。
+  input wire logic [15:0] i_kx_q, // 当前卷积核列坐标。
+  input wire logic [15:0] i_ch_q, // 当前通道的十六位索引。
+  input wire logic [15:0] i_kx0_q, // 分块初始卷积核列。
+  input wire logic [15:0] i_ch0_q, // 分块的初始通道索引。
+  input wire logic [31:0] i_ch, // 当前通道的扩展索引。
+  input wire logic signed [p_coord_w-1:0] i_ix, // 当前输入列坐标。
+  input wire logic signed [p_coord_w-1:0] i_iy, // 当前输入行坐标。
+  input wire logic [31:0] i_pixel_index, // 当前输入像素的线性索引。
+  input wire logic [3:0][31:0] i_coordinate_product_q, // 坐标生成阶段保存的四个乘积。
+  input wire logic [1:0][32:0] i_coordinate_sum_q, // 坐标生成阶段保存的列、行加法结果。
+  input wire logic [1:0] i_coordinate_borrow_q, // 坐标减去填充值时的列、行借位。
+  input wire logic [31:0] i_channel_product, // 已保存的像素通道乘积。
+  input wire logic [31:0] i_group_base_addr, // 当前输入像素的通道组起始地址。
+  input wire logic [31:0] i_tap_group_base, // 当前卷积核位置的通道组地址。
+  input wire logic [31:0] i_row_group_base, // 当前输出行起点的通道组地址。
+  input wire logic [31:0] i_addr, // 当前请求的字节地址。
+  input wire logic [p_chunk_count_w-1:0] i_chunk_count, // 当前输出传输包含的列数。
+  input wire logic [p_lanes:0] i_chunk_selected, // 当前传输列数的并行选择位。
+  input wire logic [31:0] i_decode_index, // 通用除法解码的当前计数。
+  input wire logic [31:0] i_decode_outer, // 通用除法解码得到的商。
+  input wire logic [31:0] i_decode_inner, // 通用除法解码得到的余数。
+  input wire logic i_incoming_next_position_fast, // 输入描述符复用下一输出位置。
+  input wire logic [15:0] i_window_next_ch, // 下一窗口位置的初始通道索引。
+  input wire logic [15:0] i_request_y_q, // 已保存请求的输入行坐标。
+  input wire logic [3:0] i_p_cache_valid, // 四个输出位置历史项的有效位。
+  input wire logic i_last_p_valid, // 最近输出位置历史项有效。
+  input wire logic [31:0] i_last_p, // 最近一次解码的输出位置。
+  input wire logic i_last_p_overflow_q, // 最近输出位置的上界计算产生进位。
+  input wire logic [15:0] i_last_y, // 历史输出位置的行坐标。
+  input wire logic [15:0] i_last_x, // 历史输出位置的列坐标。
+  input wire logic [31:0] i_incoming_pixel, // 已准备描述符的像素索引。
+  input wire logic [3:0] i_prefetch_phase, // 预取地址生成的当前阶段。
+  input wire logic [31:0] i_pf_address_term, // 预取地址生成需要累加的地址分量。
+  input wire logic signed [p_coord_w-1:0] i_pfa_y, // 待计算预取位置的输入行坐标。
+  input wire logic [31:0] i_pfa_channel, // 待计算预取位置的通道索引。
+  input wire logic [31:0] i_pf0_x, // 预取第一阶段的输入列坐标。
+  input wire logic [31:0] i_pf0_y, // 预取第一阶段的输入行坐标。
+  input wire logic [31:0] i_pf1_pixel, // 预取第二阶段的线性像素索引。
+  input wire logic [31:0] i_pf1_channel, // 预取第二阶段的通道索引。
+  input wire logic signed [p_coord_w-1:0] i_request_y, // 当前请求的输入行坐标。
+  input wire logic [1:0] i_address_step_phase, // 地址步长准备阶段。
+  input wire logic signed [32:0] i_row_wrap_dx, // 输出位置换行的有符号输入列位移。
+  input wire logic signed [32:0] i_tap_wrap_dx, // 卷积核换行的有符号输入列位移。
+  input wire logic signed [32:0] i_row_wrap_pixels, // 输出位置换行的有符号像素位移。
+  input wire logic signed [32:0] i_tap_wrap_pixels, // 卷积核换行的有符号像素位移。
+  input wire logic [31:0] i_row_step_bytes, // 相邻输出位置沿列推进的字节数。
+  input wire logic [31:0] i_tap_step_bytes, // 相邻卷积核位置沿列推进的字节数。
+  input wire logic [31:0] i_row_wrap_bytes, // 输出位置换行的字节位移。
+  input wire logic [31:0] i_tap_wrap_bytes, // 卷积核换行的字节位移。
+  input wire logic signed [p_coord_w-1:0] i_row_base_ix, // 当前输出行起点的输入列坐标。
+  input wire logic signed [p_coord_w-1:0] i_row_base_iy, // 当前输出行起点的输入行坐标。
+  input wire logic [31:0] i_row_base_pixel, // 当前输出行起点的线性像素索引。
+  input wire logic [31:0] i_row_base_addr, // 当前输出行起点的字节地址。
+  input wire logic i_row_wrap_q, // 已保存的输出位置换行标志。
+  input wire logic i_tap_wrap_q, // 已保存的卷积核换行标志。
+  input wire logic [p_prepared_tile_width-1:0] i_committing_tile_packed, // 待接收分块的完整准备数据。
+  input wire logic i_tile_commit, // 当前周期接收描述符。
+  output logic o_cfg_ok, // 配置检查通过。
+  output logic o_cfg_basic_valid, // 新配置的基本参数有效。
+  output logic [2:0] o_cfg_prepare_phase, // 配置计算和检查阶段。
+  output logic [63:0] o_cfg_input_bytes, // 计算得到的输入张量字节数。
+  output logic [31:0] o_cfg_red, // 计算得到的归约长度。
+  output logic [31:0] o_cfg_positions, // 计算得到的输出位置总数。
+  output logic [15:0] o_last_group_channel_q, // 通道组内最后一个有效通道索引。
+  output logic o_group_nonzero_q, // 配置中的每组通道数非零。
+  output logic [31:0] o_channel_addr, // 当前输入位置的完整通道字节地址。
+  output logic [31:0] o_next_row_group_base, // 下一输出行的通道组地址。
+  output logic [2:0] o_decode_end_o_equal, // 三种除法解码对应的行末比较结果。
+  output logic o_short_pixel_q, // 短像素模式下按窗口粒度缩放像素索引。
+  output logic [15:0] o_retire_last_row_q, // 窗口回收判断使用的最后输出行索引。
+  output logic [15:0] o_second_last_row_q, // 倒数第二个输出行索引。
+  output logic [15:0] o_last_output_col_q, // 最后一个输出列索引。
+  output logic [15:0] o_second_last_col_q, // 倒数第二个输出列索引。
+  output logic [15:0] o_last_kernel_col_q, // 最后一个卷积核列索引。
+  output logic o_kernel_width_valid_q, // 配置中的卷积核宽度非零。
+  output logic o_history_limit_carry, // 历史位置上界低位运算产生进位。
+  output logic o_p_fast_valid, // 输出位置快速解码结果有效。
+  output logic o_p_fast_wrap, // 历史快速解码得到的输出换行标志。
+  output logic [31:0] o_p_fast_y, // 历史快速解码得到的输出行坐标。
+  output logic [31:0] o_p_fast_x, // 历史快速解码得到的输出列坐标。
+  output logic [1:0] o_p_cache_select, // 需要保存的输出位置历史项。
+  output logic [31:0] o_request_retire, // 当前请求对应的窗口回收位置。
+  output logic [1:0][31:0] o_retirement_result, // 当前请求和预取请求的窗口回收位置。
+  output logic o_window_index_valid_q, // 窗口索引满足缓存配置的使用条件。
+  output logic [4:0] o_window_index_shift_q, // 窗口索引的右移位数。
+  output logic [31:0] o_pf_step_base, // 预取跨度计算的最小像素步长。
+  output logic [4:0] o_current_q_div3, // 当前归约位置除以三的商。
+  output logic [15:0] o_current_q_remainder, // 当前归约位置除以三的余数。
+  output logic [31:0] o_incoming_req_index, // 描述符来源的完整窗口索引。
+  output logic [31:0] o_incoming_req_epoch, // 输入描述符对应的缓存纪元。
+  output logic [4:0][31:0] o_epoch_o_sum, // 不同请求来源的通道偏移累加结果。
+  output logic [31:0] o_stream_channel_full, // 流式推进后的完整通道索引。
+  output logic [p_coord_w-1:0] o_bound_sum [7], // 七种候选坐标的边界计算结果。
+  output logic [6:0] o_bound_valid, // 七种候选坐标对应的范围有效位。
+  output logic [2:0] o_skip_bound_valid, // 跨分组位置对应的范围有效位。
+  output logic [2:0] o_window_padding, // 三个窗口位置对应的填充标志。
+  output logic o_next_word_o_equal, // 下一读取位置到达缓存字边界。
+  output logic signed [p_coord_w-1:0] o_tap_pair_dx, // 相邻核位置对的有符号输入列位移。
+  output logic [31:0] o_tap_pair_pixels, // 相邻核位置对的像素位移。
+  output logic [31:0] o_tap_pair_bytes, // 相邻核位置对的字节位移。
+  output logic o_row_wrap, // 输出位置沿列推进时换行。
+  output logic o_tap_wrap, // 卷积核位置沿列推进时换行。
+  output logic o_next_row_padding, // 下一输出行起点使用填充值。
+  output logic o_next_tap_padding, // 下一卷积核位置使用填充值。
+  output logic o_tap_next_o_equal, // 推进后的卷积核列到达最后一列。
+  output logic o_row_next_o_equal, // 推进后的输出列到达最后一列。
+  output logic signed [p_coord_w-1:0] o_next_row_ix, // 下一输出行起点的输入列坐标。
+  output logic signed [p_coord_w-1:0] o_next_row_iy, // 下一输出行起点的输入行坐标。
+  output logic signed [p_coord_w-1:0] o_next_tap_ix, // 下一卷积核位置的输入列坐标。
+  output logic signed [p_coord_w-1:0] o_next_tap_iy, // 下一卷积核位置的输入行坐标。
+  output logic [31:0] o_next_row_pixel, // 下一输出行起点的线性像素索引。
+  output logic [31:0] o_next_tap_pixel, // 下一卷积核位置的线性像素索引。
+  output logic [31:0] o_next_row_addr, // 下一输出行起点的字节地址。
+  output logic [31:0] o_next_tap_addr, // 下一卷积核位置的输入地址。
+  output logic o_cfg_output_last, // 初始输出列位于新配置的最后一列。
+  output logic o_cfg_kernel_last, // 初始卷积核列位于新配置的最后一列。
+  output logic o_cfg_incoming_kernel_last, // 描述符初始核列位于新配置的最后一列。
+  output logic o_group_shape_o_valid, // 每组通道数支持位移解码。
+  output logic o_kernel_shape_o_valid, // 卷积核宽度支持位移解码。
+  output logic [4:0] o_group_width_shift, // 每组通道数对应的二进制位移量。
+  output logic [4:0] o_kernel_width_shift, // 卷积核宽度对应的二进制位移量。
+  output logic [5:0] o_k_decode_value, // 三列卷积核的行列解码结果。
+  output logic [1:0][32:0] o_coordinate_product_sum, // 坐标乘积相加后的列、行结果。
+  output logic [1:0][16:0] o_coordinate_low_difference, // 坐标低位减去填充值的结果和借位。
+  output logic signed [p_coord_w-1:0] o_coordinate_padded_x, // 减去左侧填充量后的输入列坐标。
+  output logic signed [p_coord_w-1:0] o_coordinate_padded_y, // 减去顶部填充量后的输入行坐标。
+  output logic [31:0] o_group_address_sum, // 通道乘积加输入起始地址的结果。
+  output logic [31:0] o_prefetch_address_sum, // 预取输入起始地址与通道乘积之和。
+  output logic [31:0] o_prefetch_byte_offset, // 预取通道和像素形成的字节偏移。
+  output logic [31:0] o_prefetch_pixel_sum, // 预取行乘积与列坐标之和。
+  output logic [3:0][31:0] o_shared_coordinate_product, // 共享乘法器返回的四项坐标乘积。
+  output logic [1:0][47:0] o_shared_channel_product // 共享乘法器返回的两项通道乘积。
 );
   import conv_im2col_pkg::*;
   import conv_im2col_frontend_pkg::*;
@@ -240,7 +241,7 @@ module conv_im2col_geometry #(
   logic [p_coord_w-1:0] bound_a [7];
   logic [p_coord_w-1:0] bound_b [7];
   logic [15:0] bound_limit [7];
-  logic [6:0] bound_valid_reference;
+  (* keep = 1 *) logic [6:0] bound_valid_reference;
   logic [31-p_word_shift:0] next_word_i_target;
   logic [1:0] next_word_match;
   logic [2:0][p_coord_w-1:0] tap_pair_i_a;
@@ -297,7 +298,7 @@ module conv_im2col_geometry #(
   logic [16:0] history_next_y;
   logic unused_history_next_y_carry;
   (* keep = 1 *) logic [2:0] fast_position_source;
-  (* keep = 1 *) logic [1:0][63:0] fast_position_pair;
+  logic [1:0][63:0] fast_position_pair, fast_position_pair_value;
   logic [63:0] fast_position_power, fast_position_cache;
   logic [63:0] fast_position_history, fast_position_next_row;
   logic [63:0] fast_position_data;
@@ -314,19 +315,27 @@ module conv_im2col_geometry #(
   logic [1:0][15:0] channel_b;
   logic [1:0][1:0][31:0] channel_partial;
   logic [1:0][31:0] channel_upper;
-  logic cfg_group_within_input;
+  (* keep = 1 *) logic cfg_group_within_input;
+  (* keep = 1 *) logic [2:0] cfg_dimension_valid;
   logic cfg_s8_offset_valid;
   logic [p_line_bytes:0] cfg_line_threshold;
   logic [p_line_bytes:0] cfg_line_select;
   logic [31:0] cfg_base_step;
   assign committing_tile = prepared_tile_t'(i_committing_tile_packed);
+  logic decode_position_equal;
+  // 解码计数按三位分组比较，完成条件直接参与已有状态保存。
+  conv_descriptor_match #(.p_width(32), .p_preserve_groups(1'b1)) u_decode_position_match (
+    .i_a(i_decode_index), .i_b(i_p0), .o_equal(decode_position_equal)
+  );
   // 通道偏移保持十七位范围，完整字节地址使用一次定宽求和。
 
   always_ff @(posedge i_clk) begin
     if (i_state[$clog2(ADDRESS_BASE)])
       channel_byte_offset <= i_c.input_s16 ? {i_ch_q, 1'b0} : {1'b0, i_ch_q};
   end
-  assign channel_address_sum = i_group_base_addr + {15'd0, channel_byte_offset};
+  conv_full_address_add u_channel_address (
+    .i_a(i_group_base_addr), .i_b({15'd0, channel_byte_offset}), .o_sum(channel_address_sum)
+  );
   assign o_channel_addr = channel_address_sum;
 
   // 末列判断随坐标寄存，连续输出周期直接使用已保存的比较结果。
@@ -763,8 +772,12 @@ module conv_im2col_geometry #(
     // 描述符提交时读取历史项，命中判断和坐标在执行解码前共同保存。
     assign lookup_index = 2'(committing_tile.position >> p_cw);
     assign lookup_data = p_cache_data[lookup_index];
-    assign lookup_hit = i_p_cache_valid[lookup_index] &&
-        lookup_data[63:32] == committing_tile.position;
+    logic lookup_tag_equal;
+    // 历史项标签按三位同时比较，命中只归并保存的组结果。
+    conv_descriptor_match #(.p_width(32), .p_preserve_groups(1'b1)) u_history_tag (
+      .i_a(lookup_data[63:32]), .i_b(committing_tile.position), .o_equal(lookup_tag_equal)
+    );
+    assign lookup_hit = i_p_cache_valid[lookup_index] && lookup_tag_equal;
     always_ff @(posedge i_clk or negedge i_rst_n) begin
       if (!i_rst_n) hit_q <= 1'b0;
       else if (i_cfg_valid && i_cfg_ready) hit_q <= 1'b0;
@@ -793,11 +806,15 @@ module conv_im2col_geometry #(
   end else begin : g_current_position_lookup
     logic [31:0] lookup_key;
     assign {lookup_key, p_cache_y, p_cache_x} = p_cache_data[o_p_cache_select];
-    assign p_cache_hit = i_p_cache_valid[o_p_cache_select] && lookup_key == p_decode;
+    logic lookup_tag_equal;
+    conv_descriptor_match #(.p_width(32), .p_preserve_groups(1'b1)) u_history_tag (
+      .i_a(lookup_key), .i_b(p_decode), .o_equal(lookup_tag_equal)
+    );
+    assign p_cache_hit = i_p_cache_valid[o_p_cache_select] && lookup_tag_equal;
   end
   assign p_cache_write_enable = i_rst_n &&
       ((i_state[$clog2(P_DECODE)] && o_p_fast_valid) ||
-       (i_state[$clog2(P_WAIT)] && i_decode_index == i_p0));
+       (i_state[$clog2(P_WAIT)] && decode_position_equal));
   assign p_cache_write_data = i_state[$clog2(P_DECODE)] ?
       {i_p0, 16'(o_p_fast_y), 16'(o_p_fast_x)} : {i_p0, 16'(i_decode_outer), 16'(i_decode_inner)};
   // 只有解码成功才更新有效项，未使用的数据不需要复位写端口。
@@ -824,9 +841,12 @@ module conv_im2col_geometry #(
       .i_carry_in(end_i_carry_in), .o_equal(end_o_equal)
     );
   end
-  // 接收位置与历史位置的差值先保存，坐标解码只执行一次分组加法。
+  // 接收位置与历史位置的差值采用并行分段算术，并在坐标解码前保存。
   // 位置差在描述符提交时保存；历史位置更新为当前位置时，差值同时归零。
-  parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1)) u_history_delta (
+  parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1),
+        .p_dsp_split_width(17), .p_parallel_high_prefix(1'b1),
+        .p_keep_carry(1'b0), .p_preserve_grouped_unknowns(1'b1),
+        .p_direct_subtract(1'b1)) u_history_delta (
     .i_a({1'b0, committing_tile.position}), .i_b(~{1'b0, i_last_p}), .i_carry(1'b1),
     .o_sum(history_delta_full), .o_carry(unused_history_delta_carry)
   );
@@ -1007,14 +1027,22 @@ module conv_im2col_geometry #(
     assign selected_history = history_result;
   end
   // 相邻行坐标独立求和，行边界结果只控制末端选择。
-  parallel_prefix_add #(.p_width(17), .p_group_width(4), .p_preserve_groups(1'b1)) u_history_next_y (
-    .i_a({1'b0, i_last_y}), .i_b(17'd1), .i_carry(1'b0),
-    .o_sum(history_next_y), .o_carry(unused_history_next_y_carry)
+  conv_history_row_increment u_history_next_y (
+    .i_row(i_last_y), .o_row(history_next_y), .o_carry(unused_history_next_y_carry)
   );
   // 各坐标来源独立形成候选，历史行进位只参与末端掩码选择。
-  assign fast_position_source[0] = p_decode != 32'd0 && output_shape_o_valid;
-  assign fast_position_source[1] = p_decode != 32'd0 && !output_shape_o_valid && p_cache_hit;
-  assign fast_position_source[2] = p_decode != 32'd0 && !output_shape_o_valid &&
+  (* keep = "true" *) logic [5:0] position_nonzero_group;
+  logic position_nonzero;
+  // 已保存位置按六位并行检查零值，完整判断只归并六个组结果。
+  for (genvar group_index = 0; group_index < 6; group_index++) begin : g_position_nonzero
+    localparam int p_first = group_index * 6;
+    localparam int p_bits = 32 - p_first < 6 ? 32 - p_first : 6;
+    assign position_nonzero_group[group_index] = |p_decode[p_first+:p_bits];
+  end
+  assign position_nonzero = |position_nonzero_group;
+  assign fast_position_source[0] = position_nonzero && output_shape_o_valid;
+  assign fast_position_source[1] = position_nonzero && !output_shape_o_valid && p_cache_hit;
+  assign fast_position_source[2] = position_nonzero && !output_shape_o_valid &&
     !p_cache_hit && selected_history.valid;
   assign fast_position_power = {p_decode >> output_width_shift, p_decode & {16'd0, o_last_output_col_q}};
   assign fast_position_cache = {32'(p_cache_y), 32'(p_cache_x)};
@@ -1022,17 +1050,38 @@ module conv_im2col_geometry #(
     p_register_descriptor ? 32'(selected_history.column) : 32'(history_column_sum)};
   assign fast_position_next_row = {32'(history_next_y),
     p_register_descriptor ? 32'(selected_history.column) : 32'(history_column_reduced)};
-  assign fast_position_pair[0] = (fast_position_power & {64{fast_position_source[0]}}) |
+  assign fast_position_pair_value[0] = (fast_position_power & {64{fast_position_source[0]}}) |
     (fast_position_cache & {64{fast_position_source[1]}});
-  assign fast_position_pair[1] =
+  assign fast_position_pair_value[1] =
     (fast_position_history & {64{fast_position_source[2] && !selected_history.row_advance}}) |
     (fast_position_next_row & {64{fast_position_source[2] && selected_history.row_advance}});
+  // 十六位列、行坐标保留末级选择边界，完整高位随使用结果进行综合优化。
+  for (genvar pair = 0; pair < 2; pair++) begin : g_position_pair
+    for (genvar bit_index = 0; bit_index < 64; bit_index++) begin : g_bit
+      (* keep = bit_index < 16 || (bit_index >= 32 && bit_index < 48) *) logic coordinate_bit;
+      assign coordinate_bit = fast_position_pair_value[pair][bit_index];
+      assign fast_position_pair[pair][bit_index] = coordinate_bit;
+    end
+  end
   assign fast_position_data = fast_position_pair[0] | fast_position_pair[1];
   // 四种列末结果先完成各自比较，位置来源只参与末级选择。
   assign fast_wrap_source = {fast_position_source, !(|fast_position_source)};
   assign fast_wrap_value[0] = i_c.output_w != 16'd0 && o_last_output_col_q == 16'd0;
-  assign fast_wrap_value[1] = (p_decode[15:0] & o_last_output_col_q) == o_last_output_col_q;
-  assign fast_wrap_value[2] = i_c.output_w != 16'd0 && p_cache_x == o_last_output_col_q;
+  (* keep = "true" *) logic [5:0] power_wrap_group;
+  logic cached_column_last;
+  // 掩码位置的末列比较按三位并行形成关系，组结果只归并一次。
+  for (genvar group_index = 0; group_index < 6; group_index++) begin : g_power_wrap
+    localparam int p_first = group_index * 3;
+    localparam int p_bits = 16 - p_first < 3 ? 16 - p_first : 3;
+    assign power_wrap_group[group_index] =
+        (p_decode[p_first+:p_bits] & o_last_output_col_q[p_first+:p_bits]) ==
+        o_last_output_col_q[p_first+:p_bits];
+  end
+  conv_descriptor_match #(.p_width(16), .p_preserve_groups(1'b1)) u_cached_column_last (
+    .i_a(p_cache_x), .i_b(o_last_output_col_q), .o_equal(cached_column_last)
+  );
+  assign fast_wrap_value[1] = &power_wrap_group;
+  assign fast_wrap_value[2] = i_c.output_w != 16'd0 && cached_column_last;
   assign fast_wrap_value[3] = selected_history.wrap;
   onehot_mux #(.p_choices(4), .p_width(1)) u_fast_wrap (
     .i_select(fast_wrap_source), .i_data(fast_wrap_value), .o_data(fast_wrap_selected)
@@ -1040,7 +1089,7 @@ module conv_im2col_geometry #(
   always_comb begin
     o_p_fast_valid=0;o_p_fast_y=0;o_p_fast_x=0;
     o_p_fast_wrap = i_c.output_w != 16'd0 && o_last_output_col_q == 16'd0;
-    if (p_decode==0) o_p_fast_valid=1;
+    if (!position_nonzero) o_p_fast_valid=1;
     else if (output_shape_o_valid) begin
       // 二次幂输出宽度通过移位和掩码直接得到行列坐标。
       o_p_fast_valid=1;o_p_fast_y=p_decode>>output_width_shift;
@@ -1212,19 +1261,23 @@ module conv_im2col_geometry #(
     (cfg_address_propagate[3] && cfg_address_propagate[2] && cfg_address_generate[1]) ||
     (cfg_address_propagate[3] && cfg_address_propagate[2] && cfg_address_propagate[1] && cfg_address_generate[0]);
 
-  // 三项通道数量先逐位压缩，再形成完整十八位求和结果的范围条件。
-
-  assign cfg_group_within_input =
-      17'(i_cfg.group_offset) + 17'(i_cfg.group_c) <= 17'(i_cfg.input_c);
+  // 通道偏移、通道组长度与输入上限并行归并，保留完整和值的溢出判断。
+  unsigned_sum_le #(.p_width(16)) u_cfg_group_within_input (
+    .i_a(i_cfg.group_offset), .i_b(i_cfg.group_c),
+    .i_limit(i_cfg.input_c), .o_within(cfg_group_within_input)
+  );
   assign cfg_s8_offset_valid = $signed(i_cfg.input_offset) >= -127 && $signed(i_cfg.input_offset) <= 128;
 
+  // 每四个维度独立检查非零值，三个组结果与通道范围并行准备。
+  assign cfg_dimension_valid[0] = i_cfg.input_h!=0 && i_cfg.input_w!=0 &&
+      i_cfg.input_c!=0 && i_cfg.group_c!=0;
+  assign cfg_dimension_valid[1] = i_cfg.kernel_h!=0 && i_cfg.kernel_w!=0 &&
+      i_cfg.output_h!=0 && i_cfg.output_w!=0;
+  assign cfg_dimension_valid[2] = i_cfg.stride_h!=0 && i_cfg.stride_w!=0 &&
+      i_cfg.dilation_h!=0 && i_cfg.dilation_w!=0;
   // 配置乘积经过寄存器后检查溢出。
   always_comb begin
-    o_cfg_basic_valid=i_cfg.input_h!=0 && i_cfg.input_w!=0 && i_cfg.input_c!=0 &&
-      i_cfg.group_c!=0 && i_cfg.kernel_h!=0 && i_cfg.kernel_w!=0 &&
-      i_cfg.output_h!=0 && i_cfg.output_w!=0 && i_cfg.stride_h!=0 && i_cfg.stride_w!=0 &&
-      i_cfg.dilation_h!=0 && i_cfg.dilation_w!=0 &&
-      cfg_group_within_input;
+    o_cfg_basic_valid=(&cfg_dimension_valid) && cfg_group_within_input;
     if (i_cfg.input_s16) o_cfg_basic_valid=o_cfg_basic_valid && i_cfg.input_offset==0 && !i_cfg.input_base[0];
     else o_cfg_basic_valid=o_cfg_basic_valid && cfg_s8_offset_valid;
     o_cfg_input_bytes={15'd0,cfg_tensor_product};
@@ -1363,22 +1416,13 @@ module conv_im2col_geometry #(
   assign epoch_i_carry = 1'b0;
   for (genvar candidate = 0; candidate < 5; candidate++) begin : g_epoch_candidate
     if (candidate == 3 && p_lanes <= 16) begin : g_stream_shared
-      // 数据流模块提供传输步长选择，纪元直接选择相应通道和值。
-      logic [p_lanes:0][17:0] channel_sum;
-      logic [p_lanes:0] step_select;
-      for (genvar step = 0; step <= p_lanes; step++) begin : g_step
-        logic [17:0] sum_bits, carry_bits;
-        assign sum_bits = {2'b0, i_c.group_offset} ^ i_ch[17:0] ^ 18'(step);
-        assign carry_bits = (({2'b0, i_c.group_offset} & i_ch[17:0]) |
-            (({2'b0, i_c.group_offset} | i_ch[17:0]) & 18'(step))) << 1;
-        assign channel_sum[step] = sum_bits + carry_bits;
-        assign step_select[step] = i_chunk_selected[step];
-      end
-      always_comb begin
-        o_epoch_o_sum[candidate] = '0;
-        for (int step = 0; step <= p_lanes; step++)
-          o_epoch_o_sum[candidate] |= {32{step_select[step]}} & {14'd0, channel_sum[step]};
-      end
+      logic [17:0] stream_channel_sum;
+      // 高段和值由所有短步长共用，低段及其进位区间先行计算。
+      conv_stream_epoch_sum #(.p_lanes(p_lanes)) u_stream_epoch (
+        .i_offset(i_c.group_offset), .i_channel(i_ch[17:0]),
+        .i_selected(i_chunk_selected), .o_sum(stream_channel_sum)
+      );
+      assign o_epoch_o_sum[candidate] = {14'd0, stream_channel_sum};
       assign unused_epoch_carry[candidate] = 1'b0;
     end else begin : g_general
       parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_sum (
@@ -1400,34 +1444,6 @@ module conv_im2col_geometry #(
   assign o_incoming_req_epoch = o_short_pixel_q ? 32'd0 :
     (incoming_epoch_channel << i_c.input_s16) >> $clog2(p_line_bytes);
 
-endmodule
-
-// 六个已完成的条件直接组成行末结果，保留独立的末级组合边界。
-(* keep_hierarchy = "yes" *)
-module conv_history_wrap_select (
-  input wire logic i_width_nonzero,
-  input wire logic i_sum_last_equal,
-  input wire logic i_last_after,
-  input wire logic i_sum_wrap_equal,
-  input wire logic i_last_col_high,
-  input wire logic i_wrap_after,
-  output logic o_wrap
-);
-  assign o_wrap = i_width_nonzero &&
-      ((i_sum_last_equal && !i_last_after) ||
-       (i_sum_wrap_equal && (!i_last_col_high || i_wrap_after)));
-endmodule
-
-// 地址加法保留完整三十二位进位结构。
-(* keep_hierarchy = "yes" *)
-module conv_geometry_movement_add (
-  input wire logic [31:0] i_base, i_delta,
-  output logic [31:0] o_sum
-);
-  logic unused_carry;
-  parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1), .p_dsp_split_width(16)) u_sum (
-    .i_a(i_base), .i_b(i_delta), .i_carry(1'b0), .o_sum(o_sum), .o_carry(unused_carry)
-  );
 endmodule
 
 `default_nettype wire

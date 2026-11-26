@@ -1,0 +1,313 @@
+{
+  "implementation": "保存字地址按三位独立比较，各组结果并行归并完整相等条件。",
+  "formal": {
+    "passed": true,
+    "input_assumptions": [],
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_descriptor_match.sv": "654db46960028f405fd8d0bb43f9e84d5d50403706c6b5141f9b72862c244056",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_stream.sv": "da9d06a21ab4d49ebfe400a5fc0b634d4a98ceffd8fa8bb2e10bb5a98f53c6f0"
+    },
+    "formal": [
+      {
+        "width": 1,
+        "passed": true,
+        "log_sha256": "95fbbb6dface3453f3bed7278f38ff68736cb0ca4ede20fd6b7f21b798c949d2"
+      },
+      {
+        "width": 2,
+        "passed": true,
+        "log_sha256": "b003aa7826804f7a9a887f8f67a984ed2e26bcfbc14e803c59fc86613f06b809"
+      },
+      {
+        "width": 3,
+        "passed": true,
+        "log_sha256": "57a64a2d7dd289d8d03ef9f85979c701689323dcc8bc4104ac06986d9ae77839"
+      },
+      {
+        "width": 4,
+        "passed": true,
+        "log_sha256": "be5e710f80d8a5ec46a68c90e267338c38175a27eae8f945bc14bc501e935d43"
+      },
+      {
+        "width": 8,
+        "passed": true,
+        "log_sha256": "55e72030fe12592d310a16ba637fa195f5c78d653513fee45ce958ada1501c07"
+      },
+      {
+        "width": 16,
+        "passed": true,
+        "log_sha256": "b56e7a86889ab131028968a46c26804b49cc81e80baf8d5fe926b16fc8c85c58"
+      },
+      {
+        "width": 17,
+        "passed": true,
+        "log_sha256": "7a1fefd8771dad38470d82a9b33c350c06ace3afafd0029a071639bc4c7a2753"
+      },
+      {
+        "width": 28,
+        "passed": true,
+        "log_sha256": "013b1f0ed6d9a2d569c1b6f6d72a56d620a63a2cc5701b0f61d27b0d3b28c6f1"
+      },
+      {
+        "width": 32,
+        "passed": true,
+        "log_sha256": "8098c30c79541b4e7d5e69e176ca6784e68e894786be04ef8d4b7eed15a4fbfd"
+      },
+      {
+        "width": 35,
+        "passed": true,
+        "log_sha256": "49a3f47574c3553cff15d10b059d0cf93f390f193f3a0f856c266575feebda78"
+      },
+      {
+        "width": 64,
+        "passed": true,
+        "log_sha256": "c5c5a964edc0b1c899d5ca6e7902d646a5f2c400ec7ec91c7be1d757801ab48c"
+      }
+    ],
+    "four_state": [
+      {
+        "width": 1,
+        "checks": 226,
+        "passed": true,
+        "log_sha256": "b5afeda0b2cbe82d25a0777ea85b8c1a484c555c67c781957e2cf70659c13716"
+      },
+      {
+        "width": 3,
+        "checks": 482,
+        "passed": true,
+        "log_sha256": "5e28bb59c8686d454985f699bfc6c7d8596581d30d9dbf2235ff28d022e28c17"
+      },
+      {
+        "width": 8,
+        "checks": 1122,
+        "passed": true,
+        "log_sha256": "e41ce6d1f97fb3445612f3ddb88310892fc1bb99734763d3e9fa1c2fdbeb1c78"
+      },
+      {
+        "width": 32,
+        "checks": 4194,
+        "passed": true,
+        "log_sha256": "4ea8e37bf7653594844903f0fce45b966fbdc0abc0bddee2896d4191d98d0846"
+      },
+      {
+        "width": 35,
+        "checks": 4578,
+        "passed": true,
+        "log_sha256": "ff1a088c8bca5f04e55fcfb54c6ec468711e38208676424141101f8dcd22d7cc"
+      },
+      {
+        "width": 64,
+        "checks": 8290,
+        "passed": true,
+        "log_sha256": "00bb71f134852a1a74f9ffbae9ba0d4546d3bab6953f6a6813bf94dab502594a"
+      }
+    ]
+  },
+  "numeric": {
+    "status": "PASS",
+    "cases": 42,
+    "total_cycles": 145444,
+    "vector_sha256": "f7282840d1be30c892fd4b6bfb81b91ba6dbcd35d13b5ff0e1bfef58afa649a0",
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_frontend_pkg.sv": "133f1bc893333aefa9d10084f4514348688579d716722ad64be72051616feb2c",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_sdp_ram.sv": "10db112047f1f1a9b8af336ce519034c7c19bbc473d9c18c84a33941e7dc3ff7",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_next_use_predictor.sv": "205844c57c43ca3e035d1cc0a69f1d1efa7bd5fdbf1c537be9d90bf0146964ff",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_axi_span_reader.sv": "beb487464fc23329db537f5d2b2a50995b08ddbe57bd561dbe11bb5d68ebf271",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_read_cache.sv": "487e7a6a847c670da18d9c9a3d460a036cbdd96a0d56df17c4af006df313f7d4",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_frontend.sv": "4461ba8afc3dfd69fc45115b0909069080315f5fee63f1e946af373188b8dccb",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_ia_write_adapter.sv": "3d6d3436e3c2b396585018e47d57520defe09e89f0cd23af054331a5e38d5891",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_ia_tile_path.sv": "3876ff2066ddc33f925499568a20f06f044c99da9a118b9a8488a9a076c0887a",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/test/frontend_pipeline/tb_frontend_pipeline.sv": "0c6eee57cda160e041343c85c5f48073236f1b78ce80f01754e6d244daea8b91",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/parallel_prefix_add.sv": "3455a8c3373eda8aef1c05d6d3b3c236ae3c970dde8fd725d7b8437ad83eaf0a",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_read_cache_reference.sv": "c40cf7aa266096f2737bcbcdcd0a54d4dc68b562d390963617c25e319a98ed43",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_windowed_cache.sv": "bff3605d1b8e9770aa5383983b1879bdfcba429ce59dea73aff7aa56497a4131",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_address_sources.sv": "c2a17720285d1fcaf75ea83d30950651661789359aee045fa5fd67565c191361",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_descriptor.sv": "6841e3bcf56995a1c1b28425a21f8ac1847b8532a8a9eb62f291e73e71a1ea26",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_descriptor_state.sv": "486e10adbd6e872f1eaeb34d82b029a4241d540eb45b57db6ba801d34b51ed38",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_error_update.sv": "3962dbd96828818b4fdfd2ff273834547525c489783beb39ab711790cf7e8026",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_geometry.sv": "b5aeef937b78dbe8ec16d3b65113e23cd9a776678f3d6ef7847c1553d517f33c",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_payload_select.sv": "a993b22ec770c8bd998dae0142075734b73b07ae192a20035a5b3582624ca261",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_prefetch.sv": "d5e81c30e6f158b87009d952a716df726d2522737296c9a3c67afa2dc3ed8a6c",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_request_index.sv": "79cb159297a45158763115165a47eff0f9bac0dbaa45854e65661861bb40f2ef",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_runtime_registers.sv": "7611ffe810f2131f0a9e302ac51cf4413697659c695222919e5d42fd78b9e314",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_state_control.sv": "0d6669fc718a680cc5ab738e1e01a0946e5e8d27fcf755f1cfe227047a895e31",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_stream.sv": "da9d06a21ab4d49ebfe400a5fc0b634d4a98ceffd8fa8bb2e10bb5a98f53c6f0",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_stream_position.sv": "083d686a4a016fbbb763e5930217b3d86e25060520670894e7daa20890526b55",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_tile_context.sv": "2375df4c16f491123659b65df017a383e7903e81af69ab155c06828ed1857d52",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_wrap_state.sv": "2180cf01d971e13ef7bf2f6c26a615f543e69f168cda246ab51c3620fad48d6b",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/unsigned_compare.sv": "9dc7009454cae1a786570972f0ae940b98d738f67f708f3d50055d2a7f80632b",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/parallel_prefix_high_group.sv": "f37805622ff8cfac2cec15d31c4bf4ceef1d73e986559d6e81f2c13a5870c70a",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_lookup_valid_select.sv": "641edf30e92a9d5c7971d87c6a0e6bb0660f6afa4a6a9fae5596e3b2cd65d362",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_metadata_eligibility.sv": "3e98c96a4dcec4d6cdad01bfe2e8096876f4a80b39a7c815f91c9583a6a5a42a",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_metadata_hit_select.sv": "08dd08cd7a3326978d6cb8e0bd70e2b29cc9028f236d5f82667a4378cf342e1f",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_metadata_way.sv": "e9b381a4c9629415b195767acfcd324991743dce19aaf513549358c64ba84bda",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_next_line.sv": "085e6e3b58bc2dfaef5c3b31c545f14bc4912bf8c7b0f8eb7d21c9e3af93d2b4",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_offer_match_select.sv": "9103babb9ee214845bfaf41162d6351a5258c3bffc1c302e85a2769adb74e50d",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_prefetch_epoch_value.sv": "22f7f09d079fb6eb54954da33abf4e5f8a2cd621c7f73495f017ebf915804bb9",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_request_path.sv": "f0e6d67212ff3241ec3ef4f87cb996893db6ac88f09a9089e4021815917de82d",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_select_busy.sv": "27f5b51bacef66582baa96f830a233836971974e095f974f232fafc88bad55be",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_snapshot_equal.sv": "39891ed1ba58a2d75b978ab15e168b0007e617a2cc11828beb9acab861848708",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_victim_qualification.sv": "aadbac1cc76112eef2e0ab9668ccdc65ceda17c7b08eb0bee2ddead962771b71",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/parallel_unsigned_compare.sv": "b9c7a195baefca188edd03f160d0519515f0ed2a0fb5acbba82a495aa7bfa5fe",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_descriptor_addresses.sv": "23d48fbfe698071703a19153f0a7843fe11b96ca141d66b20fa063f73954255c",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_descriptor_commit.sv": "4571afb42d5005673b9877c918ccf8473515bce79a3a60db1bb1f4c0bc1e03ab",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_descriptor_extent.sv": "b350f3dcf0686ab85f607f548e372581f057ee47e7293d5b67f5efe7b6ac706a",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_descriptor_match.sv": "654db46960028f405fd8d0bb43f9e84d5d50403706c6b5141f9b72862c244056",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_descriptor_position.sv": "d1853188da82a2d6e70350ac4eb6cf55869d106bea9f768b0bd7d6864d5da854",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_descriptor_qualify.sv": "12b34d54fc08d645bceb8af415a54f0ff1f459c4d05dd6e258c12f59cd529d7e",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_error_operation_select.sv": "379becfb4cdbcffe0cf4b059646e7a5f609c2ff5c0084c88a1671eb872577767",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_error_select.sv": "d49ede51df9dd4eecb937eb19b45318a087fd4008225f69a87693b18375c0cd3",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_coordinate_range.sv": "aca317dca3b8bce5cb91dd99c3569aecb066aeeafd6cf9141b0288b0bde61fe1",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_coordinate_step.sv": "cdb90c72dac79da53e2b1b553aedb1a5103916124b3a298f8fb9a79253fbce5c",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_geometry_movement_add.sv": "3375dcbc394f3b2e11c4526a076f21778397f4408329885aa7bc3218fa0e3cdf",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_history_wrap_select.sv": "94dc277c573d2856f71e40f4c255ba3bba38f86a5a04ad9c3fae840efa6f7a72",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_channel_range_compare.sv": "a8759b67b24ab0fd1040bd8b9d49e3126afa0d3f76f0816e792321cd4b9cee05",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_descriptor_group_context.sv": "935a2b5cff1736e407803a025ca99c9f3db101ec35a99a100b0875dbb1305352",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_chunk_end_select.sv": "8e79644831e19ca1f421d93d0af0eb53fd815376b02885ebb2e0a7881bcc2ca6",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_chunk_lane.sv": "9b98e433d04824a6848af73ecfc1e4fa0ed8df9ddb32fc18e35cb667105ecb74",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_group_end_select.sv": "69339dc32ddf9de75f5dec615d5cae84b2705e65bb9c8663261193f986a3d766",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_mask_end.sv": "e1be3404f00d92f25bfb883156ce611ecb647558f5097beda002e631bbb0bf8a",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_request_control.sv": "0688cfdc39262a9b6d93c29a2e186e901947236455b8a3f206ffd3f6c635fa97",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_sample_offsets.sv": "2eaccd077b1f2dda5310bbb264c38af3e9d0f944859b204a17edc492eb5e7feb",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_stream_control.sv": "c534de659d24f505ca8da6d4d7e5ce152919508ae2b8693a0ffead0fa7cb75de",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_tile_group_low.sv": "e3aed46bb61f664b4e89ad315cb3a29bb20448bbc5ec60c9fd8b19d684ddff8d",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_tile_group_range_result.sv": "a05a328f446ee2da18df6966f4b1833903bdb2fbf260eb7784906d22fd6dbe75",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_wrap_update_select.sv": "4b0b74e7442ab8c755e1033299ef0c19e91576d89c7282f8b5be858fdd4c97d4",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_metadata_hit_finish.sv": "6f5becf5311c5e06bcd63eb559ce6257d7ea360736d7db7d05bebadd60e0ed47",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_metadata_rank_hit.sv": "781f7c39c5a0c6f55e339d510da50a85b87603ff65cc2ccc765aa719c6ac549f",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_rank_table.sv": "84f93cde64ca69a8ccbc7d50010ca1d99175eab36aa39570be19850a8031741f",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_valid_forward.sv": "ae55cc2e2fa4fb8de548513a0b0796869c7c380f4d409300c48ef662ead152de",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_increment_bit.sv": "06fd91fe53bda84ed7d684a38a9a8e708153d27f7523116c2888e8933ae54867",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_input_set_match.sv": "62725c6f0df2f968b3413a3becc223bf4d7af1ef93f608ba87e15f4dc58f6106",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_lookup_hit.sv": "8b89a3ef984085c113e24d080e26761d56832af4756acaf5ad2343462fd82f88",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_lookup_qualification.sv": "77e43f4878f35f21741250c0131c18062d4ee1845385d5b9472a7b414429328f",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_request_qualification.sv": "138e292cc69d591d5894cae6b8946bf4f0b0e870c5cc7fc64844e54a44c3ca2a",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_response_data_select.sv": "dfbcd05ebc8c4b9121f9e9c382cbe4292b952485639cc271a8e8d10e11437dc4",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_snapshot_fields.sv": "5ee06e16f89b960d74deb2f0ecff8e9d1d80116cac51907fa88ae976f81649a5",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_snapshot_response.sv": "a40b6f2f337c9fe172d82cc325e9abbb02ce1d3714138a28a7b54e83ec8b9f16",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_tag_qualification.sv": "e4b373c83445e7d2e049aee151508fbc17d69bb61daf3ebcbbd037c1f07c8ce4",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_work_lookup.sv": "22a09fa2f0556aa22ce8a4a442b2771e75f877c740cf04e6407d6e16ceb0bf7f",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_descriptor_add.sv": "2012c4efea89ae6da4f20aade559ec29389ca4bdbbfed1cb8339ebcd46d333db",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_descriptor_row_range_result.sv": "6fb839f16a2b06085767fb2140196c994dacbaa4c9f43813f4a2e38767946660",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_coordinate_range_result.sv": "01464bd323304a9dc4b4f5dd8d0bb3923024c9f657a813f0b80234f4a494882b",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_channel_outside_interval.sv": "4d9442ebffb971567074fc41188d25ac53b8dcdd0b0c007dbbb8b8764b7b71b9",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_channel_wrap_threshold.sv": "467c9d3ae0009a5942955c4c00569a8cb15621fc6fe14434f5b7e857943ddca7",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_im2col_descriptor_request.sv": "8f8c7ee904f5b8010ff62c3539273539c0acb2828924a51f4f2652ed44457cde",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_tile_group_low5.sv": "9accc1380f55f01b7919956f502e36cb7e58970da0104e69edaa6fb0a6aeff1e",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_rank_hit_write.sv": "44abc4b06848557df15d161fde542611ba680e91753235d02ecff6e4428432d0",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_demand_hit.sv": "b1155b6b9c151c8ded8afd24d97376381520b9d5a8829085790dc96892b4a59c",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_registered_equal.sv": "e06f2929f5089a6d46c0734e6e4c8dc4a252950afaf32f4651a642c0d78d7ef2",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/dma/cache/conv_cache_snapshot_range.sv": "8dce8cc425d6974959d332ebe10fb03e881863a2eab9493fd1d0f08d22c20918",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_tile_high_compare.sv": "d5f08b353deb6efdac141b73096abea0d0ea22cd58daba948677860ab226bd94",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_tile_low_difference.sv": "8852ca3acadabbe374ecd0b6038f0a7af2b20e3fcce9dec2912e1972fac9b910",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_tile_low_flag_select.sv": "c390f128990f1e7bbc76f38bd328b616093d714845f23e0f361f32787c3c8573",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/rtl/npu/conv/conv_tile_low_less_select.sv": "6550d1a33e5fd6ba2a530534463e526965d3ceaf4b23f039978151791e839184",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/build/descriptor_timing/numeric_word_match/support/conv_ia_tile_path_observer.sv": "5aa4616e9cedaec0abb7c058a759579e66e12d54ca918cb8128a6a214ebd299a",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/build/descriptor_timing/numeric_word_match/support/conv_im2col_frontend_observer.sv": "d527bd5a205b38659b69d46368fd4d06744c41906794fd9b0058ce5e9f057216",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/build/descriptor_timing/numeric_word_match/support/conv_read_cache_observer.sv": "7b8e1f9f4ea9a58e56e06be861b99bede1139bb02335008a1efc63e4d22493d7",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/build/descriptor_timing/numeric_word_match/support/conv_read_cache_reference_observer.sv": "95c8896e35d5913ef94a39b9b5a5093c0b6b29d972963614c8155bc507ecba8c",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/build/descriptor_timing/numeric_word_match/support/conv_windowed_cache_observer.sv": "dd11d0be0ad4eb771e307ece257409d148c87d70a3604b71a1127d8f0d343334",
+      "/workspace/scratch/5bfa47658687/work_frontend_timing/include/conv_im2col_prepared_tile.svh": "82fad7a236b4bf174779c7618c9023258d64253c4d117124df15eb69e7af73dd"
+    }
+  },
+  "mapping": {
+    "mode": "physical-cost",
+    "wire_delay_ps": 300,
+    "delay_target_ps": 6667,
+    "max_lut_inputs": 8,
+    "parameters": {
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "WINDOW_LANES": 8,
+      "CONV_LINE_BYTES": 128,
+      "CONV_CACHE_SETS": 16,
+      "CONV_CACHE_WAYS": 2
+    },
+    "reference_resources": {
+      "logic_lut_cells": 14792,
+      "distributed_ram_lut_sites_nominal": 180,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 14972,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 7590,
+      "dsp48e1": 28,
+      "ramb36e1": 1,
+      "ramb18e1": 23,
+      "carry4": 1063,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 1063,
+        "DSP48E1": 28,
+        "FDCE": 2785,
+        "FDPE": 98,
+        "FDRE": 4702,
+        "FDSE": 5,
+        "INV": 427,
+        "LUT1": 191,
+        "LUT2": 2269,
+        "LUT3": 2265,
+        "LUT4": 2045,
+        "LUT5": 3170,
+        "LUT6": 4852,
+        "MUXF7": 634,
+        "MUXF8": 8,
+        "RAM32M": 45,
+        "RAMB18E1": 23,
+        "RAMB36E1": 1
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "optimized_resources": {
+      "logic_lut_cells": 14775,
+      "distributed_ram_lut_sites_nominal": 180,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 14955,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 7590,
+      "dsp48e1": 28,
+      "ramb36e1": 1,
+      "ramb18e1": 23,
+      "carry4": 1064,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 1064,
+        "DSP48E1": 28,
+        "FDCE": 2785,
+        "FDPE": 98,
+        "FDRE": 4702,
+        "FDSE": 5,
+        "INV": 427,
+        "LUT1": 187,
+        "LUT2": 2292,
+        "LUT3": 2142,
+        "LUT4": 2031,
+        "LUT5": 3250,
+        "LUT6": 4873,
+        "MUXF7": 687,
+        "MUXF8": 8,
+        "RAM32M": 45,
+        "RAMB18E1": 23,
+        "RAMB36E1": 1
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "reference_target_cells": 12,
+    "optimized_target_cells": 10,
+    "target_path": "wrap state -> saved address word hit",
+    "complete_dma_longest_cells": 14
+  }
+}

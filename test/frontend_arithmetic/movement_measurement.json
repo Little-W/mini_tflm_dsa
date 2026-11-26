@@ -1,0 +1,71 @@
+{
+  "passed": true,
+  "input_assumptions": [],
+  "source_sha256": {
+    "rtl/npu/conv/conv_im2col_geometry.sv": "b5aeef937b78dbe8ec16d3b65113e23cd9a776678f3d6ef7847c1553d517f33c",
+    "rtl/npu/conv/conv_geometry_movement_add.sv": "3375dcbc394f3b2e11c4526a076f21778397f4408329885aa7bc3218fa0e3cdf",
+    "rtl/common/parallel_prefix_add.sv": "3455a8c3373eda8aef1c05d6d3b3c236ae3c970dde8fd725d7b8437ad83eaf0a",
+    "rtl/common/parallel_prefix_high_group.sv": "f37805622ff8cfac2cec15d31c4bf4ceef1d73e986559d6e81f2c13a5870c70a",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+  },
+  "formal": [
+    {
+      "synthesis": false,
+      "passed": true,
+      "log_sha256": "7162599612c292f9dd09809f11e85c681e0d5513c439c4363a461c18f346fa1e"
+    },
+    {
+      "synthesis": true,
+      "passed": true,
+      "log_sha256": "9a4cd7ca77646569d79d1d3e88747aad555a5c473f1907b3f0356905f2a32f4e"
+    }
+  ],
+  "four_state_checks": 31138,
+  "four_state_all_input_bits_x_z": true,
+  "simulation_log_sha256": "5ecafe3f7251bbfb8779239336c8fda08a26d37724de8ce5cee9d40edc13b172",
+  "mapping_configuration": {
+    "mode": "physical-cost",
+    "max_lut_inputs": 8,
+    "small_lut_area_cost": 1,
+    "wire_delay_ps": 300,
+    "delay_target_ps": 6667
+  },
+  "registered_helper": {
+    "reference": {
+      "logic_lut": 23,
+      "dsp": 1,
+      "register_path_cells": 6
+    },
+    "current": {
+      "logic_lut": 23,
+      "dsp": 1,
+      "register_path_cells": 4
+    }
+  },
+  "complete_dma": {
+    "reference": {
+      "logic_lut": 14887,
+      "dsp": 24,
+      "flip_flops": 7590,
+      "register_path_cells": 14
+    },
+    "current": {
+      "logic_lut": 14887,
+      "dsp": 24,
+      "flip_flops": 7590,
+      "register_path_cells": 14
+    }
+  },
+  "frontend_numeric": {
+    "passed": true,
+    "cases": 42,
+    "cycles": 145444,
+    "size": 16,
+    "lanes": 8,
+    "bus_width": 64,
+    "line_bytes": 128,
+    "cache_sets": 16,
+    "cache_ways": 2,
+    "register_descriptor": true
+  }
+}

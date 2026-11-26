@@ -142,7 +142,10 @@ def main():
                     warning.endswith("Instance has missing pin: 'wr_last'"))
         # 单项需求队列的计数器范围由位宽保证，相关比较在展开后为常量。
         def single_request_counter(warning):
-            return warning.startswith('%Warning-CMPCONST:') and 'dma/cache/conv_read_cache.sv:' in warning
+            modules = ('conv_read_cache.sv', 'conv_cache_request_path.sv',
+                       'conv_windowed_cache.sv')
+            return warning.startswith('%Warning-CMPCONST:') and any(
+                'dma/cache/' + module + ':' in warning for module in modules)
         unexpected=[w for w in warnings if w.split(':',1)[0].removeprefix('%Warning-') not in reviewed
                     and not unused_adapter_last(w) and not single_request_counter(w)]
         if unexpected: raise RuntimeError('unreviewed lint warnings: '+repr(unexpected))

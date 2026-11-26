@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-package conv_im2col_frontend_pkg;
+package conv_im2col_frontend_pkg; // 定义卷积展开前端在描述符解码、坐标计算、缓存读取及流式输出阶段共用的状态类型。
   typedef enum logic [26:0] {
     IDLE = 27'h000001,
     P_DECODE = 27'h000002,

@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "modules": 296,
+  "ports": 5688,
+  "profiles": [
+    "generic",
+    "synthesis",
+    "riscv_formal",
+    "simulation_assertions",
+    "synthesis_assertions"
+  ],
+  "missing_module_headers": [],
+  "missing_port_comments": []
+}

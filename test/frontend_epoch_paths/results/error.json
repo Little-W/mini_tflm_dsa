@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "input_assumptions": [],
+  "reference": "9c3f2718",
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_frontend_pkg.sv": "133f1bc893333aefa9d10084f4514348688579d716722ad64be72051616feb2c",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/conv_im2col_error_update.sv": "f56b9e68551f2b3a588b70f1f51ddbde29bb2c618fbc84430eb7e676b5f5527a",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/conv_im2col_error_select.sv": "3fcee486cfe12a5a49bb48e229d6ab0f1dface692618cc6e07450ed43da383ce",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/error_proof/reference.sv": "007f63b8f487e57bd74b0980455132b3260eb95c8d04cea561a5e4381b6358bc",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/error_proof/model.sv": "63d4da2bbf9ad19fb31c95bc9fe2fbad436f1430839c4e9d0d3b7262cea1c1ad",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_im2col_error_operation_select.sv": "379becfb4cdbcffe0cf4b059646e7a5f609c2ff5c0084c88a1671eb872577767"
+  },
+  "formal": [
+    {
+      "synthesis": false,
+      "passed": true,
+      "outputs": 2,
+      "log_sha256": "5fbfdb144fa0b1b6b6d634674798ee26c810e2de4b40f01fbbe9f2afba6e7d81"
+    },
+    {
+      "synthesis": true,
+      "passed": true,
+      "outputs": 2,
+      "log_sha256": "1034a3ac416a04aa48cfda2078177ec1b60e08460228228de71c048a6b63d50f"
+    }
+  ],
+  "four_state": {
+    "passed": true,
+    "checks": 262216,
+    "log_sha256": "960d532582ed801fbc147839f5488323d9c60f360dfd6d56a24e4af71347197a"
+  }
+}

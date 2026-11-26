@@ -1,0 +1,71 @@
+{
+  "passed": true,
+  "input_assumptions": [],
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/conv_stream_format_range.sv": "14b214583ca257df9a55ae9abcfabffe650a695e86d6e278979214629b205569",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/format_proof/range1.sv": "1655e3dac350509dacee9eaf287ab3794536153d37a391457e30548240fd9c3f",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/format_proof/range4.sv": "f76f55701e667f39b793d4e157ed91218cef0b1378d6540ba39b19df4e47de56",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/format_proof/range8.sv": "e4786c2cd91167c24f3cf461c55cd3f8becb343746ce931b97f37d80db58417b",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/format_proof/range16.sv": "311fc30f03f8c6a6b577f2cc70561599019787269ad82bd9d7bb7977bd61271c",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/phase17_candidate/format_proof/range33.sv": "4f4445327846015a56232309a467234749a57e55b1a39a4be5eeff8eb49bb8a2"
+  },
+  "formal": [
+    {
+      "lanes": 1,
+      "passed": true,
+      "log_sha256": "a709a389a7f4489f22b583c41b551d133c828c9eee69a2e828eeaad5b31e3112"
+    },
+    {
+      "lanes": 4,
+      "passed": true,
+      "log_sha256": "e04063f82cb229a603d27b3ecd51f9ad588c6fce69e18bf5349a75933b50e0bb"
+    },
+    {
+      "lanes": 8,
+      "passed": true,
+      "log_sha256": "589a23c0cc3e907973a58841cfe1d05364a8e262266b7d542057f067447ea5ca"
+    },
+    {
+      "lanes": 16,
+      "passed": true,
+      "log_sha256": "b322cf7f0b5deb196283495b883eb84a87238ccee95638c8766b4652577799a2"
+    },
+    {
+      "lanes": 33,
+      "passed": true,
+      "log_sha256": "01fc8c5502d8b14682704d6df366cf7863473e0baa7b874ed0ae7bb7ab1304f4"
+    }
+  ],
+  "four_state": [
+    {
+      "lanes": 1,
+      "passed": true,
+      "checks": 610,
+      "log_sha256": "818e2dc214cb7e880e1e898d8545bc2131936fbcbb75611ff41283205097ac74"
+    },
+    {
+      "lanes": 4,
+      "passed": true,
+      "checks": 1378,
+      "log_sha256": "5e5297faafb80833c9f644574079ee6c5b04d25a2e00a1f3ad82d784fa13e52a"
+    },
+    {
+      "lanes": 8,
+      "passed": true,
+      "checks": 2402,
+      "log_sha256": "39ec8ed65f48883ecb18b792332ee989aa845a27d6916216cf7497e88abf1af8"
+    },
+    {
+      "lanes": 16,
+      "passed": true,
+      "checks": 4450,
+      "log_sha256": "a69ba454b02c34f51115fe6f7a25444407537bad888edbf27ac0911de090fc1d"
+    },
+    {
+      "lanes": 33,
+      "passed": true,
+      "checks": 8802,
+      "log_sha256": "bb2b7d01d8baa4460fadf1dcfb04f6523bd4379607b24ab7f1c8aa6194975538"
+    }
+  ]
+}

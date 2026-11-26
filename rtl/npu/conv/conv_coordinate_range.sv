@@ -6,11 +6,11 @@
 module conv_coordinate_range #(
   parameter int p_width = 35
 ) (
-  input wire logic [p_width-1:0] i_base,
-  input wire logic [p_width-1:0] i_lower,
-  input wire logic [p_width-1:0] i_upper,
-  input wire logic i_block_cross,
-  output logic o_valid
+  input wire logic [p_width-1:0] i_base, // 待检查的模坐标。
+  input wire logic [p_width-1:0] i_lower, // 有效坐标区间的包含下界。
+  input wire logic [p_width-1:0] i_upper, // 有效坐标区间的不包含上界。
+  input wire logic i_block_cross, // 区间两端位于不同的高位分段。
+  output logic o_valid // 待检查坐标位于有效区间。
 );
   localparam int p_high_groups = (p_width - 16 + 2) / 3;
   (* keep = 1 *) logic [1:0][p_high_groups-1:0] high_group_equal;
@@ -50,19 +50,6 @@ module conv_coordinate_range #(
            !(i_base[15:0] < i_lower[15:0]) && (i_base[15:0] < i_upper[15:0]));
     endcase
   end
-endmodule
-
-// 高位分段和低位次序均已归并，跨分段标志只参与五输入的最终选择。
-(* keep_hierarchy = "yes" *)
-module conv_coordinate_range_result (
-  input wire logic i_lower_equal, i_upper_equal,
-  input wire logic i_lower_before, i_upper_before,
-  input wire logic i_block_cross,
-  output logic o_valid
-);
-  assign o_valid = i_block_cross ?
-      ((i_lower_equal && !i_lower_before) || (i_upper_equal && i_upper_before)) :
-      (i_lower_equal && !i_lower_before && i_upper_before);
 endmodule
 
 `default_nettype wire

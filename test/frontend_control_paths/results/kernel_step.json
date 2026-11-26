@@ -1,0 +1,37 @@
+{
+  "passed": true,
+  "input_assumptions": [],
+  "source_sha256": {
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/npu/conv/conv_kernel_step_equal.sv": "93b7f5e3c02da4bf72d625bebf3c4c3f42e51f6631f696d343ab30299dc30e31",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/build/frontend_cleanup/explicit_modes/kernel_step/kernel_step.sv": "efa61a43836518c6cc6d42224aab7c3d914eaa9a929a6f9317b3237f181bef16",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "/workspace/scratch/5bfa47658687/work_frontend_cleanup/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f"
+  },
+  "formal": [
+    {
+      "synthesis": 0,
+      "passed": true,
+      "log_sha256": "2b6d439d132943c74f42ad48feb1a7bc97e4151622590d454f6abc1a974e1eba"
+    },
+    {
+      "synthesis": 1,
+      "passed": true,
+      "log_sha256": "f6c8da27162454c83d808f017fe4c1b1ecb60c2393a592ba9bf15ec01a74f083"
+    }
+  ],
+  "four_state": [
+    {
+      "synthesis": 0,
+      "passed": true,
+      "checks": 9602,
+      "log_sha256": "6541043925a98f5ae92d932be19e43e05b6ba0746f2439a4866eec33fac482dc"
+    },
+    {
+      "synthesis": 1,
+      "passed": true,
+      "checks": 9602,
+      "log_sha256": "6541043925a98f5ae92d932be19e43e05b6ba0746f2439a4866eec33fac482dc"
+    }
+  ]
+}

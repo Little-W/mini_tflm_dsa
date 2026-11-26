@@ -1,0 +1,210 @@
+{
+  "generic": {
+    "passed": true,
+    "reference_ref": "9bd6488c",
+    "inputs_constrained": false,
+    "fpga": false,
+    "primitive_library_sha256": null,
+    "source_sha256": "0e406be7f9961eceb128180158a89a6e0ebfcb2e16d50113fe79f88551fd7754",
+    "reference_sha256": "b41c7b7e0c35bdde8c8d989e9825f366f0baca7838176e8720907d7da31517e6",
+    "runs": [
+      {
+        "ADDR_W": 32,
+        "DATA_W": 32,
+        "SPLIT_GEMM_4K": 0,
+        "passed": true,
+        "equivalent_bits": 858,
+        "log_sha256": "5db045225711d874759385df899e45083f6721a261412de646e70de2df8a3de7"
+      },
+      {
+        "ADDR_W": 32,
+        "DATA_W": 32,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 861,
+        "log_sha256": "20e059f690262871d8484788e30018a8e493c403adc90a791a8ce91975029ec6"
+      },
+      {
+        "ADDR_W": 32,
+        "DATA_W": 64,
+        "SPLIT_GEMM_4K": 0,
+        "passed": true,
+        "equivalent_bits": 994,
+        "log_sha256": "aa31239ca4126af551bbef091a916229f3e5ded4176de3d06cca2dd6f7cfb4b4"
+      },
+      {
+        "ADDR_W": 32,
+        "DATA_W": 64,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 997,
+        "log_sha256": "259a4301af884c2a6453ac482a78b6a161eb369f16c190930c90c9cc0a87b754"
+      },
+      {
+        "ADDR_W": 16,
+        "DATA_W": 16,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 737,
+        "log_sha256": "82777a5c19ccea16c184be11f94ad88e7e26bc560828f9354e27b3d4606a93bc"
+      },
+      {
+        "ADDR_W": 33,
+        "DATA_W": 128,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 1268,
+        "log_sha256": "c92224106cee572f2a9c9fd75bbc4b25e405f4fad0be20d90e377e8efc8e0228"
+      },
+      {
+        "ADDR_W": 40,
+        "DATA_W": 256,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 1841,
+        "log_sha256": "37a07f9e999a732062dd14a0d30e882cfb92969d29a5606316096c422e2d691f"
+      }
+    ]
+  },
+  "fpga": {
+    "passed": true,
+    "reference_ref": "9bd6488c",
+    "inputs_constrained": false,
+    "fpga": true,
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "source_sha256": "0e406be7f9961eceb128180158a89a6e0ebfcb2e16d50113fe79f88551fd7754",
+    "reference_sha256": "b41c7b7e0c35bdde8c8d989e9825f366f0baca7838176e8720907d7da31517e6",
+    "runs": [
+      {
+        "ADDR_W": 32,
+        "DATA_W": 32,
+        "SPLIT_GEMM_4K": 0,
+        "passed": true,
+        "equivalent_bits": 858,
+        "log_sha256": "8f08afbc62c32a3f5e42b74f23d7b5d2fdc0bc66b80a61032c61c53377ab5e70"
+      },
+      {
+        "ADDR_W": 32,
+        "DATA_W": 32,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 861,
+        "log_sha256": "4fe842a1c1f06b401d088db4c9e5132373719de35cab0f3ce5247fa93bedec0f"
+      },
+      {
+        "ADDR_W": 32,
+        "DATA_W": 64,
+        "SPLIT_GEMM_4K": 0,
+        "passed": true,
+        "equivalent_bits": 994,
+        "log_sha256": "d1cfd0273e881bb75aca4e61769d5ca0284e137c1b9f99ccd43cf78b64d87217"
+      },
+      {
+        "ADDR_W": 32,
+        "DATA_W": 64,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 997,
+        "log_sha256": "258d0359255a80dafdbcf7058961a6e7ac6fa7abbf7947102e2ff6a286f501f1"
+      },
+      {
+        "ADDR_W": 16,
+        "DATA_W": 16,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 737,
+        "log_sha256": "5320a7cfca62a25d0aec2025c52bda1744c47492e52917bedea9703b8b3545ab"
+      },
+      {
+        "ADDR_W": 33,
+        "DATA_W": 128,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 1268,
+        "log_sha256": "e2bca3211e2ad9ec25e0e06e9607b02ea9aa4daa3bdb7ffa72ccb9e08cde0109"
+      },
+      {
+        "ADDR_W": 40,
+        "DATA_W": 256,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 1841,
+        "log_sha256": "eeb0ab9e67fe547b73761ef5737dd1469d74c654cdc319dc26f53152c0db1878"
+      }
+    ]
+  },
+  "four_state": {
+    "passed": true,
+    "source_sha256": "0e406be7f9961eceb128180158a89a6e0ebfcb2e16d50113fe79f88551fd7754",
+    "reference_sha256": "b41c7b7e0c35bdde8c8d989e9825f366f0baca7838176e8720907d7da31517e6",
+    "test_sha256": "7b8a2da693cb9a61a814446a49096e692822b41dd79df1f32f287bd6e5aed7e3",
+    "testbench_sha256": "57a300efb1bfddcec127a73d7d1245c52197e42ca2c9839d1c975b04f396919c",
+    "log_sha256": "fc3248015d12a9162f6826a761032751e285b92bd449ecfcec6b476f7dfad3a5",
+    "cycles": 20000,
+    "configurations": 4,
+    "strict_four_state": true,
+    "simulation_type_conversion": "same-width logic state and identical enumeration values"
+  },
+  "protocol": {
+    "scope": "production conv_axi_read_guard standalone RTL",
+    "simulator": "rev vUNKNOWN-built20260516-4e853d8",
+    "status": "PASS",
+    "command": [
+      "/workspace/scratch/5bfa47658687/task_tools/bin/verilator",
+      "--binary",
+      "--timing",
+      "--assert",
+      "-DNPU_SIM_ASSERT",
+      "-Wall",
+      "-Wno-fatal",
+      "--top-module",
+      "tb_conv_axi_read_guard",
+      "--Mdir",
+      "/tmp/conv_guard_n1isofde",
+      "-j",
+      "2",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/conv/conv_axi_read_guard.sv",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/conv/conv_guard_page_boundary.sv",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/conv/conv_guard_read_valid.sv",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/unsigned_compare.sv",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_high_group.sv",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_native_differences.sv",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_native_sums.sv",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/zero_reduce.sv"
+    ],
+    "warnings": [
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:41:35: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:41:46: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:41:57: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:41:68: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:64:19: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:64:30: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:64:53: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:64:77: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:69:17: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:69:49: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:70:35: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:77:75: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:91:21: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:91:49: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:91:74: Blocking assignment '=' in sequential logic process",
+      "%Warning-BLKSEQ: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:92:43: Blocking assignment '=' in sequential logic process",
+      "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:24:44: Procedural assignment to declaration with initial value: 'responses'",
+      "%Warning-PROCASSINIT: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:24:62: Procedural assignment to declaration with initial value: 'error_responses'",
+      "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/conv/conv_axi_read_guard.sv:202:11: Signal is not used: 'parallel_read_valid'",
+      "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/unsigned_compare.sv:8:19: Parameter is not used: 'p_split_compare'",
+      "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv:9:28: Parameter is not used: 'p_carry_select_width'",
+      "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv:10:28: Parameter is not used: 'p_dsp_split_width'",
+      "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv:11:19: Parameter is not used: 'p_parallel_high_prefix'",
+      "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv:12:19: Parameter is not used: 'p_keep_carry'",
+      "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv:13:19: Parameter is not used: 'p_preserve_grouped_unknowns'",
+      "%Warning-UNUSEDPARAM: /workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv:14:19: Parameter is not used: 'p_direct_subtract'",
+      "%Warning-UNUSEDSIGNAL: /workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/conv/conv_guard_page_boundary.sv:12:47: Bits of signal are not used: 'page_propagate'[0]",
+      "%Warning-SYNCASYNCNET: /workspace/scratch/5bfa47658687/mini_tflm_dsa/test/conv_guard/tb_conv_axi_read_guard.sv:5:9: Signal flopped as both synchronous and async: 'tb_conv_axi_read_guard.rst_n'"
+    ],
+    "summary": "CONV_READ_GUARD_PASS commands=10 responses=46 error_responses=2 read_bytes=119 bursts=32 cycles=275"
+  },
+  "passed": true
+}
