@@ -1,0 +1,153 @@
+{
+  "passed": true,
+  "control": {
+    "passed": true,
+    "reference": "d7cb67be",
+    "source_sha256": {
+      "rtl/npu/loaders/kernel_loader_ctrl.sv": "c5cab31b3a1c1ba9d8ab78dac47c6bfae142e27e08a94fbe01bd92e0421c9531",
+      "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+      "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+      "rtl/common/increment_equal.sv": "5502c1cab338162650019b5c01ff3a803044814f352e37e16ae63640612d56a0",
+      "rtl/npu/loaders/kernel_completion_check.sv": "f05f544b5d28c92ae0c4d273d712e5ecdc476a7f144540a9b96e5d8bfdbee2b3",
+      "rtl/npu/loaders/kernel_count_increment.sv": "73a658769d015cfb43e8fc4c9e0324e642d06749dbea96e73d806716853d6f3a",
+      "rtl/npu/loaders/kernel_count_next_reaches.sv": "2113ca8e0e2214b6270110a90a4e95489162e0b4e7b6cc52d043fe2e2742ec13",
+      "rtl/npu/loaders/kernel_group_step.sv": "ee78b744211eabed6cda08903424ea6afb1e57b6b13c6a3556bf014670fb2e7b",
+      "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+      "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+      "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+      "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+      "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+      "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+      "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+      "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+      "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+    },
+    "inputs_constrained": false,
+    "all_public_outputs_and_common_state_compared": true,
+    "formal": [
+      {
+        "size": 4,
+        "count_width": 4,
+        "synthesis": false,
+        "passed": true,
+        "proven_points": 3154,
+        "log_sha256": "830ccf93a5a8dcc817d3b84c2d2703423a8f9de90071415015f75720b874c79f"
+      },
+      {
+        "size": 4,
+        "count_width": 4,
+        "synthesis": true,
+        "passed": true,
+        "proven_points": 3422,
+        "log_sha256": "038437f59c64710e3eaff6eefb0506342dcef62b112888fd12fca69d084dcd9b"
+      },
+      {
+        "size": 16,
+        "count_width": 16,
+        "synthesis": false,
+        "passed": true,
+        "proven_points": 5879,
+        "log_sha256": "b6e92239711871c399cb87b0f7d50741f393ef1516ddefbf946f764c9709f6b3"
+      },
+      {
+        "size": 16,
+        "count_width": 16,
+        "synthesis": true,
+        "passed": true,
+        "proven_points": 6231,
+        "log_sha256": "44befabbbfddeb283efe1c45a37cea4afe472b0636c3f09d8a531ef9e0aa3a62"
+      },
+      {
+        "size": 16,
+        "count_width": 29,
+        "synthesis": false,
+        "passed": true,
+        "proven_points": 9154,
+        "log_sha256": "6a5224514ee0d7f27cfe9528f08ac3f82f97cde2b6a215952b7ea9aa4b6f4c94"
+      },
+      {
+        "size": 16,
+        "count_width": 29,
+        "synthesis": true,
+        "passed": true,
+        "proven_points": 10155,
+        "log_sha256": "11db1b2bb2a86a091f3e7d167a992bd4976351f065b1c06a183267f97eb5945a"
+      },
+      {
+        "size": 32,
+        "count_width": 32,
+        "synthesis": false,
+        "passed": true,
+        "proven_points": 9842,
+        "log_sha256": "a2e5e45ebc7847b34b21448ce4fd9bef79c2a0a17d502d99869fe0f867fb5246"
+      },
+      {
+        "size": 32,
+        "count_width": 32,
+        "synthesis": true,
+        "passed": true,
+        "proven_points": 10936,
+        "log_sha256": "4a24d41064cdecbe4e1985a2b5a48b81c9851c9e2c52d22d389c40e3d3bd688c"
+      }
+    ],
+    "four_state_combinations": 262144,
+    "four_state_exhaustive": true,
+    "four_state_log_sha256": "26ddf9f57685cb2acfb11402764a7fe68c601fdf1b96c2cb5cfc280594597f7c"
+  },
+  "arithmetic": {
+    "passed": true,
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/loaders/kernel_loader_ctrl.sv": "c5cab31b3a1c1ba9d8ab78dac47c6bfae142e27e08a94fbe01bd92e0421c9531",
+      "/workspace/scratch/5bfa47658687/experiments/kernel_row_address/arithmetic/row_address_proof.sv": "4c9f60e4902d555728d45d0039a208c46af44f0e40c10adffec1de686e7e3000",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+    },
+    "checks": [
+      {
+        "width": 16,
+        "synthesis": false,
+        "four_state_comparisons": 8192,
+        "passed": true,
+        "log_sha256": "a4336f4c77efb8fdf1ba8ac659dda19d4d052828cbfcc378b2c4ae59307068d3"
+      },
+      {
+        "width": 16,
+        "synthesis": true,
+        "four_state_comparisons": 8192,
+        "passed": true,
+        "log_sha256": "ef2e574e61d0afa014cc456160f86ce9cc226ac4365130a19593ad9a2b4d504e"
+      },
+      {
+        "width": 32,
+        "synthesis": false,
+        "four_state_comparisons": 8192,
+        "passed": true,
+        "log_sha256": "8f6d5d317a0f7c46b2bc38a52233595a98a95fdb29b53695574e3110c577dc95"
+      },
+      {
+        "width": 32,
+        "synthesis": true,
+        "four_state_comparisons": 8192,
+        "passed": true,
+        "log_sha256": "46f6906cd88c1d78d43105ad292e05901869e2c90b936c23cd4d7bf23214fbd8"
+      },
+      {
+        "width": 64,
+        "synthesis": false,
+        "four_state_comparisons": 8192,
+        "passed": true,
+        "log_sha256": "8122cd6dd0e37c1057f77e641792c134dd819a7e65d840e8e839693525e5a22c"
+      },
+      {
+        "width": 64,
+        "synthesis": true,
+        "four_state_comparisons": 8192,
+        "passed": true,
+        "log_sha256": "0754c770f08fff0e751143265053d3d4609573b20a0c87635b28d99838a11cec"
+      }
+    ],
+    "four_state_comparisons": 49152
+  }
+}

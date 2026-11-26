@@ -1,0 +1,142 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "rtl/common/increment_equal.sv": "5502c1cab338162650019b5c01ff3a803044814f352e37e16ae63640612d56a0",
+    "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+    "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+    "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f"
+  },
+  "cases": [
+    {
+      "width": 1,
+      "all_input_proof": true,
+      "preserve_pair_modes": [
+        false,
+        true
+      ],
+      "four_state_samples": 16384,
+      "four_state_comparisons": 32768
+    },
+    {
+      "width": 2,
+      "all_input_proof": true,
+      "preserve_pair_modes": [
+        false,
+        true
+      ],
+      "four_state_samples": 16384,
+      "four_state_comparisons": 32768
+    },
+    {
+      "width": 3,
+      "all_input_proof": true,
+      "preserve_pair_modes": [
+        false,
+        true
+      ],
+      "four_state_samples": 16384,
+      "four_state_comparisons": 32768
+    },
+    {
+      "width": 4,
+      "all_input_proof": true,
+      "preserve_pair_modes": [
+        false,
+        true
+      ],
+      "four_state_samples": 16384,
+      "four_state_comparisons": 32768
+    },
+    {
+      "width": 5,
+      "all_input_proof": true,
+      "preserve_pair_modes": [
+        false,
+        true
+      ],
+      "four_state_samples": 16384,
+      "four_state_comparisons": 32768
+    },
+    {
+      "width": 6,
+      "all_input_proof": true,
+      "preserve_pair_modes": [
+        false,
+        true
+      ],
+      "four_state_samples": 16384,
+      "four_state_comparisons": 32768
+    },
+    {
+      "width": 8,
+      "all_input_proof": true,
+      "preserve_pair_modes": [
+        false,
+        true
+      ],
+      "four_state_samples": 16384,
+      "four_state_comparisons": 32768
+    },
+    {
+      "width": 11,
+      "all_input_proof": true,
+      "preserve_pair_modes": [
+        false,
+        true
+      ],
+      "four_state_samples": 16384,
+      "four_state_comparisons": 32768
+    },
+    {
+      "width": 16,
+      "all_input_proof": true,
+      "preserve_pair_modes": [
+        false,
+        true
+      ],
+      "four_state_samples": 16384,
+      "four_state_comparisons": 32768
+    },
+    {
+      "width": 17,
+      "all_input_proof": true,
+      "preserve_pair_modes": [
+        false,
+        true
+      ],
+      "four_state_samples": 16384,
+      "four_state_comparisons": 32768
+    },
+    {
+      "width": 29,
+      "all_input_proof": true,
+      "preserve_pair_modes": [
+        false,
+        true
+      ],
+      "four_state_samples": 16384,
+      "four_state_comparisons": 32768
+    },
+    {
+      "width": 32,
+      "all_input_proof": true,
+      "preserve_pair_modes": [
+        false,
+        true
+      ],
+      "four_state_samples": 16384,
+      "four_state_comparisons": 32768
+    },
+    {
+      "width": 64,
+      "all_input_proof": true,
+      "preserve_pair_modes": [
+        false,
+        true
+      ],
+      "four_state_samples": 16384,
+      "four_state_comparisons": 32768
+    }
+  ]
+}

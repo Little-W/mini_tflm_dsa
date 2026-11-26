@@ -6,10 +6,10 @@ module ia_ordered_coordinate_same #(
     parameter int unsigned p_width = 32,
     parameter int unsigned p_low_width = 4
 ) (
-    input  wire logic [p_width-1:0] i_base_a,
-    input  wire logic [p_width-1:0] i_base_b,
-    input  wire logic [p_width-1:0] i_offset,
-    output logic o_equal
+    input  wire logic [p_width-1:0] i_base_a /* 第一组坐标的基值 */,
+    input  wire logic [p_width-1:0] i_base_b /* 第二组坐标的基值 */,
+    input  wire logic [p_width-1:0] i_offset /* 两组坐标共用的偏移量 */,
+    output logic o_equal /* 两个坐标和去掉低位后相同 */
 );
     localparam int unsigned p_high_width = p_width - p_low_width;
     logic [1:0] low_carry;
@@ -34,14 +34,19 @@ module ia_ordered_coordinate_same #(
 
     assign high_equal[0] = i_base_a[p_width-1:p_low_width] ==
         i_base_b[p_width-1:p_low_width];
-    add_equal #(.p_width(p_high_width)) u_a_advanced (
-        .i_a(i_base_a[p_width-1:p_low_width]), .i_b(p_high_width'(0)),
-        .i_target(i_base_b[p_width-1:p_low_width]), .i_carry_in(1'b1),
+    // 相邻高位只增加一个单位，分组检查逐位翻转关系和进位连续性。
+    increment_equal #(
+        .p_width(p_high_width), .p_preserve_pairs(1'b1), .p_reduce_group_width(6)
+    ) u_a_advanced (
+        .i_a(i_base_a[p_width-1:p_low_width]),
+        .i_target(i_base_b[p_width-1:p_low_width]),
         .o_equal(high_equal[1])
     );
-    add_equal #(.p_width(p_high_width)) u_b_advanced (
-        .i_a(i_base_b[p_width-1:p_low_width]), .i_b(p_high_width'(0)),
-        .i_target(i_base_a[p_width-1:p_low_width]), .i_carry_in(1'b1),
+    increment_equal #(
+        .p_width(p_high_width), .p_preserve_pairs(1'b1), .p_reduce_group_width(6)
+    ) u_b_advanced (
+        .i_a(i_base_b[p_width-1:p_low_width]),
+        .i_target(i_base_a[p_width-1:p_low_width]),
         .o_equal(high_equal[2])
     );
     assign coordinate_equal = (low_carry[0] == low_carry[1]) ? high_equal[0] :

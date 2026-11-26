@@ -1,4 +1,4 @@
-// 两个数据银行保存偏置分组，命中时复用驻留数据，未命中时请求 DMA 装载。
+// 两个数据存储体保存偏置分组，命中时复用驻留数据，未命中时请求 DMA 装载。
 
 module bias_loader_ctrl #(
     parameter int unsigned SIZE      = 8,
@@ -7,40 +7,40 @@ module bias_loader_ctrl #(
     parameter int unsigned COUNT_WIDTH = REG_WIDTH,
     parameter int unsigned GROUP_BLOCKS_MAX = 1
 ) (
-    input  logic clk,
-    input  logic rst_n,
+    input  logic clk /* 工作时钟 */,
+    input  logic rst_n /* 低有效复位 */,
 
-    input  logic                 init_cfg,
-    input  logic [REG_WIDTH-1:0] bias_base,
-    input  logic [REG_WIDTH-1:0] m,
-    input  logic [REG_WIDTH-1:0] bias_step_blocks,
-    input  logic                 bias_switch,
-    input  logic                 bias_last_loop,
+    input  logic                 init_cfg /* 接收任务参数并初始化当前模块 */,
+    input  logic [REG_WIDTH-1:0] bias_base /* 偏置数组的首字节地址，零表示不使用偏置 */,
+    input  logic [REG_WIDTH-1:0] m /* 输出矩阵列数 */,
+    input  logic [REG_WIDTH-1:0] bias_step_blocks /* 每次偏置切换前进的偏置块数 */,
+    input  logic                 bias_switch /* 切换到下一偏置分组 */,
+    input  logic                 bias_last_loop /* 当前任务已进入最后一个偏置复用循环 */,
 
-    output logic                 load_bias_req,
-    input  logic                 load_bias_granted,
+    output logic                 load_bias_req /* 请求共享 DMA 装载偏置分组 */,
+    input  logic                 load_bias_granted /* 偏置装载请求已获得共享 DMA 授予 */,
 
-    input  logic                 dma_busy,
-    input  logic                 dma_done,
-    input  logic                 load_block_valid,
-    input  logic                 load_block_bank,
+    input  logic                 dma_busy /* DMA 接口：块传输正在执行 */,
+    input  logic                 dma_done /* DMA 接口：本次块传输完成 */,
+    input  logic                 load_block_valid /* 缓冲区确认一个偏置块已经写入完成 */,
+    input  logic                 load_block_bank /* 已写入完成偏置块所属的存储体 */,
 
-    output logic                 dma_start,
-    output logic [REG_WIDTH-1:0] dma_base_addr,
-    output logic [REG_WIDTH-1:0] dma_rows_to_read,
-    output logic [7:0]           dma_burst_len_m1,
-    output logic [COUNT_WIDTH-1:0] dma_row_offset,
-    output logic                 load_group_done,
-    output logic                 load_bank,
+    output logic                 dma_start /* DMA 接口：启动本次块传输 */,
+    output logic [REG_WIDTH-1:0] dma_base_addr /* DMA 接口：本次传输的首字节地址 */,
+    output logic [REG_WIDTH-1:0] dma_rows_to_read /* DMA 接口：本次块传输的行数 */,
+    output logic [7:0]           dma_burst_len_m1 /* DMA 接口：每行突发传输拍数减一 */,
+    output logic [COUNT_WIDTH-1:0] dma_row_offset /* 当前 DMA 数据在目标偏置分组内的行偏移 */,
+    output logic                 load_group_done /* 目标偏置分组的全部块装载完成 */,
+    output logic                 load_bank /* 当前 DMA 装载写入的偏置存储体 */,
 
-    output logic [COUNT_WIDTH-1:0] current_block_idx,
-    output logic [COUNT_WIDTH-1:0] load_block_idx,
-    output logic [COUNT_WIDTH-1:0] group_blocks_needed,
-    output logic [COUNT_WIDTH-1:0] o_current_block_idx_nxt,
-    output logic [COUNT_WIDTH-1:0] o_group_blocks_needed_nxt,
-    output logic [COUNT_WIDTH-1:0] load_blocks_count,
-    output logic                 active_bank,
-    output logic                 switch_pending
+    output logic [COUNT_WIDTH-1:0] current_block_idx /* 当前正在使用的偏置分组起始块编号 */,
+    output logic [COUNT_WIDTH-1:0] load_block_idx /* 当前正在装载的偏置块编号 */,
+    output logic [COUNT_WIDTH-1:0] group_blocks_needed /* 当前偏置分组实际需要的块数 */,
+    output logic [COUNT_WIDTH-1:0] o_current_block_idx_nxt /* 偏置分组切换后的起始块编号 */,
+    output logic [COUNT_WIDTH-1:0] o_group_blocks_needed_nxt /* 下一偏置分组实际需要的块数 */,
+    output logic [COUNT_WIDTH-1:0] load_blocks_count /* 本次装载已完成的偏置块数 */,
+    output logic                 active_bank /* 当前供阵列读取的偏置存储体 */,
+    output logic                 switch_pending /* 等待目标偏置分组就绪的切换请求 */
 );
 
   localparam int unsigned SIZE_SHIFT = $clog2(SIZE);
@@ -127,7 +127,7 @@ module bias_loader_ctrl #(
   (* keep_hierarchy = "yes" *)
   parallel_prefix_add #(
       .p_width(p_arithmetic_width), .p_group_width(8), .p_preserve_groups(1'b1),
-      .p_dsp_split_width((p_arithmetic_width+1)/2)
+      .p_dsp_split_width((p_arithmetic_width+1)/2), .p_keep_carry(1'b0)
   ) u_arithmetic (
       .i_a(arithmetic_i_a), .i_b(arithmetic_i_b), .i_carry(arithmetic_i_carry),
       .o_sum(arithmetic_o_sum), .o_carry(arithmetic_o_carry)

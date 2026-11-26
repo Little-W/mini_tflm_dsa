@@ -1,57 +1,57 @@
 
 `default_nettype none
-
+// 按复用分组遍历矩阵分块，生成 DMA 描述符并控制装载与发送顺序。
 module kernel_loader_ctrl #(
     parameter int unsigned SIZE      = 4,
     parameter int unsigned REG_WIDTH = 32,
     parameter int unsigned COUNT_WIDTH = REG_WIDTH
 ) (
-    input  wire logic                        clk,
-    input  wire logic                        rst_n,
-    input  wire logic                        clear = 1'b0,
-    input  wire logic                        cfg_valid,
-    input  wire logic [REG_WIDTH-1:0]        cfg_k,
-    input  wire logic [REG_WIDTH-1:0]        cfg_n,
-    input  wire logic [REG_WIDTH-1:0]        cfg_m,
-    input  wire logic [REG_WIDTH-1:0]        cfg_rhs_base,
-    input  wire logic [REG_WIDTH-1:0]        cfg_rhs_row_stride_b,
-    input  wire logic signed [REG_WIDTH-1:0] cfg_rhs_zp,
-    input  wire logic                        cfg_use_16bits,
-    input  wire logic                        cfg_tile_packed = 1'b0,
-    input  wire logic [REG_WIDTH-1:0]        cfg_ia_reuse_num,
-    input  wire logic [REG_WIDTH-1:0]        cfg_w_reuse_num,
-    input wire logic [REG_WIDTH-1:0] cfg_row_groups,
-    input wire logic [REG_WIDTH-1:0] cfg_row_tail_tiles,
-    input wire logic [REG_WIDTH-1:0] cfg_col_groups,
-    input wire logic [REG_WIDTH-1:0] cfg_col_tail_tiles,
-    input  wire logic                        load_weight_granted,
-    input  wire logic                        send_weight_trigger,
-    input  wire logic                        buf_weight_data_valid,
-    input  wire logic                        buf_weight_sending_done,
-    input  wire logic                        buf_load_ready,
-    input  wire logic                        load_done,
-    output logic                        load_weight_req,
-    output logic                        dma_start,
-    output logic [REG_WIDTH-1:0]        dma_p0,
-    output logic [REG_WIDTH-1:0]        dma_q0,
-    output logic [REG_WIDTH-1:0]        dma_group,
-    output logic [REG_WIDTH-1:0]        dma_tile_base_addr,
-    output logic [REG_WIDTH-1:0]        o_column_group_base,
-    output logic [REG_WIDTH-1:0]        o_column_group_offset,
-    output logic [REG_WIDTH-1:0]        o_address_group_base,
-    output logic [REG_WIDTH-1:0]        o_address_row_offset,
-    output logic [REG_WIDTH-1:0]        o_address_column_offset,
-    output logic                       o_descriptor_update,
-    output logic [REG_WIDTH-1:0]        dma_rows_to_read,
-    output logic [REG_WIDTH-1:0]        dma_row_stride_b,
-    output logic signed [REG_WIDTH-1:0] dma_rhs_zp,
-    output logic                        buf_load_start,
-    output logic                        buf_send_start,
-    output logic [REG_WIDTH-1:0]        dma_valid_cols,
-    output logic                        ctrl_all_done,
-    output logic [REG_WIDTH-1:0]        tile_row_dbg,
-    output logic [REG_WIDTH-1:0]        tile_col_dbg,
-    output logic [REG_WIDTH-1:0]        repeat_dbg
+    input  wire logic                        clk, // 分块调度与地址控制的工作时钟。
+    input  wire logic                        rst_n, // 低有效异步复位。
+    input  wire logic                        clear = 1'b0, // 清除当前分块调度和装载状态。
+    input  wire logic                        cfg_valid, // 新任务的装载配置有效。
+    input  wire logic [REG_WIDTH-1:0]        cfg_k, // 流式维度长度，WS 对应输出行数，IS 对应输出列数。
+    input  wire logic [REG_WIDTH-1:0]        cfg_n, // 装载矩阵的归约维度长度。
+    input  wire logic [REG_WIDTH-1:0]        cfg_m, // 驻留维度长度，WS 对应输出列数，IS 对应输出行数。
+    input  wire logic [REG_WIDTH-1:0]        cfg_rhs_base, // 装载矩阵的外部存储首地址。
+    input  wire logic [REG_WIDTH-1:0]        cfg_rhs_row_stride_b, // 相邻 DMA 行起点之间的字节跨度。
+    input  wire logic signed [REG_WIDTH-1:0] cfg_rhs_zp, // 装载元素需要扣除的有符号量化零点。
+    input  wire logic                        cfg_use_16bits, // 按十六位元素计算地址和传输跨度。
+    input  wire logic                        cfg_tile_packed = 1'b0, // 外部矩阵按完整分块连续存放。
+    input  wire logic [REG_WIDTH-1:0]        cfg_ia_reuse_num, // 一个流式操作数复用组包含的分块数。
+    input  wire logic [REG_WIDTH-1:0]        cfg_w_reuse_num, // 一个驻留操作数复用组包含的分块数。
+    input wire logic [REG_WIDTH-1:0] cfg_row_groups, // 流式维度的分块组数，WS 对应输出行，IS 对应输出列。
+    input wire logic [REG_WIDTH-1:0] cfg_row_tail_tiles, // 最后一个流式维度分组的有效分块数。
+    input wire logic [REG_WIDTH-1:0] cfg_col_groups, // 驻留维度的分块组数，WS 对应输出列，IS 对应输出行。
+    input wire logic [REG_WIDTH-1:0] cfg_col_tail_tiles, // 最后一个驻留维度分组的有效分块数。
+    input  wire logic                        load_weight_granted, // 当前装载请求取得资源授予。
+    input  wire logic                        send_weight_trigger, // 外部请求启动队首权重发送。
+    input  wire logic                        buf_weight_data_valid, // 权重缓冲区已有可发送分块。
+    input  wire logic                        buf_weight_sending_done, // 权重缓冲区完成当前分块发送。
+    input  wire logic                        buf_load_ready, // 权重缓冲区可接受下一分块装载。
+    input  wire logic                        load_done, // 当前需求分块装载完成。
+    output logic                        load_weight_req, // 当前调度项请求装载权重。
+    output logic                        dma_start, // 当前装载请求被授予并启动 DMA。
+    output logic [REG_WIDTH-1:0]        dma_p0, // 当前分块的列位置或图像输出位置起点。
+    output logic [REG_WIDTH-1:0]        dma_q0, // 当前分块的归约位置起点。
+    output logic [REG_WIDTH-1:0]        dma_group, // 当前 DMA 分块所属的流式维度复用组编号。
+    output logic [REG_WIDTH-1:0]        dma_tile_base_addr, // 当前分块的 DMA 起始字节地址。
+    output logic [REG_WIDTH-1:0]        o_column_group_base, // 当前列复用组的起始元素位置。
+    output logic [REG_WIDTH-1:0]        o_column_group_offset, // 当前分块相对列复用组的元素偏移。
+    output logic [REG_WIDTH-1:0]        o_address_group_base, // 当前列复用组的起始字节地址。
+    output logic [REG_WIDTH-1:0]        o_address_row_offset, // 当前归约行分块的字节地址偏移。
+    output logic [REG_WIDTH-1:0]        o_address_column_offset, // 当前列分块在复用组内的字节地址偏移。
+    output logic                       o_descriptor_update, // 当前边沿需要更新分块描述符。
+    output logic [REG_WIDTH-1:0]        dma_rows_to_read, // 当前 DMA 需要读取的矩阵列数或图像位置数。
+    output logic [REG_WIDTH-1:0]        dma_row_stride_b, // 当前 DMA 相邻行起点之间的字节跨度。
+    output logic signed [REG_WIDTH-1:0] dma_rhs_zp, // 当前 DMA 元素需要扣除的有符号零点。
+    output logic                        buf_load_start, // 通知权重缓冲区预留装载槽位。
+    output logic                        buf_send_start, // 通知权重缓冲区开始发送队首分块。
+    output logic [REG_WIDTH-1:0]        dma_valid_cols, // 当前 DMA 每行的有效归约元素数。
+    output logic                        ctrl_all_done, // 当前任务的装载和发送调度全部完成。
+    output logic [REG_WIDTH-1:0]        tile_row_dbg, // 当前装载分块的归约行索引。
+    output logic [REG_WIDTH-1:0]        tile_col_dbg, // 当前装载分块的输出列索引。
+    output logic [REG_WIDTH-1:0]        repeat_dbg // 当前装载分块所属的流式维度复用组编号。
 );
 
   localparam int unsigned SIZE_SHIFT = $clog2(SIZE);
@@ -87,14 +87,15 @@ module kernel_loader_ctrl #(
   count_t cfg_last_m_cols;
   count_t cfg_group_tail_cols;
   count_t cfg_last_group_width;
-  count_t first_group_width;
+  count_t first_group_width, first_tile_width, first_reuse_width;
 
   count_t load_tile_row;
   count_t load_repeat;
   count_t load_l2;
   count_t load_col_in_group;
   count_t group_base_col;
-   count_t load_tile_col;
+  count_t column_position_q, column_position_next;
+  count_t load_tile_col;
   total_count_t loaded_count;
   total_count_t sent_count;
   logic [1:0] pending_loads;
@@ -105,19 +106,19 @@ module kernel_loader_ctrl #(
   total_count_t         issued_count;
   logic                 last_col_in_group;
   logic                 last_tile_row;
-  logic                 last_l2_group;
-  logic                 last_repeat;
+  (* keep = "true" *) logic last_l2_group;
+  (* keep = "true" *) logic last_repeat;
   logic                 final_load_done;
-  logic                 load_complete_after;
+  logic                 sending_completes_task;
   total_count_t issued_count_next;
   localparam int p_issued_part_bits = 6;
   localparam int p_issued_parts = (TOTAL_CNT_W + p_issued_part_bits - 1) / p_issued_part_bits;
   logic [p_issued_parts-1:0] issued_chunk_carry_q;
   localparam int p_issued_levels = $clog2(p_issued_parts);
   logic [p_issued_parts-1:0] issued_prefix [0:p_issued_levels];
-  logic [1:0] remaining_loads, remaining_sends;
-  logic issued_zero, issued_one, loads_wrap, sends_wrap;
-  logic load_count_reached, sent_count_covers_loads;
+  logic issued_zero, issued_one;
+  (* keep = "true" *) logic issued_high_zero;
+  logic load_count_reached;
   count_t w_reuse_total;
   logic [REG_WIDTH-1:0] base_addr_reg;
   logic [REG_WIDTH-1:0] col_addr_step;
@@ -163,24 +164,48 @@ module kernel_loader_ctrl #(
   count_t following_group_width;
   count_t row_last_equal_i_a, row_last_equal_i_b, row_last_equal_i_target;
   logic row_last_equal_i_carry_in;
-  logic row_last_equal_o_equal;
+  (* keep = "true" *) logic row_last_equal_o_equal;
+  logic row_last_four_state, last_row_saved_q;
+  (* keep = "true" *) logic row_two_ahead_equal;
   count_t column_last_equal_i_a, column_last_equal_i_b, column_last_equal_i_c;
   count_t column_last_equal_i_target;
-  logic column_last_equal_o_equal;
+  (* keep = "true" *) logic column_last_equal_o_equal;
+  logic column_last_equal_four_state, column_last_equal_fast;
 
-  logic [REG_WIDTH-1:0] dma_address_sum, dma_address_carry, dma_address_fast, dma_address_next;
-  logic unused_dma_address_carry;
-  // 三个地址分量先压缩，再以三位分组计算进位。
-  assign dma_address_sum = group_base_addr ^ row_addr_offset ^ col_addr_offset;
-  assign dma_address_carry = ((group_base_addr & row_addr_offset) |
-      (group_base_addr & col_addr_offset) | (row_addr_offset & col_addr_offset)) << 1;
-  parallel_prefix_add #(.p_width(REG_WIDTH), .p_group_width(3), .p_preserve_groups(1'b1)) u_dma_address (
-      .i_a(dma_address_sum), .i_b(dma_address_carry), .i_carry(1'b0),
-      .o_sum(dma_address_fast), .o_carry(unused_dma_address_carry)
+  // 列位置与组内索引同时更新，描述符坐标直接读取定宽列位置状态。
+  (* keep_hierarchy = "yes" *)
+  kernel_count_increment #(.p_width(CNT_W)) u_column_position_next (
+      .i_value(column_position_q), .o_next(column_position_next)
   );
   always_comb begin
+    case (^{group_base_col, load_col_in_group})
+      1'b0, 1'b1: load_tile_col = column_position_q;
+      default: load_tile_col = group_base_col + load_col_in_group;
+    endcase
+  end
+
+  logic [REG_WIDTH-1:0] dma_address_next;
+  logic [REG_WIDTH-1:0] row_base_address_q, dma_address_q;
+  logic [REG_WIDTH-1:0] row_base_address_increment, dma_address_increment;
+  // 行起点和当前分块地址随遍历状态同时更新，发出描述符时直接读取完整地址。
+  logic [REG_WIDTH-1:0] row_base_address_fast;
+  logic unused_row_base_address_carry;
+  // 行首地址的两段同时求和，低段进位只参与高段的分组修正。
+  parallel_prefix_add #(.p_width(REG_WIDTH), .p_dsp_split_width(REG_WIDTH/2),
+      .p_preserve_groups(1'b1), .p_parallel_high_prefix(1'b1), .p_keep_carry(1'b0)) u_row_base_next (
+      .i_a(row_base_address_q), .i_b(row_addr_step), .i_carry(1'b0),
+      .o_sum(row_base_address_fast), .o_carry(unused_row_base_address_carry)
+  );
+  always_comb begin
+    case (^{row_base_address_q, row_addr_step})
+      1'b0, 1'b1: row_base_address_increment = row_base_address_fast;
+      default: row_base_address_increment = row_base_address_q + row_addr_step;
+    endcase
+  end
+  assign dma_address_increment = dma_address_q + col_addr_step;
+  always_comb begin
     case (^{group_base_addr, row_addr_offset, col_addr_offset})
-      1'b0, 1'b1: dma_address_next = dma_address_fast;
+      1'b0, 1'b1: dma_address_next = dma_address_q;
       default: dma_address_next = group_base_addr + row_addr_offset + col_addr_offset;
     endcase
   end
@@ -193,9 +218,36 @@ module kernel_loader_ctrl #(
   // 地址和分组递增在接收条件之前并行计算，保留完整模宽。
   assign column_offset_increment = col_addr_offset + col_addr_step;
   assign row_offset_increment = row_addr_offset + row_addr_step;
-  assign group_column_increment = group_base_col + current_group_width;
-  assign group_address_increment = group_base_addr + group_addr_step_q;
+  logic [CNT_W-1:0] group_column_increment_fast;
+  logic unused_group_column_carry;
+  parallel_prefix_add #(.p_width(CNT_W), .p_dsp_split_width(CNT_W/2),
+      .p_preserve_groups(1'b1), .p_parallel_high_prefix(1'b1), .p_keep_carry(1'b0)) u_group_column_next (
+      .i_a(group_base_col), .i_b(current_group_width), .i_carry(1'b0),
+      .o_sum(group_column_increment_fast), .o_carry(unused_group_column_carry)
+  );
+  always_comb begin
+    case (^{group_base_col, current_group_width})
+      1'b0, 1'b1: group_column_increment = group_column_increment_fast;
+      default: group_column_increment = group_base_col + current_group_width;
+    endcase
+  end
+  logic [REG_WIDTH-1:0] group_address_increment_fast;
+  logic unused_group_address_carry;
+  // 分组首地址的高低半段并行求和，低段进位只参与高段结果修正。
+  parallel_prefix_add #(.p_width(REG_WIDTH), .p_dsp_split_width(REG_WIDTH/2),
+      .p_preserve_groups(1'b1), .p_parallel_high_prefix(1'b1), .p_keep_carry(1'b0)) u_group_address_next (
+      .i_a(group_base_addr), .i_b(group_addr_step_q), .i_carry(1'b0),
+      .o_sum(group_address_increment_fast), .o_carry(unused_group_address_carry)
+  );
+  always_comb begin
+    case (^{group_base_addr, group_addr_step_q})
+      1'b0, 1'b1: group_address_increment = group_address_increment_fast;
+      default: group_address_increment = group_base_addr + group_addr_step_q;
+    endcase
+  end
   logic column_value_covers_limit, column_next_equals_limit;
+  logic last_col_saved_q;
+  (* keep = "true" *) logic column_two_ahead_equal;
   logic column_increment_wrap;
   logic column_below_limit, first_group_below_limit, following_group_below_limit;
   logic unused_column_equal, unused_first_group_equal, unused_following_group_equal;
@@ -203,6 +255,10 @@ module kernel_loader_ctrl #(
   count_t following_group_index, following_group_fast;
   logic [2:0][REG_WIDTH-1:0] cfg_dimension, cfg_rounded_fast, cfg_rounded;
   logic [2:0] unused_cfg_round_carry;
+  count_t cfg_normalized_tiles [2];
+  logic [1:0] cfg_single_tile;
+  count_t normalized_n_rows, normalized_m_cols;
+  localparam count_t p_full_valid_count = count_t'(SIZE) == 0 ? count_t'(1) : count_t'(SIZE);
 
   assign cfg_dimension[0] = cfg_n;
   assign cfg_dimension[1] = cfg_m;
@@ -222,6 +278,50 @@ module kernel_loader_ctrl #(
       endcase
     end
   end
+  // 归约维度和驻留维度按完整块数与余数组合取整，零计数统一映射为一个分块。
+  // 最高块数回绕与输入零值的最低结果位直接形成，独立于高位递增的传播路径。
+  for (genvar dimension = 0; dimension < 2; dimension++) begin : g_cfg_normalized_tiles
+    if (SIZE > 1 && SIZE <= 1024 && (SIZE & (SIZE-1)) == 0 &&
+        SIZE_SHIFT < REG_WIDTH && CNT_W > SIZE_SHIFT) begin : g_power_of_two
+      localparam int p_full_width = REG_WIDTH - SIZE_SHIFT;
+      localparam int p_tile_width = CNT_W < p_full_width ? CNT_W : p_full_width;
+      logic [p_tile_width-1:0] full_tiles;
+      logic partial_tile;
+      logic [p_tile_width:0] increment_output;
+      logic [p_tile_width-1:0] normalized_tiles;
+      assign full_tiles = cfg_dimension[dimension][SIZE_SHIFT +: p_tile_width];
+      assign partial_tile = |cfg_dimension[dimension][SIZE_SHIFT-1:0];
+      kernel_count_increment #(.p_width(p_tile_width+1)) u_round_tiles (
+          .i_value({full_tiles, partial_tile}), .o_next(increment_output)
+      );
+      assign normalized_tiles[0] = (full_tiles[0] ^ partial_tile) ||
+          (full_tiles == '0) || (&full_tiles);
+      if (p_tile_width > 1) begin : g_upper_tiles
+        assign normalized_tiles[p_tile_width-1:1] = increment_output[p_tile_width:2];
+      end
+      always_comb begin
+        case (^cfg_dimension[dimension])
+          1'b0, 1'b1: begin
+            cfg_normalized_tiles[dimension] = count_t'(normalized_tiles);
+            cfg_single_tile[dimension] = (full_tiles == '0) ||
+                (full_tiles == p_tile_width'(1) && !partial_tile) || ((&full_tiles) && partial_tile);
+          end
+          default: begin
+            cfg_normalized_tiles[dimension] =
+                divide_rounded_pow2(cfg_rounded[dimension], count_t'(SIZE));
+            if (cfg_normalized_tiles[dimension] == 0) cfg_normalized_tiles[dimension] = count_t'(1);
+            cfg_single_tile[dimension] = cfg_normalized_tiles[dimension] == count_t'(1);
+          end
+        endcase
+      end
+    end else begin : g_general
+      always_comb begin
+        cfg_normalized_tiles[dimension] = divide_rounded_pow2(cfg_rounded[dimension], count_t'(SIZE));
+        if (cfg_normalized_tiles[dimension] == 0) cfg_normalized_tiles[dimension] = count_t'(1);
+        cfg_single_tile[dimension] = cfg_normalized_tiles[dimension] == count_t'(1);
+      end
+    end
+  end
   assign traversal_i_value[0] = load_col_in_group;
   assign traversal_i_value[1] = load_tile_row;
   assign traversal_i_value[2] = load_l2;
@@ -238,16 +338,42 @@ module kernel_loader_ctrl #(
   end
 
   // 列边界并行检查当前值和相邻值，单独保留计数回绕时的无符号比较结果。
-  unsigned_compare #(.p_width(CNT_W)) u_column_limit (
-      .i_a(load_col_in_group), .i_b(current_group_width),
-      .o_less(column_below_limit), .o_equal(unused_column_equal)
+  // 逐字节次序保留未知值传播，已知遍历状态使用同步保存的列尾资格。
+  localparam int p_column_groups = (CNT_W+7)/8;
+  logic [p_column_groups-1:0] column_group_less, column_group_equal, column_group_greater;
+  for (genvar group = 0; group < p_column_groups; group++) begin : g_column_limit
+    localparam int p_first = group*8;
+    localparam int p_bits = CNT_W-p_first < 8 ? CNT_W-p_first : 8;
+    assign column_group_less[group] = load_col_in_group[p_first+:p_bits] < current_group_width[p_first+:p_bits];
+    assign column_group_equal[group] = load_col_in_group[p_first+:p_bits] == current_group_width[p_first+:p_bits];
+    assign column_group_greater[group] = !column_group_less[group] && !column_group_equal[group];
+  end
+  assign column_below_limit = column_group_less > column_group_greater;
+  assign unused_column_equal = &column_group_equal;
+  add_equal #(.p_width(CNT_W), .p_preserve_bits(1'b1)) u_column_two_ahead (
+      .i_a(load_col_in_group), .i_b(count_t'(2)), .i_target(current_group_width),
+      .i_carry_in(1'b0), .o_equal(column_two_ahead_equal)
   );
   assign column_value_covers_limit = !column_below_limit;
 
   // 模宽递增的边界判断并行检查大小、相邻相等和回绕条件。
-  kernel_count_next_reaches #(.p_width(CNT_W)) u_row_limit (
-      .i_value(load_tile_row), .i_limit(tile_rows_total), .o_reaches(last_tile_row)
+  // 行尾资格在行索引更新边沿保存，行位置输出与分组控制共用同一状态。
+  add_equal #(.p_width(CNT_W), .p_preserve_bits(1'b1)) u_row_two_ahead (
+      .i_a(load_tile_row), .i_b(count_t'(2)), .i_target(tile_rows_total),
+      .i_carry_in(1'b0), .o_equal(row_two_ahead_equal)
   );
+  always_comb begin
+    case (^{load_tile_row, tile_rows_total})
+      1'b0, 1'b1: begin
+        last_tile_row = last_row_saved_q;
+        row_last_equal_o_equal = last_row_saved_q;
+      end
+      default: begin
+        last_tile_row = (load_tile_row + count_t'(1)) >= tile_rows_total;
+        row_last_equal_o_equal = row_last_four_state;
+      end
+    endcase
+  end
   kernel_count_next_reaches #(.p_width(CNT_W)) u_group_limit (
       .i_value(load_l2), .i_limit(l2_groups_total), .o_reaches(last_l2_group)
   );
@@ -268,10 +394,58 @@ module kernel_loader_ctrl #(
       default: following_group_index = load_l2 + count_t'(2);
     endcase
   end
-  unsigned_compare #(.p_width(CNT_W)) u_following_group_limit (
-      .i_a(following_group_index), .i_b(l2_groups_total),
-      .o_less(following_group_below_limit), .o_equal(unused_following_group_equal)
+  logic following_value_less, unused_following_value_equal;
+  (* keep = "true" *) logic following_one_equal, following_two_equal;
+  logic following_wrap, following_binary;
+  logic following_one_parallel, following_one_reference;
+  logic [p_column_groups-1:0] following_group_less, following_group_equal, following_group_greater;
+  // 前进两组的范围判断并行比较当前次序和两个相邻边界，最高计数单独处理回绕。
+  unsigned_compare #(.p_width(CNT_W)) u_following_value_limit (
+      .i_a(load_l2), .i_b(l2_groups_total),
+      .o_less(following_value_less), .o_equal(unused_following_value_equal)
   );
+  (* keep_hierarchy = "yes" *) increment_equal #(
+      .p_width(CNT_W), .p_preserve_pairs(1'b1), .p_reduce_group_width(6)
+  ) u_following_one_equal (
+      .i_a(load_l2), .i_target(l2_groups_total), .o_equal(following_one_parallel)
+  );
+  add_equal #(.p_width(CNT_W), .p_preserve_bits(1'b1)) u_following_one_reference (
+      .i_a(load_l2), .i_b(count_t'(1)), .i_target(l2_groups_total),
+      .i_carry_in(1'b0), .o_equal(following_one_reference)
+  );
+  // 已知计数按相邻位分组比较，未知计数保留完整加法比较的四态结果。
+  always_comb begin
+      case (^{load_l2, l2_groups_total})
+          1'b0, 1'b1: following_one_equal = following_one_parallel;
+          default: following_one_equal = following_one_reference;
+      endcase
+  end
+  add_equal #(.p_width(CNT_W), .p_preserve_bits(1'b1)) u_following_two_equal (
+      .i_a(load_l2), .i_b(count_t'(2)), .i_target(l2_groups_total),
+      .i_carry_in(1'b0), .o_equal(following_two_equal)
+  );
+  if (CNT_W > 1) begin : g_following_wrap
+    assign following_wrap = &load_l2[CNT_W-1:1];
+  end else begin : g_single_following_wrap
+    assign following_wrap = 1'b1;
+  end
+  assign following_binary = following_wrap ?
+      (l2_groups_total > count_t'(load_l2[0])) :
+      (following_value_less && !following_one_equal && !following_two_equal);
+  for (genvar group = 0; group < p_column_groups; group++) begin : g_following_four_state
+    localparam int p_first = group*8;
+    localparam int p_bits = CNT_W-p_first < 8 ? CNT_W-p_first : 8;
+    assign following_group_less[group] = following_group_index[p_first+:p_bits] < l2_groups_total[p_first+:p_bits];
+    assign following_group_equal[group] = following_group_index[p_first+:p_bits] == l2_groups_total[p_first+:p_bits];
+    assign following_group_greater[group] = !following_group_less[group] && !following_group_equal[group];
+  end
+  assign unused_following_group_equal = &following_group_equal;
+  always_comb begin
+    case (^{load_l2, l2_groups_total})
+      1'b0, 1'b1: following_group_below_limit = following_binary;
+      default: following_group_below_limit = following_group_less > following_group_greater;
+    endcase
+  end
   add_equal #(.p_width(CNT_W)) u_column_next_equal (
       .i_a(load_col_in_group), .i_b({CNT_W{1'b0}}), .i_target(current_group_width),
       .i_carry_in(1'b1), .o_equal(column_next_equals_limit)
@@ -302,13 +476,11 @@ module kernel_loader_ctrl #(
     ia_reuse_norm = (cfg_ia_reuse_num == 0) ? count_t'(1) : count_t'(cfg_ia_reuse_num);
     w_reuse_norm  = (cfg_w_reuse_num  == 0) ? count_t'(1) : count_t'(cfg_w_reuse_num);
 
-    cfg_tile_rows_total        = divide_rounded_pow2(cfg_rounded[0], count_t'(SIZE));
-    cfg_tile_cols_total        = divide_rounded_pow2(cfg_rounded[1], count_t'(SIZE));
+    cfg_tile_rows_total        = cfg_normalized_tiles[0];
+    cfg_tile_cols_total        = cfg_normalized_tiles[1];
     cfg_output_row_tiles_total = divide_rounded_pow2(cfg_rounded[2], count_t'(SIZE));
     cfg_l2_groups_total = count_t'(cfg_col_groups);
     cfg_repeat_total = count_t'(cfg_row_groups);
-    if (cfg_tile_rows_total == 0) cfg_tile_rows_total = count_t'(1);
-    if (cfg_tile_cols_total == 0) cfg_tile_cols_total = count_t'(1);
     if (cfg_l2_groups_total == 0) cfg_l2_groups_total = count_t'(1);
     if (cfg_repeat_total == 0) cfg_repeat_total = count_t'(1);
 
@@ -320,12 +492,15 @@ module kernel_loader_ctrl #(
     cfg_group_tail_cols = count_t'(cfg_col_tail_tiles);
     cfg_last_group_width = count_t'(cfg_col_tail_tiles);
 
+    first_tile_width = tile_cols_total;
+    first_reuse_width = w_reuse_total;
+    if (first_tile_width == 0) first_tile_width = count_t'(1);
+    if (first_reuse_width == 0) first_reuse_width = count_t'(1);
     if (first_group_below_limit) begin
-      first_group_width = tile_cols_total;
+      first_group_width = first_tile_width;
     end else begin
-      first_group_width = w_reuse_total;
+      first_group_width = first_reuse_width;
     end
-    if (first_group_width == 0) first_group_width = count_t'(1);
 
     if (!following_group_below_limit) begin
       following_group_width = last_group_width;
@@ -333,11 +508,27 @@ module kernel_loader_ctrl #(
       following_group_width = w_reuse_total;
     end
 
-    load_tile_col = group_base_col + load_col_in_group;
-    valid_n_rows = row_last_equal_o_equal ? last_n_rows : count_t'(SIZE);
-    valid_m_cols = column_last_equal_o_equal ? last_m_cols : count_t'(SIZE);
-    if (valid_n_rows == 0) valid_n_rows = count_t'(1);
-    if (valid_m_cols == 0) valid_m_cols = count_t'(1);
+    // 尾项的零值规范化独立完成，晚到的尾部资格只选择完整有效行列数。
+    normalized_n_rows = last_n_rows;
+    normalized_m_cols = last_m_cols;
+    if (normalized_n_rows == 0) normalized_n_rows = count_t'(1);
+    if (normalized_m_cols == 0) normalized_m_cols = count_t'(1);
+    case (row_last_equal_o_equal)
+      1'b0: valid_n_rows = p_full_valid_count;
+      1'b1: valid_n_rows = normalized_n_rows;
+      default: begin
+        valid_n_rows = row_last_equal_o_equal ? last_n_rows : count_t'(SIZE);
+        if (valid_n_rows == 0) valid_n_rows = count_t'(1);
+      end
+    endcase
+    case (column_last_equal_o_equal)
+      1'b0: valid_m_cols = p_full_valid_count;
+      1'b1: valid_m_cols = normalized_m_cols;
+      default: begin
+        valid_m_cols = column_last_equal_o_equal ? last_m_cols : count_t'(SIZE);
+        if (valid_m_cols == 0) valid_m_cols = count_t'(1);
+      end
+    endcase
     elem_bytes = cfg_use_16bits ? REG_WIDTH'(2) : REG_WIDTH'(1);
 
     cfg_col_addr_step = cfg_tile_packed ?
@@ -368,12 +559,14 @@ module kernel_loader_ctrl #(
       endcase
     end
 
-    last_col_in_group = (current_group_width == '0) ||
-        (!column_increment_wrap && (column_value_covers_limit || column_next_equals_limit));
+    case (^{load_col_in_group, current_group_width})
+      1'b0, 1'b1: last_col_in_group = last_col_saved_q;
+      default: last_col_in_group = (current_group_width == '0) ||
+          (!column_increment_wrap && (column_value_covers_limit || column_next_equals_limit));
+    endcase
     final_load_done = load_done && all_loads_issued && load_count_reached;
 
     load_complete = all_loads_done;
-    load_complete_after = all_loads_done || final_load_done;
 
     tile_row_dbg = REG_WIDTH'(load_tile_row);
     tile_col_dbg = REG_WIDTH'(load_tile_col);
@@ -385,10 +578,8 @@ module kernel_loader_ctrl #(
     buf_send_start  = !clear && (state == S_RUN) && send_weight_trigger && buf_weight_data_valid;
     ctrl_all_done   = !clear && (state == S_DONE);
 
-    // W is column-flattened: each DMA "row" is one output column,
-    // and each burst reads contiguous N/K elements from that column.
-    // In IS, this same loader reads image-derived A rows: output positions
-    // replace output channels, while reduction columns keep their direction.
+    // 权重按列展开，每个 DMA 行对应一个输出列，行内读取连续归约元素。
+    // 输入驻留模式复用相同装载顺序，输出位置替代输出通道索引。
     dma_p0            = REG_WIDTH'(load_tile_col) << SIZE_SHIFT;
     dma_q0            = REG_WIDTH'(load_tile_row) << SIZE_SHIFT;
     dma_group         = REG_WIDTH'(load_repeat);
@@ -423,13 +614,26 @@ module kernel_loader_ctrl #(
   add_equal #(.p_width(CNT_W)) u_row_last_equal (
       .i_a(row_last_equal_i_a), .i_b(row_last_equal_i_b),
       .i_target(row_last_equal_i_target), .i_carry_in(row_last_equal_i_carry_in),
-      .o_equal(row_last_equal_o_equal)
+      .o_equal(row_last_four_state)
   );
   add3_equal #(.p_width(CNT_W)) u_column_last_equal (
       .i_a(column_last_equal_i_a), .i_b(column_last_equal_i_b),
       .i_c(column_last_equal_i_c), .i_target(column_last_equal_i_target),
-      .o_equal(column_last_equal_o_equal)
+      .o_equal(column_last_equal_four_state)
   );
+  // 相邻两位共同检查加一关系，完整归并结果独立于尾项和描述符选择。
+  (* keep_hierarchy = "yes" *)
+  (* keep_hierarchy = "yes" *) increment_equal #(.p_width(CNT_W), .p_preserve_pairs(1'b1)) u_saved_column_last_equal (
+      .i_a(column_position_q), .i_target(column_last_equal_i_target),
+      .o_equal(column_last_equal_fast)
+  );
+  // 列尾比较使用完整列位置；未知输入保持三操作数逐位比较的传播规则。
+  always_comb begin
+    case (^{column_last_equal_i_a, column_last_equal_i_b, column_last_equal_i_target})
+      1'b0, 1'b1: column_last_equal_o_equal = column_last_equal_fast;
+      default: column_last_equal_o_equal = column_last_equal_four_state;
+    endcase
+  end
 
   (* keep = "true" *) logic advance_row, advance_group, advance_repeat;
   // 行、分组和重复次数的更新资格独立准备，请求接收只控制寄存使能。
@@ -464,6 +668,8 @@ module kernel_loader_ctrl #(
       all_loads_done      <= 1'b0;
       all_loads_issued    <= 1'b0;
       issued_count       <= '0;
+      last_col_saved_q   <= 1'b1;
+      last_row_saved_q   <= 1'b1;
       tile_rows_total     <= count_t'(1);
       tile_cols_total     <= count_t'(1);
       l2_groups_total     <= count_t'(1);
@@ -478,12 +684,14 @@ module kernel_loader_ctrl #(
       row_addr_step       <= REG_WIDTH'(SIZE);
       group_addr_step_q     <= '0;
       group_base_col      <= '0;
+      column_position_q   <= '0;
       group_base_addr     <= '0;
       row_addr_offset     <= '0;
       col_addr_offset     <= '0;
+      row_base_address_q  <= '0;
+      dma_address_q       <= '0;
     end else if (clear) begin
-      // Configuration invalidates the current traversal. Address registers
-      // remain unused until S_IDLE captures the next descriptor.
+      // 配置清空当前遍历，下一配置接收边沿更新地址与各维度计数。
       state<=S_IDLE;
       load_pending_q<=1'b0;
       all_loads_done<=1'b0;
@@ -502,6 +710,8 @@ module kernel_loader_ctrl #(
             all_loads_done      <= 1'b0;
             all_loads_issued    <= 1'b0;
             issued_count       <= '0;
+            last_col_saved_q   <= 1'b1;
+            last_row_saved_q   <= cfg_single_tile[0];
             tile_rows_total     <= cfg_tile_rows_total;
             tile_cols_total     <= cfg_tile_cols_total;
             l2_groups_total <= cfg_l2_groups_total;
@@ -515,9 +725,12 @@ module kernel_loader_ctrl #(
             col_addr_step       <= cfg_col_addr_step;
             row_addr_step       <= cfg_row_addr_step;
             group_base_col      <= '0;
+            column_position_q   <= '0;
             group_base_addr     <= cfg_rhs_base;
             row_addr_offset     <= '0;
             col_addr_offset     <= '0;
+            row_base_address_q  <= cfg_rhs_base;
+            dma_address_q       <= cfg_rhs_base;
             state               <= S_INIT;
           end
         end
@@ -526,7 +739,12 @@ module kernel_loader_ctrl #(
           // 列步长和复用次数已在配置接受边沿保存，此周期计算分组步长。
           group_addr_step_q   <= group_addr_step_next;
           current_group_width <= first_group_width;
+          last_col_saved_q <= first_group_below_limit ?
+              tile_cols_total <= count_t'(1) : w_reuse_total <= count_t'(1);
           group_base_addr     <= base_addr_reg;
+          column_position_q   <= '0;
+          row_base_address_q  <= base_addr_reg;
+          dma_address_q       <= base_addr_reg;
           state               <= S_RUN;
           // 进入运行状态时保存待发资格，接收处直接读取这一位状态。
           load_pending_q      <= !all_loads_issued;
@@ -557,17 +775,26 @@ module kernel_loader_ctrl #(
             end
             if (!last_col_in_group) begin
               load_col_in_group <= traversal_o_next[0];
+              column_position_q <= column_position_next;
+              last_col_saved_q <= column_two_ahead_equal;
               col_addr_offset <= column_offset_increment;
+              dma_address_q <= dma_address_increment;
             end else begin
               load_col_in_group <= '0;
+              column_position_q <= group_base_col;
+              last_col_saved_q <= current_group_width <= count_t'(1);
               col_addr_offset <= '0;
             end
             if (advance_row) begin
               if (!last_tile_row) begin
                 load_tile_row <= traversal_o_next[1];
+                last_row_saved_q <= row_two_ahead_equal;
                 row_addr_offset <= row_offset_increment;
+                row_base_address_q <= row_base_address_increment;
+                dma_address_q <= row_base_address_increment;
               end else begin
                 load_tile_row <= '0;
+                last_row_saved_q <= tile_rows_total == count_t'(1);
                 row_addr_offset <= '0;
               end
             end
@@ -575,13 +802,23 @@ module kernel_loader_ctrl #(
               if (!last_l2_group) begin
                 load_l2 <= traversal_o_next[2];
                 group_base_col <= group_column_increment;
+                column_position_q <= group_column_increment;
                 current_group_width <= following_group_width;
+                last_col_saved_q <= following_group_below_limit ?
+                    w_reuse_total <= count_t'(1) : last_group_width <= count_t'(1);
                 group_base_addr <= group_address_increment;
+                row_base_address_q <= group_address_increment;
+                dma_address_q <= group_address_increment;
               end else begin
                 load_l2 <= '0;
                 group_base_col <= '0;
+                column_position_q <= '0;
                 current_group_width <= first_group_width;
+                last_col_saved_q <= first_group_below_limit ?
+              tile_cols_total <= count_t'(1) : w_reuse_total <= count_t'(1);
                 group_base_addr <= base_addr_reg;
+                row_base_address_q <= base_addr_reg;
+                dma_address_q <= base_addr_reg;
               end
             end
             if (advance_repeat) begin
@@ -590,7 +827,7 @@ module kernel_loader_ctrl #(
           end
 
           if (buf_weight_sending_done) begin
-            if (load_complete_after && sent_count_covers_loads) begin
+            if (sending_completes_task) begin
               state <= S_DONE;
               load_pending_q <= 1'b0;
             end
@@ -665,49 +902,21 @@ module kernel_loader_ctrl #(
   end
 
   // 比较完整无符号计数时，同时处理低端回绕后的大小关系。
-  assign issued_zero = issued_count == '0;
-  assign issued_one = issued_count == total_count_t'(1);
-  assign remaining_loads = pending_loads - 2'(load_done);
-  assign remaining_sends = pending_sends - 2'd1;
-  assign loads_wrap = (remaining_loads != 0 && issued_zero) ||
-      (remaining_loads == 2 && issued_one);
-  assign sends_wrap = (remaining_sends != 0 && issued_zero) ||
-      (remaining_sends == 2 && issued_one);
+  // 零值和单次发出状态共用高位归零条件，最低位在完成控制末端参与区分。
+  // 完整发出计数的高位零值独立归并，再参与有界计数的回绕检查。
+  zero_reduce #(.p_width(TOTAL_CNT_W-1)) u_issued_high_zero (
+      .i_value(issued_count[TOTAL_CNT_W-1:1]), .o_zero(issued_high_zero)
+  );
+  assign issued_zero = issued_high_zero && !issued_count[0];
+  assign issued_one = issued_high_zero && issued_count[0];
   assign load_count_reached = pending_loads == 1 || (pending_loads == 2 && issued_zero);
-  assign sent_count_covers_loads = (sends_wrap != loads_wrap) ? sends_wrap :
-      (remaining_sends <= remaining_loads);
+  kernel_completion_check u_completion (
+      .i_pending_loads(pending_loads), .i_pending_sends(pending_sends),
+      .i_issued_zero(issued_zero), .i_issued_one(issued_one),
+      .i_all_loads_done(all_loads_done), .i_all_loads_issued(all_loads_issued),
+      .i_load_done(load_done), .o_complete(sending_completes_task)
+  );
 
-endmodule
-
-
-// 规格化系数与定宽乘积构成完整组合函数，综合工具推断乘法资源。
-(* keep_hierarchy = "yes" *)
-module kernel_group_step #(
-    parameter int unsigned p_width = 32,
-    parameter int unsigned p_count_width = 29
-) (
-    input wire logic [p_width-1:0] i_step,
-    input wire logic [p_count_width-1:0] i_reuse,
-    (* use_dsp = "yes" *) output logic [p_width-1:0] o_product
-);
-    logic [10:0] factor;
-    always_comb begin
-        case (i_reuse)
-            p_count_width'(2): factor = 11'd2;
-            p_count_width'(4): factor = 11'd4;
-            p_count_width'(8): factor = 11'd8;
-            p_count_width'(16): factor = 11'd16;
-            p_count_width'(25): factor = 11'd25;
-            p_count_width'(32): factor = 11'd32;
-            p_count_width'(64): factor = 11'd64;
-            p_count_width'(128): factor = 11'd128;
-            p_count_width'(256): factor = 11'd256;
-            p_count_width'(512): factor = 11'd512;
-            p_count_width'(1024): factor = 11'd1024;
-            default: factor = 11'd1;
-        endcase
-    end
-    assign o_product = i_step * factor;
 endmodule
 
 `default_nettype wire

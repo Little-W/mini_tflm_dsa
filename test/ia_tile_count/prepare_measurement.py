@@ -32,7 +32,7 @@ endmodule
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--reference-ref", default="18ce45a8")
+    parser.add_argument("--reference-ref", default="1470a963")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     out = args.out.resolve()

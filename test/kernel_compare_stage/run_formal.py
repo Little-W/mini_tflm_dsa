@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import runpy
 import shlex
 import subprocess
 import sys
@@ -58,7 +59,9 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    hashes = {path: digest(ROOT / path) for path in SOURCE_PATHS}
+    resolve = runpy.run_path(str(ROOT / 'scripts/rtl/source_files.py'))['with_dependencies']
+    sources = resolve([ROOT / path for path in SOURCE_PATHS], ROOT)
+    hashes = {str(path.relative_to(ROOT)): digest(path) for path in sources}
     tb = (ROOT / 'test/kernel_prefetch/tb.sv').read_text()
     tb = tb.replace('kernel_prefetch_tb', 'kernel_compare_proof')
     tb = tb.replace('input logic clk,rst_n,init_cfg', 'input logic clk,requested_rst_n,init_cfg')
@@ -75,16 +78,15 @@ def main():
         script = folder / 'elaborate.ys'
         script.write_text('read_slang -D ASIC_SYNTHESIS=1 --top kernel_compare_proof '
                           f'-GCOUNT_WIDTH={count_width} -GBUS_WIDTH={bus_width} ' +
-                          ' '.join(shlex.quote(str(path)) for path in [wrapper] + [ROOT / p for p in SOURCE_PATHS]) +
-                          '\nprep -top kernel_compare_proof -flatten\nwrite_json ' + shlex.quote(str(design_path)) + '\n')
+                          ' '.join(shlex.quote(str(path)) for path in [wrapper] + sources) +
+                          '\nsetattr -mod -unset keep_hierarchy\nsetattr -unset keep_hierarchy\n'
+                          'prep -top kernel_compare_proof -flatten\nwrite_json ' + shlex.quote(str(design_path)) + '\n')
         run_worker(script, folder / 'elaborate.log')
         design = json.loads(design_path.read_text())
         module = design['modules']['kernel_compare_proof']
         module['ports'] = {name: value for name, value in module['ports'].items()
                            if value['direction'] == 'input' or name in ('comparison_stable', 'pending_visible')}
-        cuts = ['dut.comparison_equal', 'dut.u_ctrl.load_count_reached', 'dut.u_ctrl.sent_count_covers_loads',
-                'dut.u_ctrl.last_col_in_group', 'dut.u_ctrl.last_tile_row',
-                'dut.u_ctrl.last_l2_group', 'dut.u_ctrl.last_repeat']
+        cuts = ['dut.comparison_equal']
         next_bit = max(bit for net in module['netnames'].values() for bit in net['bits'] if isinstance(bit, int)) + 1
         for name in cuts:
             bits = module['netnames'][name]['bits']
@@ -116,7 +118,7 @@ def main():
                         'control_overapproximations': cuts, 'source_input_constraints': False,
                         'log_sha256': digest(proof_log), 'model_sha256': digest(model_path)})
         print(json.dumps(reports[-1]), flush=True)
-    if hashes != {path: digest(ROOT / path) for path in SOURCE_PATHS}:
+    if hashes != {str(path.relative_to(ROOT)): digest(path) for path in sources}:
         raise RuntimeError('RTL source changed during proof')
     report = {'passed': True, 'source_sha256': hashes, 'profiles': reports,
               'comparison_input_bits': 678,

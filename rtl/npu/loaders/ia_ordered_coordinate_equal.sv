@@ -6,10 +6,10 @@ module ia_ordered_coordinate_equal #(
     parameter int unsigned p_width = 32,
     parameter int unsigned p_low_width = 4
 ) (
-    input  wire logic [p_width-1:0] i_a,
-    input  wire logic [p_width-1:0] i_b,
-    input  wire logic [p_width-p_low_width-1:0] i_target,
-    output logic o_equal
+    input  wire logic [p_width-1:0] i_a /* 待比较坐标加法的第一个操作数 */,
+    input  wire logic [p_width-1:0] i_b /* 待比较坐标加法的第二个操作数 */,
+    input  wire logic [p_width-p_low_width-1:0] i_target /* 坐标和去掉低位后的目标值 */,
+    output logic o_equal /* 坐标和的高位与目标值相同 */
 );
     localparam int unsigned p_high_width = p_width - p_low_width;
     logic carry_in;

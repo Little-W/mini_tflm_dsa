@@ -49,6 +49,8 @@ def main():
             nettype = dtype.replace("logic", "wire", 1)
             lines.append(f"  {nettype} {name} {dimensions}, ref_{name} {dimensions};\n")
     lines += ["  logic [COUNT_WIDTH-1:0] column_group, column_offset;\n",
+              "  wire [COUNT_WIDTH-1:0] column_position = column_group + column_offset;\n",
+              "  wire column_last = COUNT_WIDTH'(column_offset + COUNT_WIDTH'(1)) >= dut.u_ctrl.current_group_width;\n",
               "  logic [REG_WIDTH-1:0] position_base;\n",
               "  integer checked_cycles = 0, known_positions = 0;\n"]
     for module, instance, prefix in (("kernel_loader", "dut", ""),
@@ -102,6 +104,9 @@ def main():
               "        force reference_loader.u_ctrl.group_base_col = column_group;\n",
               "        force dut.u_ctrl.load_col_in_group = column_offset;\n",
               "        force reference_loader.u_ctrl.load_col_in_group = column_offset;\n",
+              # 列位置状态与独立注入的组起点、组内偏移保持相同的模宽关系。
+              "        force dut.u_ctrl.column_position_q = column_position;\n",
+              "        force dut.u_ctrl.last_col_saved_q = column_last;\n",
               "        force dut.p0_base_q = position_base;\n",
               "        force reference_loader.p0_base_q = position_base;\n",
               "      end\n",
@@ -121,6 +126,8 @@ def main():
               "          11: ext_dma_wr_valid[sample % DMA_LANES] = 1'bz;\n",
               "          12: ext_dma_wr_col_base[sample % $clog2(SIZE)] = 1'bx;\n",
               "          13: load_weight_granted = 1'bz;\n",
+              "          14: m[sample % REG_WIDTH] = 1'bx;\n",
+              "          15: n[sample % REG_WIDTH] = 1'bz;\n",
               "          default: ;\n        endcase\n      end\n      tick();\n    end\n",
               f'    if (known_positions < {args.cycles // 4}) $fatal(1, "Insufficient known positions");\n',
               '    $display("KERNEL_LOADER_FOUR_STATE_PASS cycles=%0d outputs=23 known_positions=%0d", checked_cycles, known_positions);\n',

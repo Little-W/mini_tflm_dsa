@@ -6,9 +6,9 @@ module kernel_count_compare #(
     parameter int p_width = 48,
     parameter int p_chunk_width = 8
 ) (
-    input  wire logic [p_width-1:0] i_lhs,
-    input  wire logic [p_width-1:0] i_rhs,
-    output logic o_ge
+    input  wire logic [p_width-1:0] i_lhs /* 参与无符号大小比较的当前计数 */,
+    input  wire logic [p_width-1:0] i_rhs /* 参与无符号大小比较的目标计数 */,
+    output logic o_ge /* 当前计数大于或等于目标计数 */
 );
     localparam int p_compare_width = p_chunk_width;
     localparam int p_chunks = (p_width + p_compare_width - 1) / p_compare_width;

@@ -1,0 +1,275 @@
+{
+  "flow": "ordinary RTL plus physical-cost LUT mapping",
+  "parameters": {
+    "SIZE": 16,
+    "DATA_WIDTH": 16,
+    "BUS_WIDTH": 64,
+    "COUNT_WIDTH": 29
+  },
+  "delay_target_ps": 6667,
+  "wire_delay_ps": 300,
+  "max_lut_inputs": 8,
+  "tool": "Yosys 0.71+40",
+  "resources": {
+    "reference": {
+      "logic_lut_cells": 3859,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 3859,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 2343,
+      "dsp48e1": 2,
+      "ramb36e1": 0,
+      "ramb18e1": 16,
+      "carry4": 211,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 211,
+        "DSP48E1": 2,
+        "FDCE": 1834,
+        "FDPE": 16,
+        "FDRE": 491,
+        "FDSE": 2,
+        "INV": 39,
+        "LUT1": 1,
+        "LUT2": 553,
+        "LUT3": 977,
+        "LUT4": 355,
+        "LUT5": 787,
+        "LUT6": 1186,
+        "MUXF7": 84,
+        "RAMB18E1": 16
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement.",
+      "longest_register_path_cells": 12,
+      "graph_complete": true
+    },
+    "current": {
+      "logic_lut_cells": 3620,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 3620,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 2374,
+      "dsp48e1": 6,
+      "ramb36e1": 0,
+      "ramb18e1": 16,
+      "carry4": 148,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 148,
+        "DSP48E1": 6,
+        "FDCE": 1863,
+        "FDPE": 18,
+        "FDRE": 491,
+        "FDSE": 2,
+        "INV": 32,
+        "LUT1": 2,
+        "LUT2": 361,
+        "LUT3": 903,
+        "LUT4": 401,
+        "LUT5": 678,
+        "LUT6": 1275,
+        "MUXF7": 122,
+        "RAMB18E1": 16
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement.",
+      "longest_register_path_cells": 10,
+      "graph_complete": true
+    }
+  },
+  "functional_verification": {
+    "passed": true,
+    "method": "ABC9 &verify",
+    "log_sha256": "3c90019d53fee956cabc5ffff39de3d97c75cd42537d95dc61f8f2f70e1f3b43"
+  },
+  "register_path_requirement": {
+    "maximum_combinational_cells": 10,
+    "observed_combinational_cells": 10,
+    "graph_complete": true,
+    "met": true,
+    "scope": "Clocked storage outputs to synchronous data and control inputs",
+    "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+  },
+  "timing_150mhz_confirmed": null,
+  "mapped_json_sha256": "01fce1fcb936e2a91d6e1c2daebb459d4f6df1a0818242dc235aa0ba8cb8e1be",
+  "mapped_verilog_sha256": "21d110d57572de0d87e4fc430f0781d5e59084acaa4f6404abbb974e4aeec25d",
+  "manifest_sha256": "3a7ea013242798a2012e95d13604310e36d84d360f36649690deeb84243a5197",
+  "longest_paths": [
+    {
+      "combinational_cells": 10,
+      "start": "u_ctrl.tile_cols_total [17]",
+      "end": "comparison_match_q",
+      "cell_types": [
+        "LUT4",
+        "LUT6",
+        "MUXF7",
+        "LUT5",
+        "LUT6",
+        "LUT2",
+        "LUT5",
+        "MUXF7",
+        "LUT6",
+        "LUT6"
+      ]
+    },
+    {
+      "combinational_cells": 10,
+      "start": "u_buf.wr_slot",
+      "end": "prefetch_state [0]",
+      "cell_types": [
+        "LUT4",
+        "LUT3",
+        "LUT5",
+        "LUT4",
+        "LUT4",
+        "LUT3",
+        "LUT2",
+        "LUT2",
+        "LUT6",
+        "LUT6"
+      ]
+    },
+    {
+      "combinational_cells": 10,
+      "start": "prefetch_state [1]",
+      "end": "u_ctrl.load_pending_q",
+      "cell_types": [
+        "LUT2",
+        "LUT4",
+        "LUT6",
+        "LUT2",
+        "LUT5",
+        "LUT5",
+        "MUXF7",
+        "LUT4",
+        "LUT2",
+        "LUT5"
+      ]
+    },
+    {
+      "combinational_cells": 10,
+      "start": "prefetch_state [1]",
+      "end": "u_ctrl.state [1]",
+      "cell_types": [
+        "LUT2",
+        "LUT4",
+        "LUT6",
+        "LUT2",
+        "LUT5",
+        "LUT5",
+        "MUXF7",
+        "LUT4",
+        "LUT2",
+        "LUT2"
+      ]
+    },
+    {
+      "combinational_cells": 10,
+      "start": "u_buf.wr_slot",
+      "end": "transfer_discard",
+      "cell_types": [
+        "LUT4",
+        "LUT3",
+        "LUT5",
+        "LUT4",
+        "LUT4",
+        "LUT3",
+        "LUT2",
+        "LUT2",
+        "LUT6",
+        "LUT6"
+      ]
+    },
+    {
+      "combinational_cells": 10,
+      "start": "u_ctrl.l2_groups_total [20]",
+      "end": "u_ctrl.last_col_saved_q",
+      "cell_types": [
+        "LUT4",
+        "LUT4",
+        "MUXF7",
+        "LUT6",
+        "LUT5",
+        "LUT3",
+        "LUT4",
+        "LUT2",
+        "LUT5",
+        "LUT4"
+      ]
+    },
+    {
+      "combinational_cells": 10,
+      "start": "u_ctrl.l2_groups_total [20]",
+      "end": "u_ctrl.dma_address_q [0]",
+      "cell_types": [
+        "LUT4",
+        "LUT4",
+        "MUXF7",
+        "LUT6",
+        "LUT5",
+        "LUT3",
+        "LUT4",
+        "LUT6",
+        "LUT5",
+        "LUT5"
+      ]
+    },
+    {
+      "combinational_cells": 10,
+      "start": "u_ctrl.l2_groups_total [20]",
+      "end": "u_ctrl.dma_address_q [2]",
+      "cell_types": [
+        "LUT4",
+        "LUT4",
+        "MUXF7",
+        "LUT6",
+        "LUT5",
+        "LUT3",
+        "LUT4",
+        "LUT6",
+        "LUT5",
+        "LUT5"
+      ]
+    },
+    {
+      "combinational_cells": 10,
+      "start": "u_ctrl.l2_groups_total [20]",
+      "end": "u_ctrl.dma_address_q [3]",
+      "cell_types": [
+        "LUT4",
+        "LUT4",
+        "MUXF7",
+        "LUT6",
+        "LUT5",
+        "LUT3",
+        "LUT4",
+        "LUT6",
+        "LUT5",
+        "LUT5"
+      ]
+    },
+    {
+      "combinational_cells": 10,
+      "start": "u_ctrl.row_addr_step [1]",
+      "end": "u_ctrl.dma_address_q [28]",
+      "cell_types": [
+        "LUT2",
+        "CARRY4",
+        "CARRY4",
+        "CARRY4",
+        "CARRY4",
+        "CARRY4",
+        "CARRY4",
+        "CARRY4",
+        "CARRY4",
+        "LUT5"
+      ]
+    }
+  ],
+  "source_sha256": {
+    "rtl/npu/loaders/kernel_loader.sv": "3e7a19e8df6cb810b4d1c640dee2a208193b11b6ca847c972312e3c31d992773",
+    "rtl/npu/loaders/kernel_loader_ctrl.sv": "fa2141a8953764a20f92007b2c4633da0a4c8f3f936b32e9d0733129aea051c1",
+    "rtl/npu/loaders/kernel_count_next_reaches.sv": "2113ca8e0e2214b6270110a90a4e95489162e0b4e7b6cc52d043fe2e2742ec13"
+  }
+}

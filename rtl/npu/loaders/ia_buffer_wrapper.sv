@@ -16,19 +16,19 @@ module ia_buffer_wrapper #(
     parameter int unsigned DEPTH = 128,       // 深度
     parameter int unsigned ADDR_WIDTH = $clog2(DEPTH)
 ) (
-    input  wire logic                      clk,
-    input  wire logic                      rst_n,
+    input  wire logic                      clk /* 工作时钟 */,
+    input  wire logic                      rst_n /* 低有效复位 */,
     
     // 写接口
-    input  wire logic                      wr_en,
-    input  wire logic [ADDR_WIDTH-1:0]     wr_addr,
-    input  wire logic [DATA_WIDTH-1:0]     wr_data,
+    input  wire logic                      wr_en /* 使能输入缓存写入 */,
+    input  wire logic [ADDR_WIDTH-1:0]     wr_addr /* 当前写入的输入缓存地址 */,
+    input  wire logic [DATA_WIDTH-1:0]     wr_data /* 写入输入缓存的数据字 */,
     input  wire logic [DATA_WIDTH/8-1:0]   wr_mask,  // 字节写使能
     
     // 读接口
-    input  wire logic                      rd_en,
-    input  wire logic [ADDR_WIDTH-1:0]     rd_addr,
-    output logic [DATA_WIDTH-1:0]     rd_data
+    input  wire logic                      rd_en /* 使能输入缓存同步读取 */,
+    input  wire logic [ADDR_WIDTH-1:0]     rd_addr /* 当前读取的输入缓存地址 */,
+    output logic [DATA_WIDTH-1:0]     rd_data /* 输入缓存最近一次有效读取结果 */
 );
 
     // 复位清除读出有效状态；存储内容保留，首个同步读取后更新输出。

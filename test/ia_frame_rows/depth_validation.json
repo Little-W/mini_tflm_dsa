@@ -1,0 +1,191 @@
+{
+  "passed": true,
+  "ia": {
+    "passed": true,
+    "reference_revision": "aa246aef",
+    "inputs_constrained": false,
+    "reference_sha256": "a96f49d35790440ea0b29e06451e2be704ed56974607a20dd434f1228b02be27",
+    "source_sha256": "857ac41cf2c61a0a09d9d9837a462b810ec3e3c419e2dfa831870709343df440",
+    "formal_profiles": [
+      {
+        "profile": "production",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "COUNT_WIDTH": 29,
+          "CACHE_BLOCKS": 32,
+          "COMPACT_S8": 0,
+          "ORDERED_JOB": 1,
+          "p_dma_source_layout": 1,
+          "p_shared_write_stage": 1,
+          "p_register_dma_request": 1,
+          "RAM_WORD_ADDR_WIDTH": 12
+        },
+        "passed": true,
+        "equivalent_bits": 10627,
+        "log_sha256": "032db66fcd118951da6ccefb200989a99edfe8a4b9aeb5e4d29f2e23c72efc49"
+      },
+      {
+        "profile": "compact",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "COUNT_WIDTH": 29,
+          "CACHE_BLOCKS": 32,
+          "ORDERED_JOB": 1,
+          "p_dma_source_layout": 1,
+          "p_shared_write_stage": 1,
+          "p_register_dma_request": 1,
+          "RAM_WORD_ADDR_WIDTH": 12,
+          "COMPACT_S8": 1
+        },
+        "passed": true,
+        "equivalent_bits": 13931,
+        "log_sha256": "fa0acdf5ec1bef13677ed09fa90d32497b0acbbc80d78bd328432a04a507b325"
+      },
+      {
+        "profile": "generic",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 8,
+          "CACHE_BLOCKS": 4,
+          "ORDERED_JOB": 0
+        },
+        "passed": true,
+        "equivalent_bits": 11772,
+        "log_sha256": "ab9f26cd311635f227e7d3c5366b7ab2ccf05eb9a0ca8c341506c678702b02cc"
+      },
+      {
+        "profile": "full_count",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 32,
+          "CACHE_BLOCKS": 4,
+          "ORDERED_JOB": 1
+        },
+        "passed": true,
+        "equivalent_bits": 9155,
+        "log_sha256": "033e534228692cee6c7e65c1b11555acf1e0a912061eb237e07483ee1e66c06a"
+      },
+      {
+        "profile": "short_count",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 5,
+          "CACHE_BLOCKS": 4,
+          "ORDERED_JOB": 1
+        },
+        "passed": true,
+        "equivalent_bits": 8576,
+        "log_sha256": "17642f59bba891968e72d287e9bee4feae31d502b53c9f0f9cb8a6148f153edd"
+      }
+    ],
+    "formal_equivalent_bits": 54061,
+    "four_state": {
+      "passed": true,
+      "tail_profiles": 8,
+      "samples": 30000,
+      "comparisons": 270000,
+      "log_sha256": "339f0618d1dc4ba03847772028e5c2b7b7d19f2f4ab81ee533c901301181fc5d"
+    },
+    "formal_runs": [
+      {
+        "profiles": [
+          "compact",
+          "generic",
+          "full_count",
+          "short_count"
+        ],
+        "test_sha256": "56ddbe64ca069551b769af23190b0678823c998fed43d902060fc848605f6521"
+      },
+      {
+        "profiles": [
+          "production"
+        ],
+        "test_sha256": "5dab9de59030ce022b97c999a03ffb852ccb2289ad722b363460f666abab783e",
+        "summary_sha256": "f53984cf77fcf1ac4b030a656e17079bfd2a3093133c7f6729b8d952aea18f83"
+      }
+    ]
+  },
+  "bias_presence": {
+    "passed": true,
+    "reference_revision": "0dae72bd",
+    "inputs_constrained": false,
+    "source_sha256": "4e11d63a5bd8be7d0996b8170ff2019a725a944debd882a684a4fbdda3b00b3f",
+    "formal_profiles": [
+      {
+        "width": 16,
+        "passed": true,
+        "log_sha256": "e0952dc5b78e77f6cd91621f4228d4009bf54006884ce246c376d69fa9ff85b9"
+      },
+      {
+        "width": 32,
+        "passed": true,
+        "log_sha256": "3ffa1d9e6d40108a7e65b05fc518346d415978910e3558380ea31778c4f69cc9"
+      },
+      {
+        "width": 64,
+        "passed": true,
+        "log_sha256": "2df85f33073752f7396e0a56fb1b278295634ce34bb000600f2ac1f23b075fa3"
+      }
+    ],
+    "four_state_comparisons": 90000,
+    "four_state_log_sha256": "74c6fded2a04266713b7b67b90b45760c9047b558eac376381659ef1d3dfaff5",
+    "test_sha256": "67c0dc60758e60ccaba5fa63ecd682ffa3019c53f6421abe94407f908e7a27b4"
+  },
+  "prefetch_cycles": {
+    "passed": true,
+    "ordered_job": true,
+    "fpga": true,
+    "runs": [
+      {
+        "passed": true,
+        "commands": 253,
+        "value_checks": 181440,
+        "cycles": 59605,
+        "demand_dma_requests": 372,
+        "prefetch_dma_requests": 124,
+        "cache_hits": 427,
+        "cache_hits_during_prefetch": 140,
+        "different_k_tail_hits": 1,
+        "background_completions": 124,
+        "init_while_prefetch_active": 83,
+        "output_cycles_during_prefetch": 3868,
+        "slot_wraps": 88,
+        "padding_value_checks": 1943,
+        "prefetch_priority_checks": 124,
+        "cancelled_requests": 1,
+        "sustained_grant": false,
+        "physical_data_bytes": 2048,
+        "mode": "blocked",
+        "log_sha256": "f7b7db2cec1c305ea756a99cda4ef182d332fe9936a693bb5cb5c5bc4a93ff58"
+      },
+      {
+        "passed": true,
+        "commands": 253,
+        "value_checks": 181440,
+        "cycles": 59548,
+        "demand_dma_requests": 372,
+        "prefetch_dma_requests": 124,
+        "cache_hits": 427,
+        "cache_hits_during_prefetch": 140,
+        "different_k_tail_hits": 1,
+        "background_completions": 124,
+        "init_while_prefetch_active": 83,
+        "output_cycles_during_prefetch": 3873,
+        "slot_wraps": 88,
+        "padding_value_checks": 1943,
+        "prefetch_priority_checks": 124,
+        "cancelled_requests": 1,
+        "sustained_grant": true,
+        "physical_data_bytes": 2048,
+        "mode": "sustained",
+        "log_sha256": "e8f5c83691af428210f139e40670aa55248157f485ae50e65b69927ce6aa132d"
+      }
+    ],
+    "summary_sha256": "010c1c04ee2bbc4550158f686f79b7c27ecd66017c0dd270fdeb375c5dcdb8e2"
+  }
+}

@@ -1,0 +1,312 @@
+{
+  "passed": true,
+  "reference_commit": "142a7226",
+  "reports": {
+    "control_proof": {
+      "passed": true,
+      "reference": "142a7226",
+      "source_sha256": {
+        "rtl/npu/loaders/kernel_loader_ctrl.sv": "5f71785491ab1b7d21163610385e7649bd684d650d66552aaabceff948846851",
+        "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+        "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "rtl/common/increment_equal.sv": "5502c1cab338162650019b5c01ff3a803044814f352e37e16ae63640612d56a0",
+        "rtl/npu/loaders/kernel_completion_check.sv": "f05f544b5d28c92ae0c4d273d712e5ecdc476a7f144540a9b96e5d8bfdbee2b3",
+        "rtl/npu/loaders/kernel_count_increment.sv": "13986c59fff9a2203dbb50beb3cb1e857d16b208828df1a122e27d9b161df734",
+        "rtl/npu/loaders/kernel_count_next_reaches.sv": "e37a7fc97077e05c7e1831a4f75327d1fb9f63ca27e3134c2ddd8a856ca784ca",
+        "rtl/npu/loaders/kernel_group_step.sv": "ee78b744211eabed6cda08903424ea6afb1e57b6b13c6a3556bf014670fb2e7b",
+        "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+        "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+        "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+        "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+        "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+      },
+      "inputs_constrained": false,
+      "all_public_outputs_and_common_state_compared": true,
+      "formal": [
+        {
+          "size": 4,
+          "count_width": 4,
+          "synthesis": false,
+          "passed": true,
+          "proven_points": 3321,
+          "log_sha256": "3a30731effabf50972e84015d119d3e3e4ddac5ecfd31a74b5cdf0a2c6c97fc5"
+        },
+        {
+          "size": 4,
+          "count_width": 4,
+          "synthesis": true,
+          "passed": true,
+          "proven_points": 3808,
+          "log_sha256": "b0f9de0f497d091ee3cdb4ed8e841fd9c7d1dde17f7b22ec50bda6eed7d349fc"
+        },
+        {
+          "size": 16,
+          "count_width": 16,
+          "synthesis": false,
+          "passed": true,
+          "proven_points": 5826,
+          "log_sha256": "ed01e1eda057886432f1d69bf921fa8a8839d85471770f4fe329b1795650cb09"
+        },
+        {
+          "size": 16,
+          "count_width": 16,
+          "synthesis": true,
+          "passed": true,
+          "proven_points": 6397,
+          "log_sha256": "c499a7ddc8b1873c68b24fd1dba28d926fc48510f52b13c0c5ec587f2c7a3021"
+        },
+        {
+          "size": 16,
+          "count_width": 29,
+          "synthesis": false,
+          "passed": true,
+          "proven_points": 8859,
+          "log_sha256": "e9dcab0d3ce49470d65920c4fbae18405a56f4302394da8feac7dc2ee794433f"
+        },
+        {
+          "size": 16,
+          "count_width": 29,
+          "synthesis": true,
+          "passed": true,
+          "proven_points": 10079,
+          "log_sha256": "b8c37491b470c27b96e156185b014d510f21941524b21d61bdfb6ae4d621e949"
+        },
+        {
+          "size": 32,
+          "count_width": 32,
+          "synthesis": false,
+          "passed": true,
+          "proven_points": 9477,
+          "log_sha256": "97dd81c181aa592e0a6ddacc2ccd560a9b49117cb6a5209e6b6a645ccb9a06ff"
+        },
+        {
+          "size": 32,
+          "count_width": 32,
+          "synthesis": true,
+          "passed": true,
+          "proven_points": 10790,
+          "log_sha256": "0b40a98edcb6003ed200817e00587b1e49b908d96d7555754c8c178452eb6ca5"
+        }
+      ],
+      "four_state_combinations": 262144,
+      "four_state_exhaustive": true,
+      "four_state_log_sha256": "f487e481076e6bb9cf3e7d278404c52f52b7f025a9e81cf497641ce607f33872"
+    },
+    "parent_proof": {
+      "passed": true,
+      "reference": "142a7226",
+      "source_sha256": {
+        "rtl/npu/loaders/kernel_loader.sv": "6744314c342fa90341db6915414dcefa04c948cf20e348c3c2d3847c23d4fa98",
+        "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+        "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "rtl/npu/loaders/kernel_burst_encode.sv": "5ec43c8832d16725840d1dc7bad18f0cbfda9a1d470ac99b998406639a68fc73",
+        "rtl/npu/loaders/kernel_candidate_equal.sv": "f139cbe25e80b22703e9fc564fcb2a158701c452e0ffb164d68453cfd9beaae5",
+        "rtl/npu/loaders/kernel_loader_buffer.sv": "fb0b4d706325dde3c8cd3286eed9f5ce5368d51fcac084cca9d363a1cf9760ac",
+        "rtl/npu/loaders/kernel_loader_ctrl.sv": "5f71785491ab1b7d21163610385e7649bd684d650d66552aaabceff948846851",
+        "rtl/npu/loaders/kernel_request_idle.sv": "2bfbadf200e73ce0534405a026317d8f1e57d17ee299de27dc8ea63709cb4cdd",
+        "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+        "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+        "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "rtl/npu/loaders/kernel_column_select4.sv": "bf7568fc464832cd424d3cec2e1b9e48d7288d5f0f53a8be32d694634be9eb7f",
+        "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+        "rtl/common/increment_equal.sv": "5502c1cab338162650019b5c01ff3a803044814f352e37e16ae63640612d56a0",
+        "rtl/npu/loaders/kernel_completion_check.sv": "f05f544b5d28c92ae0c4d273d712e5ecdc476a7f144540a9b96e5d8bfdbee2b3",
+        "rtl/npu/loaders/kernel_count_increment.sv": "13986c59fff9a2203dbb50beb3cb1e857d16b208828df1a122e27d9b161df734",
+        "rtl/npu/loaders/kernel_count_next_reaches.sv": "e37a7fc97077e05c7e1831a4f75327d1fb9f63ca27e3134c2ddd8a856ca784ca",
+        "rtl/npu/loaders/kernel_group_step.sv": "ee78b744211eabed6cda08903424ea6afb1e57b6b13c6a3556bf014670fb2e7b",
+        "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+        "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+        "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c"
+      },
+      "control_logic_extracted_from_source": true,
+      "inputs_constrained": false,
+      "all_public_outputs_and_common_state_compared": true,
+      "formal": [
+        {
+          "size": 4,
+          "count_width": 8,
+          "bus_width": 32,
+          "fpga": false,
+          "passed": true,
+          "proven_points": 5145,
+          "log_sha256": "761239cf477a0cd1e65f9bd5b8049551e15c1df1df23955506c1516aca9c5246"
+        },
+        {
+          "size": 4,
+          "count_width": 8,
+          "bus_width": 32,
+          "fpga": true,
+          "passed": true,
+          "proven_points": 4937,
+          "log_sha256": "aea8077db13aaa80700b41e8ffe15b4a26575ccebee8385d985be5f5d8d5bf4b"
+        },
+        {
+          "size": 16,
+          "count_width": 29,
+          "bus_width": 32,
+          "fpga": true,
+          "passed": true,
+          "proven_points": 19471,
+          "log_sha256": "b74c4cce0e96eb6d9ae4bb4434f5a6aa0b4b64da6577e729d88e1c7cd9963ec7"
+        },
+        {
+          "size": 16,
+          "count_width": 29,
+          "bus_width": 64,
+          "fpga": true,
+          "passed": true,
+          "proven_points": 19554,
+          "log_sha256": "0abd71414248682a46949e9cfe1268c2e23a5981e0dcc6c06ce566ac47916321"
+        }
+      ],
+      "four_state_control_cases": 4194304,
+      "four_state_descriptor_bit_comparisons": 67108864,
+      "four_state_log_sha256": "d258aa8006ddb970008421bd5e00dadd909e170d7ff80809794fdcb557b50800"
+    },
+    "arithmetic": {
+      "passed": true,
+      "reference": "142a7226",
+      "inputs_constrained": false,
+      "source_sha256": {
+        "/workspace/scratch/5bfa47658687/experiments/kernel_eligibility/arithmetic/arithmetic_check.sv": "ffdc12e964a3b883c3719ba8df5d9f291d368feb3d6b778fce59dcf79e7daa30",
+        "/workspace/scratch/5bfa47658687/experiments/kernel_eligibility/arithmetic/kernel_count_increment_reference.sv": "9776a8ab0895fc04efc87f816162d2b5a39c21afd808c35ce1acd42322781072",
+        "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/loaders/kernel_count_increment.sv": "13986c59fff9a2203dbb50beb3cb1e857d16b208828df1a122e27d9b161df734",
+        "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/loaders/kernel_count_next_reaches.sv": "e37a7fc97077e05c7e1831a4f75327d1fb9f63ca27e3134c2ddd8a856ca784ca",
+        "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/increment_equal.sv": "5502c1cab338162650019b5c01ff3a803044814f352e37e16ae63640612d56a0",
+        "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+        "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+        "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3"
+      },
+      "checks": [
+        {
+          "width": 1,
+          "synthesis": false,
+          "passed": true,
+          "arbitrary_inputs_proven": true,
+          "formal_log_sha256": "7cb0fa643a57fcae3ac02b5b0b496334604e7ae0fd89ecd53cffa990c12fa05c",
+          "four_state_comparisons": 8192,
+          "four_state_log_sha256": "186717ea3f25b495a371eb89f22dda42acef28301c8e3e3b66227ac28a0c80f8"
+        },
+        {
+          "width": 1,
+          "synthesis": true,
+          "passed": true,
+          "arbitrary_inputs_proven": true,
+          "formal_log_sha256": "70505b6bb2bd7db56e5505b982bb222d76e4cd63d4d9011629cbe07192742368",
+          "four_state_comparisons": 8192,
+          "four_state_log_sha256": "6736f05ba94eb84af9a400262c59d6920eea3c4a8f823a0c502750078a81d8a2"
+        },
+        {
+          "width": 4,
+          "synthesis": false,
+          "passed": true,
+          "arbitrary_inputs_proven": true,
+          "formal_log_sha256": "abfb40ae990930065861785ddc6e32c43989c4b7e413b03f9674f42e157741b2",
+          "four_state_comparisons": 8192,
+          "four_state_log_sha256": "08b4fb54235e64568f16820868cc28fc41ad0e6bcd811371b95e6866f1a64c57"
+        },
+        {
+          "width": 4,
+          "synthesis": true,
+          "passed": true,
+          "arbitrary_inputs_proven": true,
+          "formal_log_sha256": "ec3765e51638d8c4e3c79d53f4eb9d077ae5e5ba47275281f0bc7131bc3eaf46",
+          "four_state_comparisons": 8192,
+          "four_state_log_sha256": "e206237eb4e608f3343389f581ecc57914cac25b866eb3bde13fae258742b89b"
+        },
+        {
+          "width": 16,
+          "synthesis": false,
+          "passed": true,
+          "arbitrary_inputs_proven": true,
+          "formal_log_sha256": "ff4457c88075065a1f2055544e07cb90466696eb2e725fb681b2f9778a8b6d43",
+          "four_state_comparisons": 8192,
+          "four_state_log_sha256": "73ea28acaa0771fab34fa93355ed86fe37b9c54e2b796681b2eabc986658f095"
+        },
+        {
+          "width": 16,
+          "synthesis": true,
+          "passed": true,
+          "arbitrary_inputs_proven": true,
+          "formal_log_sha256": "01c38bc0f09ab58f72295d5bbca5e342bc97080c26dd1e4a9a45b80203d83032",
+          "four_state_comparisons": 8192,
+          "four_state_log_sha256": "44b09155454aa6abc78033a2e5a5f8be007611010e9743f8b5f1a1c5a7dc8355"
+        },
+        {
+          "width": 29,
+          "synthesis": false,
+          "passed": true,
+          "arbitrary_inputs_proven": true,
+          "formal_log_sha256": "bbb98d35c91b8b62caeab365e55ef399d6917521a3fdb1c891b8d1c39544ee8f",
+          "four_state_comparisons": 8192,
+          "four_state_log_sha256": "3532659e14cf6ad8e52c2d0c5f6aa1d3600b9b7ef921d5b046044efc6a6e3418"
+        },
+        {
+          "width": 29,
+          "synthesis": true,
+          "passed": true,
+          "arbitrary_inputs_proven": true,
+          "formal_log_sha256": "4d709e1abd62aac63563a0d982a1b6c891b0bf47a370cd267a2f8572d456c1a7",
+          "four_state_comparisons": 8192,
+          "four_state_log_sha256": "9a5c611b52ec063eb328348973d107c9e714c83de01a0116f99e6eac77044199"
+        },
+        {
+          "width": 32,
+          "synthesis": false,
+          "passed": true,
+          "arbitrary_inputs_proven": true,
+          "formal_log_sha256": "cea9b07f929a50ed23164451d801d557e40ab881cf724c587fec3638656b0f80",
+          "four_state_comparisons": 8192,
+          "four_state_log_sha256": "5d1ff36ca414a7d7ff7a8a36da44801bdc32bcccf909a293fed35a98fc380746"
+        },
+        {
+          "width": 32,
+          "synthesis": true,
+          "passed": true,
+          "arbitrary_inputs_proven": true,
+          "formal_log_sha256": "f35c62efbfe068fecdcbf4af9478b0c70c5a8627bc1ff3ba1ade4c846009ac2c",
+          "four_state_comparisons": 8192,
+          "four_state_log_sha256": "71e9d8103d943a074cb8a57b483f8afd2b9ef2565200abebed409e056d233e47"
+        },
+        {
+          "width": 64,
+          "synthesis": false,
+          "passed": true,
+          "arbitrary_inputs_proven": true,
+          "formal_log_sha256": "935c9a6277eb17813cacee1d9413486d8490086a00fe50846a42e5203acd17bd",
+          "four_state_comparisons": 8192,
+          "four_state_log_sha256": "d4a29b15caebaf1a015869254f8c6702f3197aae7dd2ce8533bf0a4c3fde8f14"
+        },
+        {
+          "width": 64,
+          "synthesis": true,
+          "passed": true,
+          "arbitrary_inputs_proven": true,
+          "formal_log_sha256": "626151f4235428fdd3da89696933576bbcbb9e56ae979809127415a21894ceb9",
+          "four_state_comparisons": 8192,
+          "four_state_log_sha256": "df78345cfbd796a8c794f2991e27baa528bf4c38b70c06a681454b096539115f"
+        }
+      ],
+      "formal_checks": 12,
+      "four_state_comparisons": 98304
+    },
+    "request_proof": {
+      "passed": true,
+      "inputs_constrained": false,
+      "logic_extracted_from_source": true,
+      "source_sha256": "6744314c342fa90341db6915414dcefa04c948cf20e348c3c2d3847c23d4fa98",
+      "formal_log_sha256": "30a89b87344ab9df18f969e60cfd522d61c90981dc14c3531e5586a4ebb09222",
+      "four_state_exhaustive": true,
+      "four_state_comparisons": 16384,
+      "four_state_log_sha256": "03df8f8223b2f72ae9f780edc4b75ed0660638da3e301cf354b54b0d7a3ea9ec"
+    }
+  }
+}

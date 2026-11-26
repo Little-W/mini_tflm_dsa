@@ -7,6 +7,8 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
+import shlex
 import subprocess
 import sys
 
@@ -19,8 +21,41 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def canonical_coordinate_comparisons(text):
+    """将独立验证的坐标比较实例转成固定表示，保留其他父模块词元检查。"""
+    for axis in ("p0", "q0"):
+        original = f"""ia_ordered_coordinate_same #(
+            .p_width(REG_WIDTH), .p_low_width(LOG2_SIZE)
+        ) u_demand_{axis}_same (
+            .i_base_a({axis}_base_q), .i_base_b(init_cfg ? cfg_{axis}_base : {axis}_base_q),"""
+        grouped = f"""ia_ordered_coordinate_update #(
+            .p_width(REG_WIDTH), .p_low_width(LOG2_SIZE)
+        ) u_demand_{axis}_update (
+            .i_update(init_cfg), .i_base({axis}_base_q), .i_next_base(cfg_{axis}_base),"""
+        text = text.replace(grouped, original)
+    grouped = """increment_equal #(
+            .p_width(p_high_width), .p_preserve_pairs(1'b1), .p_reduce_group_width(6)
+        ) u_next_high_equal (
+            .i_a(q0_base_q[REG_WIDTH-1:LOG2_SIZE]),
+            .i_target(global_reduction_q[REG_WIDTH-1:LOG2_SIZE]),
+            .o_equal(next_high_equal)
+        );"""
+    original = """add_equal #(.p_width(p_high_width), .p_preserve_bits(1'b1)) u_next_high_equal (
+            .i_a(q0_base_q[REG_WIDTH-1:LOG2_SIZE]), .i_b(p_high_width'(0)),
+            .i_target(global_reduction_q[REG_WIDTH-1:LOG2_SIZE]),
+            .i_carry_in(1'b1), .o_equal(next_high_equal)
+        );"""
+    return text.replace(grouped, original)
+
+
+def canonical_write_data_parameter(text):
+    """写字节参数由完整加载器和真实存储检查独立验证。"""
+    return text.replace("    parameter bit p_zero_masked_write_data = 1'b1,\n", "").replace(
+        "        .p_zero_masked_write_data(p_zero_masked_write_data),\n", "")
+
+
 def extract(source, name):
-    first = source.index("    assign packed_reduction_nxt =")
+    first = source.index("    // 分块数与 reduction")
     last = source.index("    // 配置接收时先求出下一列分块的有效宽度", first)
     body = source[first:last]
     extra = ("    logic [REG_WIDTH:0] packed_tiles_parallel_sum;\n"
@@ -94,7 +129,7 @@ endmodule
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--reference-ref", default="18ce45a8")
+    parser.add_argument("--reference-ref", default="1470a963")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     out = args.out.resolve()
@@ -102,8 +137,22 @@ def main():
     current_source = ROOT / SOURCE
     original = subprocess.check_output(["git", "show", args.reference_ref + ":" + SOURCE],
                                        cwd=ROOT, text=True)
-    common = ROOT / "rtl/common/parallel_prefix_add.sv"
-    hashes = {str(path.relative_to(ROOT)): sha(path) for path in (current_source, common)}
+    args.reference_ref = subprocess.check_output(["git", "rev-parse", args.reference_ref],
+                                                 cwd=ROOT, text=True).strip()
+    def unchanged_part(text):
+        text = canonical_coordinate_comparisons(text)
+        text = canonical_write_data_parameter(text)
+        first = text.index("    // 分块数与 reduction")
+        last = text.index("    // 配置接收时先求出下一列分块的有效宽度", first)
+        body = text[:first] + text[last:]
+        return re.sub(r"\s+", "", re.sub(r"/\*.*?\*/|//[^\n]*", "", body, flags=re.S))
+    assert unchanged_part(original) == unchanged_part(current_source.read_text()), \
+        "IA 模块在分块数量计算之外存在功能差异"
+    resolve = runpy.run_path(str(ROOT / "scripts/rtl/source_files.py"))["with_dependencies"]
+    common = resolve([ROOT / "rtl/common/parallel_prefix_add.sv",
+                      ROOT / "rtl/common/conditional_increment.sv",
+                      ROOT / "rtl/common/zero_reduce.sv"], ROOT)
+    hashes = {str(path.relative_to(ROOT)): sha(path) for path in (current_source, *common)}
     design = out / "arithmetic.sv"
     design.write_text(extract(original, "reference") + extract(current_source.read_text(), "current") + """
 module miter #(parameter int unsigned REG_WIDTH=32, SIZE=16)(
@@ -122,6 +171,9 @@ endmodule
     bench = out / "tb.sv"
     bench.write_text(BENCH)
     summary = dict(passed=False, inputs_constrained=False, source_sha256=hashes,
+                   reference_commit=args.reference_ref, remaining_parent_tokens_identical=True,
+                   coordinate_comparison_check="test/ia_coordinate_groups/run_formal.py",
+                   write_data_parameter_check="test/ia_masked_write_data/run_formal.py",
                    reference_sha256=hashlib.sha256(original.encode()).hexdigest(),
                    arithmetic_extracted_verbatim=True, runs=[])
     for width, size in CASES:
@@ -129,7 +181,7 @@ endmodule
         folder.mkdir(exist_ok=True)
         script = folder / "proof.ys"
         script.write_text("\n".join([
-            f"read_slang --top miter -DSYNTHESIS=1 -GREG_WIDTH={width} -GSIZE={size} {design} {common}",
+            f"read_slang --top miter -DSYNTHESIS=1 -GREG_WIDTH={width} -GSIZE={size} "+shlex.join(map(str, [design, *common])),
             "setattr -mod -unset keep_hierarchy", "setattr -unset keep_hierarchy",
             "prep -top miter -flatten",
             "sat -verify -prove o_equal 1 -show-inputs -show-outputs",
@@ -145,7 +197,7 @@ endmodule
         with (folder / "compile.log").open("w") as stream:
             subprocess.run(["iverilog", "-g2012", "-DSYNTHESIS=1", "-s", "tb",
                             f"-Ptb.REG_WIDTH={width}", f"-Ptb.SIZE={size}", "-o", str(binary),
-                            str(design), str(common), str(bench)], cwd=ROOT, check=True,
+                            str(design), *map(str, common), str(bench)], cwd=ROOT, check=True,
                            stdout=stream, stderr=subprocess.STDOUT)
         result = subprocess.run(["vvp", str(binary)], cwd=ROOT, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=120)
@@ -157,7 +209,7 @@ endmodule
                       proof_log_sha256=sha(log))
         summary["runs"].append(record)
         print(json.dumps(record), flush=True)
-    if hashes != {str(path.relative_to(ROOT)): sha(path) for path in (current_source, common)}:
+    if hashes != {str(path.relative_to(ROOT)): sha(path) for path in (current_source, *common)}:
         raise RuntimeError("Source changed during verification")
     summary["passed"] = True
     (out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")

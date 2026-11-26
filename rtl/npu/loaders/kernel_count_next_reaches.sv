@@ -5,9 +5,9 @@
 module kernel_count_next_reaches #(
     parameter int unsigned p_width = 32
 ) (
-    input wire logic [p_width-1:0] i_value,
-    input wire logic [p_width-1:0] i_limit,
-    output logic o_reaches
+    input wire logic [p_width-1:0] i_value /* 递增前的当前计数 */,
+    input wire logic [p_width-1:0] i_limit /* 需要检测的完成边界 */,
+    output logic o_reaches /* 递增后的计数达到或超过边界 */
 );
     logic value_less, unused_value_equal, next_equal, reaches_binary;
 
@@ -15,9 +15,8 @@ module kernel_count_next_reaches #(
         .i_a(i_value), .i_b(i_limit),
         .o_less(value_less), .o_equal(unused_value_equal)
     );
-    add_equal #(.p_width(p_width)) u_next_equal (
-        .i_a(i_value), .i_b({p_width{1'b0}}), .i_target(i_limit),
-        .i_carry_in(1'b1), .o_equal(next_equal)
+    (* keep_hierarchy = "yes" *) increment_equal #(.p_width(p_width), .p_preserve_pairs(1'b1), .p_reduce_group_width(6)) u_next_equal (
+        .i_a(i_value), .i_target(i_limit), .o_equal(next_equal)
     );
     assign reaches_binary = (i_limit == '0) ||
         ((!(&i_value)) && (!value_less || next_equal));

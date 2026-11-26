@@ -1,0 +1,262 @@
+{
+  "reference_revision": "f45a6c21",
+  "source_sha256": "a958a9f431ba111fb6feb47cd519aeae17e2ea7e4cb0f6129361203f81c0ff3c",
+  "scope": "实际生产偏置资格表达式，输入与输出使用相同寄存器边界",
+  "flow": {
+    "mapping": "physical-cost",
+    "delay_target_ps": 6667,
+    "wire_delay_ps": 300,
+    "maximum_cut_inputs": 8,
+    "native_combinational_helpers": false
+  },
+  "profiles": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 49,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 49,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 65,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "FDRE": 65,
+          "INV": 1,
+          "LUT2": 1,
+          "LUT3": 1,
+          "LUT4": 38,
+          "LUT5": 6,
+          "LUT6": 3
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "maximum_register_combinational_cells": 6,
+      "longest_path": {
+        "combinational_cells": 6,
+        "startpoint": {
+          "cell": "$auto$ff.cc:337:slice$2205",
+          "type": "FDRE",
+          "port": "Q",
+          "net": "base_q[11]",
+          "detail": "register output",
+          "source": "../storage_work/bias_nonzero_inputs/reference.sv:48.2|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "base_q [11]"
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$2516",
+          "type": "FDRE",
+          "port": "D",
+          "net": "present[0]",
+          "category": "data",
+          "source": "../storage_work/bias_nonzero_inputs/reference.sv:48.2|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "o_bias_present [0]"
+        },
+        "path": [
+          {
+            "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$5313",
+            "type": "LUT4",
+            "input_port": "I2[0]",
+            "output_port": "O[0]",
+            "input_net": "base_q[11]",
+            "output_net": "u_predicate.u_bias_zero.bit_equal[11]",
+            "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+          },
+          {
+            "cell": "$abc$5292$lut$aiger5291$367",
+            "type": "LUT4",
+            "input_port": "I0[0]",
+            "output_port": "O[0]",
+            "input_net": "u_predicate.u_bias_zero.bit_equal[11]",
+            "output_net": "$techmap5333$abc$5292$lut$aiger5291$371.A[4]",
+            "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+          },
+          {
+            "cell": "$abc$5292$lut$aiger5291$371",
+            "type": "LUT5",
+            "input_port": "I4[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap5333$abc$5292$lut$aiger5291$371.A[4]",
+            "output_net": "$techmap5340$abc$5292$lut$aiger5291$376.A[5]",
+            "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+          },
+          {
+            "cell": "$abc$5292$lut$aiger5291$376",
+            "type": "LUT6",
+            "input_port": "I5[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap5340$abc$5292$lut$aiger5291$376.A[5]",
+            "output_net": "$techmap5361$abc$5292$lut$aiger5291$380.A[4]",
+            "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+          },
+          {
+            "cell": "$abc$5292$lut$aiger5291$380",
+            "type": "LUT5",
+            "input_port": "I4[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap5361$abc$5292$lut$aiger5291$380.A[4]",
+            "output_net": "$techmap5370$abc$5292$lut$aiger$o32.A[3]",
+            "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+          },
+          {
+            "cell": "$abc$5292$lut$aiger$o32",
+            "type": "LUT4",
+            "input_port": "I3[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap5370$abc$5292$lut$aiger$o32.A[3]",
+            "output_net": "present[0]",
+            "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+          }
+        ]
+      },
+      "metrics_sha256": "56d92466d084ea702c3c6c8d1d40f7a366e571fc8adc1b8c1a3bcb10466b4709",
+      "mapped_sha256": "eebf8699c10ff69d6a85c331d3617917bfc31b74d48aea39e92d72c2ef810a03",
+      "input_sha256": {
+        "/workspace/scratch/5bfa47658687/storage_work/bias_nonzero_inputs/reference.sv": "6f2a0bfbd175e3fe2f4bc9ae69e75306da240ee957ebd5a6b551ee3cc2aaac71",
+        "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+        "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+        "rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+        "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+        "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+        "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+        "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+        "rtl/common/parallel_prefix_add.sv": "3455a8c3373eda8aef1c05d6d3b3c236ae3c970dde8fd725d7b8437ad83eaf0a",
+        "rtl/common/parallel_prefix_high_group.sv": "f37805622ff8cfac2cec15d31c4bf4ceef1d73e986559d6e81f2c13a5870c70a",
+        "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+        "rtl/common/parallel_unsigned_compare.sv": "b9c7a195baefca188edd03f160d0519515f0ed2a0fb5acbba82a495aa7bfa5fe",
+        "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+        "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+        "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+        "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+        "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+        "rtl/common/unsigned_compare.sv": "c359f6a6267d0170d7bdf3137485c990abce0876eff71bd4ad3f814f49e6721e"
+      }
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 47,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 47,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 65,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "FDRE": 65,
+          "INV": 7,
+          "LUT2": 2,
+          "LUT3": 1,
+          "LUT4": 32,
+          "LUT5": 4,
+          "LUT6": 8
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "maximum_register_combinational_cells": 5,
+      "longest_path": {
+        "combinational_cells": 5,
+        "startpoint": {
+          "cell": "$auto$ff.cc:337:slice$2308",
+          "type": "FDRE",
+          "port": "Q",
+          "net": "channel_q[25]",
+          "detail": "register output",
+          "source": "../storage_work/bias_nonzero_inputs/current.sv:82.2|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "channel_q [25]"
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$2544",
+          "type": "FDRE",
+          "port": "D",
+          "net": "present[0]",
+          "category": "data",
+          "source": "../storage_work/bias_nonzero_inputs/current.sv:82.2|/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "o_bias_present [0]"
+        },
+        "path": [
+          {
+            "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$5325",
+            "type": "LUT4",
+            "input_port": "I0[0]",
+            "output_port": "O[0]",
+            "input_net": "channel_q[25]",
+            "output_net": "u_predicate.u_bias_zero.bit_equal[27]",
+            "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+          },
+          {
+            "cell": "$abc$5320$lut$aiger5319$359",
+            "type": "LUT4",
+            "input_port": "I0[0]",
+            "output_port": "O[0]",
+            "input_net": "u_predicate.u_bias_zero.bit_equal[27]",
+            "output_net": "$techmap5382$abc$5320$lut$aiger5319$363.A[4]",
+            "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+          },
+          {
+            "cell": "$abc$5320$lut$aiger5319$363",
+            "type": "LUT5",
+            "input_port": "I4[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap5382$abc$5320$lut$aiger5319$363.A[4]",
+            "output_net": "$techmap5392$abc$5320$lut$aiger5319$368.A[5]",
+            "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+          },
+          {
+            "cell": "$abc$5320$lut$aiger5319$368",
+            "type": "LUT6",
+            "input_port": "I5[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap5392$abc$5320$lut$aiger5319$368.A[5]",
+            "output_net": "$techmap5410$abc$5320$lut$aiger$o70.A[4]",
+            "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+          },
+          {
+            "cell": "$abc$5320$lut$aiger$o70",
+            "type": "LUT5",
+            "input_port": "I4[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap5410$abc$5320$lut$aiger$o70.A[4]",
+            "output_net": "present[0]",
+            "source": "/workspace/scratch/5bfa47658687/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+          }
+        ]
+      },
+      "metrics_sha256": "a1f101d21c71bc742963b316a4f3d4c436e1dbe004407b4d3a65231d5a4ae373",
+      "mapped_sha256": "96bf97c10c4145ec6b17cfba1b3e9dd3c9ae0d7ac8456dd4b9c251292b1d21e5",
+      "input_sha256": {
+        "/workspace/scratch/5bfa47658687/storage_work/bias_nonzero_inputs/current.sv": "7efd22c1699783492749353220ab76febec4b77f26dc5a11d0a7cae395380f41",
+        "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+        "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+        "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+        "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+        "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+        "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+        "rtl/common/increment_equal.sv": "ce59cc71c780c6e1b15dfcba849782f8e8c77480850f0e8f622ac984fb8c35a0",
+        "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+        "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+        "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+        "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+        "rtl/common/parallel_prefix_add.sv": "3455a8c3373eda8aef1c05d6d3b3c236ae3c970dde8fd725d7b8437ad83eaf0a",
+        "rtl/common/parallel_prefix_high_group.sv": "f37805622ff8cfac2cec15d31c4bf4ceef1d73e986559d6e81f2c13a5870c70a",
+        "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+        "rtl/common/parallel_unsigned_compare.sv": "b9c7a195baefca188edd03f160d0519515f0ed2a0fb5acbba82a495aa7bfa5fe",
+        "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+        "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+        "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+        "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+        "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+        "rtl/common/unsigned_compare.sv": "c359f6a6267d0170d7bdf3137485c990abce0876eff71bd4ad3f814f49e6721e"
+      }
+    }
+  }
+}

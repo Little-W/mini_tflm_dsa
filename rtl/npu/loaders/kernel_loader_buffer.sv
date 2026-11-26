@@ -1,30 +1,30 @@
 `default_nettype none
-
+// 管理两个逻辑装载槽和独立发送存储，输出计算阵列需要的权重排列。
 module kernel_loader_buffer #(
     parameter int unsigned DATA_WIDTH = 8,
     parameter int unsigned SIZE = 4
 ) (
-    input  wire logic clk,
-    input  wire logic rst_n,
-    input  wire logic cache_flush = 1'b0,
-    input  wire logic discard_head = 1'b0,
-    input  wire logic load_start,
-    output logic load_slot_id,
-    input  wire logic row_valid,
-    input  wire logic row_slot,
-    input  wire logic [$clog2(SIZE)-1:0] row_idx,
-    input  wire logic signed [DATA_WIDTH-1:0] row_data [SIZE],
-    input  wire logic load_done,
-    input  wire logic done_slot,
-    input  wire logic send_start,
-    output logic load_ready,
-    output logic load_commit,
-    output logic load_commit_slot,
-    output logic discard_ready,
-    output logic weight_data_valid,
-    output logic weight_sending_done,
-    output logic store_weight_req,
-    output logic signed [DATA_WIDTH-1:0] weight_out [SIZE]
+    input  wire logic clk, // 权重存储及槽位控制的工作时钟。
+    input  wire logic rst_n, // 低有效同步复位。
+    input  wire logic cache_flush = 1'b0, // 同步清空槽位占用和发送状态。
+    input  wire logic discard_head = 1'b0, // 请求释放队首已装载分块。
+    input  wire logic load_start, // 请求预留下一逻辑槽位用于装载。
+    output logic load_slot_id, // 当前可用于装载的逻辑槽号。
+    input  wire logic row_valid, // 输入的一整行权重数据有效。
+    input  wire logic row_slot, // 输入行所属的逻辑槽号。
+    input  wire logic [$clog2(SIZE)-1:0] row_idx, // 输入行在分块内的行索引。
+    input  wire logic signed [DATA_WIDTH-1:0] row_data [SIZE], // 输入行中各列的有符号权重元素。
+    input  wire logic load_done, // 当前装载分块的全部行已经返回。
+    input  wire logic done_slot, // 装载完成的逻辑槽号。
+    input  wire logic send_start, // 请求发送队首已装载分块。
+    output logic load_ready, // 下一装载槽位空闲，可接受装载请求。
+    output logic load_commit, // 装载完成信息已经写入槽位状态。
+    output logic load_commit_slot, // 本周期完成装载登记的逻辑槽号。
+    output logic discard_ready, // 队首分块已装载且当前可被释放。
+    output logic weight_data_valid, // 队首分块可启动发送。
+    output logic weight_sending_done, // 当前分块的最后一组权重已经输出。
+    output logic store_weight_req, // 本周期输出的权重需要写入计算阵列。
+    output logic signed [DATA_WIDTH-1:0] weight_out [SIZE] // 按阵列对角输入顺序排列的权重向量。
 );
     //! 0. 常量与内部信号
     //! --------------------
@@ -281,19 +281,6 @@ module kernel_loader_buffer #(
         end
     end endgenerate
 
-endmodule
-
-// 一个通道内完成四路数据选择，分组边界保存共享的中间排列。
-(* keep_hierarchy = "yes" *)
-module kernel_column_select4 #(
-    parameter int unsigned p_width = 16
-) (
-    input wire logic [1:0] i_select,
-    input wire logic [p_width-1:0] i_data0, i_data1, i_data2, i_data3,
-    output logic [p_width-1:0] o_data
-);
-    assign o_data = i_select[1] ? (i_select[0] ? i_data3 : i_data2) :
-        (i_select[0] ? i_data1 : i_data0);
 endmodule
 
 `default_nettype wire

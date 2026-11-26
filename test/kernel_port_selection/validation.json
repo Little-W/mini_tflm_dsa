@@ -1,0 +1,74 @@
+{
+  "passed": true,
+  "reference": "548bda54",
+  "source_sha256": {
+    "rtl/npu/loaders/kernel_loader.sv": "f92a6b8135f16f2f8d31be706c2e56fddbb56951888a1cd166d2dc208c5b2513",
+    "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+    "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+    "rtl/npu/loaders/kernel_burst_encode.sv": "5ec43c8832d16725840d1dc7bad18f0cbfda9a1d470ac99b998406639a68fc73",
+    "rtl/npu/loaders/kernel_candidate_equal.sv": "f139cbe25e80b22703e9fc564fcb2a158701c452e0ffb164d68453cfd9beaae5",
+    "rtl/npu/loaders/kernel_loader_buffer.sv": "fb0b4d706325dde3c8cd3286eed9f5ce5368d51fcac084cca9d363a1cf9760ac",
+    "rtl/npu/loaders/kernel_loader_ctrl.sv": "53bf18d2d3729a6f65b5e99899cedfd71b420658ac496a31a9e19f181dec2606",
+    "rtl/npu/loaders/kernel_request_idle.sv": "2bfbadf200e73ce0534405a026317d8f1e57d17ee299de27dc8ea63709cb4cdd",
+    "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+    "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+    "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+    "rtl/npu/loaders/kernel_column_select4.sv": "bf7568fc464832cd424d3cec2e1b9e48d7288d5f0f53a8be32d694634be9eb7f",
+    "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+    "rtl/common/increment_equal.sv": "5502c1cab338162650019b5c01ff3a803044814f352e37e16ae63640612d56a0",
+    "rtl/npu/loaders/kernel_completion_check.sv": "f05f544b5d28c92ae0c4d273d712e5ecdc476a7f144540a9b96e5d8bfdbee2b3",
+    "rtl/npu/loaders/kernel_count_increment.sv": "73a658769d015cfb43e8fc4c9e0324e642d06749dbea96e73d806716853d6f3a",
+    "rtl/npu/loaders/kernel_count_next_reaches.sv": "2113ca8e0e2214b6270110a90a4e95489162e0b4e7b6cc52d043fe2e2742ec13",
+    "rtl/npu/loaders/kernel_group_step.sv": "ee78b744211eabed6cda08903424ea6afb1e57b6b13c6a3556bf014670fb2e7b",
+    "rtl/common/zero_reduce.sv": "3df3bae2f85910a7df945c276cbe890618616add244454d05368e35fbacc77a3",
+    "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+    "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c"
+  },
+  "control_logic_extracted_from_source": true,
+  "inputs_constrained": false,
+  "all_public_outputs_and_common_state_compared": true,
+  "formal": [
+    {
+      "size": 4,
+      "count_width": 8,
+      "bus_width": 32,
+      "fpga": false,
+      "passed": true,
+      "proven_points": 5061,
+      "log_sha256": "eb3e1a93c600d86808d0d16097ae9d39ea5c04aa2bb271f78206ec6f62a5c7e0"
+    },
+    {
+      "size": 4,
+      "count_width": 8,
+      "bus_width": 32,
+      "fpga": true,
+      "passed": true,
+      "proven_points": 4904,
+      "log_sha256": "966fc3163b70eb9390d07d21caa184c044b466b1125a222665b4764f5df573d2"
+    },
+    {
+      "size": 16,
+      "count_width": 29,
+      "bus_width": 32,
+      "fpga": true,
+      "passed": true,
+      "proven_points": 19433,
+      "log_sha256": "7f837bb30d8ff84cbcf49a61ea2ffae030f50f7abdb4f13b64090bd1227eb180"
+    },
+    {
+      "size": 16,
+      "count_width": 29,
+      "bus_width": 64,
+      "fpga": true,
+      "passed": true,
+      "proven_points": 19510,
+      "log_sha256": "bfb78514cf92232775580613754b88fb9af939add341849846b0b1c961278549"
+    }
+  ],
+  "four_state_control_cases": 4194304,
+  "four_state_descriptor_bit_comparisons": 67108864,
+  "four_state_log_sha256": "7c0db16fb747365685f0564757d5ccaf212b7500aabe156c7517fa9b2e246c5e"
+}

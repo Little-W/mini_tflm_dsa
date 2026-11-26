@@ -7,7 +7,7 @@
  */
 `default_nettype none
 
-module ia_loader #(
+/* 装载输入矩阵块，管理分组复用和缓存槽，并连续向阵列发送完整输入行。 */ module ia_loader #(
     parameter int unsigned DATA_WIDTH   = 16,
     parameter int unsigned SIZE         = 16,
     parameter int unsigned BUS_WIDTH    = 32,
@@ -26,103 +26,105 @@ module ia_loader #(
     parameter bit p_dma_source_layout = 1'b0,
     // 共享块写数据与原写命令在同一寄存级产生。
     parameter bit p_shared_write_stage = 1'b0,
+    // 普通十六位元素布局是否保持未写入字节的零值；紧凑格式保持原有数据表示。
+    parameter bit p_zero_masked_write_data = 1'b1,
     // DMA 仲裁预留经过寄存级，控制器只使用当前预留对应的外部授予。
     parameter bit p_register_dma_request = 1'b0
 ) (
-    input wire logic clk,
-    input wire logic rst_n,
+    input wire logic clk /* 工作时钟 */,
+    input wire logic rst_n /* 低有效复位 */,
 
     // ---- 配置与控制 ----
-    input  wire logic init_cfg,
+    input  wire logic init_cfg /* 接收任务参数并初始化当前模块 */,
     // Select a matrix-block request generated from the original image by DMA.
     // This loader does not own image geometry, an input cache or an AXI path.
-    input  wire logic cfg_im2col = 1'b0,
-    input  wire logic cfg_tile_packed = 1'b0,
-    input  wire logic cfg_compact = 1'b0,
-    input  wire logic signed [REG_WIDTH-1:0] cfg_compact_offset = '0,
-    input  wire logic [31:0] cfg_cache_blocks = 32'd0,
-    input  wire logic cfg_preserve_cache = 1'b0,
-    input  wire logic cache_flush = 1'b0,
-    input  wire logic [REG_WIDTH-1:0] cfg_p0_base = '0,
-    input  wire logic [REG_WIDTH-1:0] cfg_q0_base = '0,
-    input  wire logic [REG_WIDTH-1:0] cfg_cache_slot_base = '0,
-    input  wire logic cfg_prefetch_enable = 1'b0,
-    input  wire logic [REG_WIDTH-1:0] cfg_global_reduction = '0,
-    output logic prefetch_idle,
-    output logic load_ia_req,
-    input  wire logic load_ia_granted,
-    input  wire logic send_ia_trigger,
+    input  wire logic cfg_im2col = 1'b0 /* 由共享 DMA 从原图像生成输入矩阵块 */,
+    input  wire logic cfg_tile_packed = 1'b0 /* 输入矩阵使用连续分块布局 */,
+    input  wire logic cfg_compact = 1'b0 /* 在输入存储中紧凑保存8 位元素 */,
+    input  wire logic signed [REG_WIDTH-1:0] cfg_compact_offset = '0 /* 紧凑8 位数据恢复为阵列元素时加入的有符号偏移 */,
+    input  wire logic [31:0] cfg_cache_blocks = 32'd0 /* 当前任务可使用的物理输入缓存块数 */,
+    input  wire logic cfg_preserve_cache = 1'b0 /* 保留可供当前配置复用的已完成缓存内容 */,
+    input  wire logic cache_flush = 1'b0 /* 清除已保存输入块的有效状态 */,
+    input  wire logic [REG_WIDTH-1:0] cfg_p0_base = '0 /* 当前帧在完整逻辑矩阵中的起始行坐标 */,
+    input  wire logic [REG_WIDTH-1:0] cfg_q0_base = '0 /* 当前帧在完整归约维度中的起始坐标 */,
+    input  wire logic [REG_WIDTH-1:0] cfg_cache_slot_base = '0 /* 当前帧对应的物理输入缓存起始槽号 */,
+    input  wire logic cfg_prefetch_enable = 1'b0 /* 允许提前装载下一输入分组 */,
+    input  wire logic [REG_WIDTH-1:0] cfg_global_reduction = '0 /* 完整任务的归约长度，用于分块地址和末段限制 */,
+    output logic prefetch_idle /* 输入预取状态已空闲，可接收后续任务配置 */,
+    output logic load_ia_req /* 请求输入块 DMA 装载 */,
+    input  wire logic load_ia_granted /* 输入块 DMA 装载请求已获授予 */,
+    input  wire logic send_ia_trigger /* 启动已就绪输入分组的行输出 */,
 
     // ---- 矩阵尺寸（init_cfg 高时须稳定）----
-    input wire logic        [REG_WIDTH-1:0] k,
-    input wire logic        [REG_WIDTH-1:0] n,
-    input wire logic        [REG_WIDTH-1:0] m,
-    input wire logic        [REG_WIDTH-1:0] lhs_base,
-    input wire logic        [REG_WIDTH-1:0] lhs_row_stride_b,
-    input wire logic signed [REG_WIDTH-1:0] lhs_zp,
-    input wire logic                        use_16bits,
-    input wire logic                        bias_by_row_mode,
-    input wire logic                        bias_at_end = 1'b0,
+    input wire logic        [REG_WIDTH-1:0] k /* 流式维度长度，WS 对应输出行数，IS 对应输出列数。 */,
+    input wire logic        [REG_WIDTH-1:0] n /* 矩阵乘法的归约长度 */,
+    input wire logic        [REG_WIDTH-1:0] m /* 驻留维度长度，WS 对应输出列数，IS 对应输出行数。 */,
+    input wire logic        [REG_WIDTH-1:0] lhs_base /* 左操作数矩阵的首字节地址 */,
+    input wire logic        [REG_WIDTH-1:0] lhs_row_stride_b /* 左操作数相邻行的字节步长 */,
+    input wire logic signed [REG_WIDTH-1:0] lhs_zp /* 左操作数的有符号量化零点 */,
+    input wire logic                        use_16bits /* 左操作数采用16 位有符号格式 */,
+    input wire logic                        bias_by_row_mode /* 偏置按当前流式矩阵的行号选择 */,
+    input wire logic                        bias_at_end = 1'b0 /* 在最后一次归约累加后加入偏置 */,
 
     // ---- 复用控制（init_cfg 高时须稳定）----
-    input wire logic [REG_WIDTH-1:0] ia_reuse_num,  // R
-    input wire logic [REG_WIDTH-1:0] w_reuse_num,   // W
-    input wire logic [REG_WIDTH-1:0] row_groups,
-    input wire logic [REG_WIDTH-1:0] row_tail_tiles,
-    input wire logic [REG_WIDTH-1:0] col_groups,
-    input wire logic [REG_WIDTH-1:0] col_tail_tiles,
+    input wire logic [REG_WIDTH-1:0] ia_reuse_num /* 一个流式操作数复用组包含的分块数。 */,  // R
+    input wire logic [REG_WIDTH-1:0] w_reuse_num /* 一个驻留操作数复用组包含的分块数。 */,   // W
+    input wire logic [REG_WIDTH-1:0] row_groups /* 流式维度的分块组数，WS 对应输出行，IS 对应输出列。 */,
+    input wire logic [REG_WIDTH-1:0] row_tail_tiles /* 最后一个流式维度分组的有效分块数。 */,
+    input wire logic [REG_WIDTH-1:0] col_groups /* 驻留维度的分块组数，WS 对应输出列，IS 对应输出行。 */,
+    input wire logic [REG_WIDTH-1:0] col_tail_tiles /* 最后一个驻留维度分组的有效分块数。 */,
 
     // ---- 共享 AXI block_dma 客户端接口 ----
-    output logic                                   ext_dma_start,
-    output logic                                   ext_dma_is_write,
-    output logic                                   ext_dma_linear_read_mode,
-    output logic                                   ext_dma_im2col,
-    output logic        [           REG_WIDTH-1:0] ext_dma_p0,
-    output logic        [           REG_WIDTH-1:0] ext_dma_q0,
-    output logic        [           REG_WIDTH-1:0] ext_dma_group,
-    output logic        [           REG_WIDTH-1:0] ext_dma_base_addr,
-    output logic        [           REG_WIDTH-1:0] ext_dma_row_stride,
-    output logic        [           REG_WIDTH-1:0] ext_dma_rows_to_read,
-    output logic        [                     7:0] ext_dma_burst_len_m1,
-    output logic        [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] ext_dma_slot_id,
-    output logic                                   ext_dma_use_16bits,
-    output logic signed [           REG_WIDTH-1:0] ext_dma_lhs_zp,
-    input  wire logic                                   ext_dma_busy,
-    input  wire logic                                   ext_dma_done,
-    input  wire logic        [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] ext_dma_wr_slot,
-    input  wire logic        [        $clog2(SIZE)-1:0] ext_dma_wr_row,
-    input  wire logic        [        $clog2(SIZE)-1:0] ext_dma_wr_col_base,
-    input  wire logic signed [          DATA_WIDTH-1:0] ext_dma_wr_data         [DMA_LANES],
-    input  wire logic                                   ext_dma_wr_valid        [DMA_LANES],
-    input  wire logic                                   ext_dma_wr_use_16bits,
+    output logic                                   ext_dma_start /* 共享 DMA 接口：启动本次块传输 */,
+    output logic                                   ext_dma_is_write /* 共享 DMA 接口：块传输方向选择，置位表示写入 */,
+    output logic                                   ext_dma_linear_read_mode /* 共享 DMA 接口：启用逐行单拍读取模式 */,
+    output logic                                   ext_dma_im2col /* 共享 DMA 接口：选择图像展开读取 */,
+    output logic        [           REG_WIDTH-1:0] ext_dma_p0 /* 共享 DMA 接口：逻辑矩阵块的起始行坐标 */,
+    output logic        [           REG_WIDTH-1:0] ext_dma_q0 /* 共享 DMA 接口：逻辑矩阵块的归约起点 */,
+    output logic        [           REG_WIDTH-1:0] ext_dma_group /* 当前 DMA 分块所属的流式维度复用组编号。 */,
+    output logic        [           REG_WIDTH-1:0] ext_dma_base_addr /* 共享 DMA 接口：本次传输的首字节地址 */,
+    output logic        [           REG_WIDTH-1:0] ext_dma_row_stride /* 共享 DMA 接口：相邻传输行的字节步长 */,
+    output logic        [           REG_WIDTH-1:0] ext_dma_rows_to_read /* 共享 DMA 接口：本次块传输的行数 */,
+    output logic        [                     7:0] ext_dma_burst_len_m1 /* 共享 DMA 接口：每行突发传输拍数减一 */,
+    output logic        [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] ext_dma_slot_id /* 共享 DMA 接口：读取结果写入的缓存槽号 */,
+    output logic                                   ext_dma_use_16bits /* 共享 DMA 接口：输入元素采用16 位格式 */,
+    output logic signed [           REG_WIDTH-1:0] ext_dma_lhs_zp /* 共享 DMA 接口：输入元素的有符号零点 */,
+    input  wire logic                                   ext_dma_busy /* 共享 DMA 接口：块传输正在执行 */,
+    input  wire logic                                   ext_dma_done /* 共享 DMA 接口：本次块传输完成 */,
+    input  wire logic        [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] ext_dma_wr_slot /* 共享 DMA 接口：返回数据所属的缓存槽号 */,
+    input  wire logic        [        $clog2(SIZE)-1:0] ext_dma_wr_row /* 共享 DMA 接口：返回数据在矩阵块内的行号 */,
+    input  wire logic        [        $clog2(SIZE)-1:0] ext_dma_wr_col_base /* 共享 DMA 接口：返回数据首通道在矩阵块内的列号 */,
+    input  wire logic signed [          DATA_WIDTH-1:0] ext_dma_wr_data         [DMA_LANES] /* 共享 DMA 接口：写入缓存的解包元素数组 */,
+    input  wire logic                                   ext_dma_wr_valid        [DMA_LANES] /* 共享 DMA 接口：解包元素各通道的写入有效标记 */,
+    input  wire logic                                   ext_dma_wr_use_16bits /* 共享 DMA 接口：返回元素采用16 位格式 */,
 
-    output logic [1:0] ram_port_wr_en,
-    output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_wr_addr [0:1],
-    output logic [127:0] ram_port_wr_data [0:1],
-    output logic [15:0] ram_port_wr_mask [0:1],
-    output logic [127:0] ram_shared_wr_data,
-    output logic [1:0] ram_port_rd_en,
-    output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_rd_addr [0:1],
-    input  wire logic [127:0] ram_port_rd_data [0:1] = '{default:'0},
+    output logic [1:0] ram_port_wr_en /* 两个输入存储端口的写使能 */,
+    output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_wr_addr [0:1] /* 两个输入存储端口的写字地址 */,
+    output logic [127:0] ram_port_wr_data [0:1] /* 两个输入存储端口的各128 位写数据 */,
+    output logic [15:0] ram_port_wr_mask [0:1] /* 两个输入存储端口的逐字节写使能 */,
+    output logic [127:0] ram_shared_wr_data /* 共享物理存储块预选的128 位写数据 */,
+    output logic [1:0] ram_port_rd_en /* 两个输入存储端口的读使能 */,
+    output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_rd_addr [0:1] /* 两个输入存储端口的读字地址 */,
+    input  wire logic [127:0] ram_port_rd_data [0:1] = '{default:'0} /* 两个输入存储端口同步返回的128 位数据 */,
 
     // ---- 输出到脉动阵列（SIZE 维数据 + 最后一列指示信号）----
-    output logic signed [DATA_WIDTH-1:0] ia_out         [SIZE],
-    output logic                         ia_row_valid,           // Complete input row is valid.
-    output logic                         ia_is_init_data,        // 同上
-    output logic                         ia_calc_done,           // 同上
+    output logic signed [DATA_WIDTH-1:0] ia_out         [SIZE] /* 发送到脉动阵列的完整输入行 */,
+    output logic                         ia_row_valid /* 当前完整输入行有效 */,           // Complete input row is valid.
+    output logic                         ia_is_init_data,        // 当前有效行属于部分和初始化阶段
+    output logic                         ia_calc_done,           // 当前有效行完成最终归约累加
     output logic                         ia_tile_start,          // 提前两个周期指示单 tile 首行
-    output logic                         ia_sending_done,
-    output logic                         ia_data_valid,
-    output logic [31:0]                 ps_frame_rows,
-    output logic [31:0]                 ps_frame_id,
-    output logic                        ps_frame_init,
-    output logic                        ps_frame_final,
-    output logic                         ia_output_pending,
-    output logic                         bias_sleep,
-    output logic                         bias_load_sleep,
-    output logic                         bias_switch,
-    output logic                         bias_last_loop,
-    output logic                         ia_l1_switch
+    output logic                         ia_sending_done /* 当前输入分组的全部行发送完成 */,
+    output logic                         ia_data_valid /* 当前输入分组已经就绪，可启动发送 */,
+    output logic [31:0]                 ps_frame_rows /* 当前部分和帧的有效行数 */,
+    output logic [31:0]                 ps_frame_id /* 当前部分和帧的槽号 */,
+    output logic                        ps_frame_init /* 当前帧处于首次归约，初始化部分和 */,
+    output logic                        ps_frame_final /* 当前帧处于最终归约，生成输出 */,
+    output logic                         ia_output_pending /* 输入行发送或其读出流水仍有待完成数据 */,
+    output logic                         bias_sleep /* 当前输入组无需读取初始化偏置 */,
+    output logic                         bias_load_sleep /* 当前任务阶段暂停偏置装载 */,
+    output logic                         bias_switch /* 切换当前偏置分组 */,
+    output logic                         bias_last_loop /* 当前偏置分组进入最后一次复用 */,
+    output logic                         ia_l1_switch /* 当前输入复用分组边界切换 */
 );
     // =======================================================================
     // 局部参数
@@ -180,6 +182,7 @@ module ia_loader #(
     logic preserve_cache_q;
     logic prefetch_enable_q;
     logic [REG_WIDTH-1:0] global_reduction_q;
+    logic global_reduction_nonzero_q;
     logic [REG_WIDTH-1:0] packed_k_tiles_q;
     logic [REG_WIDTH-1:0] packed_reduction_nxt;
     logic [REG_WIDTH-1:0] packed_k_tiles_nxt;
@@ -242,16 +245,20 @@ module ia_loader #(
 
     // 分块数与 reduction 在同一配置边沿保存；忙碌期间重新配置时，n 保持原值。
     // 取整在配置接收前完成，控制器随后只计算字节步长与复用组步长。
-    assign packed_reduction_nxt = (cfg_global_reduction != '0) ? cfg_global_reduction :
+    logic packed_global_zero;
+    assign packed_reduction_nxt = !packed_global_zero ? cfg_global_reduction :
         ((state == IDLE) ? n : cfg_n);
+    // 全局长度的零值条件独立归并，避免来源选择和分组进位串联展开。
+    zero_reduce #(.p_width(REG_WIDTH), .p_group_width(6)) u_packed_global_zero (
+        .i_value(cfg_global_reduction), .o_zero(packed_global_zero)
+    );
     // 余数决定最低组进位，各组并行形成分块数并在配置边沿保存。
     assign packed_tiles_round_up = (packed_reduction_nxt & REG_WIDTH'(SIZE - 1)) != '0;
-    parallel_prefix_add #(
-        .p_width(REG_WIDTH), .p_group_width(8), .p_preserve_groups(1'b1)
+    conditional_increment #(
+        .p_width(REG_WIDTH+1), .p_native_groups(1'b1)
     ) u_packed_tiles (
-        .i_a(packed_reduction_nxt >> LOG2_SIZE), .i_b('0), .i_carry(packed_tiles_round_up),
-        .o_sum(packed_tiles_parallel_sum[REG_WIDTH-1:0]),
-        .o_carry(packed_tiles_parallel_sum[REG_WIDTH])
+        .i_value({1'b0, (packed_reduction_nxt >> LOG2_SIZE)}),
+        .i_enable(packed_tiles_round_up), .o_result(packed_tiles_parallel_sum)
     );
     always_comb begin
         case (^packed_reduction_nxt)
@@ -318,6 +325,7 @@ module ia_loader #(
             preserve_cache_q <= 1'b0;
             prefetch_enable_q <= 1'b0;
             global_reduction_q <= '0;
+            global_reduction_nonzero_q <= 1'b0;
             packed_k_tiles_q <= '0;
             p0_base_q <= '0;
             q0_base_q <= '0;
@@ -339,6 +347,7 @@ module ia_loader #(
                 prefetch_reuse_fits &&
                 (k <= (ia_reuse_num << LOG2_SIZE));
             global_reduction_q <= cfg_global_reduction;
+            global_reduction_nonzero_q <= |cfg_global_reduction;
             packed_k_tiles_q <= packed_k_tiles_nxt;
             p0_base_q <= cfg_p0_base;
             q0_base_q <= cfg_q0_base;
@@ -413,8 +422,24 @@ module ia_loader #(
         localparam int p_high_width = 32 - LOG2_SIZE;
         logic [p_high_width-1:0] last_high;
 
-        assign last_high = p_high_width'(frame_last_tiles) -
-            p_high_width'(|k[LOG2_SIZE-1:0]);
+        logic [p_high_width-1:0] tiles_high, parallel_last_high;
+        logic decrement, unused_frame_carry;
+        assign tiles_high = p_high_width'(frame_last_tiles);
+        assign decrement = |k[LOG2_SIZE-1:0];
+        // 固定减一等价于加全一并补入反向借位，组间进位按平衡前缀传播。
+        parallel_prefix_add #(
+            .p_width(p_high_width), .p_group_width(4), .p_preserve_groups(1'b1)
+        ) u_frame_tail (
+            .i_a(tiles_high), .i_b('1), .i_carry(!decrement),
+            .o_sum(parallel_last_high), .o_carry(unused_frame_carry)
+        );
+        always_comb begin
+            last_high = tiles_high - p_high_width'(decrement);
+            case (^{tiles_high, decrement})
+                1'b0, 1'b1: last_high = parallel_last_high;
+                default: ;
+            endcase
+        end
         assign frame_last_rows_next = {last_high, k[LOG2_SIZE-1:0]};
     end else begin : g_frame_rows_general
         assign frame_last_rows_next = (32'(frame_last_tiles) << LOG2_SIZE) -
@@ -770,17 +795,17 @@ module ia_loader #(
     if (ORDERED_JOB) begin : g_saved_demand_lookup
         logic demand_lookup_match_q;
         logic [1:0] demand_coordinate_same;
-        // 两组绝对坐标共用请求偏移量，只比较配置基址和低位进位。
-        ia_ordered_coordinate_same #(
+        // 两组坐标共用请求偏移量，配置接收仅选择最终分块匹配结果。
+        ia_ordered_coordinate_update #(
             .p_width(REG_WIDTH), .p_low_width(LOG2_SIZE)
-        ) u_demand_p0_same (
-            .i_base_a(p0_base_q), .i_base_b(init_cfg ? cfg_p0_base : p0_base_q),
+        ) u_demand_p0_update (
+            .i_update(init_cfg), .i_base(p0_base_q), .i_next_base(cfg_p0_base),
             .i_offset(request_p0), .o_equal(demand_coordinate_same[0])
         );
-        ia_ordered_coordinate_same #(
+        ia_ordered_coordinate_update #(
             .p_width(REG_WIDTH), .p_low_width(LOG2_SIZE)
-        ) u_demand_q0_same (
-            .i_base_a(q0_base_q), .i_base_b(init_cfg ? cfg_q0_base : q0_base_q),
+        ) u_demand_q0_update (
+            .i_update(init_cfg), .i_base(q0_base_q), .i_next_base(cfg_q0_base),
             .i_offset(request_q0), .o_equal(demand_coordinate_same[1])
         );
         always_ff @(posedge clk or negedge rst_n) begin
@@ -923,10 +948,13 @@ module ia_loader #(
             .i_b(global_reduction_q[REG_WIDTH-1:LOG2_SIZE]),
             .o_less(current_high_less), .o_equal(unused_current_high_equal)
         );
-        add_equal #(.p_width(p_high_width), .p_preserve_bits(1'b1)) u_next_high_equal (
-            .i_a(q0_base_q[REG_WIDTH-1:LOG2_SIZE]), .i_b(p_high_width'(0)),
+        // 下一分块的高位增加一个单位，共用常量加一的分组相等检查。
+        increment_equal #(
+            .p_width(p_high_width), .p_preserve_pairs(1'b1), .p_reduce_group_width(6)
+        ) u_next_high_equal (
+            .i_a(q0_base_q[REG_WIDTH-1:LOG2_SIZE]),
             .i_target(global_reduction_q[REG_WIDTH-1:LOG2_SIZE]),
-            .i_carry_in(1'b1), .o_equal(next_high_equal)
+            .o_equal(next_high_equal)
         );
         assign low_less = q0_base_q[LOG2_SIZE-1:0] < global_reduction_q[LOG2_SIZE-1:0];
         always_comb begin
@@ -944,7 +972,7 @@ module ia_loader #(
          REG_WIDTH'(BYTE_PER_BEAT - 1)) >> LOG2_BYTE_PER_BEAT;
     // 全局归约数为零时保持零步长，其余配置复用已经保存的分块数量。
     wire [REG_WIDTH-1:0] packed_prefetch_k_tiles =
-        (global_reduction_q == '0) ? '0 : packed_k_tiles_q;
+        global_reduction_nonzero_q ? packed_k_tiles_q : '0;
     wire [REG_WIDTH-1:0] prefetch_next_k_bytes = REG_WIDTH'(SIZE) <<
         ((tile_packed_q ? LOG2_SIZE : 0) + (cfg_use_16bits ? 1 : 0));
 
@@ -1329,6 +1357,7 @@ module ia_loader #(
         .p_compact_offset_width((DATA_WIDTH == 16) ? 9 : DATA_WIDTH),
         .p_dma_source_layout(p_dma_source_layout),
         .p_shared_write_stage(p_shared_write_stage),
+        .p_zero_masked_write_data(p_zero_masked_write_data),
         .p_precomputed_slot_mask(1'b1),
         .p_indexed_slot_rows(1'b1)
     ) u_cache_mgr (

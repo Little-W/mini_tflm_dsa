@@ -7,10 +7,10 @@ module kernel_burst_encode #(
     parameter int p_size = 16,
     parameter int p_bus_width = 64
 ) (
-    input  wire logic [p_width-1:0] i_columns,
-    input  wire logic i_use16,
-    input  wire logic i_tile_packed,
-    output logic [7:0] o_length_m1
+    input  wire logic [p_width-1:0] i_columns /* 本次读取的有效元素列数 */,
+    input  wire logic i_use16 /* 每个待读取元素占两个字节 */,
+    input  wire logic i_tile_packed /* 使用固定宽度的连续分块读取 */,
+    output logic [7:0] o_length_m1 /* 每行 AXI 传输拍数减一的8 位编码 */
 );
     localparam int p_elements_s8 = p_bus_width / 8;
     localparam int p_elements_s16 = p_bus_width / 16;

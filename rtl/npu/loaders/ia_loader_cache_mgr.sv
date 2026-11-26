@@ -16,35 +16,37 @@ module ia_loader_cache_mgr #(
     parameter bit p_dma_source_layout = 1'b0,
     // 在写命令寄存级提前选择第二个物理存储块的数据。
     parameter bit p_shared_write_stage = 1'b0,
+    // 普通十六位元素布局是否保持未写入字节的零值；紧凑格式保持原有数据表示。
+    parameter bit p_zero_masked_write_data = 1'b1,
     parameter bit p_precomputed_slot_mask = 1'b0,
     parameter bit p_indexed_slot_rows = 1'b0,
     localparam int unsigned SLOT_BLOCKS =
         ((COMPACT_S8 != 0) && (DATA_WIDTH == 16)) ? 2 * CACHE_BLOCKS : CACHE_BLOCKS
 ) (
-    input  logic clk,
-    input  logic rst_n,
-    input  logic compact_mode = 1'b0,
-    input  logic signed [DATA_WIDTH-1:0] compact_offset = '0,
-    input  logic [31:0] cfg_cache_blocks = 32'd0,
-    input logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] cfg_slot_mask = '0,
-    input  logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] slot_base = '0,
+    input  logic clk /* 工作时钟 */,
+    input  logic rst_n /* 低有效复位 */,
+    input  logic compact_mode = 1'b0 /* 输入缓存采用8 位紧凑存储 */,
+    input  logic signed [DATA_WIDTH-1:0] compact_offset = '0 /* 紧凑8 位数据读出后恢复的有符号偏移 */,
+    input  logic [31:0] cfg_cache_blocks = 32'd0 /* 当前任务可使用的物理输入缓存块数 */,
+    input logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] cfg_slot_mask = '0 /* 预先计算的有效缓存槽号掩码 */,
+    input  logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] slot_base = '0 /* 当前帧对应的物理输入缓存起始槽号 */,
 
-    output logic [1:0] ram_port_wr_en,
-    output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_wr_addr [0:1],
-    output logic [127:0] ram_port_wr_data [0:1],
-    output logic [15:0] ram_port_wr_mask [0:1],
-    output logic [127:0] ram_shared_wr_data,
-    output logic [1:0] ram_port_rd_en,
-    output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_rd_addr [0:1],
-    input  logic [127:0] ram_port_rd_data [0:1] = '{default:'0},
+    output logic [1:0] ram_port_wr_en /* 两个输入存储端口的写使能 */,
+    output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_wr_addr [0:1] /* 两个输入存储端口的写字地址 */,
+    output logic [127:0] ram_port_wr_data [0:1] /* 两个输入存储端口的各128 位写数据 */,
+    output logic [15:0] ram_port_wr_mask [0:1] /* 两个输入存储端口的逐字节写使能 */,
+    output logic [127:0] ram_shared_wr_data /* 共享物理存储块预选的128 位写数据 */,
+    output logic [1:0] ram_port_rd_en /* 两个输入存储端口的读使能 */,
+    output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_rd_addr [0:1] /* 两个输入存储端口的读字地址 */,
+    input  logic [127:0] ram_port_rd_data [0:1] = '{default:'0} /* 两个输入存储端口同步返回的128 位数据 */,
 
     // ---- 写入端 ----
-    input  logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0]      wr_slot,
-    input  logic [$clog2(SIZE)-1:0]              wr_row,
-    input  logic [$clog2(SIZE)-1:0]              wr_col_base,
-    input  logic signed [DATA_WIDTH-1:0]         wr_data  [DMA_LANES],
-    input  logic                                 wr_valid [DMA_LANES],
-    input  logic                                 wr_use_16bits,
+    input  logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0]      wr_slot /* DMA 返回数据写入的缓存槽号 */,
+    input  logic [$clog2(SIZE)-1:0]              wr_row /* DMA 返回数据在矩阵块内的行号 */,
+    input  logic [$clog2(SIZE)-1:0]              wr_col_base /* DMA 返回数据首通道在矩阵块内的列号 */,
+    input  logic signed [DATA_WIDTH-1:0]         wr_data  [DMA_LANES] /* DMA 返回的待写入输入元素数组 */,
+    input  logic                                 wr_valid [DMA_LANES] /* DMA 返回各元素通道的写入有效标记 */,
+    input  logic                                 wr_use_16bits /* DMA 返回的输入元素采用16 位格式 */,
 
     // ---- L1 group row-stream control ----
     // ctrl 一次性指定 L1 组的起始/终止 slot，cache_mgr 自主完成整组输出
@@ -54,17 +56,17 @@ module ia_loader_cache_mgr #(
     input  logic                              l1_is_init,      // L1组 is_init 标记
     input  logic                              l1_calc_done,    // L1组 calc_done 标记
     input  logic [$clog2(SIZE + 1)-1:0]       slot_rows [SLOT_BLOCKS], // 每 slot 有效行数
-    output logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] row_table_index [3],
-    input logic [$clog2(SIZE+1)-1:0] row_table_value [3] = '{default:'0},
+    output logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] row_table_index [3] /* 当前读取与后续预读所需的三个缓存槽号 */,
+    input logic [$clog2(SIZE+1)-1:0] row_table_value [3] = '{default:'0} /* 三个查询槽号返回的有效行数 */,
     output logic                              tile_done,       // 单 tile 输出完成
     output logic                              l1_done,         // L1组全部输出完成
     output logic                              ia_tile_start,   // 提前两个周期指示单 tile 首行
 
     // ---- Complete row and associated metadata ----
-    output logic signed [DATA_WIDTH-1:0]         ia_out          [SIZE],
-    output logic                                 ia_row_valid,
-    output logic                                 ia_is_init_data,
-    output logic                                 ia_calc_done
+    output logic signed [DATA_WIDTH-1:0]         ia_out          [SIZE] /* 发送到脉动阵列的完整输入行 */,
+    output logic                                 ia_row_valid /* 当前完整输入行有效 */,
+    output logic                                 ia_is_init_data /* 当前有效行属于部分和初始化阶段 */,
+    output logic                                 ia_calc_done /* 当前有效行完成最终归约累加 */
 );
 
   // =====================================================================
@@ -255,9 +257,38 @@ module ia_loader_cache_mgr #(
       assign wide_row = wide_source << (int'(column_q) * 16);
       assign row_mask = input_mask_q << column_q;
       assign compact_row = compact_source << (int'(column_q) * 8);
-      assign ram_port_wr_data[0] = compact_q ? compact_data : wide_row[127:0];
-      assign ram_port_wr_data[1] = wide_row[255:128];
-      assign ram_shared_wr_data = ram_port_wr_en[1] ? ram_port_wr_data[1] : ram_port_wr_data[0];
+      if (DMA_LANES == 8 && !p_zero_masked_write_data) begin : g_mask_qualified_data
+        logic [255:0] repeated_data, shifted_data;
+        logic [127:0] rotated_data, first_half_data;
+        // 八个输入元素共用循环排列，第一端口继续保留所有未选中元素的零值。
+        assign repeated_data = {input_data_q[127:0], input_data_q[127:0]};
+        assign shifted_data = repeated_data << (int'(column_q[2:0]) * 16);
+        assign rotated_data = shifted_data[255:128];
+        for (genvar lane = 0; lane < 8; lane++) begin : g_first_half
+          assign first_half_data[16*lane+:16] = row_mask[lane] ?
+              rotated_data[16*lane+:16] : 16'd0;
+        end
+        always_comb begin
+          ram_port_wr_data[0] = compact_q ? compact_data : wide_row[127:0];
+          ram_port_wr_data[1] = wide_row[255:128];
+          ram_shared_wr_data = ram_port_wr_en[1] ? wide_row[255:128] :
+              (compact_q ? compact_data : wide_row[127:0]);
+          case (^{column_q, compact_q, input_mask_q, ram_port_wr_en})
+            1'b0, 1'b1: begin
+              if (!compact_q) begin
+                ram_port_wr_data[0] = first_half_data;
+                ram_port_wr_data[1] = rotated_data;
+                ram_shared_wr_data = rotated_data;
+              end
+            end
+            default: ;
+          endcase
+        end
+      end else begin : g_zero_masked_data
+        assign ram_port_wr_data[0] = compact_q ? compact_data : wide_row[127:0];
+        assign ram_port_wr_data[1] = wide_row[255:128];
+        assign ram_shared_wr_data = ram_port_wr_en[1] ? ram_port_wr_data[1] : ram_port_wr_data[0];
+      end
     end else begin : g_port_data_register
       for (genvar port_index = 0; port_index < 2; port_index++) begin : g_port
         always_ff @(posedge clk) begin

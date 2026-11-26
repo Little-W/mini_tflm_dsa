@@ -6,16 +6,16 @@ module ia_row_step_register #(
     parameter int unsigned p_width = 32,
     parameter int unsigned p_size = 16
 ) (
-    input wire logic clk,
-    input wire logic rst_n,
-    input wire logic i_enable,
-    input wire logic i_tile_packed,
-    input wire logic i_use_16bits,
-    input wire logic [p_width-1:0] i_reuse_num,
-    input wire logic [p_width-1:0] i_row_stride,
-    input wire logic [p_width-1:0] i_packed_tiles,
-    output logic [p_width-1:0] o_tile_step,
-    output logic [p_width-1:0] o_group_step
+    input wire logic clk /* 工作时钟 */,
+    input wire logic rst_n /* 低有效复位 */,
+    input wire logic i_enable /* 接收本次配置并保存两类字节步长 */,
+    input wire logic i_tile_packed /* 输入矩阵采用连续分块布局 */,
+    input wire logic i_use_16bits /* 每个输入元素占两个字节 */,
+    input wire logic [p_width-1:0] i_reuse_num /* 一组输入复用的矩阵块数 */,
+    input wire logic [p_width-1:0] i_row_stride /* 普通行布局相邻行的字节步长 */,
+    input wire logic [p_width-1:0] i_packed_tiles /* 连续分块布局在归约方向上的矩阵块数 */,
+    output logic [p_width-1:0] o_tile_step /* 已保存的单个行矩阵块地址步长 */,
+    output logic [p_width-1:0] o_group_step /* 已保存的整个复用组地址步长 */
 );
     //! 0. 辅助定义
     //! ------------------

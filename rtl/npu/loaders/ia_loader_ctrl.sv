@@ -22,93 +22,93 @@ module ia_loader_ctrl #(
     parameter bit p_indexed_slot_rows = 1'b0,
     parameter bit p_parallel_request_match = 1'b0
 ) (
-    input  logic clk,
-    input  logic rst_n,
+    input  logic clk /* 工作时钟 */,
+    input  logic rst_n /* 低有效复位 */,
 
     // ---- 来自 top：配置参数（已锁存）----
-    input  logic                        cfg_compact = 1'b0,
-    input  logic [31:0]                  cfg_cache_blocks = 32'd0,
-    input logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] cfg_slot_mask = '0,
+    input  logic                        cfg_compact = 1'b0 /* 输入缓存采用8 位紧凑存储 */,
+    input  logic [31:0]                  cfg_cache_blocks = 32'd0 /* 当前任务可使用的物理输入缓存块数 */,
+    input logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] cfg_slot_mask = '0 /* 预先计算的有效缓存槽号掩码 */,
     input  logic                        cfg_valid,       // 参数有效（INIT 状态）
-    input  logic [REG_WIDTH-1:0]        cfg_k,
-    input  logic [REG_WIDTH-1:0]        cfg_n,
-    input  logic                        cfg_use_16bits,
-    input  logic                        cfg_tile_packed = 1'b0,
-    input  logic [REG_WIDTH-1:0]        cfg_packed_reduction = '0,
-    input  logic [REG_WIDTH-1:0]        cfg_packed_k_tiles = '0,
-    input  logic                        cfg_bias_by_row_mode,
-    input  logic                        cfg_bias_at_end = 1'b0,
-    input  logic [REG_WIDTH-1:0]        cfg_lhs_base,
-    input  logic [REG_WIDTH-1:0]        cfg_lhs_row_stride_b,
-    input  logic signed [REG_WIDTH-1:0] cfg_lhs_zp,
-    input  logic [REG_WIDTH-1:0]        cfg_ia_reuse_num,  // R
-    input  logic [REG_WIDTH-1:0]        cfg_w_reuse_num,   // W
+    input  logic [REG_WIDTH-1:0]        cfg_k /* 当前流式矩阵的行数 */,
+    input  logic [REG_WIDTH-1:0]        cfg_n /* 当前流式矩阵的归约长度 */,
+    input  logic                        cfg_use_16bits /* 流式输入元素采用16 位格式 */,
+    input  logic                        cfg_tile_packed = 1'b0 /* 输入矩阵采用连续分块布局 */,
+    input  logic [REG_WIDTH-1:0]        cfg_packed_reduction = '0 /* 连续分块布局使用的完整归约长度 */,
+    input  logic [REG_WIDTH-1:0]        cfg_packed_k_tiles = '0 /* 连续分块布局在归约方向上的矩阵块数 */,
+    input  logic                        cfg_bias_by_row_mode /* 偏置按流式矩阵行号选择 */,
+    input  logic                        cfg_bias_at_end = 1'b0 /* 最后一次归约阶段才加入偏置 */,
+    input  logic [REG_WIDTH-1:0]        cfg_lhs_base /* 流式输入矩阵的首字节地址 */,
+    input  logic [REG_WIDTH-1:0]        cfg_lhs_row_stride_b /* 流式输入相邻行的字节步长 */,
+    input  logic signed [REG_WIDTH-1:0] cfg_lhs_zp /* 流式输入元素的有符号零点 */,
+    input  logic [REG_WIDTH-1:0]        cfg_ia_reuse_num /* 当前输入分组复用的矩阵块数 */,  // R
+    input  logic [REG_WIDTH-1:0]        cfg_w_reuse_num /* 当前驻留操作数分组复用的矩阵块数 */,   // W
 
     // ---- 派生参数（from top）----
-    input  logic [REG_WIDTH-1:0]        horizontal_tile_num,
-    input  logic [REG_WIDTH-1:0]        vertical_tile_num,
-    input  logic [REG_WIDTH-1:0]        l2_group_num,
-    input  logic [REG_WIDTH-1:0]        l1_per_l2,
-    input  logic [REG_WIDTH-1:0]        ia_reuse_num_act,
-    input  logic [REG_WIDTH-1:0]        output_col_tile_num,
-    input  logic [REG_WIDTH-1:0]        w_groups_total,
-    input  logic [REG_WIDTH-1:0]        w_group_last_width,
-    input  logic [REG_WIDTH-1:0]        rsp_beats_per_row_normal,
-    input  logic [REG_WIDTH-1:0]        rsp_beats_per_row_last,
-    input  logic [REG_WIDTH-1:0]        rsp_rows_last_tile,
-    input  logic [31:0]                 cfg_frame_rows_last = '0,
+    input  logic [REG_WIDTH-1:0]        horizontal_tile_num /* 归约方向的矩阵块总数 */,
+    input  logic [REG_WIDTH-1:0]        vertical_tile_num /* 流式行方向的矩阵块总数 */,
+    input  logic [REG_WIDTH-1:0]        l2_group_num /* 流式行方向的输入分组总数 */,
+    input  logic [REG_WIDTH-1:0]        l1_per_l2 /* 每个输入分组包含的归约矩阵块数 */,
+    input  logic [REG_WIDTH-1:0]        ia_reuse_num_act /* 经过有效容量限制后的输入复用块数 */,
+    input  logic [REG_WIDTH-1:0]        output_col_tile_num /* 输出列方向的矩阵块总数 */,
+    input  logic [REG_WIDTH-1:0]        w_groups_total /* 驻留操作数的分组总数 */,
+    input  logic [REG_WIDTH-1:0]        w_group_last_width /* 最后一个驻留操作数分组的有效块数 */,
+    input  logic [REG_WIDTH-1:0]        rsp_beats_per_row_normal /* 普通矩阵块每行返回的数据拍数 */,
+    input  logic [REG_WIDTH-1:0]        rsp_beats_per_row_last /* 归约末尾矩阵块每行返回的数据拍数 */,
+    input  logic [REG_WIDTH-1:0]        rsp_rows_last_tile /* 流式行末尾矩阵块的有效行数 */,
+    input  logic [31:0]                 cfg_frame_rows_last = '0 /* 最后一个输入帧的有效行数 */,
 
     // ---- 顶层握手 ----
     input  logic                        init_start,     // 从 IDLE→INIT 的触发
-    output logic                        load_ia_req,
-    input  logic                        load_ia_granted,
-    input  logic                        send_ia_trigger,
-    output logic                        ia_data_valid,
-    output logic [31:0]                 ps_frame_rows,
-    output logic [31:0]                 ps_frame_id,
-    output logic                        ps_frame_init,
-    output logic                        ps_frame_final,
-    output logic                        ia_sending_done,
-    output logic                        ia_l1_switch,
-    output logic                        bias_sleep,
-    output logic                        bias_load_sleep,
-    output logic                        bias_switch,
-    output logic                        bias_last_loop,
+    output logic                        load_ia_req /* 请求输入块 DMA 装载 */,
+    input  logic                        load_ia_granted /* 输入块 DMA 装载请求已获授予 */,
+    input  logic                        send_ia_trigger /* 启动已就绪输入分组的行输出 */,
+    output logic                        ia_data_valid /* 当前输入分组已经就绪，可启动发送 */,
+    output logic [31:0]                 ps_frame_rows /* 当前部分和帧的有效行数 */,
+    output logic [31:0]                 ps_frame_id /* 当前部分和帧的槽号 */,
+    output logic                        ps_frame_init /* 当前帧处于首次归约，初始化部分和 */,
+    output logic                        ps_frame_final /* 当前帧处于最终归约，生成输出 */,
+    output logic                        ia_sending_done /* 当前输入分组的全部行发送完成 */,
+    output logic                        ia_l1_switch /* 当前输入复用分组边界切换 */,
+    output logic                        bias_sleep /* 当前输入组无需读取初始化偏置 */,
+    output logic                        bias_load_sleep /* 当前任务阶段暂停偏置装载 */,
+    output logic                        bias_switch /* 切换当前偏置分组 */,
+    output logic                        bias_last_loop /* 当前偏置分组进入最后一次复用 */,
     output logic                        all_done,       // 全部完成，回 IDLE
 
     // ---- tile_loader 接口 ----
-    output logic                        tl_start,
-    output logic [REG_WIDTH-1:0]        tl_base_addr,
+    output logic                        tl_start /* 启动已获得 DMA 资格的矩阵块装载 */,
+    output logic [REG_WIDTH-1:0]        tl_base_addr /* 待装载矩阵块的首字节地址 */,
     // Logical matrix coordinates, captured with tl_start. Shared block DMA
     // uses these for image-derived reads; the loader consumes ordinary blocks.
-    output logic [REG_WIDTH-1:0]        tl_p0,
-    output logic [REG_WIDTH-1:0]        tl_q0,
-    output logic [REG_WIDTH-1:0]        tl_group,
-    output logic [REG_WIDTH-1:0]        tl_row_stride,
-    output logic [REG_WIDTH-1:0]        tl_rows_to_read,
-    output logic [REG_WIDTH-1:0]        tl_valid_cols,
-    output logic [7:0]                  tl_burst_len_m1,
-    output logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] tl_slot_id,
-    output logic                        tl_use_16bits,
-    output logic signed [REG_WIDTH-1:0] tl_lhs_zp,
-    input  logic                        tl_busy,
-    input  logic                        tl_tile_done,
+    output logic [REG_WIDTH-1:0]        tl_p0 /* 待装载矩阵块的起始逻辑行坐标 */,
+    output logic [REG_WIDTH-1:0]        tl_q0 /* 待装载矩阵块的归约起点 */,
+    output logic [REG_WIDTH-1:0]        tl_group /* 待装载矩阵块所属的调度分组编号 */,
+    output logic [REG_WIDTH-1:0]        tl_row_stride /* 矩阵块相邻输入行的字节步长 */,
+    output logic [REG_WIDTH-1:0]        tl_rows_to_read /* 矩阵块需要读取的有效行数 */,
+    output logic [REG_WIDTH-1:0]        tl_valid_cols /* 矩阵块每行的有效元素数 */,
+    output logic [7:0]                  tl_burst_len_m1 /* 矩阵块每行的 DMA 传输拍数减一 */,
+    output logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] tl_slot_id /* 本次装载写入的输入缓存槽号 */,
+    output logic                        tl_use_16bits /* 本次装载元素使用16 位格式 */,
+    output logic signed [REG_WIDTH-1:0] tl_lhs_zp /* 本次装载元素使用的有符号零点 */,
+    input  logic                        tl_busy /* DMA 矩阵块装载正在进行 */,
+    input  logic                        tl_tile_done /* DMA 已完成整个矩阵块的装载 */,
 
     // Combinational request metadata permits cache lookup before DMA grant.
-    output logic                        request_valid,
-    output logic [REG_WIDTH-1:0]        request_base_addr,
-    output logic [REG_WIDTH-1:0]        request_p0,
-    output logic [REG_WIDTH-1:0]        request_q0,
-    input  logic [REG_WIDTH-$clog2(SIZE)-1:0] request_q0_base = '0,
-    input  logic [REG_WIDTH-$clog2(SIZE)-1:0] request_q0_target = '0,
-    output logic                        request_q0_matches,
-    input  logic [$clog2(SIZE+1)-1:0]     request_rows_target = '0,
-    output logic                        request_rows_matches,
-    output logic [REG_WIDTH-1:0]        request_group,
-    output logic [REG_WIDTH-1:0]        request_rows,
-    output logic [REG_WIDTH-1:0]        request_cols,
-    output logic [7:0]                  request_burst_len_m1,
-    output logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] request_slot,
+    output logic                        request_valid /* 用于提前缓存查询的装载候选有效 */,
+    output logic [REG_WIDTH-1:0]        request_base_addr /* 装载候选的首字节地址 */,
+    output logic [REG_WIDTH-1:0]        request_p0 /* 装载候选的起始逻辑行坐标 */,
+    output logic [REG_WIDTH-1:0]        request_q0 /* 装载候选的归约起点 */,
+    input  logic [REG_WIDTH-$clog2(SIZE)-1:0] request_q0_base = '0 /* 参与候选归约位置比较的基准块索引 */,
+    input  logic [REG_WIDTH-$clog2(SIZE)-1:0] request_q0_target = '0 /* 参与候选归约位置比较的目标块索引 */,
+    output logic                        request_q0_matches /* 候选归约位置与目标块索引相同 */,
+    input  logic [$clog2(SIZE+1)-1:0]     request_rows_target = '0 /* 缓存候选记录的有效行数 */,
+    output logic                        request_rows_matches /* 本次装载行数与缓存候选记录相同 */,
+    output logic [REG_WIDTH-1:0]        request_group /* 装载候选所属的调度分组编号 */,
+    output logic [REG_WIDTH-1:0]        request_rows /* 装载候选需要读取的有效行数 */,
+    output logic [REG_WIDTH-1:0]        request_cols /* 装载候选每行的有效元素数 */,
+    output logic [7:0]                  request_burst_len_m1 /* 装载候选每行的 DMA 传输拍数减一 */,
+    output logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] request_slot /* 装载候选计划使用的缓存槽号 */,
 
     // ---- cache_mgr 发送接口（L1组级别）----
     output logic                              cache_l1_start,       // L1组发送启动脉冲
@@ -119,8 +119,8 @@ module ia_loader_ctrl #(
     output logic [$clog2(SIZE + 1)-1:0]       cache_slot_rows [SLOT_BLOCKS], // 每 slot 有效行数
     // 索引接口保留三个独立读地址，表数据由同一写端口更新。
     input logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0]
-        cache_row_index [3] = '{default:'0},
-    (* keep = p_indexed_slot_rows *) output logic [$clog2(SIZE+1)-1:0] cache_row_value [3],
+        cache_row_index [3] = '{default:'0} /* 三个独立查询端口的输入缓存槽号 */,
+    (* keep = p_indexed_slot_rows *) output logic [$clog2(SIZE+1)-1:0] cache_row_value [3] /* 三个查询槽号对应的有效行数 */,
     input  logic                              cache_tile_done,      // 单 tile 输出完成
     input  logic                              cache_l1_done         // L1 组全部输出完成
 );
@@ -305,22 +305,23 @@ module ia_loader_ctrl #(
   assign r_cur_cnt = r_cur[LOAD_CNT_W-1:0];
   assign w_cnt_narrow = w_cnt[W_CNT_W-1:0];
   assign w_cur_narrow = w_cur[W_CNT_W-1:0];
-  add_equal #(.p_width(LOAD_CNT_W)) u_ia_iteration_end (
-    .i_a(ia_idx_cnt), .i_b(LOAD_CNT_W'(0)), .i_target(r_cur_cnt),
-    .i_carry_in(1'b1), .o_equal(ia_iter_last_current)
+  // 将迭代索引的加一比较按相邻位分组，完整保留模运算与四态传播。
+  increment_equal #(.p_width(LOAD_CNT_W), .p_preserve_pairs(1'b1),
+      .p_reduce_group_width(6)) u_ia_iteration_end (
+    .i_a(ia_idx_cnt), .i_target(r_cur_cnt), .o_equal(ia_iter_last_current)
   );
   if (CNT_W >= LOAD_CNT_W) begin : g_parallel_iteration_end
     (* keep = 1 *) logic regular_last, tail_last;
     // 两个复用边界分别比较，尾组标志只在比较完成后选择单个位。
-    add_equal #(.p_width(LOAD_CNT_W), .p_preserve_bits(1'b1)) u_regular (
-      .i_a(ia_idx_cnt), .i_b(LOAD_CNT_W'(0)),
-      .i_target(LOAD_CNT_W'(count_t'(cfg_ia_reuse_num))),
-      .i_carry_in(1'b1), .o_equal(regular_last)
+    increment_equal #(.p_width(LOAD_CNT_W), .p_preserve_pairs(1'b1),
+      .p_reduce_group_width(6)) u_regular (
+      .i_a(ia_idx_cnt),
+      .i_target(LOAD_CNT_W'(count_t'(cfg_ia_reuse_num))), .o_equal(regular_last)
     );
-    add_equal #(.p_width(LOAD_CNT_W), .p_preserve_bits(1'b1)) u_tail (
-      .i_a(ia_idx_cnt), .i_b(LOAD_CNT_W'(0)),
-      .i_target(LOAD_CNT_W'(count_t'(ia_reuse_num_act))),
-      .i_carry_in(1'b1), .o_equal(tail_last)
+    increment_equal #(.p_width(LOAD_CNT_W), .p_preserve_pairs(1'b1),
+      .p_reduce_group_width(6)) u_tail (
+      .i_a(ia_idx_cnt),
+      .i_target(LOAD_CNT_W'(count_t'(ia_reuse_num_act))), .o_equal(tail_last)
     );
     always_comb begin
       ia_iter_last_narrow = ia_iter_last_current;
@@ -334,9 +335,9 @@ module ia_loader_ctrl #(
     assign ia_iter_last_narrow = ia_iter_last_current;
   end
   logic w_iter_last_parallel;
-  add_equal #(.p_width(W_CNT_W), .p_preserve_bits(1'b1)) u_w_iteration_end (
-    .i_a(w_cnt_narrow), .i_b(W_CNT_W'(0)), .i_target(w_cur_narrow),
-    .i_carry_in(1'b1), .o_equal(w_iter_last_parallel)
+  increment_equal #(.p_width(W_CNT_W), .p_preserve_pairs(1'b1),
+      .p_reduce_group_width(6)) u_w_iteration_end (
+    .i_a(w_cnt_narrow), .i_target(w_cur_narrow), .o_equal(w_iter_last_parallel)
   );
   always_comb begin
     w_iter_last_narrow = ((w_cnt_narrow + W_CNT_W'(1)) == w_cur_narrow);
@@ -349,39 +350,29 @@ module ia_loader_ctrl #(
   assign w_iter_last  = w_iter_last_narrow;
 
   count_t l2_next_equal_i_a;
-  count_t l2_next_equal_i_b;
   count_t l2_next_equal_i_target;
-  logic l2_next_equal_i_carry_in;
   logic l2_next_equal_o_equal;
 
   count_t w_group_next_equal_i_a;
-  count_t w_group_next_equal_i_b;
   count_t w_group_next_equal_i_target;
-  logic w_group_next_equal_i_carry_in;
   logic w_group_next_equal_o_equal;
 
-  // 并行检查递增后的组索引，供循环边界和预取边界共用。
+  // 相邻两位独立检查定宽加一关系，分组归并结果供循环和预取边界共用。
   assign l2_next_equal_i_a = l2_idx;
-  assign l2_next_equal_i_b = '0;
   assign l2_next_equal_i_target = l2_group_last_idx;
-  assign l2_next_equal_i_carry_in = 1'b1;
-  add_equal #(.p_width(CNT_W)) u_l2_next_equal (
+  increment_equal #(.p_width(CNT_W), .p_preserve_pairs(1'b1),
+      .p_reduce_group_width(6)) u_l2_next_equal (
       .i_a(l2_next_equal_i_a),
-      .i_b(l2_next_equal_i_b),
       .i_target(l2_next_equal_i_target),
-      .i_carry_in(l2_next_equal_i_carry_in),
       .o_equal(l2_next_equal_o_equal)
   );
 
   assign w_group_next_equal_i_a = w_group_idx;
-  assign w_group_next_equal_i_b = '0;
   assign w_group_next_equal_i_target = w_group_last_idx;
-  assign w_group_next_equal_i_carry_in = 1'b1;
-  add_equal #(.p_width(CNT_W)) u_w_group_next_equal (
+  increment_equal #(.p_width(CNT_W), .p_preserve_pairs(1'b1),
+      .p_reduce_group_width(6)) u_w_group_next_equal (
       .i_a(w_group_next_equal_i_a),
-      .i_b(w_group_next_equal_i_b),
       .i_target(w_group_next_equal_i_target),
-      .i_carry_in(w_group_next_equal_i_carry_in),
       .o_equal(w_group_next_equal_o_equal)
   );
 
@@ -574,13 +565,15 @@ module ia_loader_ctrl #(
   logic [REG_WIDTH-1:0] load_cols_cur;
   assign load_cols_cur = load_is_last_col_tile ? last_col_valid_cols : REG_WIDTH'(SIZE);
 
-  // burst 长度
-  logic [7:0] load_burst_len_m1;
+  // 普通与末列突发长度独立完成减一，列边界只选择已完成的八位结果。
+  logic [7:0] load_burst_len_m1, normal_burst_len_m1, last_burst_len_m1;
+  ia_burst_decrement #(.p_width(REG_WIDTH)) u_normal_burst (
+    .i_beats(rsp_beats_per_row_normal), .o_length(normal_burst_len_m1));
+  ia_burst_decrement #(.p_width(REG_WIDTH)) u_last_burst (
+    .i_beats(rsp_beats_per_row_last), .o_length(last_burst_len_m1));
   assign load_burst_len_m1 = cfg_tile_packed ?
-                             8'((SIZE / BYTE_PER_BEAT) * (cfg_use_16bits ? 2 : 1) - 1) :
-                             load_is_last_col_tile ?
-                             8'(rsp_beats_per_row_last - REG_WIDTH'(1)) :
-                             8'(rsp_beats_per_row_normal - REG_WIDTH'(1));
+    8'((SIZE / BYTE_PER_BEAT) * (cfg_use_16bits ? 2 : 1) - 1) :
+    (load_is_last_col_tile ? last_burst_len_m1 : normal_burst_len_m1);
 
   // 当前读 slot = rd_slot_base + ia_idx
   logic [SLOT_W-1:0] current_rd_slot;
@@ -713,16 +706,84 @@ module ia_loader_ctrl #(
   // 当前 ia_idx 要发送的 slot 是否 valid
   logic send_group_ready_r;
 
+  logic completion_eligible;
+  logic group_ready_reference;
+  logic [3:0] group_ready_cases;
+  logic in_l1_output_after;
+  logic [3:0][1:0] completion_cases;
+  logic [1:0] completion_selected, completion_next;
+  assign completion_eligible = load_state_active &&
+      ((load_tiles_done_cnt + LOAD_CNT_W'(1)) == load_r_target_cnt);
+
+  function automatic logic group_readiness(
+      input logic current_ready, // 已保存的分组就绪标志
+      input logic initializing, // 当前周期清理初始化状态
+      input logic retiring, // 当前输入组完成发送并退休
+      input logic prefetch, // 当前正在预取下一组数据
+      input logic complete, // 已保存计数表明当前装载完成
+      input logic event_ready // 当周期完成事件使当前装载结束
+  );
+    group_readiness = current_ready;
+    if (initializing) begin
+      group_readiness = 1'b0;
+    end else if (retiring) begin
+      group_readiness = prefetch && (complete || event_ready);
+    end else if (!prefetch && (complete || event_ready)) begin
+      group_readiness = 1'b1;
+    end
+  endfunction
+
+  // 装载事件到达前并行形成两种资格，事件仅选择当前周期的最终结果。
+  always_comb begin
+    group_ready_reference = group_readiness(send_group_ready_r, state == S_INIT,
+        retirement_l1, prefetch_active, l1_load_complete, l1_load_complete_event);
+    in_l1_output_after = in_l1_output;
+    if (state == S_IDLE || state == S_INIT) begin
+      in_l1_output_after = 1'b0;
+    end else if (send_ia_trigger && ia_data_valid) begin
+      in_l1_output_after = 1'b1;
+    end else if (cache_l1_done) begin
+      in_l1_output_after = 1'b0;
+    end
+    for (int event_case = 0; event_case < 4; event_case++) begin
+      group_ready_cases[event_case] = group_readiness(send_group_ready_r, state == S_INIT,
+          1'(event_case >> 1), prefetch_active, l1_load_complete,
+          (event_case & 1) ? completion_eligible : 1'b0);
+      completion_cases[event_case] = {
+          (state_nxt == S_SEND || state_nxt == S_LOAD) &&
+              group_ready_cases[event_case] && !in_l1_output_after,
+          group_ready_cases[event_case]};
+    end
+    completion_next = {
+        (state_nxt == S_SEND || state_nxt == S_LOAD) && group_ready_reference && !in_l1_output_after,
+        group_ready_reference};
+    // 完成事件未知时保留条件语句对未知值的处理规则。
+    case ({retirement_l1, tl_tile_done})
+      2'b00, 2'b01, 2'b10, 2'b11: completion_next = completion_selected;
+      default: ;
+    endcase
+  end
+  ia_completion_select u_completion_select (
+      .i_events({retirement_l1, tl_tile_done}), .i_ready(completion_cases),
+      .o_ready(completion_selected)
+  );
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       send_group_ready_r <= 1'b0;
-    end else if (state == S_INIT) begin
-      send_group_ready_r <= 1'b0;
-    end else if (retirement_l1) begin
-      send_group_ready_r <= prefetch_active &&
-                            (l1_load_complete || l1_load_complete_event);
-    end else if (!prefetch_active && (l1_load_complete || l1_load_complete_event)) begin
-      send_group_ready_r <= 1'b1;
+    end else begin
+      case (rst_n)
+        1'b1: send_group_ready_r <= completion_next[0];
+        default: begin
+          if (state == S_INIT) begin
+            send_group_ready_r <= 1'b0;
+          end else if (retirement_l1) begin
+            send_group_ready_r <= prefetch_active &&
+                                  (l1_load_complete || l1_load_complete_event);
+          end else if (!prefetch_active && (l1_load_complete || l1_load_complete_event)) begin
+            send_group_ready_r <= 1'b1;
+          end
+        end
+      endcase
     end
   end
 
@@ -824,26 +885,32 @@ module ia_loader_ctrl #(
       state <= S_IDLE;
       ia_data_valid <= 1'b0;
     end else begin
-      send_group_ready_nxt = send_group_ready_r;
-      if (state == S_INIT) begin
-        send_group_ready_nxt = 1'b0;
-      end else if (retirement_l1) begin
-        send_group_ready_nxt = prefetch_active &&
-                               (l1_load_complete || l1_load_complete_event);
-      end else if (!prefetch_active && (l1_load_complete || l1_load_complete_event)) begin
-        send_group_ready_nxt = 1'b1;
-      end
-      in_l1_output_nxt = in_l1_output;
-      if (state == S_IDLE || state == S_INIT) begin
-        in_l1_output_nxt = 1'b0;
-      end else if (send_ia_trigger && ia_data_valid) begin
-        in_l1_output_nxt = 1'b1;
-      end else if (cache_l1_done) begin
-        in_l1_output_nxt = 1'b0;
-      end
       state <= state_nxt;
-      ia_data_valid <= (state_nxt == S_SEND || state_nxt == S_LOAD) &&
-                        send_group_ready_nxt && !in_l1_output_nxt;
+      case (rst_n)
+        1'b1: ia_data_valid <= completion_next[1];
+        default: begin
+          // 复位转换为未知值时，资格仍在该异步事件边沿按原有条件顺序采样。
+          send_group_ready_nxt = send_group_ready_r;
+          if (state == S_INIT) begin
+            send_group_ready_nxt = 1'b0;
+          end else if (retirement_l1) begin
+            send_group_ready_nxt = prefetch_active &&
+                                   (l1_load_complete || l1_load_complete_event);
+          end else if (!prefetch_active && (l1_load_complete || l1_load_complete_event)) begin
+            send_group_ready_nxt = 1'b1;
+          end
+          in_l1_output_nxt = in_l1_output;
+          if (state == S_IDLE || state == S_INIT) begin
+            in_l1_output_nxt = 1'b0;
+          end else if (send_ia_trigger && ia_data_valid) begin
+            in_l1_output_nxt = 1'b1;
+          end else if (cache_l1_done) begin
+            in_l1_output_nxt = 1'b0;
+          end
+          ia_data_valid <= (state_nxt == S_SEND || state_nxt == S_LOAD) &&
+                            send_group_ready_nxt && !in_l1_output_nxt;
+        end
+      endcase
     end
   end
 

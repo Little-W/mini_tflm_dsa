@@ -1,7 +1,7 @@
 `default_nettype none
 
 /*
- * bias_loader_buffer — 双 bank 数据存储
+ * 保存两组偏置数据，维护驻留范围并提供向量和标量读取。
  * ============================================================
  */
 
@@ -16,34 +16,34 @@ module bias_loader_buffer #(
     parameter bit p_share_load_index = 1'b0,
     parameter bit p_register_current_range = 1'b0
 ) (
-    input  wire logic clk,
-    input  wire logic rst_n,
+    input  wire logic clk, // 偏置存储与读取控制的工作时钟。
+    input  wire logic rst_n, // 低有效异步复位。
 
-    input  wire logic                 init_cfg,
-    input  wire logic                 load_start,
-    input  wire logic                 load_bank,
-    input  wire logic [COUNT_WIDTH-1:0] load_block_idx,
-    input  wire logic [COUNT_WIDTH-1:0] load_blocks_count,
-    input  wire logic [COUNT_WIDTH-1:0] group_blocks_needed,
-    input  wire logic                 load_word_valid [BUS_WIDTH/8],
-    input  wire logic [REG_WIDTH-1:0] load_word_row,
-    input  wire logic [$clog2(SIZE * (DATA_WIDTH / 8))-1:0] load_word_col_base,
-    input  wire logic signed [DMA_DATA_WIDTH-1:0] load_word_data [BUS_WIDTH/8],
-    input  wire logic                 load_done,
+    input  wire logic                 init_cfg, // 清除两组偏置的驻留状态并初始化读取上下文。
+    input  wire logic                 load_start, // 开始向指定存储体装载一组偏置。
+    input  wire logic                 load_bank, // 当前装载使用的存储体编号。
+    input  wire logic [COUNT_WIDTH-1:0] load_block_idx, // 当前装载范围的起始偏置块索引。
+    input  wire logic [COUNT_WIDTH-1:0] load_blocks_count, // 当前装载范围包含的偏置块数。
+    input  wire logic [COUNT_WIDTH-1:0] group_blocks_needed, // 当前请求需要连续驻留的偏置块数。
+    input  wire logic                 load_word_valid [BUS_WIDTH/8], // DMA 返回各字节通道的写入有效标志。
+    input  wire logic [REG_WIDTH-1:0] load_word_row, // DMA 返回数据所属的偏置块行号。
+    input  wire logic [$clog2(SIZE * (DATA_WIDTH / 8))-1:0] load_word_col_base, // DMA 返回数据在当前偏置行内的起始字节位置。
+    input  wire logic signed [DMA_DATA_WIDTH-1:0] load_word_data [BUS_WIDTH/8], // DMA 返回各通道的偏置字节数据。
+    input  wire logic                 load_done, // 当前偏置装载传输完成。
 
-    input  wire logic                 active_bank,
-    input  wire logic [COUNT_WIDTH-1:0] current_block_idx,
-    input  wire logic [COUNT_WIDTH-1:0] i_current_block_idx_nxt = '0,
-    input  wire logic [COUNT_WIDTH-1:0] i_group_blocks_needed_nxt = '0,
+    input  wire logic                 active_bank, // 当前执行使用的偏置存储体编号。
+    input  wire logic [COUNT_WIDTH-1:0] current_block_idx, // 当前执行分组的起始偏置块索引。
+    input  wire logic [COUNT_WIDTH-1:0] i_current_block_idx_nxt = '0, // 下一周期当前分组的起始偏置块索引。
+    input  wire logic [COUNT_WIDTH-1:0] i_group_blocks_needed_nxt = '0, // 下一周期当前分组需要驻留的偏置块数。
 
-    input  wire logic                 is_mode,
-    input  wire logic                 group_read_start,
-    input  wire logic [$clog2(GROUP_BLOCKS_MAX * SIZE)-1:0] group_read_idx,
-    output logic                 bias_valid,
-    output logic                 load_block_valid,
-    output logic                 load_block_bank,
-    output logic signed [DATA_WIDTH-1:0] data_out [SIZE],
-    output logic signed [DATA_WIDTH-1:0] group_data_scalar
+    input  wire logic                 is_mode, // 选择输入驻留模式的逐行标量偏置读取。
+    input  wire logic                 group_read_start, // 保存当前分组的标量读取基址和存储体。
+    input  wire logic [$clog2(GROUP_BLOCKS_MAX * SIZE)-1:0] group_read_idx, // 当前分组内的标量偏置元素索引。
+    output logic                 bias_valid, // 当前执行所需偏置已经驻留且读取结果可用。
+    output logic                 load_block_valid, // 待装载的完整偏置范围已经驻留。
+    output logic                 load_block_bank, // 已驻留装载范围所在的存储体编号。
+    output logic signed [DATA_WIDTH-1:0] data_out [SIZE], // 权重驻留模式下当前块的偏置向量。
+    output logic signed [DATA_WIDTH-1:0] group_data_scalar // 输入驻留模式下同步读出的标量偏置。
 );
 
   localparam int BYTES_PER_WORD = DATA_WIDTH / 8;
@@ -74,9 +74,12 @@ module bias_loader_buffer #(
   logic [RAM_ADDR_W-1:0] collision_ws_first, collision_ws_next;
   // 各读取分支先完成同址比较，晚到的组首资格只选择已经完成的结果。
   (* keep = 1'b1 *) logic [3:0] collision_equal;
+  logic collision_scalar_next_equal;
   logic collision_selected;
+  logic collision_other, collision_scalar_selected;
+  logic storage_read_selected;
   logic storage_write_accepted;
-  // 完整银行末端包含扩展位，分组进位计算缩短命令接收边沿的数据路径。
+  // 完整存储体末端包含扩展位，分组进位计算缩短命令接收边沿的数据路径。
   assign bank_end_i_a = {1'b0, load_block_idx};
   assign bank_end_i_b = {1'b0, load_blocks_count};
   assign bank_end_i_carry = 1'b0;
@@ -155,6 +158,7 @@ module bias_loader_buffer #(
   logic [1:0] load_window_hit;
   logic [1:0] current_window_hit;
   logic resident_current;
+  logic [1:0] resident_by_bank;
   logic [BLOCK_ADDR_W-1:0] current_block_offset;
   logic [GROUP_ADDR_W-1:0] current_word_base;
   logic [GROUP_ADDR_W-1:0] scalar_word_base;
@@ -189,7 +193,7 @@ module bias_loader_buffer #(
   // 通用缓冲区默认分别处理两个索引，集成控制器时可共享范围比较。
   assign load_request_idx = p_share_load_index ? current_block_idx : load_block_idx;
 
-  // 请求起点、请求长度与银行末端先合并为两组位向量，再统一判断完整扩展范围。
+  // 请求起点、请求长度与存储体末端先合并为两组位向量，再统一判断完整扩展范围。
   for (genvar request_i = 0; request_i < 2; request_i++) begin : g_range_request
     logic [RANGE_WIDTH-1:0] request_base;
     logic [RANGE_WIDTH-1:0] request_count;
@@ -216,7 +220,7 @@ module bias_loader_buffer #(
     end
   end
   for (genvar b = 0; b < 2; b++) begin : gen_window_hit
-    // 两个银行同时比较完整请求范围，起点和末端条件独立计算。
+    // 两个存储体同时比较完整请求范围，起点和末端条件独立计算。
     assign load_window_hit[b] = bank_loaded[b] &&
         (load_request_idx >= bank_block_idx[b]) && window_end_valid[0][b];
     assign current_window_hit[b] = bank_loaded[b] &&
@@ -277,30 +281,31 @@ module bias_loader_buffer #(
       end
     end
     assign resident_current = resident_bank[active_bank];
+    assign resident_by_bank = resident_bank;
     // 共用请求索引时，装载命中和当前驻留复用同一组同步范围结果。
     assign load_block_valid = p_share_load_index ? |resident_bank : |load_window_hit;
     assign load_block_bank = p_share_load_index ? !resident_bank[0] : !load_window_hit[0];
   end else begin : g_combinational_current
     assign resident_current = current_window_hit[active_bank];
+    assign resident_by_bank = current_window_hit;
     assign load_block_valid = |load_window_hit;
     assign load_block_bank = !load_window_hit[0];
   end
   assign current_block_offset = BLOCK_ADDR_W'(
       current_block_idx - bank_block_idx[active_bank]);
   assign current_word_base = GROUP_ADDR_W'(current_block_offset) * GROUP_ADDR_W'(SIZE);
-  logic [BLOCK_ADDR_W-1:0] cache_match_i_a, cache_match_i_b, cache_match_i_target;
-  logic cache_match_i_carry, cache_match_o_equal;
-  // 缓存块号与存储体起点直接进行模加相等比较，命中判断独立于读取地址减法。
-  assign cache_match_i_a = ws_cache_block;
-  assign cache_match_i_b = BLOCK_ADDR_W'(bank_block_idx[active_bank]);
-  assign cache_match_i_target = BLOCK_ADDR_W'(current_block_idx);
-  assign cache_match_i_carry = 1'b0;
-  add_equal #(.p_width(BLOCK_ADDR_W), .p_preserve_bits(1'b1)) u_cache_match (
-      .i_a(cache_match_i_a), .i_b(cache_match_i_b), .i_target(cache_match_i_target),
-      .i_carry_in(cache_match_i_carry), .o_equal(cache_match_o_equal)
+  logic [1:0][BLOCK_ADDR_W-1:0] cache_bank_block;
+  for (genvar bank = 0; bank < 2; bank++) begin : g_cache_bank_block
+    assign cache_bank_block[bank] = BLOCK_ADDR_W'(bank_block_idx[bank]);
+  end
+  // 存储体范围和向量缓存命中并行准备，当前执行编号只选择完整读取资格。
+  bias_bank_readiness #(.p_block_width(BLOCK_ADDR_W)) u_bank_readiness (
+      .i_bank_block(cache_bank_block), .i_current_block(BLOCK_ADDR_W'(current_block_idx)),
+      .i_cache_block(ws_cache_block), .i_resident(resident_by_bank),
+      .i_cache_valid(ws_cache_valid), .i_cache_bank(ws_cache_bank),
+      .i_active_bank(active_bank), .i_is_mode(is_mode),
+      .o_cache_hit(ws_cache_hit), .o_bias_valid(bias_valid)
   );
-  assign ws_cache_hit = ws_cache_valid && ws_cache_bank == active_bank && cache_match_o_equal;
-  assign bias_valid = resident_current && (is_mode || ws_cache_hit);
 
   // 执行分组的读取上下文独立保存，后台预取不会改写当前标量读取位置。
   always_ff @(posedge clk or negedge rst_n) begin
@@ -362,7 +367,17 @@ module bias_loader_buffer #(
   assign collision_ws_next = {ws_cache_bank,
       BANK_ADDR_W'(ws_read_base + BANK_ADDR_W'(READ_INDEX_W'(ws_issue_count)))};
   assign collision_equal[0] = collision_scalar_first == write_address;
-  assign collision_equal[1] = collision_scalar_next == write_address;
+  // 后续标量地址直接检查模加结果，避免先生成完整进位和值再比较。
+  bias_scalar_word_match #(
+      .p_sum_width(GROUP_ADDR_W), .p_address_width(BANK_ADDR_W),
+      .p_words_per_read(WORDS_PER_READ)
+  ) u_scalar_word_match (
+      .i_base(scalar_word_base), .i_index(group_read_idx),
+      .i_word_address(write_address[BANK_ADDR_W-1:0]),
+      .o_equal(collision_scalar_next_equal)
+  );
+  assign collision_equal[1] = (scalar_bank == write_address[RAM_ADDR_W-1]) &&
+      collision_scalar_next_equal;
   assign collision_equal[2] = collision_ws_first == write_address;
   assign collision_equal[3] = collision_ws_next == write_address;
   always_comb begin
@@ -375,6 +390,16 @@ module bias_loader_buffer #(
       default: collision_selected = read_address == write_address;
     endcase
   end
+  // 各分支的选择条件并行形成，后续标量碰撞结果只经过最终读取使能。
+  assign collision_scalar_selected = is_mode && !group_read_start;
+  assign collision_other = (is_mode && group_read_start && collision_equal[0]) ||
+      (!is_mode && ws_read_start && collision_equal[2]) ||
+      (!is_mode && !ws_read_start && collision_equal[3]);
+  bias_read_enable_select u_read_enable (
+      .i_enable(read_enable), .i_write(storage_write_accepted),
+      .i_scalar_next(collision_scalar_selected), .i_scalar_collision(collision_equal[1]),
+      .i_other_collision(collision_other), .o_enable(storage_read_selected)
+  );
   // 有效字节与有效地址共同确认实际写入，同址写入保持同步读输出。
   always_comb begin
     storage_write_accepted = 1'b0;
@@ -389,6 +414,12 @@ module bias_loader_buffer #(
     if (storage_write_accepted) begin
       if (collision_selected) storage_i_rd_en = 1'b0;
     end
+    // 确定的控制使用并行资格，未知值保留同步存储原有的条件写入语义。
+    case (^{read_enable, storage_write_accepted, is_mode, group_read_start,
+            ws_read_start, collision_equal})
+      1'b0, 1'b1: storage_i_rd_en = storage_read_selected;
+      default: ;
+    endcase
   end
   assign storage_i_rd_addr = read_address;
   assign read_data = storage_o_rd_data;
@@ -495,60 +526,6 @@ module bias_loader_buffer #(
   end
   assign group_data_scalar = $signed(read_data[scalar_half_q*DATA_WIDTH +: DATA_WIDTH]);
 
-endmodule
-
-// 完整请求末端与存储体末端并行比较，保留扩展位和同一周期的范围结果。
-(* keep_hierarchy = "yes" *)
-module bias_request_end_compare #(
-    parameter int unsigned p_count_width = 29
-) (
-    input  wire logic [p_count_width-1:0] i_base,
-    input  wire logic [p_count_width-1:0] i_count,
-    input  wire logic [((p_count_width < 1) ? 1 : p_count_width):0] i_end,
-    output logic o_outside
-);
-    localparam int unsigned p_range_width = ((p_count_width < 1) ? 1 : p_count_width) + 1;
-    logic [p_range_width-1:0] range_add_i_a, range_add_i_b;
-    logic range_add_i_carry;
-    logic [p_range_width-1:0] range_add_o_sum;
-    logic range_add_o_carry;
-    logic [p_range_width-1:0] request_base, request_count, carry_bits;
-    logic unused_high_carry;
-    logic [p_range_width-1:0] unused_range_sum;
-
-    assign request_base = {1'b0, i_base};
-    assign request_count = {1'b0, i_count};
-    assign range_add_i_a = request_base ^ request_count ^ ~i_end;
-    assign carry_bits = (request_base & request_count) |
-        ((request_base | request_count) & ~i_end);
-    assign {unused_high_carry, range_add_i_b} = {carry_bits, 1'b0};
-    assign range_add_i_carry = 1'b0;
-    assign unused_range_sum = range_add_o_sum;
-    assign o_outside = range_add_o_carry;
-    parallel_prefix_add #(
-        .p_width(p_range_width), .p_group_width(8), .p_preserve_groups(1'b1)
-    ) u_range_add (
-        .i_a(range_add_i_a), .i_b(range_add_i_b), .i_carry(range_add_i_carry),
-        .o_sum(range_add_o_sum), .o_carry(range_add_o_carry)
-    );
-endmodule
-
-
-// 新配置优先清空驻留资格，其他周期使用本边沿的有效范围。
-(* keep_hierarchy = "yes" *)
-module bias_resident_qualify (
-    input  wire logic i_clear,
-    input  wire logic i_loaded,
-    input  wire logic i_below_start,
-    input  wire logic i_above_end,
-    output logic o_valid
-);
-    always_comb begin
-        o_valid = i_loaded && !i_below_start && !i_above_end;
-        if (i_clear) begin
-            o_valid = 1'b0;
-        end
-    end
 endmodule
 
 `default_nettype wire

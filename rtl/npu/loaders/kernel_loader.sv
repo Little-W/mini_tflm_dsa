@@ -1,6 +1,6 @@
 
 `default_nettype none
-
+// 调度矩阵分块的 DMA 读取与后台预取，按阵列顺序发送已装载数据。
 module kernel_loader #(
 	    parameter int unsigned DATA_WIDTH   = 8,
 	    parameter int unsigned SIZE         = 4,
@@ -10,69 +10,69 @@ module kernel_loader #(
 	    parameter int unsigned COUNT_WIDTH  = REG_WIDTH,
 	    parameter int unsigned CACHE_BLOCKS = 1
 	) (
-    input  wire logic                        clk,
-    input  wire logic                        rst_n,
-    input  wire logic                        init_cfg,
-    input  wire logic                        cfg_command_mode = 1'b0,
-    input  wire logic                        cache_flush = 1'b0,
-    input  wire logic                        prefetch_valid = 1'b0,
-    input  wire logic [REG_WIDTH-1:0]        prefetch_base_addr = '0,
-    input  wire logic [REG_WIDTH-1:0]        prefetch_p0 = '0,
-    input  wire logic [REG_WIDTH-1:0]        prefetch_q0 = '0,
-    input  wire logic [REG_WIDTH-1:0]        prefetch_rows = '0,
-    input  wire logic [REG_WIDTH-1:0]        prefetch_valid_cols = '0,
-    output logic                        prefetch_idle,
-    // IS Conv uses this ordinary matrix loader for image-derived A blocks.
-    input  wire logic                        cfg_im2col = 1'b0,
-    input  wire logic                        cfg_tile_packed = 1'b0,
-    input  wire logic [REG_WIDTH-1:0]        cfg_p0_base = '0,
-    input  wire logic [REG_WIDTH-1:0]        cfg_q0_base = '0,
-    output logic                        load_weight_req,
-    input  wire logic                        load_weight_granted,
-    input  wire logic                        send_weight_trigger,
-    input  wire logic [REG_WIDTH-1:0]        k,
-    input  wire logic [REG_WIDTH-1:0]        n,
-    input  wire logic [REG_WIDTH-1:0]        m,
-    input  wire logic [REG_WIDTH-1:0]        rhs_base,
-    input  wire logic [REG_WIDTH-1:0]        rhs_row_stride_b,
-    input  wire logic signed [REG_WIDTH-1:0] rhs_zp,
-    input  wire logic                        use_16bits,
-    input  wire logic [REG_WIDTH-1:0]        ia_reuse_num,
-    input  wire logic [REG_WIDTH-1:0]        w_reuse_num,
-    input wire logic [REG_WIDTH-1:0] row_groups,
-    input wire logic [REG_WIDTH-1:0] row_tail_tiles,
-    input wire logic [REG_WIDTH-1:0] col_groups,
-    input wire logic [REG_WIDTH-1:0] col_tail_tiles,
-	    output logic                        ext_dma_start,
-	    output logic                        ext_dma_is_write,
-	    output logic                        ext_dma_linear_read_mode,
-    output logic                        ext_dma_im2col,
-    output logic [REG_WIDTH-1:0]        ext_dma_p0,
-    output logic [REG_WIDTH-1:0]        ext_dma_q0,
-    output logic [REG_WIDTH-1:0]        ext_dma_group,
-	    output logic [REG_WIDTH-1:0]        ext_dma_base_addr,
-	    output logic [REG_WIDTH-1:0]        ext_dma_row_stride,
-	    output logic [REG_WIDTH-1:0]        ext_dma_rows_to_read,
-	    output logic [7:0]                  ext_dma_burst_len_m1,
-	    output logic                        ext_dma_slot_id,
-	    output logic                        ext_dma_use_16bits,
-	    output logic signed [REG_WIDTH-1:0] ext_dma_lhs_zp,
-	    input  wire logic                        ext_dma_busy,
-	    input  wire logic                        ext_dma_done,
-        input  wire logic                        ext_dma_wr_slot,
-	    input  wire logic [$clog2(SIZE)-1:0]     ext_dma_wr_row,
-	    input  wire logic [$clog2(SIZE)-1:0]     ext_dma_wr_col_base,
-	    input  wire logic signed [DATA_WIDTH-1:0] ext_dma_wr_data [DMA_LANES],
-	    input  wire logic                        ext_dma_wr_valid[DMA_LANES],
-	    output logic                        weight_sending_done,
-	    output logic                        load_weight_done,
-	    output logic                        store_weight_req,
-    output logic signed [DATA_WIDTH-1:0] weight_out [SIZE],
-    output logic                        weight_data_valid,
+    input  wire logic                        clk, // 权重装载、预取和发送控制的工作时钟。
+    input  wire logic                        rst_n, // 低有效异步复位。
+    input  wire logic                        init_cfg, // 接收新任务配置并初始化当前装载请求。
+    input  wire logic                        cfg_command_mode = 1'b0, // 启用按命令确认需求和后台预取的管理方式。
+    input  wire logic                        cache_flush = 1'b0, // 清空缓存槽位并撤销当前预取和传输上下文。
+    input  wire logic                        prefetch_valid = 1'b0, // 待检查的预取分块描述符有效。
+    input  wire logic [REG_WIDTH-1:0]        prefetch_base_addr = '0, // 预取分块的外部存储起始字节地址。
+    input  wire logic [REG_WIDTH-1:0]        prefetch_p0 = '0, // 预取分块的列位置或图像输出位置起点。
+    input  wire logic [REG_WIDTH-1:0]        prefetch_q0 = '0, // 预取分块的归约位置起点。
+    input  wire logic [REG_WIDTH-1:0]        prefetch_rows = '0, // 预取 DMA 需要读取的行数。
+    input  wire logic [REG_WIDTH-1:0]        prefetch_valid_cols = '0, // 预取 DMA 每行的有效归约元素数。
+    output logic                        prefetch_idle, // 后台处理空闲且本周期没有接受装载授予。
+    // 输入驻留卷积通过同一矩阵装载器读取图像展开得到的输入分块。
+    input  wire logic                        cfg_im2col = 1'b0, // 当前矩阵装载通过图像展开前端产生输入数据。
+    input  wire logic                        cfg_tile_packed = 1'b0, // 外部矩阵按完整分块连续存放。
+    input  wire logic [REG_WIDTH-1:0]        cfg_p0_base = '0, // 图像展开输出位置的全局起点。
+    input  wire logic [REG_WIDTH-1:0]        cfg_q0_base = '0, // 图像展开归约位置的全局起点。
+    output logic                        load_weight_req, // 请求取得权重或图像展开数据的装载资源。
+    input  wire logic                        load_weight_granted, // 当前装载请求取得资源授予。
+    input  wire logic                        send_weight_trigger, // 请求将已准备分块发送到计算阵列。
+    input  wire logic [REG_WIDTH-1:0]        k, // 流式维度长度，WS 对应输出行数，IS 对应输出列数。
+    input  wire logic [REG_WIDTH-1:0]        n, // 当前装载矩阵的归约维度长度。
+    input  wire logic [REG_WIDTH-1:0]        m, // 驻留维度长度，WS 对应输出列数，IS 对应输出行数。
+    input  wire logic [REG_WIDTH-1:0]        rhs_base, // 当前装载矩阵的外部存储首地址。
+    input  wire logic [REG_WIDTH-1:0]        rhs_row_stride_b, // 相邻 DMA 行起点之间的字节跨度。
+    input  wire logic signed [REG_WIDTH-1:0] rhs_zp, // 装载数据需要扣除的有符号量化零点。
+    input  wire logic                        use_16bits, // DMA 按十六位元素读取矩阵。
+    input  wire logic [REG_WIDTH-1:0]        ia_reuse_num, // 一个流式操作数复用组包含的分块数。
+    input  wire logic [REG_WIDTH-1:0]        w_reuse_num, // 一个驻留操作数复用组包含的分块数。
+    input wire logic [REG_WIDTH-1:0] row_groups, // 流式维度的分块组数，WS 对应输出行，IS 对应输出列。
+    input wire logic [REG_WIDTH-1:0] row_tail_tiles, // 最后一个流式维度分组的有效分块数。
+    input wire logic [REG_WIDTH-1:0] col_groups, // 驻留维度的分块组数，WS 对应输出列，IS 对应输出行。
+    input wire logic [REG_WIDTH-1:0] col_tail_tiles, // 最后一个驻留维度分组的有效分块数。
+	    output logic                        ext_dma_start, // 启动已取得授予的外部读取传输。
+	    output logic                        ext_dma_is_write, // DMA 方向标志，本模块固定为读取。
+	    output logic                        ext_dma_linear_read_mode, // DMA 连续线性读取标志，本模块使用逐行读取。
+    output logic                        ext_dma_im2col, // 当前 DMA 请求采用图像展开读取。
+    output logic [REG_WIDTH-1:0]        ext_dma_p0, // 当前 DMA 分块的列位置或图像输出位置起点。
+    output logic [REG_WIDTH-1:0]        ext_dma_q0, // 当前 DMA 分块的归约位置起点。
+    output logic [REG_WIDTH-1:0]        ext_dma_group, // 当前 DMA 分块所属的流式维度复用组编号。
+	    output logic [REG_WIDTH-1:0]        ext_dma_base_addr, // 当前 DMA 读取的起始字节地址。
+	    output logic [REG_WIDTH-1:0]        ext_dma_row_stride, // 当前 DMA 相邻行起点之间的字节跨度。
+	    output logic [REG_WIDTH-1:0]        ext_dma_rows_to_read, // 当前 DMA 需要读取的行数。
+	    output logic [7:0]                  ext_dma_burst_len_m1, // 当前 DMA 每行传输的总线拍数减一。
+	    output logic                        ext_dma_slot_id, // 当前 DMA 返回数据应写入的逻辑槽号。
+	    output logic                        ext_dma_use_16bits, // 当前 DMA 读取十六位元素。
+	    output logic signed [REG_WIDTH-1:0] ext_dma_lhs_zp, // 当前 DMA 数据需要扣除的有符号零点。
+	    input  wire logic                        ext_dma_busy, // 外部 DMA 仍在执行传输。
+	    input  wire logic                        ext_dma_done, // 外部 DMA 当前读取传输完成。
+        input  wire logic                        ext_dma_wr_slot, // DMA 返回数据对应的逻辑槽号。
+	    input  wire logic [$clog2(SIZE)-1:0]     ext_dma_wr_row, // DMA 返回数据的分块内行索引。
+	    input  wire logic [$clog2(SIZE)-1:0]     ext_dma_wr_col_base, // DMA 返回数据在当前行内的起始元素索引。
+	    input  wire logic signed [DATA_WIDTH-1:0] ext_dma_wr_data [DMA_LANES], // DMA 返回各通道的有符号矩阵元素。
+	    input  wire logic                        ext_dma_wr_valid[DMA_LANES], // DMA 返回各通道的数据有效标志。
+	    output logic                        weight_sending_done, // 当前分块向计算阵列发送完成。
+	    output logic                        load_weight_done, // 当前需求分块通过 DMA 返回或缓存命中完成装载。
+	    output logic                        store_weight_req, // 当前权重向量需要写入计算阵列。
+    output logic signed [DATA_WIDTH-1:0] weight_out [SIZE], // 按计算阵列输入顺序排列的权重向量。
+    output logic                        weight_data_valid, // 队首需求分块已准备好，可接受发送触发。
     // 后台状态独立于当前授予，供顶层在末级合并同周期中止。
-    output logic                        o_prefetch_quiescent,
+    output logic                        o_prefetch_quiescent, // 后台预取、传输及返回槽位均已空闲。
     // 供任务接收在后台空闲条件下判断当前需求请求。
-    output logic                        o_admission_request
+    output logic                        o_admission_request // 用于任务接收判断的当前需求装载请求。
 );
 
   typedef enum logic [1:0] {TOP_IDLE, TOP_INIT, TOP_RUN} top_state_t;
@@ -135,6 +135,7 @@ module kernel_loader #(
   typedef enum logic [1:0] {PF_EMPTY, PF_PENDING, PF_LOADING, PF_CACHED} prefetch_state_t;
   prefetch_state_t prefetch_state;
   descriptor_t ctrl_descriptor, candidate_descriptor, issue_descriptor, port_descriptor;
+  logic port_use_active;
   descriptor_t prefetch_descriptor, active_descriptor;
   descriptor_t comparison_descriptor;
   logic command_mode_q, command_waiting, demand_confirmed, prefetch_window_open;
@@ -162,6 +163,8 @@ module kernel_loader #(
   logic [REG_WIDTH-1:0] address_equal_i_a, address_equal_i_b, address_equal_i_c;
   logic [REG_WIDTH-1:0] address_equal_i_target;
   (* keep = "true" *) logic address_equal_o_equal;
+  logic address_equal_four_state;
+  logic column_equal_four_state, column_equal_fast;
   localparam int p_count_width = (COUNT_WIDTH < 1) ? 1 : COUNT_WIDTH;
   localparam int p_size_shift = $clog2(SIZE);
   localparam int p_dimension_width = (SIZE < 1) ? 1 : $clog2(SIZE+1);
@@ -187,29 +190,11 @@ module kernel_loader #(
   assign position_i_b[1] = q0_base_q;
   // 块坐标与配置偏移独立求和，最终描述符选择完整结果。
   for (genvar dimension = 0; dimension < 2; dimension++) begin : g_descriptor_position
-    if (dimension == 0 && p_count_width + p_size_shift < REG_WIDTH) begin : g_truncated_column
-      kernel_column_position #(.p_width(REG_WIDTH), .p_count_width(p_count_width),
-          .p_shift(p_size_shift)) u_column (
-          .i_group(ctrl_o_column_group_base), .i_offset(ctrl_o_column_group_offset),
-          .i_base(p0_base_q), .o_position(position_fast[dimension])
-      );
-      assign unused_position_carry[dimension] = 1'b0;
-    end else if (dimension == 0) begin : g_complete_column
-      logic [REG_WIDTH-1:0] column_sum, column_carry;
-      // 列分组、组内偏移和配置坐标共用同一组压缩结果。
-      assign column_sum = ctrl_o_column_group_base ^ ctrl_o_column_group_offset ^ p0_base_q;
-      assign column_carry = ((ctrl_o_column_group_base & ctrl_o_column_group_offset) |
-          (ctrl_o_column_group_base & p0_base_q) | (ctrl_o_column_group_offset & p0_base_q)) << 1;
-      parallel_prefix_add #(.p_width(REG_WIDTH), .p_group_width(4), .p_preserve_groups(1'b1)) u_position (
-          .i_a(column_sum), .i_b(column_carry), .i_carry(1'b0),
-          .o_sum(position_fast[dimension]), .o_carry(unused_position_carry[dimension])
-      );
-    end else begin : g_full_position
-      parallel_prefix_add #(.p_width(REG_WIDTH)) u_position (
-          .i_a(position_i_a[dimension]), .i_b(position_i_b[dimension]), .i_carry(1'b0),
-          .o_sum(position_fast[dimension]), .o_carry(unused_position_carry[dimension])
-      );
-    end
+    parallel_prefix_add #(.p_width(REG_WIDTH), .p_dsp_split_width(REG_WIDTH/2),
+        .p_preserve_groups(1'b1), .p_parallel_high_prefix(1'b1)) u_position (
+        .i_a(position_i_a[dimension]), .i_b(position_i_b[dimension]), .i_carry(1'b0),
+        .o_sum(position_fast[dimension]), .o_carry(unused_position_carry[dimension])
+    );
     always_comb begin
       case (^{position_i_a[dimension], position_i_b[dimension]})
         1'b0, 1'b1: position_sum[dimension] = position_fast[dimension];
@@ -240,8 +225,7 @@ module kernel_loader #(
     candidate_descriptor.cols = prefetch_valid_cols;
     issue_descriptor = prefetch_issue ? prefetch_descriptor : ctrl_descriptor;
     // 请求期间先选好待发描述符，授予只控制接收边沿。
-    port_descriptor = load_weight_req ? issue_descriptor :
-        transfer_active ? active_descriptor : issue_descriptor;
+    port_descriptor = port_use_active ? active_descriptor : issue_descriptor;
   end
 
   assign managed_mode = command_mode_q || prefetch_state != PF_EMPTY ||
@@ -348,24 +332,42 @@ module kernel_loader #(
     );
     always_comb begin
       case (^{column_equal_i_a, column_equal_i_b, column_equal_i_c, column_equal_i_target})
-        1'b0, 1'b1: column_equal_o_equal = fast_equal;
-        default: column_equal_o_equal = legacy_equal;
+        1'b0, 1'b1: column_equal_four_state = fast_equal;
+        default: column_equal_four_state = legacy_equal;
       endcase
     end
   end else begin : g_complete_column_equal
     add3_equal #(.p_width(REG_WIDTH)) u_column_equal (
         .i_a(column_equal_i_a), .i_b(column_equal_i_b), .i_c(column_equal_i_c),
-        .i_target(column_equal_i_target), .o_equal(column_equal_o_equal)
+        .i_target(column_equal_i_target), .o_equal(column_equal_four_state)
     );
   end
-  add_equal #(.p_width(REG_WIDTH)) u_row_equal (
+  // 控制器保存定宽列位置，列坐标比较只需两个操作数的逐位进位关系。
+  add_equal #(.p_width(REG_WIDTH), .p_preserve_bits(1'b1)) u_saved_column_equal (
+      .i_a(dma_p0), .i_b(p0_base_q), .i_target(column_equal_i_target),
+      .i_carry_in(1'b0), .o_equal(column_equal_fast)
+  );
+  always_comb begin
+    case (^{column_equal_i_a, column_equal_i_b, column_equal_i_c, column_equal_i_target})
+      1'b0, 1'b1: column_equal_o_equal = column_equal_fast;
+      default: column_equal_o_equal = column_equal_four_state;
+    endcase
+  end
+  add_equal #(.p_width(REG_WIDTH), .p_preserve_bits(1'b1)) u_row_equal (
       .i_a(row_equal_i_a), .i_b(row_equal_i_b), .i_target(row_equal_i_target),
       .i_carry_in(row_equal_i_carry_in), .o_equal(row_equal_o_equal)
   );
   add3_equal #(.p_width(REG_WIDTH)) u_address_equal (
       .i_a(address_equal_i_a), .i_b(address_equal_i_b), .i_c(address_equal_i_c),
-      .i_target(address_equal_i_target), .o_equal(address_equal_o_equal)
+      .i_target(address_equal_i_target), .o_equal(address_equal_four_state)
   );
+  // 已保存的完整 DMA 地址直接参与描述符比较，未知输入保留逐位进位比较语义。
+  always_comb begin
+    case (^{address_equal_i_a, address_equal_i_b, address_equal_i_c, address_equal_i_target})
+      1'b0, 1'b1: address_equal_o_equal = dma_tile_base_addr == address_equal_i_target;
+      default: address_equal_o_equal = address_equal_four_state;
+    endcase
+  end
   // 控制器提供未发起的需求，槽位与模式资格在加载器接收处独立合并。
   assign ctrl_i_request_open = 1'b1;
   assign ctrl_load_req = ctrl_o_request_pending &&
@@ -386,7 +388,22 @@ module kernel_loader #(
       !managed_demand_available && !transfer_active && !ext_dma_busy && buf_load_ready;
   assign managed_prefetch_available = prefetch_state == PF_PENDING && !command_waiting &&
       !ctrl_load_req && !transfer_active && !ext_dma_busy && buf_load_ready;
-  assign managed_request_available = (managed_demand_available && demand_data_available) || prefetch_available;
+  // 槽位可写状态在末端参与请求资格，需求和预取状态独立准备。
+  (* keep = "true" *) logic managed_request_eligible;
+  assign managed_request_eligible = !transfer_active && !ext_dma_busy &&
+      ((managed_demand_available && (prefetch_state == PF_EMPTY || prefetch_state == PF_PENDING)) ||
+       (prefetch_state == PF_PENDING && !command_waiting && !managed_demand_available));
+  assign managed_request_available = managed_request_eligible && buf_load_ready;
+  // 受管传输活动期间不接受新请求，端口描述符可直接由活动状态选择。
+  // 普通加载仍检查原请求资格，未知输入使用完整请求表达式。
+  always_comb begin
+    port_use_active = !load_weight_req && transfer_active;
+    case (^{transfer_active, managed_mode, cache_flush, unmanaged_demand_available})
+      1'b0, 1'b1: port_use_active = transfer_active &&
+          (managed_mode || cache_flush || !unmanaged_demand_available);
+      default: ;
+    endcase
+  end
   always_comb begin
     case (managed_mode)
       1'b0: begin
@@ -608,7 +625,7 @@ module kernel_loader #(
     );
     assign descriptor_burst[descriptor] = burst_o_length_m1;
   end
-  assign dma_burst_len_m1 = (!load_weight_req && transfer_active) ? descriptor_burst[2] :
+  assign dma_burst_len_m1 = port_use_active ? descriptor_burst[2] :
       (prefetch_issue ? descriptor_burst[1] : descriptor_burst[0]);
 
 	  assign ext_dma_start            = dma_start;
@@ -936,40 +953,4 @@ module kernel_loader #(
 
 endmodule
 
-`default_nettype wire
-
-`default_nettype none
-// 列号的模加法与配置坐标共同压缩，高位补偿独立的截断进位。
-module kernel_column_position #(
-    parameter int unsigned p_width = 32,
-    parameter int unsigned p_count_width = 16,
-    parameter int unsigned p_shift = 4
-) (
-    input wire logic [p_width-1:0] i_group, i_offset, i_base,
-    output logic [p_width-1:0] o_position
-);
-    localparam int unsigned p_high_width = p_width - p_count_width - p_shift;
-    logic [p_count_width:0] a_ext, b_ext, c_ext;
-    logic [p_count_width:0] compressed_sum, compressed_carry, total_sum;
-    logic [p_count_width-1:0] unused_column_sum;
-    logic group_carry;
-    logic high_carry;
-    logic [p_high_width-1:0] high_value, high_increment;
-    assign a_ext = {1'b0, i_group[p_shift+:p_count_width]};
-    assign b_ext = {1'b0, i_offset[p_shift+:p_count_width]};
-    assign c_ext = {1'b0, i_base[p_shift+:p_count_width]};
-    assign compressed_sum = a_ext ^ b_ext ^ c_ext;
-    assign compressed_carry = ((a_ext & b_ext) | (a_ext & c_ext) | (b_ext & c_ext)) << 1;
-    assign total_sum = compressed_sum + compressed_carry;
-    assign {group_carry, unused_column_sum} = a_ext + b_ext;
-    // 完整三项和的进位去除列号模宽溢出，得到配置坐标需要的进位。
-    assign high_carry = total_sum[p_count_width] ^ group_carry;
-    assign high_value = i_base[p_width-1 -: p_high_width];
-    assign high_increment = high_value + p_high_width'(1);
-    assign o_position[p_width-1 -: p_high_width] = high_carry ? high_increment : high_value;
-    assign o_position[p_shift+:p_count_width] = total_sum[p_count_width-1:0];
-    if (p_shift > 0) begin : g_low_bits
-      assign o_position[p_shift-1:0] = i_base[p_shift-1:0];
-    end
-endmodule
 `default_nettype wire

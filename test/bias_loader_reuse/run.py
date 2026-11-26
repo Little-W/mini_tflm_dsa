@@ -8,6 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import subprocess
 
 
@@ -30,6 +31,8 @@ def main() -> int:
              'rtl/npu/loaders/bias_loader_buffer.sv', 'rtl/common/regfile.v',
              'rtl/common/parallel_prefix_add.sv', 'rtl/common/parallel_unsigned_compare.sv',
              'rtl/common/add_equal.sv']
+    resolve = runpy.run_path(str(root / 'scripts/rtl/source_files.py'))['with_dependencies']
+    names = [str(path.relative_to(root)) for path in resolve([root / name for name in names], root)]
     sources = {name: digest(root / name) for name in names}
     command = [args.verilator, '--binary', '--timing', '--assert', '-Wno-fatal',
                '--top-module', 'tb_bias_loader_reuse', '-j', str(args.jobs),

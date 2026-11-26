@@ -1,0 +1,309 @@
+{
+  "passed": true,
+  "reference_commit": "1470a9633ee7e0231558f5c597ae50811b46392e",
+  "source_sha256": {
+    "rtl/npu/loaders/bias_bank_readiness.sv": "b2c4cb78efd6bc8f2e1cfb4b02192aafb36fe089a8f32d95a22a144835ba0ac7",
+    "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+    "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f"
+  },
+  "profiles": [
+    {
+      "width": 1,
+      "synthesis": false,
+      "inputs_constrained": false,
+      "passed": true,
+      "four_state_comparisons": 9472,
+      "formal_log_sha256": "0f7c10f7e3f208c13277f88c9e6f997946648b06672d32c6bec9a8faf0119287"
+    },
+    {
+      "width": 1,
+      "synthesis": true,
+      "inputs_constrained": false,
+      "passed": true,
+      "four_state_comparisons": 9472,
+      "formal_log_sha256": "02b46f556d3d560c4d61d746824806d7def13ee0196cbdac7c36af7163877877"
+    },
+    {
+      "width": 2,
+      "synthesis": false,
+      "inputs_constrained": false,
+      "passed": true,
+      "four_state_comparisons": 9984,
+      "formal_log_sha256": "393e2c0117ace9dca659eb900d3d086963f89ba0124b386b803d0d0be133b9a6"
+    },
+    {
+      "width": 2,
+      "synthesis": true,
+      "inputs_constrained": false,
+      "passed": true,
+      "four_state_comparisons": 9984,
+      "formal_log_sha256": "44d53af56ff5f957cf0fb2de237b8b74b53befd017913256ddac50478a1ddf38"
+    },
+    {
+      "width": 3,
+      "synthesis": false,
+      "inputs_constrained": false,
+      "passed": true,
+      "four_state_comparisons": 10496,
+      "formal_log_sha256": "b329baaf14f523ae3c16cd15974798da4515af5bc09d2bf3cfacf1f7c373cad0"
+    },
+    {
+      "width": 3,
+      "synthesis": true,
+      "inputs_constrained": false,
+      "passed": true,
+      "four_state_comparisons": 10496,
+      "formal_log_sha256": "d95a16385ecbab95664b7e8982ac7ae7a6e2760f9a4546484006fb9f3b9d6bc6"
+    },
+    {
+      "width": 5,
+      "synthesis": false,
+      "inputs_constrained": false,
+      "passed": true,
+      "four_state_comparisons": 11520,
+      "formal_log_sha256": "21fbcae5e1cd87b5ee6bf2ff301d9a681765cb2c65413a7988197e5be7810159"
+    },
+    {
+      "width": 5,
+      "synthesis": true,
+      "inputs_constrained": false,
+      "passed": true,
+      "four_state_comparisons": 11520,
+      "formal_log_sha256": "ef8f65707a67435e89465bb012b89b99946a31af3abc4e41359866e63bca86a2"
+    },
+    {
+      "width": 8,
+      "synthesis": false,
+      "inputs_constrained": false,
+      "passed": true,
+      "four_state_comparisons": 13056,
+      "formal_log_sha256": "1fb1d5ec0f886776cb4da209694b1f9eb0f843fe1cdd3d64a9cf7bfa7903ac55"
+    },
+    {
+      "width": 8,
+      "synthesis": true,
+      "inputs_constrained": false,
+      "passed": true,
+      "four_state_comparisons": 13056,
+      "formal_log_sha256": "667518ab952765cb4b6f00d07ffeab124ba856c58900bfa774437a0de5150bec"
+    },
+    {
+      "width": 17,
+      "synthesis": false,
+      "inputs_constrained": false,
+      "passed": true,
+      "four_state_comparisons": 17664,
+      "formal_log_sha256": "99c3bd7e9fc31bb6a6d239860e9a30b59c0627208ebb691d58133a2d86e6a8ad"
+    },
+    {
+      "width": 17,
+      "synthesis": true,
+      "inputs_constrained": false,
+      "passed": true,
+      "four_state_comparisons": 17664,
+      "formal_log_sha256": "e52ecf3be1901a631c35ae4ae3110cb74012a48a84ece08a2d523d3421bc378c"
+    },
+    {
+      "width": 32,
+      "synthesis": false,
+      "inputs_constrained": false,
+      "passed": true,
+      "four_state_comparisons": 25344,
+      "formal_log_sha256": "e7973066238cc4bf083f0ec5fc6962443d36389603ee43a414e25a15e666abb8"
+    },
+    {
+      "width": 32,
+      "synthesis": true,
+      "inputs_constrained": false,
+      "passed": true,
+      "four_state_comparisons": 25344,
+      "formal_log_sha256": "a913a65e17cf0eb851523a2033e22c8e00ceacd565c539bc1354e17c1c60c1f6"
+    }
+  ],
+  "four_state_comparisons": 195072,
+  "complete_buffer": {
+    "passed": true,
+    "input_constraints": [],
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/npu/loaders/bias_scalar_word_match.sv": "bfcfc07de1aa9e791f42f3601d1bda147a29b339e255878ab50b9411cd9908dd",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+      "/workspace/scratch/5bfa47658687/mini_tflm_dsa/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f"
+    },
+    "profiles": [],
+    "complete_modules": [
+      {
+        "parameters": {
+          "SIZE": 16,
+          "DATA_WIDTH": 32,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 64,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 28,
+          "GROUP_BLOCKS_MAX": 32,
+          "p_share_load_index": 1,
+          "p_register_current_range": 1
+        },
+        "compilation_mode": "generic",
+        "compilation_definitions": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "equivalent_bits": 34843,
+        "formal_log_sha256": "bcde430c7312a0db74cd1562af7f2a7785824d0d30b5ef07cb6eb5459717600c"
+      },
+      {
+        "parameters": {
+          "SIZE": 8,
+          "DATA_WIDTH": 32,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 32,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 12,
+          "GROUP_BLOCKS_MAX": 1,
+          "p_share_load_index": 0,
+          "p_register_current_range": 0
+        },
+        "compilation_mode": "generic",
+        "compilation_definitions": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "equivalent_bits": 1656,
+        "formal_log_sha256": "6b0f0f9b12fdfa23f8f598f879ef4c92fcaff47c99d7da1862605f71cec2e59f"
+      },
+      {
+        "parameters": {
+          "SIZE": 4,
+          "DATA_WIDTH": 32,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 64,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 12,
+          "GROUP_BLOCKS_MAX": 4,
+          "p_share_load_index": 0,
+          "p_register_current_range": 1
+        },
+        "compilation_mode": "generic",
+        "compilation_definitions": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "equivalent_bits": 2012,
+        "formal_log_sha256": "a459ae8e28143c0211d8019194d802313b81641e624336fed7e9a4bfa2833242"
+      },
+      {
+        "parameters": {
+          "SIZE": 8,
+          "DATA_WIDTH": 16,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 32,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 16,
+          "GROUP_BLOCKS_MAX": 8,
+          "p_share_load_index": 1,
+          "p_register_current_range": 0
+        },
+        "compilation_mode": "generic",
+        "compilation_definitions": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "equivalent_bits": 2912,
+        "formal_log_sha256": "0fd070b96ed3c64a9967fa049b0bccf8c8b6754249999084c6efeffa34dea466"
+      },
+      {
+        "parameters": {
+          "SIZE": 16,
+          "DATA_WIDTH": 32,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 64,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 28,
+          "GROUP_BLOCKS_MAX": 32,
+          "p_share_load_index": 1,
+          "p_register_current_range": 1
+        },
+        "compilation_mode": "fpga",
+        "compilation_definitions": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "equivalent_bits": 34619,
+        "formal_log_sha256": "6b3408951b40e44713f1757193c4f2f13c1217e87c4957fdb8bc5bfcfede9905"
+      },
+      {
+        "parameters": {
+          "SIZE": 8,
+          "DATA_WIDTH": 32,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 32,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 12,
+          "GROUP_BLOCKS_MAX": 1,
+          "p_share_load_index": 0,
+          "p_register_current_range": 0
+        },
+        "compilation_mode": "fpga",
+        "compilation_definitions": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "equivalent_bits": 1656,
+        "formal_log_sha256": "ea8c9cd3515224103783342343809b9ad5a55af2cc10f9c19fd9158dc81ce83c"
+      },
+      {
+        "parameters": {
+          "SIZE": 4,
+          "DATA_WIDTH": 32,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 64,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 12,
+          "GROUP_BLOCKS_MAX": 4,
+          "p_share_load_index": 0,
+          "p_register_current_range": 1
+        },
+        "compilation_mode": "fpga",
+        "compilation_definitions": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "equivalent_bits": 2012,
+        "formal_log_sha256": "edaea44b48c4d01138694e9988ba3c205a8dd3902f7d5a157a66d8eaf18795d3"
+      },
+      {
+        "parameters": {
+          "SIZE": 8,
+          "DATA_WIDTH": 16,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 32,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 16,
+          "GROUP_BLOCKS_MAX": 8,
+          "p_share_load_index": 1,
+          "p_register_current_range": 0
+        },
+        "compilation_mode": "fpga",
+        "compilation_definitions": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "equivalent_bits": 2912,
+        "formal_log_sha256": "d59ab2bd1973c4f871378a6e2f7460bed3d49f9f09cfcf3346acb13fe0ea3eaf"
+      }
+    ],
+    "parent_source_sha256": "cb6d20cfeff90ca60c69329e935fc235831cede4cc251e59a38b545d6970da14",
+    "test_sha256": "150f084aa8f28ac7fb4baaf92e6fb412b040046fd2ea13dba71e6b2778efa386"
+  },
+  "test_sha256": "a906bd1d0ace115d5aeceb0b4c18d5c7b3a02ee436073f7f84969e20cb92c642"
+}

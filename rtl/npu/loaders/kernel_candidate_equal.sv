@@ -5,9 +5,9 @@
 module kernel_candidate_equal #(
     parameter int p_width = 160
 ) (
-    input  wire logic [p_width-1:0] i_current,
-    input  wire logic [p_width-1:0] i_saved,
-    output logic o_equal
+    input  wire logic [p_width-1:0] i_current /* 当前装载候选的字段值 */,
+    input  wire logic [p_width-1:0] i_saved /* 已保存候选的对应字段值 */,
+    output logic o_equal /* 当前候选字段与已保存字段相同 */
 );
     function automatic int compare_levels(input int groups);
         int nodes;

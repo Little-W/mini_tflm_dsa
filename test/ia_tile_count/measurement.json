@@ -1,0 +1,503 @@
+{
+  "reference_commit": "1470a9633ee7e0231558f5c597ae50811b46392e",
+  "source_sha256": {
+    "reference": "857ac41cf2c61a0a09d9d9837a462b810ec3e3c419e2dfa831870709343df440",
+    "current": "cab2efbc61f50faaa35c64f6d1b4ee49f3a79f50f04eb2f76ed1c95bda2e967c"
+  },
+  "parameters": {
+    "REG_WIDTH": 32,
+    "SIZE": 16
+  },
+  "cases": {
+    "reference": {
+      "manifest": {
+        "top": "tile_count_pipeline",
+        "configuration": "Complete source selection and ceiling with registered input and output",
+        "parameters": {
+          "REG_WIDTH": 32,
+          "SIZE": 16
+        },
+        "sources_sha256": {
+          "/workspace/scratch/5bfa47658687/experiments/ia_tile_increment/final_measure/source/reference.sv": "bfed960e0a65648f7fbf5f364152e1d417702dd70b77b54df7d33457b6c8a6ad",
+          "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+          "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+          "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+          "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+          "rtl/common/all_reduce.sv": "d981deb99313b0ddc8568ca50b3d95f1616ea13b52e483de15f59e516a9fdc00",
+          "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+          "rtl/common/conditional_increment.sv": "55e0f5f89311c0f80409edad956b22dffcc9b7b9a7ca50c4b081970c61ca9b5e",
+          "rtl/common/increment_equal.sv": "2d571f3b6f1283de82636c4dd6b311946e765677092cdf0875b5b4452cb3e286",
+          "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+          "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+          "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+          "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+          "rtl/common/parallel_equal.sv": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d",
+          "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+          "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+          "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+          "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+          "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+          "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+          "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+          "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+          "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+          "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+          "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+          "rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+          "rtl/common/zero_reduce.sv": "139caad4cb9b67e966c768e999821f62975cb2ab666eb669a18ed43242bb3233"
+        },
+        "options": [
+          "-DSYNTHESIS=1"
+        ],
+        "build_configuration": null,
+        "primitive_models": {
+          "library_sha256": {
+            "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+            "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+          },
+          "primitives": [],
+          "model_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        },
+        "part": "xc7a200tfbg484-3",
+        "clock_period_ns": 6.666666666666667,
+        "lut_mapping": {
+          "mode": "physical-cost",
+          "wire_delay_ps": 300,
+          "delay_target_ps": 6667,
+          "max_lut_inputs": 8,
+          "functional_verification_required": true,
+          "retain_abc9_temporaries": false
+        },
+        "pre_lut_origin": {
+          "directory": "/workspace/scratch/5bfa47658687/experiments/ia_tile_increment/final_measure/mapping/reference",
+          "sha256": "d1c66188cecbd9d11c1e98e88ab36b8a8725d3dddd376df17dafa722b0c4c471",
+          "manifest_sha256": "adf459b13b8b4765ada54279c6dc574e3d59833e7b03da0ba045e2e833d55902"
+        },
+        "mapping_tools_sha256": {
+          "libyosys.so": "63ccae89cf9cc2ab2e29b2aa4087291b18d475eb8e02365432bf88fa743bd1c2",
+          "yosys-abc": "b5d3ee6db5cc8ce5bacffea17cd86e746067b84a16a616313a3c23c16a04a9f3"
+        }
+      },
+      "summary": {
+        "manifest_sha256": "9729f6e1ff72fb2c49b922b4c6b61a0cca068a944803c60c923d37337a1093a5",
+        "lut_mapping": {
+          "mode": "physical-cost",
+          "wire_delay_ps": 300,
+          "delay_target_ps": 6667,
+          "max_lut_inputs": 8,
+          "functional_verification_required": true,
+          "retain_abc9_temporaries": false
+        },
+        "lut_library": {
+          "source_library_sha256": "77a57a5ae6e19c510bb3dfa8407a280692dbea98bae53f26a5724bfe6a4ce803",
+          "library_sha256": "d1214772e5cc4ebfa935ca7e13d0a61625595a6eb95e5f1e2457ed2d3ecb4dce",
+          "area_cost_by_input_count": {
+            "1": 1,
+            "2": 1,
+            "3": 1,
+            "4": 1,
+            "5": 1,
+            "6": 1,
+            "7": 2,
+            "8": 4
+          },
+          "pin_delays_ps": {
+            "1": [
+              "127"
+            ],
+            "2": [
+              "127",
+              "238"
+            ],
+            "3": [
+              "127",
+              "238",
+              "407"
+            ],
+            "4": [
+              "127",
+              "238",
+              "407",
+              "472"
+            ],
+            "5": [
+              "127",
+              "238",
+              "407",
+              "472",
+              "631"
+            ],
+            "6": [
+              "127",
+              "238",
+              "407",
+              "472",
+              "631",
+              "642"
+            ],
+            "7": [
+              "470",
+              "524",
+              "635",
+              "804",
+              "869",
+              "1028",
+              "1039"
+            ],
+            "8": [
+              "465",
+              "592",
+              "646",
+              "757",
+              "926",
+              "991",
+              "1150",
+              "1161"
+            ]
+          },
+          "pin_delays_preserved": true
+        },
+        "mapping_stage": {
+          "elapsed_seconds": 3.24,
+          "peak_process_tree_rss_bytes": 172539904,
+          "memory_sample_interval_seconds": 0.2,
+          "script": "03_map_lut.ys",
+          "log": "03_map_lut.log",
+          "script_sha256": "044e90995d1773d0ec3cab32bebc0aed46d183a1f5dbfde44642de63733a7ac6",
+          "mapped_json_sha256": "10cc57cc06ce1aef6f064bf30d6a02fa39e6ad13fdd8c94014f875e138472e32",
+          "mapped_verilog_sha256": "e05255978cec5fa82e59799f7b1808aa690debdb7e2bb7c572a7d801f071559e",
+          "input_library_sha256": "d1214772e5cc4ebfa935ca7e13d0a61625595a6eb95e5f1e2457ed2d3ecb4dce",
+          "log_sha256": "5f77910c8746058b41968b031e5b779adab145410f378128c2c815b372adbe28"
+        },
+        "functional_verification": {
+          "passed": true,
+          "method": "ABC9 &verify",
+          "log_sha256": "5f77910c8746058b41968b031e5b779adab145410f378128c2c815b372adbe28"
+        },
+        "resources": {
+          "logic_lut_cells": 51,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 51,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 127,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 8,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 8,
+            "FDRE": 127,
+            "INV": 1,
+            "LUT2": 5,
+            "LUT3": 1,
+            "LUT4": 8,
+            "LUT5": 31,
+            "LUT6": 6,
+            "MUXF7": 1
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 13,
+        "register_path_requirement": {
+          "maximum_combinational_cells": 10,
+          "observed_combinational_cells": 13,
+          "graph_complete": true,
+          "met": false,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "physical_lut_positions": null,
+        "timing_150mhz_confirmed": null,
+        "abc_mapping_delay": {
+          "iteration_values": [
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0
+          ],
+          "unit": "ps",
+          "last_iteration_value": 6667.0,
+          "target_met": true,
+          "scope": "ABC 映射阶段的引脚和连线成本模型，实际器件频率须由布线后的完整时序模型检查。"
+        }
+      },
+      "mapped_sha256": "10cc57cc06ce1aef6f064bf30d6a02fa39e6ad13fdd8c94014f875e138472e32"
+    },
+    "current": {
+      "manifest": {
+        "top": "tile_count_pipeline",
+        "configuration": "Complete source selection and ceiling with registered input and output",
+        "parameters": {
+          "REG_WIDTH": 32,
+          "SIZE": 16
+        },
+        "sources_sha256": {
+          "/workspace/scratch/5bfa47658687/experiments/ia_tile_increment/final_measure/source/current.sv": "79d4f710e3210d72be4ede6cbbafa831696550535a8be74b44a8651a52d12cb2",
+          "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+          "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+          "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+          "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+          "rtl/common/all_reduce.sv": "d981deb99313b0ddc8568ca50b3d95f1616ea13b52e483de15f59e516a9fdc00",
+          "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+          "rtl/common/conditional_increment.sv": "55e0f5f89311c0f80409edad956b22dffcc9b7b9a7ca50c4b081970c61ca9b5e",
+          "rtl/common/increment_equal.sv": "2d571f3b6f1283de82636c4dd6b311946e765677092cdf0875b5b4452cb3e286",
+          "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+          "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+          "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+          "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+          "rtl/common/parallel_equal.sv": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d",
+          "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+          "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+          "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+          "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+          "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+          "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+          "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+          "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+          "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+          "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+          "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+          "rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f",
+          "rtl/common/zero_reduce.sv": "139caad4cb9b67e966c768e999821f62975cb2ab666eb669a18ed43242bb3233"
+        },
+        "options": [
+          "-DSYNTHESIS=1"
+        ],
+        "build_configuration": null,
+        "primitive_models": {
+          "library_sha256": {
+            "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+            "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+          },
+          "primitives": [],
+          "model_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        },
+        "part": "xc7a200tfbg484-3",
+        "clock_period_ns": 6.666666666666667,
+        "lut_mapping": {
+          "mode": "physical-cost",
+          "wire_delay_ps": 300,
+          "delay_target_ps": 6667,
+          "max_lut_inputs": 8,
+          "functional_verification_required": true,
+          "retain_abc9_temporaries": false
+        },
+        "pre_lut_origin": {
+          "directory": "/workspace/scratch/5bfa47658687/experiments/ia_tile_increment/final_measure/mapping/current",
+          "sha256": "cc1e360a4fc52efaa610f6f566742d7061e831d6d1f673d6f49677435b8356b2",
+          "manifest_sha256": "96c2c3496a7e350a6c41a62f1927c47061b42a1aeefd35c4beef431411ad6cc9"
+        },
+        "mapping_tools_sha256": {
+          "libyosys.so": "63ccae89cf9cc2ab2e29b2aa4087291b18d475eb8e02365432bf88fa743bd1c2",
+          "yosys-abc": "b5d3ee6db5cc8ce5bacffea17cd86e746067b84a16a616313a3c23c16a04a9f3"
+        }
+      },
+      "summary": {
+        "manifest_sha256": "427dc5557c718c98c5096bb4be967855aaa21ea2d0152d4fdeb85a00cacaaddd",
+        "lut_mapping": {
+          "mode": "physical-cost",
+          "wire_delay_ps": 300,
+          "delay_target_ps": 6667,
+          "max_lut_inputs": 8,
+          "functional_verification_required": true,
+          "retain_abc9_temporaries": false
+        },
+        "lut_library": {
+          "source_library_sha256": "77a57a5ae6e19c510bb3dfa8407a280692dbea98bae53f26a5724bfe6a4ce803",
+          "library_sha256": "d1214772e5cc4ebfa935ca7e13d0a61625595a6eb95e5f1e2457ed2d3ecb4dce",
+          "area_cost_by_input_count": {
+            "1": 1,
+            "2": 1,
+            "3": 1,
+            "4": 1,
+            "5": 1,
+            "6": 1,
+            "7": 2,
+            "8": 4
+          },
+          "pin_delays_ps": {
+            "1": [
+              "127"
+            ],
+            "2": [
+              "127",
+              "238"
+            ],
+            "3": [
+              "127",
+              "238",
+              "407"
+            ],
+            "4": [
+              "127",
+              "238",
+              "407",
+              "472"
+            ],
+            "5": [
+              "127",
+              "238",
+              "407",
+              "472",
+              "631"
+            ],
+            "6": [
+              "127",
+              "238",
+              "407",
+              "472",
+              "631",
+              "642"
+            ],
+            "7": [
+              "470",
+              "524",
+              "635",
+              "804",
+              "869",
+              "1028",
+              "1039"
+            ],
+            "8": [
+              "465",
+              "592",
+              "646",
+              "757",
+              "926",
+              "991",
+              "1150",
+              "1161"
+            ]
+          },
+          "pin_delays_preserved": true
+        },
+        "mapping_stage": {
+          "elapsed_seconds": 3.43,
+          "peak_process_tree_rss_bytes": 183582720,
+          "memory_sample_interval_seconds": 0.2,
+          "script": "03_map_lut.ys",
+          "log": "03_map_lut.log",
+          "script_sha256": "444b609d8c40b8f845ddf5af93568504ecd6e024554c7dd82e8675f2cf3fda3e",
+          "mapped_json_sha256": "282ae382656c29d8c80a03b0270392f3241f14094297df9b5c2e6aac06a3c84c",
+          "mapped_verilog_sha256": "10618e23d3a6184894fd126a72b48db3252fc8247c7016f1cbcc53ade28be2bf",
+          "input_library_sha256": "d1214772e5cc4ebfa935ca7e13d0a61625595a6eb95e5f1e2457ed2d3ecb4dce",
+          "log_sha256": "b0ebb230a1b9f9d4b5c5cc690d64ae80cbf1700447c3ad246a012feff8e1abcd"
+        },
+        "functional_verification": {
+          "passed": true,
+          "method": "ABC9 &verify",
+          "log_sha256": "b0ebb230a1b9f9d4b5c5cc690d64ae80cbf1700447c3ad246a012feff8e1abcd"
+        },
+        "resources": {
+          "logic_lut_cells": 69,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 69,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 128,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 7,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 7,
+            "FDRE": 128,
+            "INV": 1,
+            "LUT2": 16,
+            "LUT3": 1,
+            "LUT4": 10,
+            "LUT5": 32,
+            "LUT6": 10,
+            "MUXF7": 1
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 8,
+        "register_path_requirement": {
+          "maximum_combinational_cells": 10,
+          "observed_combinational_cells": 8,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "physical_lut_positions": null,
+        "timing_150mhz_confirmed": null,
+        "abc_mapping_delay": {
+          "iteration_values": [
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0,
+            6667.0
+          ],
+          "unit": "ps",
+          "last_iteration_value": 6667.0,
+          "target_met": true,
+          "scope": "ABC 映射阶段的引脚和连线成本模型，实际器件频率须由布线后的完整时序模型检查。"
+        }
+      },
+      "mapped_sha256": "282ae382656c29d8c80a03b0270392f3241f14094297df9b5c2e6aac06a3c84c"
+    }
+  }
+}

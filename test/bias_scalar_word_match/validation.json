@@ -1,0 +1,455 @@
+{
+  "passed": true,
+  "reference": "f7f90963",
+  "source_sha256": {
+    "rtl/npu/loaders/bias_loader_buffer.sv": "0d624e36aab53115ab0a1c29c7e0a178b3e95fb6bae753954cacdbb716af1295",
+    "rtl/npu/loaders/bias_scalar_word_match.sv": "bfcfc07de1aa9e791f42f3601d1bda147a29b339e255878ab50b9411cd9908dd",
+    "rtl/npu/loaders/bias_read_enable_select.sv": "6e9fe13290a6e721df03398614b600f897f64da4678af0ca5e5b9cedc552fefe"
+  },
+  "compilation_definitions": {
+    "generic": [
+      "-USYNTHESIS",
+      "-UXILINX_FPGA"
+    ],
+    "fpga": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1"
+    ]
+  },
+  "address_comparison": {
+    "passed": true,
+    "input_constraints": [],
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/loaders/bias_scalar_word_match.sv": "bfcfc07de1aa9e791f42f3601d1bda147a29b339e255878ab50b9411cd9908dd",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f"
+    },
+    "profiles": [
+      {
+        "sum_width": 1,
+        "address_width": 1,
+        "words_per_read": 1,
+        "synthesis": false,
+        "passed": true,
+        "four_state_comparisons": 20770,
+        "formal_log_sha256": "a22d5c09d848f9cf2ded5a31b3c8713fa19491daa6fa9d5530c8a28646445efe",
+        "four_state_log_sha256": "5da19b5bfd218dc862cfe5bcf2a2695807d88f44c9806ea9cddb72b52c523537"
+      },
+      {
+        "sum_width": 1,
+        "address_width": 1,
+        "words_per_read": 1,
+        "synthesis": true,
+        "passed": true,
+        "four_state_comparisons": 20770,
+        "formal_log_sha256": "d148803b7a856c716e7bcf074fdca7f7046174f10720ce7e04f6c38467c96b18",
+        "four_state_log_sha256": "5da19b5bfd218dc862cfe5bcf2a2695807d88f44c9806ea9cddb72b52c523537"
+      },
+      {
+        "sum_width": 2,
+        "address_width": 1,
+        "words_per_read": 2,
+        "synthesis": false,
+        "passed": true,
+        "four_state_comparisons": 21282,
+        "formal_log_sha256": "a1de4dafac3d4285fb463383aaa772feb7b16f783db10f25a977a06bd1641ed2",
+        "four_state_log_sha256": "4ee36733a9feb5078942edfd76d7a7968e3b3395638a98bee35298849b7fc512"
+      },
+      {
+        "sum_width": 2,
+        "address_width": 1,
+        "words_per_read": 2,
+        "synthesis": true,
+        "passed": true,
+        "four_state_comparisons": 21282,
+        "formal_log_sha256": "842e2a2fe5839f2f122a10aba0cbf06892f502575d3051e69fa92480a3e0b489",
+        "four_state_log_sha256": "4ee36733a9feb5078942edfd76d7a7968e3b3395638a98bee35298849b7fc512"
+      },
+      {
+        "sum_width": 3,
+        "address_width": 6,
+        "words_per_read": 4,
+        "synthesis": false,
+        "passed": true,
+        "four_state_comparisons": 23074,
+        "formal_log_sha256": "82ab3be0256797871ae2a66f24b27d381110a49be2fda0b4c5ad89c36ac57d8e",
+        "four_state_log_sha256": "77c46ccc18142794081d964677fbb1a2a2b032f27e57ac1e9a25acf284d6f8b9"
+      },
+      {
+        "sum_width": 3,
+        "address_width": 6,
+        "words_per_read": 4,
+        "synthesis": true,
+        "passed": true,
+        "four_state_comparisons": 23074,
+        "formal_log_sha256": "6e657a181cd0a7d6a7be88a44b4f6c6085723673c153655ed1c629b9b3caa02a",
+        "four_state_log_sha256": "77c46ccc18142794081d964677fbb1a2a2b032f27e57ac1e9a25acf284d6f8b9"
+      },
+      {
+        "sum_width": 3,
+        "address_width": 1,
+        "words_per_read": 2,
+        "synthesis": false,
+        "passed": true,
+        "four_state_comparisons": 21794,
+        "formal_log_sha256": "8e6bdd47d7cb0c81ca2db1472413497cae33bcfc379c8eae2332ce5690a92fe9",
+        "four_state_log_sha256": "255003533a7c3666475ea63cd8d67d0fce4c439b0baf8781acec4fd97d1e5ebd"
+      },
+      {
+        "sum_width": 3,
+        "address_width": 1,
+        "words_per_read": 2,
+        "synthesis": true,
+        "passed": true,
+        "four_state_comparisons": 21794,
+        "formal_log_sha256": "a9ae91b04e421bcb7a8f8f1b4703816d97bc9e073c492a98ba22c0d2be2771cd",
+        "four_state_log_sha256": "255003533a7c3666475ea63cd8d67d0fce4c439b0baf8781acec4fd97d1e5ebd"
+      },
+      {
+        "sum_width": 5,
+        "address_width": 3,
+        "words_per_read": 4,
+        "synthesis": false,
+        "passed": true,
+        "four_state_comparisons": 23330,
+        "formal_log_sha256": "03b979db624c63a0c06c58ce6aeaa34ebba07150434880d34026bb1f0dd6ce3f",
+        "four_state_log_sha256": "78f1c81c2bf1dbf71cadb8cb8d4d49c5c2920f25be7dd3a4f9955f2ae609c31e"
+      },
+      {
+        "sum_width": 5,
+        "address_width": 3,
+        "words_per_read": 4,
+        "synthesis": true,
+        "passed": true,
+        "four_state_comparisons": 23330,
+        "formal_log_sha256": "98d09a34d594acd0d54c8afe67bf991a0d16bed2592d75633c31a76d7134f42f",
+        "four_state_log_sha256": "78f1c81c2bf1dbf71cadb8cb8d4d49c5c2920f25be7dd3a4f9955f2ae609c31e"
+      },
+      {
+        "sum_width": 9,
+        "address_width": 8,
+        "words_per_read": 2,
+        "synthesis": false,
+        "passed": true,
+        "four_state_comparisons": 26658,
+        "formal_log_sha256": "a4ad55c06789b4b7cae73497192b8fa9607c14c6e9dcebe62774d473dc34506f",
+        "four_state_log_sha256": "8dcb05cc5826ad3560175d9b725421507cef71b943a7a46553412b9d3798a038"
+      },
+      {
+        "sum_width": 9,
+        "address_width": 8,
+        "words_per_read": 2,
+        "synthesis": true,
+        "passed": true,
+        "four_state_comparisons": 26658,
+        "formal_log_sha256": "cf6a506b1148c25c30c9987a7559f6451bc0069076cc477e284a31be2de1c1e8",
+        "four_state_log_sha256": "8dcb05cc5826ad3560175d9b725421507cef71b943a7a46553412b9d3798a038"
+      },
+      {
+        "sum_width": 10,
+        "address_width": 6,
+        "words_per_read": 4,
+        "synthesis": false,
+        "passed": true,
+        "four_state_comparisons": 26658,
+        "formal_log_sha256": "4579f9097469e0a7bb6eda4244eabe758379692e34fe92fd998caed1573daef7",
+        "four_state_log_sha256": "8dcb05cc5826ad3560175d9b725421507cef71b943a7a46553412b9d3798a038"
+      },
+      {
+        "sum_width": 10,
+        "address_width": 6,
+        "words_per_read": 4,
+        "synthesis": true,
+        "passed": true,
+        "four_state_comparisons": 26658,
+        "formal_log_sha256": "3c57d2aa550270df5aae44a3ee3eeb8a9bb2e1ca7e4227fece01edcc9c9e156e",
+        "four_state_log_sha256": "8dcb05cc5826ad3560175d9b725421507cef71b943a7a46553412b9d3798a038"
+      },
+      {
+        "sum_width": 17,
+        "address_width": 16,
+        "words_per_read": 2,
+        "synthesis": false,
+        "passed": true,
+        "four_state_comparisons": 32802,
+        "formal_log_sha256": "bec651e82ac5695e0ddd825ce417b4b3d394fd91efbfd6c6e474e8312cb53881",
+        "four_state_log_sha256": "1d2554e4aeca4bc5271b45e1e72af40f9ccc63651d8abd2d5bbf930643a25969"
+      },
+      {
+        "sum_width": 17,
+        "address_width": 16,
+        "words_per_read": 2,
+        "synthesis": true,
+        "passed": true,
+        "four_state_comparisons": 32802,
+        "formal_log_sha256": "bfbdb57bf3bcc15c1a7144cfd05c2126eb3b4bff68b3fe6ef889da2cbfd16480",
+        "four_state_log_sha256": "1d2554e4aeca4bc5271b45e1e72af40f9ccc63651d8abd2d5bbf930643a25969"
+      },
+      {
+        "sum_width": 9,
+        "address_width": 9,
+        "words_per_read": 3,
+        "synthesis": false,
+        "passed": true,
+        "four_state_comparisons": 26914,
+        "formal_log_sha256": "29291e2fb451a025071a49ae092a105b129c5ac6c17fe56917face83cf599f0f",
+        "four_state_log_sha256": "58ede7dc5c1809c1e2f9ce81fbcb9274c0e6b5b557a291759291f8ced02519ac"
+      },
+      {
+        "sum_width": 9,
+        "address_width": 9,
+        "words_per_read": 3,
+        "synthesis": true,
+        "passed": true,
+        "four_state_comparisons": 26914,
+        "formal_log_sha256": "274032a8cc62d831695d5d7b1621013c613b4332e0234d560c81be102baa3671",
+        "four_state_log_sha256": "58ede7dc5c1809c1e2f9ce81fbcb9274c0e6b5b557a291759291f8ced02519ac"
+      },
+      {
+        "sum_width": 3,
+        "address_width": 2,
+        "words_per_read": 8,
+        "synthesis": false,
+        "passed": true,
+        "four_state_comparisons": 22050,
+        "formal_log_sha256": "b75b095ea8f7cc2e6ea237c37c09f93f35541b0d73b7024bf49f928d74388728",
+        "four_state_log_sha256": "064f335ae4d839c404972c673d118a2050345bd2ba6f3cf0216e38acc2958588"
+      },
+      {
+        "sum_width": 3,
+        "address_width": 2,
+        "words_per_read": 8,
+        "synthesis": true,
+        "passed": true,
+        "four_state_comparisons": 22050,
+        "formal_log_sha256": "5dcc440aa143fc1127de8c6a119daa3f782e44340ac3d43f4c02fefd15001065",
+        "four_state_log_sha256": "064f335ae4d839c404972c673d118a2050345bd2ba6f3cf0216e38acc2958588"
+      }
+    ],
+    "complete_modules": [],
+    "test_sha256": "b7b210fec576bbca0eb844a54d1517ad91418f2886ffeccf469efca1fa0a6fd3"
+  },
+  "read_qualification": {
+    "passed": true,
+    "reference": "f7f90963",
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/loaders/bias_loader_buffer.sv": "0d624e36aab53115ab0a1c29c7e0a178b3e95fb6bae753954cacdbb716af1295",
+      "/workspace/scratch/5bfa47658687/storage_work/bias_scalar_match/enable2/control.sv": "465d77907031c3f24510afa8959a0a91d1f05977735faa0d0993995457a5ec31",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/loaders/bias_read_enable_select.sv": "6e9fe13290a6e721df03398614b600f897f64da4678af0ca5e5b9cedc552fefe"
+    },
+    "input_constraints": [],
+    "profiles": [
+      {
+        "synthesis": false,
+        "slang_definitions": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "formal_log_sha256": "7fd5551e271ceb025240403c973ba150b89a95d1a483d481e53821f1f80f5014",
+        "four_state_comparisons": 83458,
+        "four_state_log_sha256": "7486e545b871727361bf715ff8d439458c028cafacccda20d02f60c2b285ee23"
+      },
+      {
+        "synthesis": true,
+        "slang_definitions": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "formal_log_sha256": "1a2f7d945995ddf5d54a0796c35629dd6f114a8f220f8330a2653a4da06ffa99",
+        "four_state_comparisons": 83458,
+        "four_state_log_sha256": "7486e545b871727361bf715ff8d439458c028cafacccda20d02f60c2b285ee23"
+      }
+    ],
+    "test_sha256": "7b579458de819ca029464a294b1e3ee28d79e46ee2bbb34766d0fe385fb18af3"
+  },
+  "complete_modules": {
+    "passed": true,
+    "input_constraints": [],
+    "source_sha256": {
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/npu/loaders/bias_scalar_word_match.sv": "bfcfc07de1aa9e791f42f3601d1bda147a29b339e255878ab50b9411cd9908dd",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+      "/workspace/scratch/5bfa47658687/work_shared_timing/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f"
+    },
+    "profiles": [],
+    "complete_modules": [
+      {
+        "parameters": {
+          "SIZE": 16,
+          "DATA_WIDTH": 32,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 64,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 28,
+          "GROUP_BLOCKS_MAX": 32,
+          "p_share_load_index": 1,
+          "p_register_current_range": 1
+        },
+        "compilation_mode": "generic",
+        "compilation_definitions": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "equivalent_bits": 34828,
+        "formal_log_sha256": "f6b4e1af9a43d6f68939888ea72ed5ed862b1cd6b4ea1707d3ec65a926cac0e4"
+      },
+      {
+        "parameters": {
+          "SIZE": 8,
+          "DATA_WIDTH": 32,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 32,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 12,
+          "GROUP_BLOCKS_MAX": 1,
+          "p_share_load_index": 0,
+          "p_register_current_range": 0
+        },
+        "compilation_mode": "generic",
+        "compilation_definitions": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "equivalent_bits": 1646,
+        "formal_log_sha256": "836028d43109d0dbde9d3ee5a604e90c03666382cd5ae8a03faa4e25ebed3959"
+      },
+      {
+        "parameters": {
+          "SIZE": 4,
+          "DATA_WIDTH": 32,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 64,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 12,
+          "GROUP_BLOCKS_MAX": 4,
+          "p_share_load_index": 0,
+          "p_register_current_range": 1
+        },
+        "compilation_mode": "generic",
+        "compilation_definitions": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "equivalent_bits": 2003,
+        "formal_log_sha256": "7d6cef6078e5c9085999daadf9d7baccc06fd1faf206793ee3fd87d7a324630e"
+      },
+      {
+        "parameters": {
+          "SIZE": 8,
+          "DATA_WIDTH": 16,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 32,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 16,
+          "GROUP_BLOCKS_MAX": 8,
+          "p_share_load_index": 1,
+          "p_register_current_range": 0
+        },
+        "compilation_mode": "generic",
+        "compilation_definitions": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "equivalent_bits": 2898,
+        "formal_log_sha256": "9730fee6f7890bcc0e9db83584cd2fcd2c65e212768af8836139615c62d0becb"
+      },
+      {
+        "parameters": {
+          "SIZE": 16,
+          "DATA_WIDTH": 32,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 64,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 28,
+          "GROUP_BLOCKS_MAX": 32,
+          "p_share_load_index": 1,
+          "p_register_current_range": 1
+        },
+        "compilation_mode": "fpga",
+        "compilation_definitions": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "equivalent_bits": 34604,
+        "formal_log_sha256": "c6b233720719918d9a61f8a6743d64cccae6bf92b32ba73d414ae0cb27f31e92"
+      },
+      {
+        "parameters": {
+          "SIZE": 8,
+          "DATA_WIDTH": 32,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 32,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 12,
+          "GROUP_BLOCKS_MAX": 1,
+          "p_share_load_index": 0,
+          "p_register_current_range": 0
+        },
+        "compilation_mode": "fpga",
+        "compilation_definitions": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "equivalent_bits": 1646,
+        "formal_log_sha256": "33ce8a44019e79ff42866995079488a9f405f7496ec8f2ab6841493bd0d2b362"
+      },
+      {
+        "parameters": {
+          "SIZE": 4,
+          "DATA_WIDTH": 32,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 64,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 12,
+          "GROUP_BLOCKS_MAX": 4,
+          "p_share_load_index": 0,
+          "p_register_current_range": 1
+        },
+        "compilation_mode": "fpga",
+        "compilation_definitions": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "equivalent_bits": 2003,
+        "formal_log_sha256": "4c6436edaa98d212bb9ddd1a3288caf368fd71517e1ec00075744ca25b7e897d"
+      },
+      {
+        "parameters": {
+          "SIZE": 8,
+          "DATA_WIDTH": 16,
+          "DMA_DATA_WIDTH": 8,
+          "BUS_WIDTH": 32,
+          "REG_WIDTH": 32,
+          "COUNT_WIDTH": 16,
+          "GROUP_BLOCKS_MAX": 8,
+          "p_share_load_index": 1,
+          "p_register_current_range": 0
+        },
+        "compilation_mode": "fpga",
+        "compilation_definitions": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "equivalent_bits": 2898,
+        "formal_log_sha256": "cce74f4089033d544f97fc8567d1b0295c4ee8f073439339d282f2bc86b0bbff"
+      }
+    ],
+    "parent_source_sha256": "0d624e36aab53115ab0a1c29c7e0a178b3e95fb6bae753954cacdbb716af1295",
+    "test_sha256": "150f084aa8f28ac7fb4baaf92e6fb412b040046fd2ea13dba71e6b2778efa386"
+  },
+  "runner_sha256": {
+    "run.py": "150f084aa8f28ac7fb4baaf92e6fb412b040046fd2ea13dba71e6b2778efa386",
+    "run_enable.py": "7b579458de819ca029464a294b1e3ee28d79e46ee2bbb34766d0fe385fb18af3"
+  }
+}
