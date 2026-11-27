@@ -316,6 +316,10 @@ typedef struct packed {
     logic [31:0] bias_execution_address_o_address;
     logic [31:0] exec_bias_base;
     logic exec_bias_present;
+    logic exec_frame_bias_phase;
+    logic controller_issue_eligible;
+    logic controller_issue_qualified;
+    (* keep = 1 *) logic frame_issue_incomplete;
     logic [31:0] exec_channel;
     logic [31:0] exec_col_groups;
     logic [31:0] exec_col_tail;
@@ -327,6 +331,9 @@ typedef struct packed {
     logic [31:0] exec_m;
     logic [31:0] exec_n;
     logic exec_oa_complete;
+    logic frame_complete_i_mode, frame_complete_i_active, frame_complete_i_eligible;
+    logic frame_complete_i_store_seen, frame_complete_i_store_complete;
+    logic frame_complete_i_output_complete, frame_complete_o_complete;
     logic signed [31:0] exec_q_mult;
     logic signed [31:0] exec_q_shift;
     logic [31:0] exec_row_groups;
@@ -337,6 +344,7 @@ typedef struct packed {
     logic [31:0] exec_w;
     logic [31:0] exec_weight_base;
     logic fifo_full_flag;
+    logic fifo_issue_full_flag;
     logic frame_address_i_abort;
     logic [31:0] frame_address_i_column;
     logic [31:0] frame_address_i_dst_base;
@@ -599,8 +607,7 @@ typedef struct packed {
     assign exec_weight_base = o_frame_mode_q ? frame_address_o_weight_base : weight_base_eff;
     // 偏置原始地址按六位并行检查，所有使用方复用完整位宽的非零结果。
     localparam int unsigned p_bias_zero_groups = (p_reg_width + 5) / 6;
-    (* keep = 1 *) logic [p_bias_zero_groups-1:0] bias_nonzero_groups;
-    logic bias_groups_zero;
+    (* keep = 1 *) logic [p_bias_zero_groups-1:0] bias_zero_groups;
     for (genvar group_index = 0; group_index < p_bias_zero_groups; group_index++) begin : g_bias_nonzero
         localparam int unsigned p_first = 6 * group_index;
         localparam int unsigned p_bits = p_reg_width-p_first < 6 ? p_reg_width-p_first : 6;
@@ -608,18 +615,14 @@ typedef struct packed {
         zero_reduce #(.p_width(p_bits)) u_group_zero (
             .i_value(i_bias_base[p_first +: p_bits]), .o_zero(group_zero)
         );
-        assign bias_nonzero_groups[group_index] = !group_zero;
+        assign bias_zero_groups[group_index] = group_zero;
     end
-    zero_reduce #(.p_width(p_bias_zero_groups)) u_bias_groups_zero (
-        .i_value(bias_nonzero_groups), .o_zero(bias_groups_zero)
-    );
-    assign bias_base_nonzero = !bias_groups_zero;
+    assign bias_base_nonzero = !(&bias_zero_groups);
     if (p_controller_bias_w == p_reg_width) begin : g_same_bias_width
         assign controller_bias_base_nonzero = bias_base_nonzero;
     end else begin : g_controller_bias_width
         localparam int unsigned p_groups = (p_controller_bias_w + 5) / 6;
-        (* keep = 1 *) logic [p_groups-1:0] visible_nonzero_groups;
-        logic visible_groups_zero;
+        (* keep = 1 *) logic [p_groups-1:0] visible_zero_groups;
         for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_group
             localparam int unsigned p_first = 6 * group_index;
             localparam int unsigned p_bits = p_controller_bias_w-p_first < 6 ?
@@ -628,12 +631,9 @@ typedef struct packed {
             zero_reduce #(.p_width(p_bits)) u_group_zero (
                 .i_value(i_bias_base[p_first +: p_bits]), .o_zero(group_zero)
             );
-            assign visible_nonzero_groups[group_index] = !group_zero;
+            assign visible_zero_groups[group_index] = group_zero;
         end
-        zero_reduce #(.p_width(p_groups)) u_groups_zero (
-            .i_value(visible_nonzero_groups), .o_zero(visible_groups_zero)
-        );
-        assign controller_bias_base_nonzero = !visible_groups_zero;
+        assign controller_bias_base_nonzero = !(&visible_zero_groups);
     end
     assign bias_execution_address_i_base = i_bias_base;
     assign bias_execution_address_i_channel = exec_channel;
@@ -649,14 +649,21 @@ typedef struct packed {
     npu_bias_address_zero #(.p_width(p_controller_bias_w)) u_bias_zero (
         .i_base(p_controller_bias_w'(i_bias_base)),
         .i_ws_channel(frame_exec_column), .i_is_channel(frame_exec_p0),
-        .i_is_mode(o_is_mode), .o_zero(bias_zero_o_equal)
+        .i_is_mode(o_is_mode), .o_zero(bias_zero_o_equal),
+        .i_issue_eligible(controller_issue_eligible), .i_frame_mode(o_frame_mode_q),
+        .i_base_nonzero(bias_base_nonzero), .i_frame_phase(exec_frame_bias_phase),
+        .i_visible_base_nonzero(controller_bias_base_nonzero),
+        .i_bias_available(bias_group_valid || bias_sleep),
+        .i_frame_incomplete(frame_issue_incomplete), .i_output_complete(oa_calc_over),
+        .o_issue(controller_issue_qualified)
     );
     npu_bias_presence u_bias_presence (
         .i_frame_mode(o_frame_mode_q), .i_base_nonzero(bias_base_nonzero),
         .i_is_mode(o_is_mode), .i_ws_final_bias(ws_final_bias),
         .i_frame_final(frame_exec_final), .i_frame_init(frame_exec_init),
         .i_address_zero(bias_zero_o_equal),
-        .i_visible_base_nonzero(controller_bias_base_nonzero), .o_present(exec_bias_present)
+        .i_visible_base_nonzero(controller_bias_base_nonzero), .o_present(exec_bias_present),
+        .o_frame_phase(exec_frame_bias_phase)
     );
         assign controller_i_bias_base = p_reg_width'(exec_bias_present);
     assign exec_dst_base = o_frame_mode_q ? frame_address_o_dst_base : i_dst_base;
@@ -667,9 +674,24 @@ typedef struct packed {
     assign exec_init_requant = init_cfg_requant && (!o_frame_mode_q || frame_exec_final);
     assign exec_init_oa = init_cfg_oa && (!o_frame_mode_q || frame_exec_final);
     assign o_exec_dma_job_init = frame_dma_init_q || (init_cfg_ia && !o_frame_mode_q);
-    assign exec_oa_complete = o_frame_mode_q ?
-            (frame_command_active && frame_execution_started && (frame_compute_seen || partial_sum_calc_over) && (frame_store_seen || ps_frame_complete) &&
-             (!frame_exec_final || frame_output_seen || (frame_output_armed && oa_calc_over))) : oa_calc_over;
+    // 计算、部分和与输出资格提前形成，命令活动状态只参与最后的完成选择。
+    assign frame_complete_i_mode = o_frame_mode_q;
+    assign frame_complete_i_active = frame_command_active;
+    assign frame_complete_i_eligible = frame_execution_started &&
+        (frame_compute_seen || partial_sum_calc_over) &&
+        (!frame_exec_final || frame_output_seen || (frame_output_armed && oa_calc_over));
+    assign frame_complete_i_store_seen = frame_store_seen;
+    assign frame_complete_i_store_complete = ps_frame_complete;
+    assign frame_complete_i_output_complete = oa_calc_over;
+    assign frame_issue_incomplete = !(frame_complete_i_active && frame_complete_i_eligible &&
+        (frame_complete_i_store_seen || frame_complete_i_store_complete));
+    assign exec_oa_complete = frame_complete_o_complete;
+    npu_frame_complete_select u_frame_complete (
+        .i_frame_mode(frame_complete_i_mode), .i_frame_active(frame_complete_i_active),
+        .i_frame_eligible(frame_complete_i_eligible),
+        .i_store_seen(frame_complete_i_store_seen), .i_store_complete(frame_complete_i_store_complete),
+        .i_output_complete(frame_complete_i_output_complete), .o_complete(frame_complete_o_complete)
+    );
         assign frame_command_ready = o_frame_mode_q && frame_address_o_start_rdy && ps_frame_ready && o_ctrl_sa_ready && !o_inner_done_valid && !i_abort_pending;
         assign frame_command_start = frame_command_valid && frame_command_ready;
         // 地址准备期间保持执行状态为空，计算完成信息只属于已经启动的当前帧。
@@ -756,7 +778,8 @@ typedef struct packed {
         .DATA_WIDTH  (p_ia_data_width),
         .SIZE        (p_size),
         .BUS_WIDTH   (p_bus_width),
-        .REG_WIDTH   (p_reg_width)
+        .REG_WIDTH   (p_reg_width),
+        .p_external_ia_issue(1'b1)
     ) u_npu_controller (
         .clk              (clk),
         .rst_n            (rst_n),
@@ -789,6 +812,8 @@ typedef struct packed {
         .rhs_col_stride_b     (i_rhs_col_stride_b),
             // 输入加载器接口
             .send_ia_trigger      (send_ia_trigger),
+            .o_ia_issue_eligible(controller_issue_eligible),
+            .i_ia_issue_qualified(controller_issue_qualified),
             .ia_sending_done      (ia_sending_done),
             .ia_data_valid        (ia_data_valid),
             .ps_frame_ready       (ps_frame_ready),
@@ -805,7 +830,7 @@ typedef struct packed {
             .quant_params_valid   ((quant_params_valid || (o_frame_mode_q && !frame_exec_final)) &&
                                    (!requant_output_group || requant_group_ready)),
         // 输出缓冲接口
-        .fifo_full_flag       (fifo_full_flag && ia_output_pending),
+        .fifo_full_flag       (fifo_issue_full_flag),
             // 输出写回接口
             .oa_calc_over         (exec_oa_complete),
         // 任务完成握手接口
@@ -1390,6 +1415,7 @@ typedef struct packed {
         .i_output_s16_ready_threshold(output_s16_ready_threshold),
         .i_output_s16_reserve_banks(output_s16_reserve_banks),
         .i_output_s8_ready_threshold(output_s8_ready_threshold),
+        .i_output_pending(ia_output_pending),
         .i_ps_capacity_fault(o_ps_capacity_fault),
         .i_quant_dma_raw_data(i_quant_dma_raw_data),
         .i_quant_dma_raw_valid(i_quant_dma_raw_valid),
@@ -1407,6 +1433,7 @@ typedef struct packed {
         .o_dw_quant_rsp_tag(o_dw_quant_rsp_tag),
         .o_dw_quant_rsp_valid(o_dw_quant_rsp_valid),
         .o_fifo_full_flag(fifo_full_flag),
+        .o_fifo_issue_full_flag(fifo_issue_full_flag),
         .o_is_bias_read_idx(is_bias_read_idx),
         .o_load_quant_req(o_load_quant_req),
         .o_oa_calc_over(oa_calc_over),

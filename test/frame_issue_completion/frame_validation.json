@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "reference": "9e3e5d6a6f47befe6c86aceacad7999923206458",
+  "input_constraints": null,
+  "source_sha256": {
+    "rtl/npu/top/npu_matrix_engine.sv": "e871f9f61e760067a11b37cd96dcd6e276a2985ed32efc1a792be99a580a2b9d",
+    "rtl/npu/top/npu_frame_complete_select.sv": "9a6997898bf76a40c7e1bf58163ad9c2c6d38725a67b77d9ae0048939a4c99f3"
+  },
+  "formal_proven": true,
+  "four_state_checks": 4194304,
+  "formal_log_sha256": "319dc59de4965e8619e5463749ad75342ed64e2819bf512ed49e772c7fa89986",
+  "simulation_log_sha256": "56b101583c99eaed7b334e2c2816a8148d11334ee6300481f6727aed7b873f8a"
+}

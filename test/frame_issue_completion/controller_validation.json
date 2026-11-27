@@ -1,0 +1,110 @@
+{
+  "passed": true,
+  "reference": "d7cb67be",
+  "source_sha256": {
+    "rtl/npu/control/npu_controller.sv": "d47397d1a02f3f135fd67fc5d820a38fa7304aa8b684e0c76d9947869596e703",
+    "rtl/npu/control/npu_ia_issue_select.sv": "cd6b1dcc6fd0a393f0ff9be6107739ad39dbc17f23c2e82f7148137c892a6745"
+  },
+  "external_input_assumptions": [],
+  "parent_proofs": [
+    {
+      "mode": "generic",
+      "reg_width": 8,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "cdc32c7f4b493950ae6b42a0dc3a6d9d817a0f05c0aaa54a1e1e831c201f4798"
+    },
+    {
+      "mode": "generic",
+      "reg_width": 16,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "c91ba0f7bff2b4a1f6a4213113092e299a612dd2fd65a302ac4e18daa1669b75"
+    },
+    {
+      "mode": "generic",
+      "reg_width": 28,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "aabac74a999dbcfbb1052c18421f9398065d7d73378cbbd106b6eb8cb46f8656"
+    },
+    {
+      "mode": "generic",
+      "reg_width": 29,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "62747b7bb784dcc63768fe7327f56e7834ec021f0c4b31d0190cccf9ff567158"
+    },
+    {
+      "mode": "generic",
+      "reg_width": 32,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "0515ec69b4262547a10a64f2e0a9b79509804c7ae28099eb1ea62e0a5be2f958"
+    },
+    {
+      "mode": "generic",
+      "reg_width": 64,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "a4413520956ac92a8cbf668898704761e85184b24186f925ea77fdea098d4caa"
+    },
+    {
+      "mode": "fpga",
+      "reg_width": 8,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "9e85c3c5b4c83fcdb90670e589750f7f40ee0bfad57a36ec52780e6baca69cd8"
+    },
+    {
+      "mode": "fpga",
+      "reg_width": 16,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "dc6e1622a4aabbc5165b0755e9c2971b8090307108c6072ecc32270b712e799f"
+    },
+    {
+      "mode": "fpga",
+      "reg_width": 28,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "2f7caf471bdb3efed5c01e1e0fd40a2c593b5ad49fe8dfe9e7ec308b063c60b5"
+    },
+    {
+      "mode": "fpga",
+      "reg_width": 29,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "2fb45d03fa2fbf9b1bc85be5ea54d40b9229e69b24164b2c42eede3a328ef16a"
+    },
+    {
+      "mode": "fpga",
+      "reg_width": 32,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "67fcba2ab4f471b0a668410e3cce071327579fbe4de5e49a088fc0b583459f0b"
+    },
+    {
+      "mode": "fpga",
+      "reg_width": 64,
+      "passed": true,
+      "equivalent_bits": 37,
+      "log_sha256": "4c802604bbb2f8e9081fb3334d23bb6c6997668539d9b896d5eaf923e256e37c"
+    }
+  ],
+  "control_proofs": [
+    {
+      "mode": "generic",
+      "passed": true,
+      "checks": 157186,
+      "log_sha256": "ffb405359f06869f03cd5786ee26cb358e90a2995fc2d65bda8cc4e07348eb51"
+    },
+    {
+      "mode": "fpga",
+      "passed": true,
+      "checks": 157186,
+      "log_sha256": "ffb405359f06869f03cd5786ee26cb358e90a2995fc2d65bda8cc4e07348eb51"
+    }
+  ],
+  "test_sha256": "a4a877beb75688488dbf4c72f58ba316b6e6712764cdef232748e5b11eb3cc50"
+}

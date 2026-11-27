@@ -1,0 +1,55 @@
+{
+  "passed": true,
+  "input_constraints": null,
+  "source_sha256": {
+    "rtl/npu/top/npu_matrix_engine.sv": "24475ff4773a72614c14a19460190e99aefff2f519a9ba1cac9d27ccc17ed5aa",
+    "rtl/npu/top/npu_bias_presence.sv": "afe1f74361610f5b8f859240765d5342abd1d68a8d7fe1d5ea9ee6993998e932"
+  },
+  "formal": [
+    {
+      "top": "presence_proof",
+      "width": null,
+      "passed": true,
+      "log_sha256": "3188498c8c180aecee6018bb6991f66db910c96e84bb754b176cb137921f80a8"
+    },
+    {
+      "top": "integrated_proof",
+      "width": 1,
+      "passed": true,
+      "log_sha256": "e0d61effe643eba3919db735acc08f315795447ef375f73cb73c862d1c998961"
+    },
+    {
+      "top": "integrated_proof",
+      "width": 16,
+      "passed": true,
+      "log_sha256": "f823afe00f41ffd00665271a53316f41e6def02dcf60e09e36744f66cf54a748"
+    },
+    {
+      "top": "integrated_proof",
+      "width": 29,
+      "passed": true,
+      "log_sha256": "4cf341379a27dad89d1f9a3f0e972e6c53c1cc6212b57a34b41eb7e0d328f56c"
+    },
+    {
+      "top": "integrated_proof",
+      "width": 32,
+      "passed": true,
+      "log_sha256": "af03b4ff381d64751e9bd140f6c06bd6dae73f4325f5b7a53e35278a60f24c48"
+    },
+    {
+      "top": "integrated_proof",
+      "width": 33,
+      "passed": true,
+      "log_sha256": "1b4b2ce9dbaae004d8760ab6b04e7ebeedfb0f33640567f87dc559e40fa152ae"
+    },
+    {
+      "top": "integrated_proof",
+      "width": 64,
+      "passed": true,
+      "log_sha256": "eab81cb5429253adc67b5ecdeeba95ff469ec7afb0367fe2eb33d1fe9cd1596a"
+    }
+  ],
+  "presence_four_state_checks": 65536,
+  "integrated_four_state_checks": 393216,
+  "simulation_log_sha256": "352209996574fffb54f7f2e7e8663ca23524894878d96b4754e5f097e5e9dfcc"
+}

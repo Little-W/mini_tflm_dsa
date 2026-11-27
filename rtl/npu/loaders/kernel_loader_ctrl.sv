@@ -623,7 +623,10 @@ module kernel_loader_ctrl #(
   );
   // 相邻两位共同检查加一关系，完整归并结果独立于尾项和描述符选择。
   (* keep_hierarchy = "yes" *)
-  (* keep_hierarchy = "yes" *) increment_equal #(.p_width(CNT_W), .p_preserve_pairs(1'b1)) u_saved_column_last_equal (
+  // 相邻位对的比较结果每五个形成一组，并行归并时保持完整计数位宽。
+  (* keep_hierarchy = "yes" *) increment_equal #(
+      .p_width(CNT_W), .p_preserve_pairs(1'b1), .p_reduce_group_width(5)
+  ) u_saved_column_last_equal (
       .i_a(column_position_q), .i_target(column_last_equal_i_target),
       .o_equal(column_last_equal_fast)
   );

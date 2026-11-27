@@ -31,7 +31,8 @@ module npu_controller #(
     parameter int unsigned DATA_WIDTH   = 16,  // IA数据宽度
     parameter int unsigned SIZE         = 16,  // 阵列大小
     parameter int unsigned BUS_WIDTH    = 32,  // 总线宽度
-    parameter int unsigned REG_WIDTH    = 32   // 寄存器宽度
+    parameter int unsigned REG_WIDTH    = 32,  // 寄存器宽度
+    parameter bit p_external_ia_issue   = 1'b0 // 使用外部组合完成的偏置发送资格
 ) (
     //==== Clock & Control Signals ====
     input  wire clk,            // 时钟
@@ -79,6 +80,8 @@ module npu_controller #(
 
     //==== IA Loader Interface ====
     output reg  send_ia_trigger,  // IA发送触发
+    output logic o_ia_issue_eligible, // 数据、部分和、状态和输出空间已满足发送条件
+    input wire logic i_ia_issue_qualified = 1'b0, // 与当前控制输入同周期计算的完整发送资格
     input  wire ia_sending_done,  // IA发送完成
     input  wire ia_data_valid,    // IA数据有效
     input  wire ps_frame_ready = 1'b1 /* 部分和存储已准备接收当前帧 */,
@@ -132,8 +135,9 @@ module npu_controller #(
 	    wire      input_tail_ready;
 	    wire      issue_ia_now;
 
-    logic issue_data_ready, issue_aux_ready, issue_state_ready;
-    logic issue_operand_ready, issue_bias_optional;
+    logic issue_data_ready, issue_aux_ready, issue_state_available;
+    logic issue_operand_available, issue_bias_optional;
+    logic issue_local_trigger;
     (* keep = 1 *) logic issue_tail_quant_ready;
     // 零偏置地址表示不需要等待偏置数据，其他输入资源分别形成接收资格。
     assign bias_ready_for_compute = (bias_base == '0) || bias_sleep || bias_valid;
@@ -143,19 +147,21 @@ module npu_controller #(
                               (compute_tail_count == 1 && compute_tail_done) ||
                               partial_sum_advance_ready;
     assign issue_data_ready = !oa_calc_over && ia_data_valid && !fifo_full_flag && !ia_sending_done;
-    assign issue_operand_ready = !oa_calc_over && ia_data_valid && !ia_sending_done;
+    assign issue_operand_available = ia_data_valid && !ia_sending_done;
     // 计算尾部和量化参数先形成资格，偏置条件在末级参与计算发送。
     assign issue_tail_quant_ready = input_tail_ready && quant_params_valid;
     assign issue_aux_ready = issue_tail_quant_ready && bias_ready_for_compute;
-    // 部分和、输出容量和偏置直接参与最终发送，其余条件提前形成。
+    // 输入与控制状态独立准备，任务完成通知在最终发送选择中阻止新计算组。
     npu_ia_issue_select u_issue_requests (
-        .i_ps_ready(ps_frame_ready), .i_data_ready(issue_operand_ready),
-        .i_aux_ready(issue_tail_quant_ready), .i_state_ready(issue_state_ready),
+        .i_ps_ready(ps_frame_ready), .i_data_ready(issue_operand_available),
+        .i_aux_ready(issue_tail_quant_ready), .i_state_ready(issue_state_available),
+        .i_output_complete(oa_calc_over),
         .i_output_full(fifo_full_flag),
         .i_bias_valid(bias_valid), .i_bias_optional(issue_bias_optional),
         .i_bias_reused(bias_sleep),
-        .o_trigger(send_ia_trigger)
+        .o_trigger(issue_local_trigger), .o_eligible(o_ia_issue_eligible)
     );
+    assign send_ia_trigger = p_external_ia_issue ? i_ia_issue_qualified : issue_local_trigger;
     assign issue_ia_now = ps_frame_ready && issue_data_ready && issue_aux_ready;
 
     // 参数校验函数
@@ -288,7 +294,8 @@ module npu_controller #(
             end
         end
     end
-    assign issue_state_ready = current_state==IA_START || commit_now || reuse_stationary_now;
+    assign issue_state_available = current_state==IA_START ||
+        (current_state==WEIGHT_START && (shadow_ready || (weight_resident && !resident_used)));
     assign sa_ready=current_state==IDLE;
     always_ff @(posedge clk or negedge rst_n) begin
         if(!rst_n) done_valid<=0;

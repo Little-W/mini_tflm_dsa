@@ -1,0 +1,336 @@
+{
+  "reference_revision": "9e3e5d6a6f47befe6c86aceacad7999923206458",
+  "source_sha256": {
+    "rtl/npu/top/npu_matrix_engine.sv": "24475ff4773a72614c14a19460190e99aefff2f519a9ba1cac9d27ccc17ed5aa",
+    "rtl/npu/top/npu_bias_presence.sv": "afe1f74361610f5b8f859240765d5342abd1d68a8d7fe1d5ea9ee6993998e932"
+  },
+  "cases": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 10,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 10,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 40,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "FDRE": 40,
+          "INV": 7,
+          "LUT2": 2,
+          "LUT3": 1,
+          "LUT6": 7
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 5,
+      "address_to_presence_paths": {
+        "register_to_register_paths": [
+          {
+            "combinational_cells": 5,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$2255",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "i_bias_base[0]",
+              "detail": "register output",
+              "source": "../ps_results/bias_zero_measure/reference.sv:14.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "i_bias_base [0]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$2254",
+              "type": "FDRE",
+              "port": "D",
+              "net": "exec_bias_present",
+              "category": "data",
+              "source": "../ps_results/bias_zero_measure/reference.sv:14.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "o_status [2]"
+            },
+            "path": [
+              {
+                "cell": "$flatten\\g_bias_nonzero[0].u_group_zero.$abc$3760$lut$aiger$o0",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "i_bias_base[0]",
+                "output_net": "g_bias_nonzero[0].group_zero",
+                "source": "../ps_results/bias_zero_measure/reference.sv:27.41|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$3757$lut$not$aiger3756$35",
+                "type": "INV",
+                "input_port": "I[0]",
+                "output_port": "O[0]",
+                "input_net": "g_bias_nonzero[0].group_zero",
+                "output_net": "bias_nonzero_groups[0]",
+                "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:36.13-36.48"
+              },
+              {
+                "cell": "$flatten\\u_bias_groups_zero.$abc$3772$lut$aiger$o0",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "bias_nonzero_groups[0]",
+                "output_net": "bias_groups_zero",
+                "source": "../ps_results/bias_zero_measure/reference.sv:32.49|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$3757$lut$aiger$o40",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "bias_groups_zero",
+                "output_net": "u_bias_presence.direct_required",
+                "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$3758",
+                "type": "LUT3",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "u_bias_presence.direct_required",
+                "output_net": "exec_bias_present",
+                "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+              }
+            ]
+          }
+        ],
+        "distinct_register_path_groups": [
+          {
+            "combinational_cells": 5,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$2255",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "i_bias_base[0]",
+              "detail": "register output",
+              "source": "../ps_results/bias_zero_measure/reference.sv:14.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "i_bias_base [0]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$2254",
+              "type": "FDRE",
+              "port": "D",
+              "net": "exec_bias_present",
+              "category": "data",
+              "source": "../ps_results/bias_zero_measure/reference.sv:14.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "o_status [2]"
+            },
+            "path": [
+              {
+                "cell": "$flatten\\g_bias_nonzero[0].u_group_zero.$abc$3760$lut$aiger$o0",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "i_bias_base[0]",
+                "output_net": "g_bias_nonzero[0].group_zero",
+                "source": "../ps_results/bias_zero_measure/reference.sv:27.41|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$3757$lut$not$aiger3756$35",
+                "type": "INV",
+                "input_port": "I[0]",
+                "output_port": "O[0]",
+                "input_net": "g_bias_nonzero[0].group_zero",
+                "output_net": "bias_nonzero_groups[0]",
+                "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:36.13-36.48"
+              },
+              {
+                "cell": "$flatten\\u_bias_groups_zero.$abc$3772$lut$aiger$o0",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "bias_nonzero_groups[0]",
+                "output_net": "bias_groups_zero",
+                "source": "../ps_results/bias_zero_measure/reference.sv:32.49|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$3757$lut$aiger$o40",
+                "type": "LUT2",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "bias_groups_zero",
+                "output_net": "u_bias_presence.direct_required",
+                "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$3758",
+                "type": "LUT3",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "u_bias_presence.direct_required",
+                "output_net": "exec_bias_present",
+                "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+              }
+            ]
+          }
+        ],
+        "longest_register_path_cells": 5,
+        "endpoint_port_maximum_depth_histogram": {
+          "5": 1
+        },
+        "report_limits": {
+          "paths": 3,
+          "groups": 3,
+          "minimum_combinational_cells": 0
+        },
+        "graph_nodes": 55,
+        "visited_graph_nodes": 55,
+        "combinational_cycle_nodes": [],
+        "unclassified_cell_types": {},
+        "graph_complete": true,
+        "dsp_without_output_register": [],
+        "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48, TWO24 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+      }
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 11,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 11,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 40,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "FDRE": 40,
+          "LUT2": 2,
+          "LUT3": 1,
+          "LUT6": 8
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 3,
+      "address_to_presence_paths": {
+        "register_to_register_paths": [
+          {
+            "combinational_cells": 3,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$2246",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "i_bias_base[0]",
+              "detail": "register output",
+              "source": "../ps_results/bias_zero_measure/current.sv:14.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "i_bias_base [0]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$2245",
+              "type": "FDRE",
+              "port": "D",
+              "net": "exec_bias_present",
+              "category": "data",
+              "source": "../ps_results/bias_zero_measure/current.sv:14.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "o_status [2]"
+            },
+            "path": [
+              {
+                "cell": "$flatten\\g_bias_nonzero[0].u_group_zero.$abc$3714$lut$aiger$o0",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "i_bias_base[0]",
+                "output_net": "bias_zero_groups[0]",
+                "source": "../ps_results/bias_zero_measure/current.sv:26.41|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$3710$lut$aiger3709$90",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "bias_zero_groups[0]",
+                "output_net": "$techmap3735$auto$abc_ops_reintegrate.cc:722:reintegrate$3712.A[2]",
+                "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$3712",
+                "type": "LUT3",
+                "input_port": "I2[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap3735$auto$abc_ops_reintegrate.cc:722:reintegrate$3712.A[2]",
+                "output_net": "exec_bias_present",
+                "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+              }
+            ]
+          }
+        ],
+        "distinct_register_path_groups": [
+          {
+            "combinational_cells": 3,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$2246",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "i_bias_base[0]",
+              "detail": "register output",
+              "source": "../ps_results/bias_zero_measure/current.sv:14.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "i_bias_base [0]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$2245",
+              "type": "FDRE",
+              "port": "D",
+              "net": "exec_bias_present",
+              "category": "data",
+              "source": "../ps_results/bias_zero_measure/current.sv:14.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "o_status [2]"
+            },
+            "path": [
+              {
+                "cell": "$flatten\\g_bias_nonzero[0].u_group_zero.$abc$3714$lut$aiger$o0",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "i_bias_base[0]",
+                "output_net": "bias_zero_groups[0]",
+                "source": "../ps_results/bias_zero_measure/current.sv:26.41|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$3710$lut$aiger3709$90",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "bias_zero_groups[0]",
+                "output_net": "$techmap3735$auto$abc_ops_reintegrate.cc:722:reintegrate$3712.A[2]",
+                "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$3712",
+                "type": "LUT3",
+                "input_port": "I2[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap3735$auto$abc_ops_reintegrate.cc:722:reintegrate$3712.A[2]",
+                "output_net": "exec_bias_present",
+                "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+              }
+            ]
+          }
+        ],
+        "longest_register_path_cells": 3,
+        "endpoint_port_maximum_depth_histogram": {
+          "3": 1
+        },
+        "report_limits": {
+          "paths": 3,
+          "groups": 3,
+          "minimum_combinational_cells": 0
+        },
+        "graph_nodes": 49,
+        "visited_graph_nodes": 49,
+        "combinational_cycle_nodes": [],
+        "unclassified_cell_types": {},
+        "graph_complete": true,
+        "dsp_without_output_register": [],
+        "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48, TWO24 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+      }
+    }
+  }
+}

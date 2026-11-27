@@ -662,11 +662,42 @@ module ia_loader_ctrl #(
   // 当前加载批次的所有 tile 都已加载完
   logic l1_load_complete;
   logic l1_load_complete_event;
-  assign l1_load_complete = (load_tiles_done_cnt == load_r_target_cnt);
+  logic completion_count_ready;
+  logic [2:0][LOAD_CNT_W-1:0] load_count_limits;
+  logic [2:0] load_count_equal, load_count_next_equal;
+  logic [LOAD_CNT_W-1:0] load_count_i_value;
+  assign load_count_i_value = load_tiles_done_cnt;
+  assign load_count_limits[0] = LOAD_CNT_W'(count_t'(cfg_ia_reuse_num));
+  assign load_count_limits[1] = LOAD_CNT_W'(count_t'(ia_reuse_num_act));
+  assign load_count_limits[2] = pf_r_target;
+  // 普通组、尾组和预取组分别比较完整计数，分组选择只处理一位结果。
+  for (genvar group_kind = 0; group_kind < 3; group_kind++) begin : g_load_count_match
+    assign load_count_equal[group_kind] = load_count_i_value == load_count_limits[group_kind];
+    increment_equal #(.p_width(LOAD_CNT_W), .p_preserve_pairs(1'b1),
+        .p_reduce_group_width(6)) u_next_count (
+        .i_a(load_count_i_value), .i_target(load_count_limits[group_kind]),
+        .o_equal(load_count_next_equal[group_kind])
+    );
+  end
+  always_comb begin
+    l1_load_complete = load_tiles_done_cnt == load_r_target_cnt;
+    completion_count_ready = (load_tiles_done_cnt + LOAD_CNT_W'(1)) == load_r_target_cnt;
+    case (^{load_tiles_done_cnt, load_r_target_cnt, prefetch_active, is_last_l2_group})
+      1'b0, 1'b1: begin
+        if (prefetch_active) begin
+          l1_load_complete = load_count_equal[2];
+          completion_count_ready = load_count_next_equal[2];
+        end else begin
+          l1_load_complete = is_last_l2_group ? load_count_equal[1] : load_count_equal[0];
+          completion_count_ready = is_last_l2_group ? load_count_next_equal[1] : load_count_next_equal[0];
+        end
+      end
+      default: begin end
+    endcase
+  end
   assign l1_load_complete_event =
       ((state == S_LOAD) || (state == S_SEND && prefetch_active)) &&
-      tl_tile_done &&
-      ((load_tiles_done_cnt + LOAD_CNT_W'(1)) == load_r_target_cnt);
+      tl_tile_done && completion_count_ready;
 
   // 可以开始加载下一个 tile 的条件：
   //   1. tile_loader 空闲
@@ -678,12 +709,20 @@ module ia_loader_ctrl #(
   logic load_regular_pending, load_tail_pending, load_prefetch_pending;
   logic load_target_pending;
   // 各加载上界分别检查剩余请求，最后选择当前组，避免目标选择进入比较器。
-  assign load_regular_pending = (load_ia_cursor_cnt < load_last_equal_i_regular) &&
-                                (load_tiles_done_cnt != load_last_equal_i_regular);
-  assign load_tail_pending = (load_ia_cursor_cnt < load_last_equal_i_tail) &&
-                             (load_tiles_done_cnt != load_last_equal_i_tail);
-  assign load_prefetch_pending = (load_ia_cursor_cnt < load_last_equal_i_prefetch) &&
-                                 (load_tiles_done_cnt != load_last_equal_i_prefetch);
+  logic [2:0] load_cursor_less, unused_load_cursor_equal;
+  logic [2:0][LOAD_CNT_W-1:0] load_pending_limits;
+  assign load_pending_limits = {load_last_equal_i_prefetch, load_last_equal_i_tail, load_last_equal_i_regular};
+  // 各组三位的大小关系独立计算，平衡归并后与相应计数完成标志共同形成请求资格。
+  for (genvar limit_index = 0; limit_index < 3; limit_index++) begin : g_pending_compare
+    parallel_unsigned_compare #(.p_width(LOAD_CNT_W), .p_preserve_groups(1'b1),
+        .p_infer_arithmetic(1'b0)) u_compare (
+        .i_a(load_ia_cursor_cnt), .i_b(load_pending_limits[limit_index]),
+        .o_less(load_cursor_less[limit_index]), .o_equal(unused_load_cursor_equal[limit_index])
+    );
+  end
+  assign load_regular_pending = load_cursor_less[0] && (load_tiles_done_cnt != load_last_equal_i_regular);
+  assign load_tail_pending = load_cursor_less[1] && (load_tiles_done_cnt != load_last_equal_i_tail);
+  assign load_prefetch_pending = load_cursor_less[2] && (load_tiles_done_cnt != load_last_equal_i_prefetch);
   assign load_target_pending = prefetch_active ? load_prefetch_pending :
       (is_last_l2_group ? load_tail_pending : load_regular_pending);
   logic can_start_load;
@@ -710,10 +749,13 @@ module ia_loader_ctrl #(
   logic group_ready_reference;
   logic [3:0] group_ready_cases;
   logic in_l1_output_after;
-  logic [3:0][1:0] completion_cases;
-  logic [1:0] completion_selected, completion_next;
-  assign completion_eligible = load_state_active &&
-      ((load_tiles_done_cnt + LOAD_CNT_W'(1)) == load_r_target_cnt);
+  logic [3:0][1:0] completion_candidates;
+  logic [1:0] completion_qualified, completion_next;
+  logic stream_ready_i_eligible, stream_ready_i_clear_output, stream_ready_i_output_active;
+  logic stream_ready_i_send_trigger, stream_ready_i_current_valid, stream_ready_i_output_done;
+  logic stream_ready_o_valid;
+  (* keep = 1 *) logic data_stream_eligible;
+  assign completion_eligible = load_state_active && completion_count_ready;
 
   function automatic logic group_readiness(
       input logic current_ready, // 已保存的分组就绪标志
@@ -749,23 +791,34 @@ module ia_loader_ctrl #(
       group_ready_cases[event_case] = group_readiness(send_group_ready_r, state == S_INIT,
           1'(event_case >> 1), prefetch_active, l1_load_complete,
           (event_case & 1) ? completion_eligible : 1'b0);
-      completion_cases[event_case] = {
-          (state_nxt == S_SEND || state_nxt == S_LOAD) &&
-              group_ready_cases[event_case] && !in_l1_output_after,
-          group_ready_cases[event_case]};
+      completion_candidates[event_case] = {1'b0, group_ready_cases[event_case]};
     end
     completion_next = {
         (state_nxt == S_SEND || state_nxt == S_LOAD) && group_ready_reference && !in_l1_output_after,
         group_ready_reference};
     // 完成事件未知时保留条件语句对未知值的处理规则。
     case ({retirement_l1, tl_tile_done})
-      2'b00, 2'b01, 2'b10, 2'b11: completion_next = completion_selected;
+      2'b00, 2'b01, 2'b10, 2'b11:
+          completion_next = {stream_ready_o_valid && completion_qualified[0], completion_qualified[0]};
       default: ;
     endcase
   end
-  ia_completion_select u_completion_select (
-      .i_events({retirement_l1, tl_tile_done}), .i_ready(completion_cases),
-      .o_ready(completion_selected)
+  ia_completion_select u_completion_candidates (
+      .i_events({retirement_l1, tl_tile_done}), .i_ready(completion_candidates),
+      .o_ready(completion_qualified)
+  );
+  // 控制状态和输出活动并行形成发送许可，已选定的分组就绪条件在寄存器前合并。
+  assign stream_ready_i_eligible = data_stream_eligible;
+  assign stream_ready_i_clear_output = state == S_IDLE || state == S_INIT;
+  assign stream_ready_i_output_active = in_l1_output;
+  assign stream_ready_i_send_trigger = send_ia_trigger;
+  assign stream_ready_i_current_valid = ia_data_valid;
+  assign stream_ready_i_output_done = cache_l1_done;
+  ia_data_ready_select u_stream_ready (
+      .i_eligible(stream_ready_i_eligible), .i_clear_output(stream_ready_i_clear_output),
+      .i_output_active(stream_ready_i_output_active), .i_send_trigger(stream_ready_i_send_trigger),
+      .i_current_valid(stream_ready_i_current_valid), .i_output_done(stream_ready_i_output_done),
+      .o_data_valid(stream_ready_o_valid)
   );
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -877,6 +930,17 @@ module ia_loader_ctrl #(
   assign last_send = is_final_l1_group &&
                      w_iter_last &&
                      ia_iter_last;
+
+  // 初始化周期清除分组就绪标志，数据有效只需判断加载与发送状态。
+  // 完成判断直接形成发送资格，保持现有状态寄存器及接收边沿。
+  always_comb begin
+    data_stream_eligible = state_nxt == S_SEND || state_nxt == S_LOAD;
+    case (^{state, load_ia_granted, cache_tile_done, last_send})
+      1'b0, 1'b1: data_stream_eligible = (state == S_LOAD) ||
+          (state == S_SEND && !(cache_tile_done && last_send));
+      default: begin end
+    endcase
+  end
 
   // 状态与发送资格共同接收，所有资格条件使用同一边沿的更新值。
   always_ff @(posedge clk or negedge rst_n) begin : state_accept
@@ -1013,11 +1077,11 @@ module ia_loader_ctrl #(
   if (p_parallel_request_match) begin : g_request_q0_match
     localparam int unsigned p_coordinate_width = REG_WIDTH - LOG2_SIZE;
     (* keep = 1 *) logic current_equal, following_equal, first_equal;
-    add_equal #(.p_width(p_coordinate_width), .p_preserve_bits(1'b1)) u_current_equal (
+    add_equal #(.p_width(p_coordinate_width), .p_preserve_bits(1'b1), .p_keep_groups(1'b1)) u_current_equal (
         .i_a(p_coordinate_width'(tile_col_idx)), .i_b(request_q0_base),
         .i_target(request_q0_target), .i_carry_in(1'b0), .o_equal(current_equal)
     );
-    add_equal #(.p_width(p_coordinate_width), .p_preserve_bits(1'b1)) u_following_equal (
+    add_equal #(.p_width(p_coordinate_width), .p_preserve_bits(1'b1), .p_keep_groups(1'b1)) u_following_equal (
         .i_a(p_coordinate_width'(l1_idx_next)), .i_b(request_q0_base),
         .i_target(request_q0_target), .i_carry_in(1'b0), .o_equal(following_equal)
     );

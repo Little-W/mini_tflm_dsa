@@ -1,0 +1,241 @@
+{
+  "source_sha256": {
+    "rtl/npu/top/npu_matrix_engine.sv": "68ff492ba06d195a1900cb2c0feb6cdf0016713c6e5e7ae51dc9641f61eae923",
+    "rtl/npu/top/npu_frame_complete_select.sv": "9ad1d40664f990ac09f4e8944bf06676b7e490b20fcca4348ae7afd7bcf42161"
+  },
+  "cases": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 2,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 2,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 12,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "FDRE": 12,
+          "LUT6": 2
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 2,
+      "partial_sum_completion_paths": {
+        "register_to_register_paths": [
+          {
+            "combinational_cells": 2,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$2199",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "controls_q[5]",
+              "detail": "register output",
+              "source": "../ps_results/matrix_complete_repro/reference.sv:9.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "controls_q [5]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$2193",
+              "type": "FDRE",
+              "port": "D",
+              "net": "result",
+              "category": "data",
+              "source": "../ps_results/matrix_complete_repro/reference.sv:9.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "o_complete"
+            },
+            "path": [
+              {
+                "cell": "$abc$3404$lut$aiger3403$29",
+                "type": "LUT6",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "controls_q[5]",
+                "output_net": "$techmap3407$auto$abc_ops_reintegrate.cc:722:reintegrate$3405.A[5]",
+                "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$3405",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap3407$auto$abc_ops_reintegrate.cc:722:reintegrate$3405.A[5]",
+                "output_net": "result",
+                "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              }
+            ]
+          }
+        ],
+        "distinct_register_path_groups": [
+          {
+            "combinational_cells": 2,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$2199",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "controls_q[5]",
+              "detail": "register output",
+              "source": "../ps_results/matrix_complete_repro/reference.sv:9.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "controls_q [5]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$2193",
+              "type": "FDRE",
+              "port": "D",
+              "net": "result",
+              "category": "data",
+              "source": "../ps_results/matrix_complete_repro/reference.sv:9.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "o_complete"
+            },
+            "path": [
+              {
+                "cell": "$abc$3404$lut$aiger3403$29",
+                "type": "LUT6",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "controls_q[5]",
+                "output_net": "$techmap3407$auto$abc_ops_reintegrate.cc:722:reintegrate$3405.A[5]",
+                "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$3405",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap3407$auto$abc_ops_reintegrate.cc:722:reintegrate$3405.A[5]",
+                "output_net": "result",
+                "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              }
+            ]
+          }
+        ],
+        "longest_register_path_cells": 2,
+        "endpoint_port_maximum_depth_histogram": {
+          "2": 1
+        },
+        "report_limits": {
+          "paths": 3,
+          "groups": 3,
+          "minimum_combinational_cells": 0
+        },
+        "graph_nodes": 24,
+        "visited_graph_nodes": 24,
+        "combinational_cycle_nodes": [],
+        "unclassified_cell_types": {},
+        "graph_complete": true,
+        "dsp_without_output_register": [],
+        "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48, TWO24 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+      }
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 3,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 3,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 12,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "FDRE": 12,
+          "LUT4": 1,
+          "LUT5": 2
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 3,
+      "partial_sum_completion_paths": {
+        "register_to_register_paths": [
+          {
+            "combinational_cells": 1,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$2201",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "controls_q[4]",
+              "detail": "register output",
+              "source": "../ps_results/matrix_complete_repro/current.sv:9.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "controls_q [4]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$2196",
+              "type": "FDRE",
+              "port": "D",
+              "net": "result",
+              "category": "data",
+              "source": "../ps_results/matrix_complete_repro/current.sv:9.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "o_complete"
+            },
+            "path": [
+              {
+                "cell": "$flatten\\u_completion.u_frame_complete.$auto$abc_ops_reintegrate.cc:722:reintegrate$3407",
+                "type": "LUT5",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "controls_q[4]",
+                "output_net": "result",
+                "source": "../ps_results/matrix_complete_repro/current.sv:13.24|../ps_results/matrix_complete/completion.sv:28.31|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              }
+            ]
+          }
+        ],
+        "distinct_register_path_groups": [
+          {
+            "combinational_cells": 1,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$2201",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "controls_q[4]",
+              "detail": "register output",
+              "source": "../ps_results/matrix_complete_repro/current.sv:9.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "controls_q [4]"
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$2196",
+              "type": "FDRE",
+              "port": "D",
+              "net": "result",
+              "category": "data",
+              "source": "../ps_results/matrix_complete_repro/current.sv:9.5|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "o_complete"
+            },
+            "path": [
+              {
+                "cell": "$flatten\\u_completion.u_frame_complete.$auto$abc_ops_reintegrate.cc:722:reintegrate$3407",
+                "type": "LUT5",
+                "input_port": "I1[0]",
+                "output_port": "O[0]",
+                "input_net": "controls_q[4]",
+                "output_net": "result",
+                "source": "../ps_results/matrix_complete_repro/current.sv:13.24|../ps_results/matrix_complete/completion.sv:28.31|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              }
+            ]
+          }
+        ],
+        "longest_register_path_cells": 1,
+        "endpoint_port_maximum_depth_histogram": {
+          "1": 1
+        },
+        "report_limits": {
+          "paths": 3,
+          "groups": 3,
+          "minimum_combinational_cells": 0
+        },
+        "graph_nodes": 25,
+        "visited_graph_nodes": 25,
+        "combinational_cycle_nodes": [],
+        "unclassified_cell_types": {},
+        "graph_complete": true,
+        "dsp_without_output_register": [],
+        "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48, TWO24 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+      }
+    }
+  }
+}
