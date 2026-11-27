@@ -447,7 +447,7 @@ module vector_engine #(
   logic [5:0] q_right [3];
   logic [TILE_INDEX_W-1:0] q_index [7];
   logic signed [63:0] activation_i_quantized_value;
-  logic signed [63:0] activation_i_add_rounded_value;
+  logic signed [63:0] activation_i_add_rounding_value;
   logic signed [7:0] activation_i_average_floor;
   logic signed [7:0] activation_i_average_rounded;
   logic signed [8:0] activation_i_average_divided;
@@ -1246,9 +1246,9 @@ module vector_engine #(
   assign rounding_amount = add_s8 ? add_right : avg_pool ? avg_shift : q_right[2];
   vector_round_shift #(.REGISTER_MIDDLE(1'b1),.REGISTER_INPUT(1'b1)) u_rounding (
     .clk(clk),.value(rounding_input),.amount(rounding_amount),.result(rounding_result),.floor_value(rounding_floor));
-  // 四类激活限幅共用配置接口，预处理寄存器由限幅子模块独立保存。
+  // 加法限幅在现有舍入保存边沿准备偏移候选，其余限幅保持各自输入周期。
   assign activation_i_quantized_value = q_rounded;
-  assign activation_i_add_rounded_value = add_rounded;
+  assign activation_i_add_rounding_value = rounding_result;
   assign activation_i_average_floor = rounding_floor[7:0];
   assign activation_i_average_rounded = rounding_result[7:0];
   assign activation_i_average_divided = avg_signed_q;
@@ -1259,13 +1259,13 @@ module vector_engine #(
   assign add_clamped = activation_o_result[1];
   assign avg_power_result = activation_o_result[2];
   assign avg_div_result = activation_o_result[3];
-  vector_activation_clamp u_activation (
+  vector_activation_stage u_activation (
     .clk(clk),
     .cfg_output_offset(activation_cfg_output_offset),
     .cfg_minimum(activation_cfg_bounds[0]),
     .cfg_maximum(activation_cfg_bounds[1]),
     .i_quantized_value(activation_i_quantized_value),
-    .i_add_rounded_value(activation_i_add_rounded_value),
+    .i_add_rounding_value(activation_i_add_rounding_value),
     .i_average_floor(activation_i_average_floor),
     .i_average_rounded(activation_i_average_rounded),
     .i_average_divided(activation_i_average_divided),

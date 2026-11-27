@@ -1,0 +1,287 @@
+{
+  "passed": true,
+  "reference_revision": "9e3e5d6a6f47befe6c86aceacad7999923206458",
+  "input_assumptions": [],
+  "source_sha256": {
+    "rtl/npu/conv/vector_interval_bound.sv": "c3d248907a34cdffdde0aa5103fc380e686d06b856e51a26c654c1d93c12d566",
+    "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+    "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+    "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+    "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+    "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "rtl/common/zero_reduce.sv": "139caad4cb9b67e966c768e999821f62975cb2ab666eb669a18ed43242bb3233"
+  },
+  "modes": [
+    {
+      "mode": "generic",
+      "formal": true,
+      "four_state_comparisons": 262144,
+      "proof_log_sha256": "b4cc4f75087620e86a4351cc0965868697a798d0cb31bda559344a9f5e958b43"
+    },
+    {
+      "mode": "synthesis",
+      "formal": true,
+      "four_state_comparisons": 262144,
+      "proof_log_sha256": "5040047a6ac758c8b0fb5d20851a18ba7f38bae1fd39149577d3b3bd439fa5d1"
+    },
+    {
+      "mode": "fpga",
+      "formal": true,
+      "four_state_comparisons": 262144,
+      "proof_log_sha256": "2b1383e1d25e0ac205b12730dff22ca226e258ef9ff4925fc891fe658f783a57"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "formal": true,
+      "four_state_comparisons": 262144,
+      "proof_log_sha256": "eb4a6dd600e563beb7d8317d62b6d616066f421f683b44d5e4ab22d30063e966"
+    }
+  ],
+  "engine_mapping": {
+    "top": "vector_engine",
+    "configuration": {
+      "TILE": 16,
+      "BUS_WIDTH": 64,
+      "PE_COUNT": 8,
+      "WINDOW_LANES": 8,
+      "SHARED_STORAGE_ENABLE": 1,
+      "SHARED_QUANT_ENABLE": 0,
+      "SHARED_STORAGE_ADDR_WIDTH": 12
+    },
+    "resources": {
+      "logic_lut_cells": 9794,
+      "distributed_ram_lut_sites_nominal": 176,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 9970,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 6313,
+      "dsp48e1": 42,
+      "ramb36e1": 0,
+      "ramb18e1": 9,
+      "carry4": 423,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 423,
+        "DSP48E1": 42,
+        "FDCE": 2679,
+        "FDPE": 11,
+        "FDRE": 3613,
+        "FDSE": 10,
+        "INV": 323,
+        "LUT1": 17,
+        "LUT2": 1225,
+        "LUT3": 2103,
+        "LUT4": 856,
+        "LUT5": 1887,
+        "LUT6": 3706,
+        "MUXF7": 236,
+        "RAM32M": 44,
+        "RAMB18E1": 9
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "longest_register_path_cells": 10,
+    "graph_complete": true,
+    "combinational_cycle_nodes": [],
+    "metrics_sha256": "8b7a9662e39d98a87c6bdc2065ff6973b934a48b457bbbe9a6d502ef2447b248",
+    "manifest_sha256": "e54a9b2fd1446ce06c93cbe77649727327d4f42bd3da565cfa8c9c5e3042a5da",
+    "source_sha256": {
+      "rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+      "rtl/npu/conv/vector_engine_control_pkg.sv": "b90566fe45a0be8d23ee302ccd0ac055da88af1ba06e5c43c41b6dfb890bbdf8",
+      "rtl/npu/conv/vector_engine_pkg.sv": "3b120fbc30d6d9a86296526af9b9248f69862112218de6c869e3c89c1321dc05",
+      "rtl/npu/conv/vector_engine.sv": "7cbfb2d1ba450b0bb6815a072bcb910b2abc58ecbb44f5cfc7acebf4666c4af7",
+      "rtl/npu/conv/vector_activation_stage.sv": "bedbd670e93a25f67c6dd53896d231243dd9c59cdf977da64c29561e0ba8450a",
+      "rtl/npu/conv/vector_banked_writeback.sv": "1c4dc6871d55a9e5a1226b0cd21521bc2b66dfea1bbdb605626bb60f251e4ade",
+      "rtl/npu/conv/vector_config_check.sv": "bab49e0e5d85e636250524309d7861e836586a2f351db7b190516032a286cda0",
+      "rtl/npu/conv/vector_engine_address.sv": "0ecc43cb29695c15b66c7798ecbe4811f646339adf57fbf0acad99257192cd2e",
+      "rtl/npu/conv/vector_engine_control.sv": "dbb729113e16b5a9460bffd1d471a8f529706d06e95c8d610cb395111cff5b3e",
+      "rtl/npu/conv/vector_engine_operand_store.sv": "1f0210066838a31b554ee37181b99c2004aa1240255c05e6b0ba92904ef4a539",
+      "rtl/npu/conv/vector_pe.sv": "d5cab8967357969f6118f84013daf2ccc2881a001bfce3db515cd50c513e3005",
+      "rtl/npu/conv/vector_reduce_alu.sv": "90b6c5277ad7c2f36b49fe0ea035407150526f868ae28d816ad846a163579b42",
+      "rtl/npu/conv/vector_round_shift.sv": "70a64497ee75bacf807ef02d1b286acb273a8c1fde242f3bc853ac29f21294e7",
+      "rtl/npu/conv/vector_scalar_multiplier.sv": "b7e9455edd6ed12acac0cb1045a90f48da0f130b5ba33ad727a859949f7807cc",
+      "rtl/npu/conv/vector_softmax.sv": "1b0cecc2de8246389cf9f1178a0699aa1825aa913717ff578a2252d404ea8e0e",
+      "rtl/npu/conv/vector_activation_clamp.sv": "0b6b0e02a27d9521bc490bc3f9598534129d0a13d3b084505aafa74c08dc379f",
+      "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+      "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+      "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+      "rtl/common/parallel_equal.sv": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d",
+      "rtl/common/parallel_unsigned_compare.sv": "ce4d26cfd48f744a25f8511513dfd6e3311c94cbc40987bca4915a1ba618e7e7",
+      "rtl/npu/conv/vector_coordinate_bound.sv": "712d7834a98cbb9498e1322776dce4231a7def60984636e0b8ddd02c473d3b68",
+      "rtl/npu/conv/vector_interval_bound.sv": "c3d248907a34cdffdde0aa5103fc380e686d06b856e51a26c654c1d93c12d566",
+      "rtl/npu/conv/vector_parameter_row_end.sv": "a066168c53005c3978b1e49236cdbdbb2d65f68df956f00480bc06443c09639e",
+      "rtl/npu/conv/vector_read_address_add.sv": "0a12468c4110ab263faec2c132b5dc20d0b0060bee153df89d8042eef62d8c2f",
+      "rtl/npu/conv/vector_window_bounds.sv": "288ec26b646f1e9f4fb07f2f98e4291576fb8c38cd18384c6685306749bf7d03",
+      "rtl/npu/conv/vector_window_count_add.sv": "d19734290f54aaff05bae066e2a9d899d6b23f83047e2e81e9965aeeaad46fb5",
+      "rtl/npu/conv/vector_window_request_qualify.sv": "80747d55a70c4d22abeb0c9d83c7570234dd9e78bda05dc0bb68f94e0e3da7ab",
+      "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+      "rtl/npu/conv/vector_engine_error_select.sv": "9478fb28561550150194f3be20941784d7f727f1e939d8e60585080c5c142ad8",
+      "rtl/npu/conv/vector_tap_update_select.sv": "df9697fe64a4fd99064361c43a10fdbac86e078b614c8a55b6f2aa82b927b14f",
+      "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+      "rtl/npu/conv/vector_quant_params.sv": "6a5e468713bbf0287233a96593a1e2003c24f7e97dfa018ffc1a23fab5cef193",
+      "rtl/npu/conv/vector_weight_store.sv": "906bf7a4952f2fa7375bb2f1d398b627cce204596bb511470c0aed1b991e985b",
+      "rtl/npu/conv/vector_window_bank_map.sv": "a728116a86f9532191a7df73fe2478b8f73eabf2583878ee0b5628f909ab9ff6",
+      "rtl/npu/conv/vector_window_valid_mux.sv": "c7e5655fc20a53b0ea9c27fa28678f2ba0eede34e3ea7c178ab68c4cf0068541",
+      "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+      "rtl/npu/conv/registered_multiplier_s32.sv": "3de17088b04b4071c2d948cf1e29389b586a0f63e4b71954f46c6bd87328ac70",
+      "rtl/npu/conv/vector_softmax_accumulator.sv": "93c8d8816899c8ba2de3585e1b40e1f2aa68a502e2ce348166b8e31772897816",
+      "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+      "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+      "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+      "rtl/common/zero_reduce.sv": "139caad4cb9b67e966c768e999821f62975cb2ab666eb669a18ed43242bb3233",
+      "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+      "rtl/common/parallel_unsigned_compare_leaf.sv": "8099aa6fbe2745aa4f65877479142ce1754b4a3c28b155ccc11d336308526b6c",
+      "rtl/common/parallel_unsigned_compare_merge.sv": "2f0d37974f98b03ac8a5bf413ce6dec5f605fb5916b79dbbab00101b73ff870a",
+      "rtl/npu/conv/vector_window_count_group.sv": "941944786b14707eba3014d450cdc83269cbe67c88c4742fa76ca4fed8601313",
+      "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972",
+      "rtl/common/add3_equal.sv": "330db72b71a6b8e7d29126cfaf88c1697ab0493c5e151fdc8be34b89767a45b7",
+      "rtl/common/all_reduce.sv": "d981deb99313b0ddc8568ca50b3d95f1616ea13b52e483de15f59e516a9fdc00",
+      "rtl/common/borrow_select_subtract.sv": "513bf38e5a5b6371ef503a61face7e3f88aeb5b6b95a0dd6640d729eeb26e7a2",
+      "rtl/common/conditional_increment.sv": "55e0f5f89311c0f80409edad956b22dffcc9b7b9a7ca50c4b081970c61ca9b5e",
+      "rtl/common/increment_equal.sv": "2d571f3b6f1283de82636c4dd6b311946e765677092cdf0875b5b4452cb3e286",
+      "rtl/common/increment_equal_pair.sv": "a04d367685a00d366ca292aa283b59509d3e51c907120a97f8277c1895678b1c",
+      "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+      "rtl/common/pseudo_dual_port_ram.v": "172a4b37666ebfdf5a2e90cedf5dc8fafaaf04e282c999c0d4edf49da63f01e9",
+      "rtl/common/single_port_ram.v": "f93fdf4f3065ee04f53596df8e6ecdb334329f96ccdbb1a54157c8aab151950d",
+      "rtl/common/unsigned_sum_le.sv": "55f7fa8466d4360e44033ffe8803a7372e4374a30a3ddead5cbc180ef486d23f"
+    }
+  },
+  "address_integration": {
+    "passed": true,
+    "reference_commit": "origin/main",
+    "input_constraints": [],
+    "all_parent_outputs_and_state_compared": true,
+    "formal": [
+      {
+        "mode": "generic",
+        "macro_options": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "registered_read_phase": 0,
+        "passed": true,
+        "equivalence_points": 3410,
+        "log_sha256": "2803be18e1bd0e336d2cd8bae3d760a29b7a7133dc9373d569c7908ac18b2fd1"
+      },
+      {
+        "mode": "generic",
+        "macro_options": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "registered_read_phase": 1,
+        "passed": true,
+        "equivalence_points": 3410,
+        "log_sha256": "3aa89d0ce1e03738d81091191cf59cfa3f43e060173a5a3c03795b00602deb48"
+      },
+      {
+        "mode": "synthesis",
+        "macro_options": [
+          "-DSYNTHESIS=1",
+          "-UXILINX_FPGA"
+        ],
+        "registered_read_phase": 0,
+        "passed": true,
+        "equivalence_points": 3119,
+        "log_sha256": "1dbb7625230bd9ec67adca3560d8d42553648c5b1a1759728379be936d514126"
+      },
+      {
+        "mode": "synthesis",
+        "macro_options": [
+          "-DSYNTHESIS=1",
+          "-UXILINX_FPGA"
+        ],
+        "registered_read_phase": 1,
+        "passed": true,
+        "equivalence_points": 3119,
+        "log_sha256": "aff3fb78a3ba7ef8201d728cbbc564c89161cc43d4267e8bdb5df31842c4dfd1"
+      },
+      {
+        "mode": "fpga",
+        "macro_options": [
+          "-USYNTHESIS",
+          "-DXILINX_FPGA=1"
+        ],
+        "registered_read_phase": 0,
+        "passed": true,
+        "equivalence_points": 3352,
+        "log_sha256": "6aa6a731cab5b8e8a969edff8275780da9955cef7ee857325b750acf99da33fa"
+      },
+      {
+        "mode": "fpga",
+        "macro_options": [
+          "-USYNTHESIS",
+          "-DXILINX_FPGA=1"
+        ],
+        "registered_read_phase": 1,
+        "passed": true,
+        "equivalence_points": 3352,
+        "log_sha256": "e7c6da084eb0f05202c899eab089ab99beff45cedd7bb8bf9a3482567de8348a"
+      },
+      {
+        "mode": "fpga_synthesis",
+        "macro_options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "registered_read_phase": 0,
+        "passed": true,
+        "equivalence_points": 3061,
+        "log_sha256": "7584b8655e4f136ad2cd0c6d74c5acd125a09bf222bbd9b0ebe8674618092cf0"
+      },
+      {
+        "mode": "fpga_synthesis",
+        "macro_options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "registered_read_phase": 1,
+        "passed": true,
+        "equivalence_points": 3061,
+        "log_sha256": "e7149beb005f546f5ee9b441adeb12997deb1a11814cc51e9a977866484c6216"
+      }
+    ],
+    "four_state": [
+      {
+        "mode": "generic",
+        "macro_options": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "comparisons": 131072,
+        "log_sha256": "87bc780e97ee10f7b28ef8cf6307ccfc00743f3d716dc930e00d6b350a70f8c4"
+      },
+      {
+        "mode": "synthesis",
+        "macro_options": [
+          "-DSYNTHESIS=1",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "comparisons": 131072,
+        "log_sha256": "87bc780e97ee10f7b28ef8cf6307ccfc00743f3d716dc930e00d6b350a70f8c4"
+      },
+      {
+        "mode": "fpga",
+        "macro_options": [
+          "-USYNTHESIS",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "comparisons": 131072,
+        "log_sha256": "87bc780e97ee10f7b28ef8cf6307ccfc00743f3d716dc930e00d6b350a70f8c4"
+      },
+      {
+        "mode": "fpga_synthesis",
+        "macro_options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "comparisons": 131072,
+        "log_sha256": "87bc780e97ee10f7b28ef8cf6307ccfc00743f3d716dc930e00d6b350a70f8c4"
+      }
+    ]
+  }
+}

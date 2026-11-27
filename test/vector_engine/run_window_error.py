@@ -58,7 +58,8 @@ def main():
     if not observer_root.is_dir():observer_root=ROOT/'test/monitors'
     sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](
         sources, source_root=source_root, observer_root=observer_root)
-    dependencies=sources+[HERE/'window_error.cpp',Path(__file__)]
+    source_reader=runpy.run_path(str(ROOT/'scripts/rtl/source_files.py'))
+    dependencies=source_reader['input_files'](sources,source_root)+[HERE/'window_error.cpp',Path(__file__)]
     source_sha={str(path):digest(path) for path in dependencies}
     parameters={'pe_count':args.pes,'bus_width':args.bus_width,'window_lanes':args.window_lanes,'shared_quant':args.shared_quant,
                 'cache_sets':args.cache_sets,'cache_line_bytes':args.cache_line_bytes,
@@ -68,6 +69,7 @@ def main():
                    '-Wno-fatal','-Wno-PINMISSING',f'-GPE_COUNT={args.pes}',
                    f'-GBUS_WIDTH={args.bus_width}',f'-GWINDOW_LANES={args.window_lanes}',f'-GSHARED_QUANT_ENABLE={int(args.shared_quant)}',
                    f'-GCACHE_SETS={args.cache_sets}',f'-GCACHE_LINE_BYTES={args.cache_line_bytes}',
+                   f'-I{source_root}/include',
                    '--Mdir',out/'obj',
                    '--output-groups','0','--output-split','12000','--output-split-cfuncs','200',
                    '-CFLAGS',f'-std=c++{20 if args.rtl_assertions else 17} --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_BUS_WIDTH={args.bus_width}',

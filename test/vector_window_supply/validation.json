@@ -1,0 +1,386 @@
+{
+  "passed": true,
+  "reference_commit": "f8dc8dd7ffdb8225b25573acb01fe871ccf92015",
+  "production_source_sha256": {
+    "rtl/npu/conv/vector_engine_address.sv": "fc2f14ba9bc0bfb5b3382a6dc5272d9b5cd5bafd6db3b7b9d26c0e8c12ce4e96"
+  },
+  "performance": [
+    {
+      "case": "dw3x3_s1_48_c8",
+      "original": {
+        "cycles": 27922,
+        "measurement": {
+          "depthwise": 1,
+          "cycles": 27922,
+          "hits": 13346,
+          "misses": 2,
+          "input_bytes": 18432,
+          "ar_bytes": 18600,
+          "ar_requests": 148,
+          "write_bytes": 18432,
+          "frontend_cycles": 27922,
+          "vector_cycles": 27920,
+          "vector_compute": 20164,
+          "vector_dma_wait": 27868
+        },
+        "output_sha256": "257944df19cb3c669f3a38970104f2bfd6aa97744e1eb2a78c52ad266e7d5f28",
+        "output_bytes": 18432,
+        "binary_sha256": "82875abd8ba6885fca6cd28e70c95f82128b4b46980bd3ec433ca65806bd20fd",
+        "build_manifest_sha256": "7784f086abddba09fdcab87e2fdccb614376fa673f0103f5cbd3fbfe8cb42d33",
+        "result_sha256": "14026c675499240e31291802aad116c2409c05404799cd1e681368e3343decd6",
+        "log_sha256": "25fddb38a5a5509e397b0d19a30e8f9460ac07336163ffda6d71ea639cf46d5e",
+        "directory": "/workspace/scratch/30bff11e002a/ps_results/vector_window_supply/original/conv/cases/dw3x3_s1_48_c8"
+      },
+      "candidate": {
+        "cycles": 26291,
+        "measurement": {
+          "depthwise": 1,
+          "cycles": 26291,
+          "hits": 13345,
+          "misses": 3,
+          "input_bytes": 18432,
+          "ar_bytes": 18600,
+          "ar_requests": 148,
+          "write_bytes": 18432,
+          "frontend_cycles": 26291,
+          "vector_cycles": 26289,
+          "vector_compute": 20164,
+          "vector_dma_wait": 26238
+        },
+        "output_sha256": "257944df19cb3c669f3a38970104f2bfd6aa97744e1eb2a78c52ad266e7d5f28",
+        "output_bytes": 18432,
+        "binary_sha256": "6055a1153a14a225f25d724b134a5f8bd7012f34d6872875f1c59d7de1ca5a3e",
+        "build_manifest_sha256": "ec8b5cbee7b64da25b857f644b3d172d4c8bd569d37f441bc85be30cb1f62ce4",
+        "result_sha256": "deb6e3e79223b76dce441790aa8434a22d2183317666b1f031d1a36b33b1908c",
+        "log_sha256": "9a0ddcf315dddf762ae944587c23f748d73206633a9c921af635fe64a568838d",
+        "directory": "/workspace/scratch/30bff11e002a/ps_results/vector_window_supply/candidate/conv/cases/dw3x3_s1_48_c8"
+      },
+      "inputs_and_outputs_identical": true,
+      "cycle_difference": -1631
+    },
+    {
+      "case": "numeric_depthwise_11x13_c17_o17_s1_p1",
+      "original": {
+        "cycles": 5564,
+        "measurement": {
+          "depthwise": 1,
+          "cycles": 5564,
+          "hits": 2714,
+          "misses": 4,
+          "input_bytes": 2431,
+          "ar_bytes": 2956,
+          "ar_requests": 59,
+          "write_bytes": 2431,
+          "frontend_cycles": 5564,
+          "vector_cycles": 5562,
+          "vector_compute": 2294,
+          "vector_dma_wait": 5499
+        },
+        "output_sha256": "26c3698ad2663b5882255d8faad2450b03c7522cf13e14e46e130fa76a64667b",
+        "output_bytes": 2431,
+        "binary_sha256": "82875abd8ba6885fca6cd28e70c95f82128b4b46980bd3ec433ca65806bd20fd",
+        "build_manifest_sha256": "7784f086abddba09fdcab87e2fdccb614376fa673f0103f5cbd3fbfe8cb42d33",
+        "result_sha256": "4ee9a4d4c69410388ccca2ef493acedd0820582309cc735a44b3f1a6e98b586b",
+        "log_sha256": "864df2f16f68ab58bea6255465f79f2e2d731c671c282610aef5a50ca1c47fde",
+        "directory": "/workspace/scratch/30bff11e002a/ps_results/vector_window_supply/original/conv/cases/numeric_depthwise_11x13_c17_o17_s1_p1"
+      },
+      "candidate": {
+        "cycles": 5449,
+        "measurement": {
+          "depthwise": 1,
+          "cycles": 5449,
+          "hits": 2714,
+          "misses": 4,
+          "input_bytes": 2431,
+          "ar_bytes": 2956,
+          "ar_requests": 59,
+          "write_bytes": 2431,
+          "frontend_cycles": 5449,
+          "vector_cycles": 5447,
+          "vector_compute": 2294,
+          "vector_dma_wait": 5384
+        },
+        "output_sha256": "26c3698ad2663b5882255d8faad2450b03c7522cf13e14e46e130fa76a64667b",
+        "output_bytes": 2431,
+        "binary_sha256": "6055a1153a14a225f25d724b134a5f8bd7012f34d6872875f1c59d7de1ca5a3e",
+        "build_manifest_sha256": "ec8b5cbee7b64da25b857f644b3d172d4c8bd569d37f441bc85be30cb1f62ce4",
+        "result_sha256": "6ce804b7a8fcef3bc0fe66faa0555b131915cc20ff62690fcffb3f37ebafc573",
+        "log_sha256": "90143682bba077e24c3c89b348f347d8c153f70c39eeb1f8f6ae17063e1dcd40",
+        "directory": "/workspace/scratch/30bff11e002a/ps_results/vector_window_supply/candidate/conv/cases/numeric_depthwise_11x13_c17_o17_s1_p1"
+      },
+      "inputs_and_outputs_identical": true,
+      "cycle_difference": -115
+    }
+  ],
+  "vector_regression": [
+    {
+      "bus_width": 64,
+      "parameters": {
+        "bus_width": 64,
+        "window_lanes": 8,
+        "shared_quant": true,
+        "shared_storage": true,
+        "shared_bank_bytes": 8192,
+        "shared_bank_count": 7,
+        "rtl_assertions": true,
+        "stable_stimulus": true
+      },
+      "totals": {
+        "cases": 616,
+        "outputs": 170743,
+        "add_cases": 143,
+        "add_outputs": 135758,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "ownership": {
+        "early_requests": 18163,
+        "owned_pending_cycles": 14182,
+        "held_responses": 299,
+        "failed_drains": 0
+      },
+      "binary_sha256": "bf5fd8b1369536ecce466fd3fdbc00613cdce4cb36c7d70f2460d090cb95b6fa",
+      "manifest_sha256": "6aa7d68c68bab8a3420800c67ab8a48b2ebdc12b409a1e974369039ea0a61abf",
+      "summary_sha256": "59e0e329d844136960cb4a1c0213a04ecace59e9228b850f1ecd0a5640df6fd0",
+      "log_sha256": "cfd85e194a005755d004d528f1da764e0bc833a12aeff84e4fa3fb0dbf7a4574",
+      "directory": "/workspace/scratch/30bff11e002a/ps_results/vector_window_supply/vector64"
+    },
+    {
+      "bus_width": 32,
+      "parameters": {
+        "bus_width": 32,
+        "window_lanes": 4,
+        "shared_quant": false,
+        "shared_storage": false,
+        "shared_bank_bytes": 4096,
+        "shared_bank_count": 8,
+        "rtl_assertions": true,
+        "stable_stimulus": true
+      },
+      "totals": {
+        "cases": 616,
+        "outputs": 170743,
+        "add_cases": 143,
+        "add_outputs": 135758,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "ownership": {
+        "early_requests": 18748,
+        "owned_pending_cycles": 14565,
+        "held_responses": 611,
+        "failed_drains": 0
+      },
+      "binary_sha256": "997a9d200dcda88e5890627aa70f4a7788ecb6af40f706053c57b6e5167ca2b1",
+      "manifest_sha256": "4ad9a0cc9f40e225ebca1ea350bcbef4b78181de024a4571d8810a136654180e",
+      "summary_sha256": "0b7761ad0c93d45412895b02ff6221be903dfaef2d8364131bb741bfb1d869ef",
+      "log_sha256": "680d58d6e7793882a6ef95a6a04f4b76075d2d0696a36d00fa4b6a106e0a394f",
+      "directory": "/workspace/scratch/30bff11e002a/ps_results/vector_window_supply/vector32"
+    }
+  ],
+  "terminal_error_regression": {
+    "passed": true,
+    "cases": 64,
+    "injected_errors": 32,
+    "recovery_tasks": 32,
+    "parameters": {
+      "pe_count": 8,
+      "bus_width": 64,
+      "window_lanes": 8,
+      "shared_quant": true,
+      "cache_sets": 16,
+      "cache_line_bytes": 128,
+      "cache_bytes": 4096,
+      "rtl_assertions": true
+    },
+    "binary_sha256": "8f22f36ebf3ba74afdd3bffd15cd7876e2da340cb7ffcd778bcfbc20ac15d6fe",
+    "run_log_sha256": "82be0f0ced6ba805289a2824875bd470b4534cdd8b839da0f769d56969cf8ae3",
+    "directory": "/workspace/scratch/30bff11e002a/ps_results/vector_window_supply/error64"
+  },
+  "control": {
+    "passed": true,
+    "source_sha256": {
+      "rtl/npu/conv/vector_engine_address.sv": "fc2f14ba9bc0bfb5b3382a6dc5272d9b5cd5bafd6db3b7b9d26c0e8c12ce4e96",
+      "rtl/npu/conv/vector_window_request_qualify.sv": "80747d55a70c4d22abeb0c9d83c7570234dd9e78bda05dc0bb68f94e0e3da7ab",
+      "test/vector_window_supply/run_control.py": "caa48c878547dcf9bfb778d0d78d3e0715441491507105c635972dec656d993f",
+      "test/vector_window_supply/tb_control.sv": "7de733d6f5d4f66d1e7037a19c0f4f0f723fbcc8446709eadfdbd7d962e5d1be"
+    },
+    "extracted_sha256": "93cecb037c7e6ebbc1db5bc8a93fc962fba08b684bcf7d2100bf05a743cd3a90",
+    "results": [
+      {
+        "registered_storage": 0,
+        "passed": true,
+        "checks": 327732,
+        "four_state": 327680,
+        "early_requests": 4,
+        "held_responses": 5,
+        "failed_drains": 3,
+        "commands": [
+          [
+            "iverilog",
+            "-g2012",
+            "-s",
+            "tb",
+            "-Ptb.REGISTERED=0",
+            "-o",
+            "/workspace/scratch/30bff11e002a/ps_results/vector_window_supply/control/storage0/simulation",
+            "/workspace/scratch/30bff11e002a/soc_integration_work/rtl/npu/conv/vector_window_request_qualify.sv",
+            "/workspace/scratch/30bff11e002a/ps_results/vector_window_supply/control/window_control.sv",
+            "/workspace/scratch/30bff11e002a/soc_integration_work/test/vector_window_supply/tb_control.sv"
+          ],
+          [
+            "vvp",
+            "/workspace/scratch/30bff11e002a/ps_results/vector_window_supply/control/storage0/simulation"
+          ]
+        ],
+        "log_sha256": "04fe540b0adaac05f221728a9a3de2025bcb7cce3b3f839bf6aed04448c15279"
+      },
+      {
+        "registered_storage": 1,
+        "passed": true,
+        "checks": 327732,
+        "four_state": 327680,
+        "early_requests": 4,
+        "held_responses": 5,
+        "failed_drains": 3,
+        "commands": [
+          [
+            "iverilog",
+            "-g2012",
+            "-s",
+            "tb",
+            "-Ptb.REGISTERED=1",
+            "-o",
+            "/workspace/scratch/30bff11e002a/ps_results/vector_window_supply/control/storage1/simulation",
+            "/workspace/scratch/30bff11e002a/soc_integration_work/rtl/npu/conv/vector_window_request_qualify.sv",
+            "/workspace/scratch/30bff11e002a/ps_results/vector_window_supply/control/window_control.sv",
+            "/workspace/scratch/30bff11e002a/soc_integration_work/test/vector_window_supply/tb_control.sv"
+          ],
+          [
+            "vvp",
+            "/workspace/scratch/30bff11e002a/ps_results/vector_window_supply/control/storage1/simulation"
+          ]
+        ],
+        "log_sha256": "ebc6a9f4140fb8908ea278fa5a2153c737a670e05e8e3921fa54b8f8c5402178"
+      }
+    ]
+  },
+  "mapping": {
+    "parameters": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GTILE=16",
+      "-GBUS_WIDTH=64",
+      "-GPE_COUNT=8",
+      "-GWINDOW_LANES=8",
+      "-GSHARED_STORAGE_ENABLE=1",
+      "-GSHARED_QUANT_ENABLE=0",
+      "-GSHARED_STORAGE_ADDR_WIDTH=12"
+    ],
+    "results": {
+      "reference": {
+        "resources": {
+          "logic_lut_cells": 9798,
+          "distributed_ram_lut_sites_nominal": 176,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 9974,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 6313,
+          "dsp48e1": 42,
+          "ramb36e1": 0,
+          "ramb18e1": 9,
+          "carry4": 423,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 423,
+            "DSP48E1": 42,
+            "FDCE": 2679,
+            "FDPE": 11,
+            "FDRE": 3613,
+            "FDSE": 10,
+            "INV": 324,
+            "LUT1": 19,
+            "LUT2": 1209,
+            "LUT3": 2099,
+            "LUT4": 905,
+            "LUT5": 1866,
+            "LUT6": 3700,
+            "MUXF7": 232,
+            "RAM32M": 44,
+            "RAMB18E1": 9
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 10,
+        "boundary_path_cells": {
+          "win_rsp_ready": 0,
+          "win_req_valid": 7
+        },
+        "verification": {
+          "passed": true,
+          "method": "ABC9 &verify",
+          "log_sha256": "0631a2280629bdc1292f841f763fe220ed3cd44719f6316be41cc01c4bbc6114"
+        },
+        "mapped_json_sha256": "c4b68a0427b7c864f4c15c7682f1771e936d67a826fb1b0202175c9f119b20ed",
+        "metrics_sha256": "d2758cb4e93903c615191406603e0064757863f7bac916f00f2548c87ff79f23"
+      },
+      "candidate": {
+        "resources": {
+          "logic_lut_cells": 9796,
+          "distributed_ram_lut_sites_nominal": 176,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 9972,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 6313,
+          "dsp48e1": 42,
+          "ramb36e1": 0,
+          "ramb18e1": 9,
+          "carry4": 424,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 424,
+            "DSP48E1": 42,
+            "FDCE": 2679,
+            "FDPE": 11,
+            "FDRE": 3613,
+            "FDSE": 10,
+            "INV": 323,
+            "LUT1": 16,
+            "LUT2": 1211,
+            "LUT3": 2109,
+            "LUT4": 913,
+            "LUT5": 1868,
+            "LUT6": 3679,
+            "MUXF7": 238,
+            "RAM32M": 44,
+            "RAMB18E1": 9
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 10,
+        "boundary_path_cells": {
+          "win_rsp_ready": 2,
+          "win_req_valid": 7
+        },
+        "verification": {
+          "passed": true,
+          "method": "ABC9 &verify",
+          "log_sha256": "795210c952f4717541194522b4c586db0d5e74bfb1e5f0af5eab8f9251e05d32"
+        },
+        "mapped_json_sha256": "fd25a99674815c5b37e2757a778215b0acb831d8a11b1d5072648ac8b3a597ba",
+        "metrics_sha256": "8b01e21906bcf8a20e759a17377b5edb8234bbea316a89008604e0cfaa2e1abc"
+      }
+    },
+    "summary_sha256": "644acc2b1076509fc9617be252b605a92350d6d9680625b10f001e12f35a5503",
+    "directory": "/workspace/scratch/30bff11e002a/ps_results/vector_window_supply/mapping"
+  },
+  "verification_sources_sha256": {
+    "test/monitors/vector_engine_observer.sv": "9a2fdc235720d55975ff0fabcd80e0b62eee9538a44e95b9489eb17f5ad561d4",
+    "test/vector_engine/run_window_error.py": "b77de94e775247587bb26a292ed168117c267556fd634ad66392f47146d5bf78",
+    "test/vector_window_supply/run_control.py": "caa48c878547dcf9bfb778d0d78d3e0715441491507105c635972dec656d993f",
+    "test/vector_window_supply/tb_control.sv": "7de733d6f5d4f66d1e7037a19c0f4f0f723fbcc8446709eadfdbd7d962e5d1be",
+    "test/vector_window_supply/measure.py": "e30f8e3d7925aa94c502784a10e4f043d4e1d1b24d18192e6a31edcae52da99b"
+  }
+}

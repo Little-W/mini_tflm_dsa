@@ -1,0 +1,76 @@
+{
+  "passed": true,
+  "reference_revision": "9e3e5d6a6f47befe6c86aceacad7999923206458",
+  "all_public_output_bits": 128,
+  "input_assumptions": [],
+  "add_result_latency_cycles": 1,
+  "other_result_latency_unchanged": true,
+  "source_sha256": {
+    "rtl/npu/conv/vector_activation_clamp.sv": "0b6b0e02a27d9521bc490bc3f9598534129d0a13d3b084505aafa74c08dc379f",
+    "rtl/npu/conv/vector_activation_stage.sv": "bedbd670e93a25f67c6dd53896d231243dd9c59cdf977da64c29561e0ba8450a"
+  },
+  "modes": [
+    {
+      "mode": "generic",
+      "formal": true,
+      "four_state_comparisons": 262144,
+      "proof_log_sha256": "1282301ad2b8a6e208330dbe79ec08b3ab87628e2b9a7b2222eb49061d3d3481",
+      "simulation_log_sha256": "a83df9867fe2a11b0b6d69850e5eaab1ce586ac95b323f94820f741eac9baaf5"
+    },
+    {
+      "mode": "synthesis",
+      "formal": true,
+      "four_state_comparisons": 262144,
+      "proof_log_sha256": "6f0d82a91db677f74941f497416b35b96c7fa0030aff9d8592205258b2d14681",
+      "simulation_log_sha256": "a83df9867fe2a11b0b6d69850e5eaab1ce586ac95b323f94820f741eac9baaf5"
+    },
+    {
+      "mode": "fpga",
+      "formal": true,
+      "four_state_comparisons": 262144,
+      "proof_log_sha256": "4d8acb7fba4b7d5b6b1b07b9452d8176cdacaec1b07aaba274ad5e601f10a746",
+      "simulation_log_sha256": "a83df9867fe2a11b0b6d69850e5eaab1ce586ac95b323f94820f741eac9baaf5"
+    },
+    {
+      "mode": "fpga_synthesis",
+      "formal": true,
+      "four_state_comparisons": 262144,
+      "proof_log_sha256": "ec304d6bbfeef8e09c9bd3ae4b4ec433cde9e7bf07e1b64562463744d31892e1",
+      "simulation_log_sha256": "a83df9867fe2a11b0b6d69850e5eaab1ce586ac95b323f94820f741eac9baaf5"
+    }
+  ],
+  "test_sha256": "8d390e1fc55682a3652bbeaed16f6db98aea8de326a67920d0364f22612c6a8f",
+  "integration_revision": "04ebae5a4bf4ef5cc94d78ef9d2792027bd6896b",
+  "functional": {
+    "totals": {
+      "cases": 616,
+      "outputs": 170743,
+      "add_cases": 143,
+      "add_outputs": 135758,
+      "softmax_cases": 273,
+      "softmax_outputs": 2188
+    },
+    "cycle_comparison": {
+      "cycles": 3466547,
+      "output_ports": 55,
+      "passed": true
+    },
+    "executable_sha256": "8b200cffb7c587bc363f7c2779475bb4399e76b47df0914be8ee1e362e272a70"
+  },
+  "performance": {
+    "totals": {
+      "cases": 40,
+      "outputs": 103743,
+      "add_cases": 3,
+      "add_outputs": 28672,
+      "softmax_cases": 0,
+      "softmax_outputs": 0
+    },
+    "cycle_comparison": {
+      "cycles": 1106184,
+      "output_ports": 55,
+      "passed": true
+    },
+    "executable_sha256": "8b200cffb7c587bc363f7c2779475bb4399e76b47df0914be8ee1e362e272a70"
+  }
+}

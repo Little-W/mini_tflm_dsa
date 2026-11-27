@@ -31,9 +31,16 @@ def updates(text):
 
 
 def selection(text):
-    begin=text.index('  always_comb begin\n    read_address_base = 32\'d0;')
+    if 'vector_read_address_select u_read_select' in text:
+        begin=text.index("  always_comb begin\n    read_select_i_load_base = 32'd0;")
+        declarations='''  logic [31:0] read_select_i_load_base, read_select_i_load_offset;
+  logic read_select_i_lut_read, read_select_i_pool_read;
+'''
+    else:
+        begin=text.index('  always_comb begin\n    read_address_base = 32\'d0;')
+        declarations=''
     end=text.index('  vector_read_address_add u_read_address',begin)
-    return text[begin:end].replace('vector_engine_control_pkg::','')
+    return declarations+text[begin:end].replace('vector_engine_control_pkg::','')
 
 
 def run(command, log):
@@ -55,6 +62,11 @@ def main():
     source_root=args.source_root.resolve()
     current={name:(source_root/name).read_text() for name in relative}
     hashes={name:digest(source_root/name) for name in relative}
+    selector=''
+    if 'vector_read_address_select u_read_select' in current[relative[2]]:
+        helper='rtl/npu/conv/vector_read_address_select.sv'
+        selector=(source_root/helper).read_text()
+        hashes[helper]=digest(source_root/helper)
     old_fields,old_updates=updates(original[relative[1]])
     new_fields,new_updates=updates(current[relative[1]])
     if old_updates!=new_updates or new_fields!=['state_soft_lut_read','state_pool_read']+old_fields:
@@ -129,7 +141,7 @@ wire i_state_pool_read=(state==POOL_LOAD_REQ || state==POOL_LOAD_WAIT);
     inputs=['input_base','rhs_base','bias_base','multiplier_base','shift_base','vector_offset','pool_byte_offset']
     names=['state','load_kind',*inputs,'vector_s16','channel_base','soft_lut_index_q']
     common=', '.join('.'+name+'('+name+')' for name in names)
-    source.write_text('\n'.join(sections)+'''module source_choice(input wire [5:0] state,
+    source.write_text('\n'.join(sections)+selector+'''module source_choice(input wire [5:0] state,
     input wire [2:0] load_kind, input wire [31:0] '''+', '.join(inputs)+''',
     input wire vector_s16, input wire [15:0] channel_base,
     input wire [7:0] soft_lut_index_q,
@@ -170,7 +182,9 @@ endmodule
           ('load_induction',load_control,'load_word','async2sync; sat -verify -seq 1 -tempinduct-inductonly -maxsteps 1 -prove saved_equal 1')]
     for label,path,top,proof in jobs:
         script=args.out/(label+'.ys')
-        script.write_text('read_verilog -sv '+shlex.quote(str(path))+'\nprep -top '+top+' -flatten\ncheck -assert\n'+proof+'\n')
+        script.write_text('read_verilog -sv '+shlex.quote(str(path))+
+            '\nsetattr -mod -unset keep_hierarchy\nsetattr -unset keep_hierarchy'+
+            '\nprep -top '+top+' -flatten\ncheck -assert\n'+proof+'\n')
         run([sys.executable,ROOT/'scripts/fpga/open_fpga_synth.py','--worker',script],script.with_suffix('.log'))
     bench=args.out/'four_state.sv'
     bench.write_text(f'''module tb;
@@ -252,7 +266,7 @@ endmodule
     run(['vvp',executable],args.out/'four_state.log')
     if 'FOUR_STATE_PASS checks=262144' not in (args.out/'four_state.log').read_text():
         raise RuntimeError('四态比较未完成')
-    if hashes!={name:digest(source_root/name) for name in relative}:
+    if hashes!={name:digest(source_root/name) for name in hashes}:
         raise RuntimeError('验证期间源码发生变化')
     summary=dict(passed=True,reference_revision=args.reference_revision,sources_sha256=hashes,
                  state_updates=len(new_updates),load_updates=len(selected_load_updates),

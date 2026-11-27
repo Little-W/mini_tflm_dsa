@@ -272,6 +272,7 @@ module vector_engine_address #(
   logic [31:0] vector_offset_next;
   logic signed [31:0] add_input_sum;
   logic parameter_row_last_fire;
+  logic parameter_row_complete;
   logic parameter_three_rows;
   logic parameter_two_rows;
   logic shared_weight_write_pending;
@@ -592,6 +593,10 @@ module vector_engine_address #(
   logic [31:0] read_address_base;
   logic [31:0] read_address_offset;
   logic [15:0] read_address_channel;
+  logic [31:0] read_select_i_load_base;
+  logic [31:0] read_select_i_load_offset;
+  logic read_select_i_lut_read;
+  logic read_select_i_pool_read;
   logic [1:0] unused_read_address_carry;
   logic [31:0] parameter_stride_i_b;
   logic parameter_stride_carry;
@@ -859,12 +864,12 @@ module vector_engine_address #(
   );
   assign window_slot_available = window_fetch_enabled &&
       window_position_valid && window_fetch_in_bounds;
-  // 最后一个通道组被乘加单元接收时，当前输入槽位即可接收后续窗口请求。
-  // 新窗口先经过描述符队列，返回数据在后续边沿写入，不影响本拍捕获的操作数。
+  // 就绪标志保存当前窗口，预留标志保存下一窗口，两者分别记录数据和请求。
+  // 少于十六路 PE 的深度卷积可提前预约，其余配置在当前槽位消费完成时预约。
   assign input_slot_release = dw_issue_fire && dw_group_last && (wf_bank == read_bank);
   // 槽位范围、预留和故障资格先并行完成，权重返回触发的发射只参与末级选择。
   assign window_request_idle = window_slot_available && !window_response_fault &&
-      !input_reserved[wf_bank] && !input_ready[wf_bank];
+      !input_reserved[wf_bank] && ((p_pe_count < 16 && depthwise) || !input_ready[wf_bank]);
   assign window_request_release_enabled = window_slot_available && !window_response_fault &&
       !input_reserved[wf_bank] && dw_group_last && (wf_bank == read_bank);
   vector_window_request_qualify u_window_request_qualify (
@@ -875,7 +880,10 @@ module vector_engine_address #(
   assign win_req_q0=window_request_offset;
   assign win_req_cols=active;
   assign win_req_tag=wf_bank;
-  assign win_rsp_ready=1'b1;
+  // 末组操作数捕获后，就绪标志在边沿清空，随后才接收对应槽位的后续数据。
+  // 错误响应和失败状态持续接收待完成请求，使任务能够排空窗口队列。
+  assign win_rsp_ready = !depthwise || !input_ready[win_rsp_tag] ||
+      state_failed || win_rsp_error;
   assign window_request_fire=win_req_valid && win_req_ready;
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -934,7 +942,7 @@ module vector_engine_address #(
   for (genvar bank = 0; bank < 4; bank++) begin : g_input_reservation
     (* keep = 1 *) logic request_selected, release_selected;
     assign request_selected = window_slot_available && (wf_bank == 2'(bank)) &&
-        (!input_ready[bank] || input_slot_release);
+        ((p_pe_count < 16 && depthwise) || !input_ready[bank] || input_slot_release);
     assign release_selected = input_reservations_clear ||
         (p_input_bank_storage ? window_response_last_q && window_response_tag == 2'(bank) :
          window_response_fire && win_rsp_last && win_rsp_tag == 2'(bank));
@@ -1087,9 +1095,15 @@ module vector_engine_address #(
       parameter_three_rows <= parameter_three_rows_next;
     end
   end
+  // 返回列与本行元素数在独立组合模块中形成末拍资格，控制器直接选择该结果。
+  vector_parameter_row_end #(
+    .p_column_width(p_input_index_w), .p_active_width(p_active_count_w), .p_bus_bytes(p_bus_bytes)
+  ) u_parameter_row_end (
+    .i_column_base(rd_col_base), .i_active(active), .o_complete(parameter_row_complete)
+  );
   assign parameter_row_last_fire = state==vector_engine_control_pkg::LOAD_WAIT && rd_raw_valid &&
       (load_kind==vector_engine_control_pkg::LD_BIAS || load_kind==vector_engine_control_pkg::LD_MULT || load_kind==vector_engine_control_pkg::LD_SHIFT) &&
-      32'(rd_col_base)+32'(p_bus_bytes)>=(32'(active)<<2);
+      parameter_row_complete;
 
   // 低八位突发编码直接判断减一的借位，避免先向上取整再减一。
   function automatic logic [7:0] burst_length_from_bytes(input logic [31:0] value);
@@ -1107,61 +1121,60 @@ module vector_engine_address #(
     end
   endfunction
 
-  // 已保存的读取资格选择完整地址分量，公共加法器生成读取地址。
+  // 普通读取先准备完整地址分量，专用模式在独立末级选择。
   always_comb begin
-    read_address_base = 32'd0;
-    read_address_offset = 32'd0;
-    read_address_channel = 16'd0;
+    read_select_i_load_base = 32'd0;
+    read_select_i_load_offset = 32'd0;
     if (p_registered_read_phase) begin
-      read_address_base =
+      read_select_i_load_base =
           ({32{i_load_read_select[0] | i_load_read_select[5]}} & c.rhs_base) |
           ({32{i_load_read_select[1]}} & c.bias_base) |
           ({32{i_load_read_select[2]}} & c.multiplier_base) |
           ({32{i_load_read_select[3]}} & c.shift_base) |
           ({32{i_load_read_select[4]}} & c.input_base);
-      read_address_offset =
+      read_select_i_load_offset =
           ({32{i_load_read_select[0]}} & {16'd0, channel_base}) |
           ({32{|i_load_read_select[3:1]}} & {14'd0, channel_base, 2'b00}) |
           ({32{|i_load_read_select[5:4]}} & (vector_offset << c.vector_s16));
     end else begin
       case (load_kind)
         vector_engine_control_pkg::LD_WEIGHT: begin
-          read_address_base = c.rhs_base;
-          read_address_offset = {16'd0, channel_base};
+          read_select_i_load_base = c.rhs_base;
+          read_select_i_load_offset = {16'd0, channel_base};
         end
         vector_engine_control_pkg::LD_BIAS, vector_engine_control_pkg::LD_MULT, vector_engine_control_pkg::LD_SHIFT: begin
           case (load_kind)
-            vector_engine_control_pkg::LD_BIAS: read_address_base = c.bias_base;
-            vector_engine_control_pkg::LD_MULT: read_address_base = c.multiplier_base;
-            default: read_address_base = c.shift_base;
+            vector_engine_control_pkg::LD_BIAS: read_select_i_load_base = c.bias_base;
+            vector_engine_control_pkg::LD_MULT: read_select_i_load_base = c.multiplier_base;
+            default: read_select_i_load_base = c.shift_base;
           endcase
-          read_address_offset = {14'd0, channel_base, 2'b00};
+          read_select_i_load_offset = {14'd0, channel_base, 2'b00};
         end
         vector_engine_control_pkg::LD_A: begin
-          read_address_base = c.input_base;
-          read_address_offset = vector_offset << c.vector_s16;
+          read_select_i_load_base = c.input_base;
+          read_select_i_load_offset = vector_offset << c.vector_s16;
         end
         vector_engine_control_pkg::LD_B: begin
-          read_address_base = c.rhs_base;
-          read_address_offset = vector_offset << c.vector_s16;
+          read_select_i_load_base = c.rhs_base;
+          read_select_i_load_offset = vector_offset << c.vector_s16;
         end
         default: begin end
       endcase
     end
-    // 专用读取资格与状态在同一边沿保存，地址选择直接使用该资格。
-    if (p_registered_read_phase ? i_state_soft_lut_read :
-        (state == vector_engine_control_pkg::SOFT_LUT_REQ ||
-         state == vector_engine_control_pkg::SOFT_LUT_WAIT)) begin
-      read_address_base = c.rhs_base;
-      read_address_offset = {22'd0, soft_lut_index_q, 2'b00};
-    end else if (p_registered_read_phase ? i_state_pool_read :
-        (state == vector_engine_control_pkg::POOL_LOAD_REQ ||
-         state == vector_engine_control_pkg::POOL_LOAD_WAIT)) begin
-      read_address_base = c.input_base;
-      read_address_offset = pool_byte_offset;
-      read_address_channel = channel_base;
-    end
   end
+  assign read_select_i_lut_read = p_registered_read_phase ? i_state_soft_lut_read :
+      (state == vector_engine_control_pkg::SOFT_LUT_REQ ||
+       state == vector_engine_control_pkg::SOFT_LUT_WAIT);
+  assign read_select_i_pool_read = p_registered_read_phase ? i_state_pool_read :
+      (state == vector_engine_control_pkg::POOL_LOAD_REQ ||
+       state == vector_engine_control_pkg::POOL_LOAD_WAIT);
+  vector_read_address_select u_read_select (
+    .i_lut_read(read_select_i_lut_read), .i_pool_read(read_select_i_pool_read),
+    .i_load_base(read_select_i_load_base), .i_load_offset(read_select_i_load_offset),
+    .i_lut_base(c.rhs_base), .i_lut_index(soft_lut_index_q),
+    .i_pool_base(c.input_base), .i_pool_offset(pool_byte_offset), .i_pool_channel(channel_base),
+    .o_base(read_address_base), .o_offset(read_address_offset), .o_channel(read_address_channel)
+  );
   vector_read_address_add u_read_address (
     .clk(clk), .i_base(read_address_base), .i_offset(read_address_offset),
     .i_channel(read_address_channel), .o_address(rd_base_addr),
