@@ -464,6 +464,26 @@ module vector_engine_invariants #(
     if (vector_engine.rst_n && vector_engine.soft_out_write_valid) assert(vector_engine.soft_out_data === soft_out_previous);
   end
   logic [31:0] input_position[4],input_tap[4];
+  logic [31:0] pending_input_position[4],pending_input_tap[4];
+  longint unsigned window_early_requests=0, window_owned_pending_cycles=0;
+  longint unsigned window_held_responses=0, window_failed_drains=0;
+
+  // 观察已就绪数据与后续请求的并存、返回等待和失败状态排空。
+  always @(posedge vector_engine.clk) begin
+    if (vector_engine.rst_n) begin
+      if (vector_engine.window_request_fire && vector_engine.input_ready[vector_engine.wf_bank])
+        window_early_requests++;
+      if (|(vector_engine.input_ready & vector_engine.input_reserved))
+        window_owned_pending_cycles++;
+      if (vector_engine.win_rsp_valid && !vector_engine.win_rsp_ready)
+        window_held_responses++;
+      if (vector_engine.state_failed && vector_engine.window_response_fire &&
+          (|(vector_engine.input_ready & vector_engine.input_reserved)))
+        window_failed_drains++;
+    end
+  end
+  final $display("VECTOR_WINDOW_OWNERSHIP_PASS early_requests=%0d owned_pending_cycles=%0d held_responses=%0d failed_drains=%0d",
+      window_early_requests,window_owned_pending_cycles,window_held_responses,window_failed_drains);
   logic writeback_metadata_stalled;
   logic writeback_metadata_match;
   logic previous_writeback_sink_fire;
@@ -621,9 +641,22 @@ module vector_engine_invariants #(
     if (!vector_engine.rst_n) begin
       for (int bank=0;bank<4;bank++) begin
         input_position[bank]<=0;input_tap[bank]<=0;
+        pending_input_position[bank]<=0;pending_input_tap[bank]<=0;
       end
-    end else if (vector_engine.window_request_fire) begin
-      input_position[vector_engine.wf_bank]<=vector_engine.fetch_position;input_tap[vector_engine.wf_bank]<=vector_engine.u_control.fetch_tap;
+    end else begin
+      // 请求元数据与已就绪数据分开保存，允许当前窗口和后续预约共用槽号。
+      if (vector_engine.window_request_fire) begin
+        pending_input_position[vector_engine.wf_bank]<=vector_engine.fetch_position;
+        pending_input_tap[vector_engine.wf_bank]<=vector_engine.u_control.fetch_tap;
+      end
+      for (int bank=0;bank<4;bank++) begin
+        if (p_input_bank_storage ?
+            vector_engine.u_address.window_response_last_q && vector_engine.u_address.window_response_tag==2'(bank) :
+            vector_engine.window_response_fire && vector_engine.win_rsp_last && vector_engine.win_rsp_tag==2'(bank)) begin
+          input_position[bank]<=pending_input_position[bank];
+          input_tap[bank]<=pending_input_tap[bank];
+        end
+      end
     end
   end
   initial begin
@@ -655,9 +688,9 @@ module vector_engine_invariants #(
     if (vector_engine.state == QUANT_INIT || vector_engine.state == AVG_START || vector_engine.state == AVG_POWER_STORE || vector_engine.state == AVG_WAIT)
       assert(vector_engine.avg_power_two == vector_engine.u_address.avg_power_two_next && vector_engine.avg_shift == vector_engine.u_address.avg_shift_next);
     if (vector_engine.q_valid[6]) begin
-      assert(vector_engine.u_activation.minimum_before_offset == $signed({vector_engine.c.activation_min[7],vector_engine.c.activation_min[7:0]}) -
+      assert(vector_engine.u_activation.u_base.minimum_before_offset == $signed({vector_engine.c.activation_min[7],vector_engine.c.activation_min[7:0]}) -
           $signed({vector_engine.c.output_offset[7],vector_engine.c.output_offset[7:0]}));
-      assert(vector_engine.u_activation.maximum_before_offset == $signed({vector_engine.c.activation_max[7],vector_engine.c.activation_max[7:0]}) -
+      assert(vector_engine.u_activation.u_base.maximum_before_offset == $signed({vector_engine.c.activation_max[7],vector_engine.c.activation_max[7:0]}) -
           $signed({vector_engine.c.output_offset[7],vector_engine.c.output_offset[7:0]}));
     end
     if (vector_engine.src_wvalid && !vector_engine.src_wready) begin
@@ -678,17 +711,17 @@ module vector_engine_invariants #(
                $signed(64'(vector_engine.add_scaled_a))+$signed(vector_engine.add_rounded)<=64'sd2147483647);
     end
     if (vector_engine.window_request_fire) begin
-      // 复用尚未清空的输入槽时，旧数据必须已经被当前通道组捕获。
+      // 深度卷积允许先预约后消费，其他空间操作保持空闲槽位要求。
       if (vector_engine.input_ready[vector_engine.wf_bank]) begin
-        assert(vector_engine.dw_issue_fire && vector_engine.dw_group_last);
-        assert(vector_engine.wf_bank == vector_engine.read_bank);
-        assert(!(vector_engine.window_response_fire && vector_engine.win_rsp_tag == vector_engine.read_bank));
+        assert(vector_engine.depthwise);
       end
-      assert((!vector_engine.input_ready[vector_engine.wf_bank] || vector_engine.u_address.input_slot_release) && !vector_engine.input_reserved[vector_engine.wf_bank]);
+      assert(!vector_engine.input_reserved[vector_engine.wf_bank]);
       assert(vector_engine.win_req_cols>0 && vector_engine.win_req_cols<=TILE);
     end
     if (vector_engine.window_response_fire) begin
       assert(vector_engine.input_reserved[vector_engine.win_rsp_tag]);
+      if (vector_engine.depthwise && !vector_engine.state_failed && !vector_engine.win_rsp_error)
+        assert(!vector_engine.input_ready[vector_engine.win_rsp_tag]);
       if(!vector_engine.win_rsp_error) begin
         assert(vector_engine.win_rsp_mask!=0 && vector_engine.win_rsp_col+32'(vector_engine.u_address.window_response_count)<=vector_engine.active);
         if(vector_engine.win_rsp_last) assert(vector_engine.window_received+32'(vector_engine.u_address.window_response_count)==vector_engine.active);

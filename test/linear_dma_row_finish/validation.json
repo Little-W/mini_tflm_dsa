@@ -143,28 +143,102 @@
     "four_state": [
       {
         "mode": "generic",
-        "cycles": 30001,
+        "cycles": 32202,
         "public_outputs": 37,
-        "comparisons": 2280076,
+        "comparisons": 3349008,
+        "input_coverage": {
+          "input_bits": 429,
+          "all_four_states_per_bit": true,
+          "covered_bits": 429,
+          "bit_observations": {
+            "zero": 7020692,
+            "one": 6088839,
+            "unknown": 352824,
+            "high_impedance": 352303
+          }
+        },
+        "directed_events": {
+          "write_commands": 3,
+          "read_commands": 1,
+          "write_addresses": 6,
+          "write_data": 14,
+          "write_responses": 6,
+          "read_addresses": 1,
+          "read_responses": 1,
+          "write_completions": 3,
+          "read_completions": 1,
+          "plain_rows": 4,
+          "cross_rows": 2,
+          "aborts": 1,
+          "stalled_cycles": 9
+        },
         "unknown_controls": true,
         "unknown_payload": true,
         "unknown_reset": true,
+        "packed_member_selection": "嵌套 packed 字段先赋给同位宽 wire，再执行原范围位选择",
+        "simulation_source_sha256": {
+          "reference": "abb37fd74f009ec9d42508a77039d65fd3eab22b6ed6613dc3ae125f4f9169c0",
+          "current": "54a63e5f63fa42593fc7c94fe305a00616c1d2c336e5bbc11738225a6c161012"
+        },
+        "testbench_sha256": "21469376025f37ed634db8f69f0aa58e60322b25aea1adbb673d8b6de77404fa",
         "passed": true,
-        "log_sha256": "165598302079e14398e345d87124c5712324ebebaeccffe915388f4d7ed873ff"
+        "log_sha256": "61a291d004f7254e7a01d01c73b5197cb816f96f1536bfc9c12e308cc6e66383"
       },
       {
         "mode": "fpga_synthesis",
-        "cycles": 30001,
+        "cycles": 32202,
         "public_outputs": 37,
-        "comparisons": 2280076,
+        "comparisons": 3349008,
+        "input_coverage": {
+          "input_bits": 429,
+          "all_four_states_per_bit": true,
+          "covered_bits": 429,
+          "bit_observations": {
+            "zero": 7020692,
+            "one": 6088839,
+            "unknown": 352824,
+            "high_impedance": 352303
+          }
+        },
+        "directed_events": {
+          "write_commands": 3,
+          "read_commands": 1,
+          "write_addresses": 6,
+          "write_data": 14,
+          "write_responses": 6,
+          "read_addresses": 1,
+          "read_responses": 1,
+          "write_completions": 3,
+          "read_completions": 1,
+          "plain_rows": 4,
+          "cross_rows": 2,
+          "aborts": 1,
+          "stalled_cycles": 9
+        },
         "unknown_controls": true,
         "unknown_payload": true,
         "unknown_reset": true,
+        "packed_member_selection": "嵌套 packed 字段先赋给同位宽 wire，再执行原范围位选择",
+        "simulation_source_sha256": {
+          "reference": "abb37fd74f009ec9d42508a77039d65fd3eab22b6ed6613dc3ae125f4f9169c0",
+          "current": "54a63e5f63fa42593fc7c94fe305a00616c1d2c336e5bbc11738225a6c161012"
+        },
+        "testbench_sha256": "21469376025f37ed634db8f69f0aa58e60322b25aea1adbb673d8b6de77404fa",
         "passed": true,
-        "log_sha256": "165598302079e14398e345d87124c5712324ebebaeccffe915388f4d7ed873ff"
+        "log_sha256": "61a291d004f7254e7a01d01c73b5197cb816f96f1536bfc9c12e308cc6e66383"
       }
     ],
-    "passed": true
+    "passed": true,
+    "four_state_source_sha256": {
+      "/workspace/scratch/30bff11e002a/soc_integration_work/rtl/npu/dma/axi_linear_block_dma.sv": "e50782bb825e0d49e4d6c945ce349143c5d6b44e7155da4c32ba8abb4afcfaf1",
+      "/workspace/scratch/30bff11e002a/soc_integration_work/rtl/common/add_equal.sv": "d67c3931ccbfe2dc8d3a180d56aeb317cbeef17d94b57ee17215ad06ff06270b",
+      "/workspace/scratch/30bff11e002a/soc_integration_work/rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+      "/workspace/scratch/30bff11e002a/soc_integration_work/rtl/common/zero_reduce.sv": "139caad4cb9b67e966c768e999821f62975cb2ab666eb669a18ed43242bb3233",
+      "/workspace/scratch/30bff11e002a/soc_integration_work/rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+      "/workspace/scratch/30bff11e002a/soc_integration_work/rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+      "/workspace/scratch/30bff11e002a/soc_integration_work/test/linear_dma_row_finish/run.py": "ec3de593f2a785dc36d2cd4f026754db08bb7814de0b54d0c71e999674855b34",
+      "/workspace/scratch/30bff11e002a/soc_integration_work/test/four_state_inputs.py": "ba4762ed86b389e3fb1fc6667932fe2ebb911b63b6cb78c1cffbe329e10faff2"
+    }
   },
   "write_transactions": {
     "passed": true,

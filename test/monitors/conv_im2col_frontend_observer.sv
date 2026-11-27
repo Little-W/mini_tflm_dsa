@@ -110,6 +110,74 @@ always @(posedge conv_im2col_frontend.clk) begin
   end
 end
 
+// 描述符检查读取已保存的复用资格，独立标签记录核对其数据来源。
+logic [31:0] descriptor_saved_address;
+logic descriptor_saved_valid;
+always_ff @(posedge conv_im2col_frontend.clk) begin
+  if (conv_im2col_frontend.tile_commit && !conv_im2col_frontend.committing_tile.invalid &&
+      conv_im2col_frontend.committing_tile.fast) begin
+    descriptor_saved_address <= 32'(conv_im2col_frontend.u_descriptor.prepared_tile_q.word_address)
+        << conv_im2col_frontend.p_word_shift;
+    descriptor_saved_valid <= conv_im2col_frontend.u_descriptor.prepared_tile_q.saved_word_valid;
+  end
+end
+always @(posedge conv_im2col_frontend.clk) begin
+  if (conv_im2col_frontend.rst_n && conv_im2col_frontend.REGISTER_DESCRIPTOR) begin
+    if (conv_im2col_frontend.descriptor_check) begin
+      assert (conv_im2col_frontend.committing_saved_word_hit ===
+          (descriptor_saved_valid &&
+           (conv_im2col_frontend.addr >> conv_im2col_frontend.p_word_shift) ==
+           (descriptor_saved_address >> conv_im2col_frontend.p_word_shift)))
+        else $fatal(1, "Descriptor saved word status differs from captured tag");
+      assert (conv_im2col_frontend.committing_live_word_hit ===
+          (conv_im2col_frontend.operation_word_valid &&
+           (conv_im2col_frontend.addr >> conv_im2col_frontend.p_word_shift) ==
+           (conv_im2col_frontend.operation_word_addr >> conv_im2col_frontend.p_word_shift)))
+        else $fatal(1, "Descriptor live word status differs from current tag");
+      assert (conv_im2col_frontend.descriptor_padding ===
+          !($unsigned(conv_im2col_frontend.ix) < conv_im2col_frontend.COORD_W'(conv_im2col_frontend.c.input_w) &&
+            $unsigned(conv_im2col_frontend.iy) < conv_im2col_frontend.COORD_W'(conv_im2col_frontend.c.input_h)))
+        else $fatal(1, "Descriptor padding status differs from input coordinates");
+    end
+    if (conv_im2col_frontend.wr_valid)
+      assert (conv_im2col_frontend.word_output_q ===
+          (state_number(conv_im2col_frontend.operation_state) == 19 ||
+           state_number(conv_im2col_frontend.operation_state) == 20))
+        else $fatal(1, "Registered word format differs at output transfer");
+  end
+end
+
+// 取消首字请求时，当前准备项、请求地址和待返回标志属于同一描述符。
+integer descriptor_cancel_count = 0;
+logic check_cancelled_active = 1'b0, check_cancelled_prepared = 1'b0;
+always @(posedge conv_im2col_frontend.clk) begin
+  if (!conv_im2col_frontend.rst_n) begin
+    check_cancelled_active <= 1'b0;
+    check_cancelled_prepared <= 1'b0;
+  end else begin
+    if (check_cancelled_active)
+      assert (!conv_im2col_frontend.active_read_pending)
+        else $fatal(1, "Cancelled descriptor retained an active response dependency");
+    if (check_cancelled_prepared)
+      assert (!conv_im2col_frontend.prepared_read_pending)
+        else $fatal(1, "Cancelled descriptor retained a prepared response dependency");
+    check_cancelled_active <= conv_im2col_frontend.request_cancel && conv_im2col_frontend.tile_commit;
+    check_cancelled_prepared <= conv_im2col_frontend.request_cancel && !conv_im2col_frontend.descriptor_accept_fire;
+    if (conv_im2col_frontend.request_cancel && !conv_im2col_frontend.error) begin
+      descriptor_cancel_count <= descriptor_cancel_count + 1;
+      assert (conv_im2col_frontend.tile_prepared_valid && conv_im2col_frontend.prepared_read_pending &&
+              conv_im2col_frontend.prepared_word_tag ==
+              conv_im2col_frontend.request_addr_q[31:conv_im2col_frontend.p_word_shift])
+        else $fatal(1, "Cancelled request belongs to a different prepared descriptor");
+      assert (!conv_im2col_frontend.cache_port_valid && conv_im2col_frontend.request_capture_ready)
+        else $fatal(1, "Cancelled request did not release its request register");
+    end
+  end
+end
+final begin
+  $display("CONV_DESCRIPTOR_REQUEST_PROFILE cancelled=%0d",descriptor_cancel_count);
+end
+
 final begin
   if (profile_enabled || trace_enabled) begin
     $display("CONV_FRONTEND_PROFILE cycles=%0d descriptors=%0d fast_same=%0d fast_pixel=%0d fast_tile=%0d fast_skip=%0d slow=%0d requests=%0d request_stalls=%0d response_waits=%0d response_holds=%0d output_beats=%0d consecutive_outputs=%0d narrow_beats=%0d padding_beats=%0d prefetch_busy=%0d first_response_total=%0d first_response_max=%0d",

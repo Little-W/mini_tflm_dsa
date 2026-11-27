@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import runpy
 import subprocess
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -15,14 +16,14 @@ def main():
     parser.add_argument('--verilator',default='verilator')
     parser.add_argument('--bus-width',type=int,choices=(32,64),default=64)
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    packages=[ROOT/'rtl/npu/conv/conv_im2col_pkg.sv',ROOT/'rtl/npu/conv/vector_engine_pkg.sv']
-    rtl=packages+[p for p in sorted((ROOT/'rtl/npu/conv').rglob('*.sv')) if p not in packages]+sorted((ROOT/'rtl/npu/dma').rglob('*.sv'))
-    rtl += sorted((ROOT/'rtl/common').glob('*.v'))
-    rtl += [ROOT/'rtl/common/add_equal.sv']
-    sources=[Path(__file__).resolve(),ROOT/'test/dma_abort/arbiter_read_tb.sv',*rtl]
+    dependency_tools=runpy.run_path(str(ROOT/'scripts/rtl/source_files.py'))
+    rtl=dependency_tools['with_dependencies']([ROOT/'rtl/npu/dma/axi_block_dma_arbiter.sv'],ROOT)
+    tracked=dependency_tools['input_files'](rtl,ROOT)
+    sources=[Path(__file__).resolve(),ROOT/'test/dma_abort/arbiter_read_tb.sv',*tracked]
     hashes={str(p.relative_to(ROOT)):sha(p) for p in sources}
     command=[args.verilator,'--binary','--timing','--assert','-Wno-fatal','-Wno-PINMISSING',
         '--top-module','arbiter_read_tb',f'-GBUS_WIDTH={args.bus_width}',
+        '-I'+str(ROOT/'include'),
         '--Mdir',str(out/'obj'),'--output-groups','0','--output-split','10000','-j','1',
         '-CFLAGS','-std=c++20 -O1 -fsanitize=undefined -fno-sanitize-recover=all',
         '-LDFLAGS','-fsanitize=undefined',*map(str,rtl),str(sources[1])]

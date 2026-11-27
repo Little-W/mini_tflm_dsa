@@ -264,7 +264,7 @@
     logic rd_command_space, rd_reservation_space;
     logic rd_dma_start;
     logic [4:0] rd_client_accept;
-    logic rd_dma_start_q, rd_dma_start_ready;
+    logic rd_dma_start_q, rd_dma_start_ready, rd_dma_resource_ready;
     wire rd_dma_cancel = local_abort && rd_dma_start_q;
     logic [2:0] rd_dma_tag_q, rd_dma_response_tag, rd_dma_finish_tag;
     logic rd_dma_busy;
@@ -273,7 +273,8 @@
     logic dma_conv_cfg_ready, dma_conv_cfg_valid;
     // 授予仅使用已保存的请求方和命令寄存器状态，隔开请求优先选择与外部握手。
     assign rd_command_space = !rd_dma_start_q;
-    assign rd_reservation_space = !rd_dma_start_q || rd_dma_start_ready;
+    // 资源条件独立于配置有效信号，后续授予在外层统一检查配置请求。
+    assign rd_reservation_space = !rd_dma_start_q || rd_dma_resource_ready;
     assign rd_command_client = rd_grant_client;
     assign rd_response_client = client_e'(rd_dma_response_tag);
     assign rd_active = (rd_pending_count != 0);
@@ -383,8 +384,12 @@
             if (rd_dma_start) rd_grant_client <= C_NONE;
             else if (rd_grant_client == C_NONE) rd_grant_client <= rd_next_client;
             else if (rd_grant_client == C_WINDOW) begin
-                if (local_abort || conv_cfg_valid || !win_req_valid)
+                if (local_abort || conv_cfg_valid)
                     rd_grant_client <= C_NONE;
+                // 在途窗口等待槽位释放时保留授予，其余可服务请求按既有优先级接收。
+                // 队列排空或配置切换后释放窗口授予，空闲判断继续反映实际工作状态。
+                else if (!win_req_valid)
+                    rd_grant_client <= win_busy && rd_next_client == C_NONE ? C_WINDOW : rd_next_client;
                 // 窗口描述符完成握手后立即选择下一请求，连续窗口保持逐周期接收。
                 else if (win_req_ready)
                     rd_grant_client <= rd_next_client;
@@ -635,6 +640,23 @@
     logic [REG_WIDTH-1:0] rd_dma_row_stride_q;
     logic [REG_WIDTH-1:0] rd_dma_rows_to_read_q;
     logic [REG_WIDTH-1:0] rd_dma_valid_cols_q;
+    localparam int p_image_columns_width = $clog2(SIZE+1);
+    localparam logic [p_image_columns_width-1:0] p_default_image_columns =
+        (REG_WIDTH'(DMA_SIZE) > 0 && REG_WIDTH'(DMA_SIZE) <= REG_WIDTH'(SIZE)) ?
+        p_image_columns_width'(REG_WIDTH'(DMA_SIZE)) : p_image_columns_width'(SIZE);
+    logic [p_image_columns_width-1:0] dw_image_columns;
+    logic [p_image_columns_width-1:0] rd_dma_image_columns;
+    logic [p_image_columns_width-1:0] rd_dma_image_columns_q;
+    // 向量客户端先检查列数，其余客户端使用固定块宽；授予只选择准备结果。
+    assign dw_image_columns = (dw_valid_cols > 0 && dw_valid_cols <= REG_WIDTH'(SIZE)) ?
+        p_image_columns_width'(dw_valid_cols) : p_image_columns_width'(SIZE);
+    always_comb begin
+        rd_dma_image_columns = p_default_image_columns;
+        case (rd_command_client)
+            C_DW: rd_dma_image_columns = dw_image_columns;
+            default: ;
+        endcase
+    end
     logic [8-1:0] rd_dma_burst_len_m1_q;
     logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_dma_slot_id_q;
     logic rd_dma_use_16bits_q;
@@ -652,6 +674,7 @@
             rd_dma_row_stride_q <= '0;
             rd_dma_rows_to_read_q <= '0;
             rd_dma_valid_cols_q <= '0;
+            rd_dma_image_columns_q <= p_image_columns_width'(SIZE);
             rd_dma_burst_len_m1_q <= '0;
             rd_dma_slot_id_q <= '0;
             rd_dma_use_16bits_q <= '0;
@@ -672,6 +695,7 @@
                 rd_dma_row_stride_q <= rd_dma_row_stride;
                 rd_dma_rows_to_read_q <= rd_dma_rows_to_read;
                 rd_dma_valid_cols_q <= rd_dma_valid_cols;
+                rd_dma_image_columns_q <= rd_dma_image_columns;
                 rd_dma_burst_len_m1_q <= rd_dma_burst_len_m1;
                 rd_dma_slot_id_q <= rd_dma_slot_id;
                 rd_dma_use_16bits_q <= rd_dma_use_16bits;
@@ -685,6 +709,7 @@
         .DATA_WIDTH       (DATA_WIDTH),
         .SIZE             (DMA_SIZE),
         .IM2COL_SIZE      (SIZE),
+        .p_prepared_image_columns(1'b1),
         .WINDOW_OUTSTANDING(WINDOW_OUTSTANDING),
         .WINDOW_LANES(WINDOW_LANES),
         .DATA_LANES(DATA_LANES),
@@ -712,6 +737,7 @@
         .rd_start           (rd_dma_start_q && !local_abort),
         .rd_tag             (rd_dma_tag_q),
         .rd_start_ready     (rd_dma_start_ready),
+        .rd_resource_ready  (rd_dma_resource_ready),
         .rd_response_tag    (rd_dma_response_tag),
         .rd_finish_tag      (rd_dma_finish_tag),
         .rd_im2col          (rd_dma_im2col_q),
@@ -724,6 +750,7 @@
         .rd_row_stride      (rd_dma_row_stride_q),
         .rd_rows_to_read    (rd_dma_rows_to_read_q),
         .rd_valid_cols      (rd_dma_valid_cols_q),
+        .rd_image_columns   (rd_dma_image_columns_q),
         .rd_burst_len_m1    (rd_dma_burst_len_m1_q),
         .rd_slot_id         (rd_dma_slot_id_q),
         .rd_use_16bits      (rd_dma_use_16bits_q),

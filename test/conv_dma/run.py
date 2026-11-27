@@ -43,7 +43,11 @@ def build(out,top,src,size,args):
     out.mkdir(parents=True,exist_ok=True)
     manifest_path=out/'build.json'
     parameters={'size':size,'top':top,'cache_sets':32,'cache_ways':2,'cache_line_bytes':16,'cache_policy':2}
-    source_hashes={str(p.relative_to(ROOT)):sha(p) for p in src}
+    import runpy
+    dependency_tools=runpy.run_path(str(ROOT/'scripts/rtl/source_files.py'))
+    source_root=args.source_root.resolve()
+    tracked=dependency_tools['input_files'](src,source_root,include_dirs=(source_root/'include',))
+    source_hashes={str(p):sha(p) for p in tracked}
     if args.skip_build:
         existing=args.reuse_builds_root.resolve()/out.name if args.reuse_builds_root else out
         manifest=json.loads((existing/'build.json').read_text())
@@ -58,10 +62,11 @@ def build(out,top,src,size,args):
             (out/'binary_reuse.json').write_text(json.dumps({'source':str(existing),'binary_sha256':sha(binary),'compiled_sources_match':True},indent=2)+'\n')
         return binary
     cmd=[args.verilator,'--binary','--timing','--assert','-sv','--top-module',top,
-         '-Wno-fatal',f'-DTB_SIZE={size}','--Mdir',out/'obj','-j',args.jobs,
+         '-Wno-fatal',f'-DTB_SIZE={size}','-I'+str(source_root/'include'),
+         '--Mdir',out/'obj','-j',args.jobs,
          '-CFLAGS','-std=c++20 -O1','-MAKEFLAGS','OPT_FAST=-O1 OPT_SLOW=-O0',*src]
     rc=run_command(cmd,out/'compile.log')
-    after={str(p.relative_to(ROOT)):sha(p) for p in src}
+    after={str(p):sha(p) for p in tracked}
     text=(out/'compile.log').read_text()
     warnings={kind:text.count('%Warning-'+kind+':')
               for kind in sorted(set(re.findall(r'%Warning-([^:]+):',text)))}

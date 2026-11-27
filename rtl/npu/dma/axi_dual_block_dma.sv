@@ -1,16 +1,7 @@
-/*
- * axi_dual_block_dma -- matrix/im2col AXI block DMA
- * ======================================================
- *
- * One shared read command path executes ordinary matrix blocks or implicit
- * im2col blocks. Both return the same signed-element/row/column/slot interface.
- * The image frontend, raw-input cache, ordinary-allocation guard and ordered
- * AXI read mux live here; loaders neither fetch input bytes nor own geometry.
- * Job configuration is accepted once, so image cache contents survive tiles.
- * The original linear read/write engine remains independent of im2col and
- * preserves GEMM's command/response and full-duplex write timing. The shared
- * read splitter repairs page-crossing rows without delaying legal bursts.
- */
+// SPDX-License-Identifier: Apache-2.0
+// 统一矩阵块与图像展开读取，保存命令归属并管理输入缓存、访问范围和 AXI 读写。
+// 图像命令使用上游已寄存字段准备描述符，前端暂停接收时保存完整命令；
+// 输出数据、行列位置和返回标签保持同周期，独立写通道支持同时读取与写回。
 `default_nettype none
 
 /* 统一矩阵块与图像展开读取，管理卷积缓存、访问范围及独立 AXI 写回。 */ module axi_dual_block_dma #(
@@ -31,7 +22,8 @@
     parameter int unsigned CONV_CACHE_SETS = 128,
     parameter int unsigned CONV_CACHE_WAYS = 2,
     parameter int unsigned CONV_LINE_BYTES = 16,
-    parameter int unsigned CONV_CACHE_POLICY = 3
+    parameter int unsigned CONV_CACHE_POLICY = 3,
+    parameter bit p_prepared_image_columns = 1'b0
 ) (
     input wire logic clk /* 工作时钟 */,
     input wire logic rst_n /* 低有效复位 */,
@@ -75,6 +67,7 @@
     input  wire logic                                   rd_start /* 块读取：启动本次块传输 */,
     input  wire logic [RD_TAG_WIDTH-1:0]                 rd_tag = '0 /* 读命令携带的客户端标签 */,
     output logic                                   rd_start_ready /* 读命令队列可接收新命令 */,
+    output logic                                   rd_resource_ready /* 当前读命令所需资源可用，配置握手单独控制 */,
     output logic [RD_TAG_WIDTH-1:0]                 rd_response_tag /* 当前读取数据对应的客户端标签 */,
     output logic [RD_TAG_WIDTH-1:0]                 rd_finish_tag /* 当前完成事件对应的客户端标签 */,
     input  wire logic                                   rd_linear_read_mode /* 块读取：启用逐行单拍读取模式 */,
@@ -82,6 +75,7 @@
     input  wire logic        [           REG_WIDTH-1:0] rd_row_stride /* 块读取：相邻传输行的字节步长 */,
     input  wire logic        [           REG_WIDTH-1:0] rd_rows_to_read /* 块读取：本次块传输的行数 */,
     input  wire logic        [           REG_WIDTH-1:0] rd_valid_cols /* 块读取：每行实际有效的元素数 */,
+    input  wire logic [$clog2(IM2COL_SIZE+1)-1:0] rd_image_columns = '0 /* 图像读取：上游同边沿保存的有效列数 */,
     input  wire logic        [                     7:0] rd_burst_len_m1 /* 块读取：每行突发传输拍数减一 */,
     input  wire logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_slot_id /* 块读取：读取结果写入的缓存槽号 */,
     input  wire logic                                   rd_use_16bits /* 块读取：输入元素采用16 位格式 */,
@@ -234,6 +228,9 @@
     logic [31:0] frontend_i_tile_p0, frontend_i_tile_q0, frontend_i_tile_group;
     logic [CONV_RW-1:0] frontend_i_tile_rows, frontend_i_tile_cols;
     logic [SLOT_W-1:0] frontend_i_tile_slot;
+    logic frontend_i_tile_narrow;
+    logic image_command_valid, image_descriptor_valid, image_payload_select;
+    logic [CONV_RW-1:0] image_columns;
 
     assign win_rsp_col=32'(win_response_col);
     assign win_req_ready=win_queue_req_ready && !conv_cfg_valid && !rd_start;
@@ -252,7 +249,7 @@
         .frontend_rsp_valid(fe_output_valid && fe_output_window),.frontend_rsp_ready(win_frontend_rsp_ready),
         .frontend_rsp_col(fe_output_col),.frontend_rsp_data(fe_output_data),.frontend_rsp_mask(fe_output_mask),
         .frontend_rsp_last(fe_output_last),.frontend_error(fe_window_error));
-    logic accept_read, accept_linear, accept_image, image_start_ready;
+    logic accept_read, accept_linear, accept_image, image_start_ready, image_resource_ready;
     logic configuration_available_q;
     logic win_payload_select;
     assign rd_busy = linear_busy || conv_active || fe_busy || fe_output_valid || win_busy || !guard_idle || !mux_idle;
@@ -260,12 +257,14 @@
     // 线性命令保留最后返回拍的接收机会，图像命令在最后输出后完成。
     // 同一图像配置内可继续处理下一块，后台预取与下一块的读取重叠。
     assign rd_finish_beat = linear_finish || conv_done_r;
-    assign image_start_ready = !conv_cfg_valid && !conv_active && !conv_pending &&
+    assign image_resource_ready = !conv_active && !conv_pending &&
         (!linear_busy || linear_finish) && !win_busy && (!fe_busy || job_conv);
+    assign image_start_ready = !conv_cfg_valid && image_resource_ready;
     // 切换至线性读取前，先排空图像前端及其物理读取通道。
-    assign rd_start_ready = rd_im2col ? image_start_ready :
-        (!conv_cfg_valid && linear_start_ready && !conv_active && !conv_pending &&
+    assign rd_resource_ready = rd_im2col ? image_resource_ready :
+        (linear_start_ready && !conv_active && !conv_pending &&
          !fe_busy && !fe_output_valid && !win_busy && (!job_conv || (guard_idle && mux_idle)));
+    assign rd_start_ready = !conv_cfg_valid && rd_resource_ready;
     assign accept_linear = rd_start && !abort && !rd_im2col && rd_start_ready;
     assign accept_image = rd_start && !abort && rd_im2col && image_start_ready;
     assign accept_read = accept_linear || accept_image;
@@ -277,14 +276,33 @@
     // 普通描述符只在窗口队列为空时接收，等待前端期间禁止窗口入队。
     // 队列占用状态直接选择已准备字段，最终返回周期只控制该项是否有效。
     assign win_payload_select=win_busy;
-    assign frontend_i_tile_valid = conv_pending || win_frontend_valid;
-    assign frontend_i_tile_p0 = win_payload_select ? win_frontend_p0 : p0_q;
-    assign frontend_i_tile_q0 = win_payload_select ? win_frontend_q0 : q0_q;
-    assign frontend_i_tile_rows = win_payload_select ? CONV_RW'(1) : rows_q;
+    // 上游命令字段已经寄存，接收图像命令时可同时进入前端描述符准备阶段。
+    // 前端暂停期间继续保存完整字段，后续接收读取保存项；窗口请求保持独立顺序。
+    assign image_command_valid = CONV_SUPPORTED && job_conv && !fe_error &&
+        rd_rows_to_read != 0 && rd_rows_to_read <= REG_WIDTH'(IM2COL_SIZE);
+    assign image_descriptor_valid = accept_image && image_command_valid;
+    assign image_payload_select = !win_payload_select && !conv_pending;
+    // 上游命令寄存器同时保存图像列数，描述符入口直接使用完整结果。
+    if (p_prepared_image_columns) begin : g_prepared_image_columns
+        assign image_columns = rd_image_columns;
+    end else begin : g_direct_image_columns
+        assign image_columns = (rd_valid_cols > 0 && rd_valid_cols <= REG_WIDTH'(IM2COL_SIZE)) ?
+            CONV_RW'(rd_valid_cols) : CONV_RW'(IM2COL_SIZE);
+    end
+    assign frontend_i_tile_valid = conv_pending || win_frontend_valid || image_descriptor_valid;
+    assign frontend_i_tile_p0 = win_payload_select ? win_frontend_p0 :
+        image_payload_select ? rd_p0 : p0_q;
+    assign frontend_i_tile_q0 = win_payload_select ? win_frontend_q0 :
+        image_payload_select ? rd_q0 : q0_q;
+    assign frontend_i_tile_rows = win_payload_select ? CONV_RW'(1) :
+        image_payload_select ? CONV_RW'(rd_rows_to_read) : rows_q;
     assign frontend_i_tile_cols = win_payload_select ?
-        (win_cols_valid ? CONV_RW'(win_frontend_cols) : CONV_RW'(IM2COL_SIZE+1)) : cols_q;
-    assign frontend_i_tile_slot = slot_q;
-    assign frontend_i_tile_group = group_q;
+        (win_cols_valid ? CONV_RW'(win_frontend_cols) : CONV_RW'(IM2COL_SIZE+1)) :
+        image_payload_select ? image_columns : cols_q;
+    assign frontend_i_tile_slot = image_payload_select ? rd_slot_id : slot_q;
+    assign frontend_i_tile_group = image_payload_select ? rd_group : group_q;
+    assign frontend_i_tile_narrow = !win_payload_select &&
+        !(image_payload_select ? rd_wide_im2col && DATA_LANES >= WINDOW_LANES : conv_wide);
     assign rd_error = linear_done ? linear_error :
                       conv_done_r ? conv_done_error :
                       command_im2col ? (conv_command_error || fe_error) : linear_error;
@@ -332,14 +350,12 @@
                 conv_active <= 1'b1;
                 p0_q <= rd_p0; q0_q <= rd_q0; group_q <= rd_group;
                 rows_q <= CONV_RW'(rd_rows_to_read); slot_q <= rd_slot_id;
-                cols_q <= (rd_valid_cols > 0 && rd_valid_cols <= REG_WIDTH'(IM2COL_SIZE)) ?
-                          CONV_RW'(rd_valid_cols) : CONV_RW'(IM2COL_SIZE);
-                if (!CONV_SUPPORTED || !job_conv || fe_error ||
-                    rd_rows_to_read == 0 || rd_rows_to_read > REG_WIDTH'(IM2COL_SIZE)) begin
+                cols_q <= image_columns;
+                if (!image_command_valid) begin
                     conv_pending <= 1'b0; conv_finished <= 1'b1;
                     conv_command_error <= 1'b1; descriptor_error <= 1'b1;
                 end else begin
-                    conv_pending <= 1'b1; conv_finished <= 1'b0;
+                    conv_pending <= !fe_tile_ready; conv_finished <= 1'b0;
                     conv_command_error <= 1'b0;
                 end
             end
@@ -503,7 +519,7 @@
             .tile_p0(frontend_i_tile_p0), .tile_q0(frontend_i_tile_q0),
             .tile_rows(frontend_i_tile_rows), .tile_cols(frontend_i_tile_cols),
             .tile_slot(frontend_i_tile_slot), .tile_group(frontend_i_tile_group),
-            .tile_narrow(!win_payload_select && !conv_wide),
+            .tile_narrow(frontend_i_tile_narrow),
             .wr_valid(fe_wr_valid), .wr_ready(fe_input_ready), .wr_slot(fe_slot),
             .wr_row(fe_row), .wr_col(fe_col), .wr_data(fe_data), .wr_mask(fe_mask),
             .tile_done(fe_done), .tile_error(fe_tile_error), .error(fe_error), .busy(fe_busy), .wr_last(fe_wr_last),

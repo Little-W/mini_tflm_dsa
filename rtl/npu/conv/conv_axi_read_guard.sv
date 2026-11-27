@@ -134,10 +134,10 @@ module conv_axi_read_guard #( // 将外部读取限制在已配置的有效字�
         for (genvar allocation=0; allocation<4; allocation++) begin : g_allocation
             wire below_base, before_end_page;
             wire unused_base_equal, unused_page_equal;
-            unsigned_compare #(.p_width(33)) u_request_base (
+            conv_guard_range_compare #(.p_width(33)) u_request_base (
                 .i_a(request_addr_ext), .i_b({1'b0,base_q[allocation]}),
                 .o_less(below_base), .o_equal(unused_base_equal));
-            unsigned_compare #(.p_width(21)) u_request_end_page (
+            conv_guard_range_compare #(.p_width(21)) u_request_end_page (
                 .i_a(request_addr_ext[32:12]), .i_b(end_q[allocation][32:12]),
                 .o_less(before_end_page), .o_equal(unused_page_equal));
             // 结束地址为开区间端点，页号关系与页内末字同时计算。
@@ -155,7 +155,7 @@ module conv_axi_read_guard #( // 将外部读取限制在已配置的有效字�
         for (genvar allocation=0; allocation<4; allocation++) begin : g_allocation
             wire below_base, after_end;
             wire unused_base_equal, unused_end_equal;
-            unsigned_compare #(.p_width(33)) u_request_base (
+            conv_guard_range_compare #(.p_width(33)) u_request_base (
                 .i_a(request_addr_ext), .i_b({1'b0,base_q[allocation]}),
                 .o_less(below_base), .o_equal(unused_base_equal));
             unsigned_compare #(.p_width(33)) u_request_end (

@@ -270,44 +270,125 @@
   },
   "four_state": {
     "passed": true,
-    "reference_commit": "cedf4ed33661a53c8194eca1d484cdc2279d7549",
-    "source_sha256": "6f5255eca0beeef9e897e79b06ec69808571c09d5c9ce3a78d7aff9a96166ea8",
-    "test_source_sha256": "31c8d7de81e5b07b0059f877cd2f6eee952a90ab3adb5dd3cca709bc2c525040",
+    "reference_commit": "c9614d3f52d8cdb7baafeebffa26325d05d5a40d",
+    "source_sha256": "047fd62be32cd6cb745e41df15ba73b0a02a02e45aedd9b221444593e32690e4",
+    "test_source_sha256": "dda69babbd0e27f9cc84b32fe14ccc57ab6791436bf74b9998d6a54b76ca9bbe",
     "profiles": [
       {
         "address_width": 32,
         "data_width": 32,
         "passed": true,
-        "cycles": 16384,
-        "comparisons": 32768,
-        "log_sha256": "0ee354f04cb4182c5331c2c839377182d2d5a9d918dcd229b82e234b18ef0b5b"
+        "cycles": 16920,
+        "comparisons": 33840,
+        "input_coverage": {
+          "input_bits": 90,
+          "all_four_states_per_bit": true,
+          "covered_bits": 90,
+          "bit_observations": {
+            "zero": 595929,
+            "one": 557221,
+            "unknown": 184780,
+            "high_impedance": 184870
+          }
+        },
+        "directed_events": {
+          "direct_addresses": 1,
+          "split_addresses": 1,
+          "physical_addresses": 3,
+          "physical_data": 4,
+          "physical_responses": 3,
+          "logical_responses": 2,
+          "stalled_cycles": 1
+        },
+        "log_sha256": "99aa80efa9f0a2c86047e9d67114086ee1e7c0dd60bb365384ec78e8bff3e2ce"
       },
       {
         "address_width": 32,
         "data_width": 64,
         "passed": true,
-        "cycles": 16384,
-        "comparisons": 32768,
-        "log_sha256": "0ee354f04cb4182c5331c2c839377182d2d5a9d918dcd229b82e234b18ef0b5b"
+        "cycles": 17100,
+        "comparisons": 34200,
+        "input_coverage": {
+          "input_bits": 126,
+          "all_four_states_per_bit": true,
+          "covered_bits": 126,
+          "bit_observations": {
+            "zero": 855872,
+            "one": 781726,
+            "unknown": 258049,
+            "high_impedance": 258953
+          }
+        },
+        "directed_events": {
+          "direct_addresses": 1,
+          "split_addresses": 1,
+          "physical_addresses": 3,
+          "physical_data": 4,
+          "physical_responses": 3,
+          "logical_responses": 2,
+          "stalled_cycles": 1
+        },
+        "log_sha256": "f0da35323a156028958e0042fc718f598cf2efb3bb2f3fba9961ef2cc4054f88"
       },
       {
         "address_width": 12,
         "data_width": 8,
         "passed": true,
-        "cycles": 16384,
-        "comparisons": 32768,
-        "log_sha256": "0ee354f04cb4182c5331c2c839377182d2d5a9d918dcd229b82e234b18ef0b5b"
+        "cycles": 16685,
+        "comparisons": 33370,
+        "input_coverage": {
+          "input_bits": 43,
+          "all_four_states_per_bit": true,
+          "covered_bits": 43,
+          "bit_observations": {
+            "zero": 274719,
+            "one": 266505,
+            "unknown": 88118,
+            "high_impedance": 88113
+          }
+        },
+        "directed_events": {
+          "direct_addresses": 1,
+          "split_addresses": 1,
+          "physical_addresses": 3,
+          "physical_data": 4,
+          "physical_responses": 3,
+          "logical_responses": 2,
+          "stalled_cycles": 1
+        },
+        "log_sha256": "1ef58f0fe8121a7019f1244c9a1fa2c09d3f27e04a162fa924113ed683701664"
       },
       {
         "address_width": 40,
         "data_width": 128,
         "passed": true,
-        "cycles": 16384,
-        "comparisons": 32768,
-        "log_sha256": "0ee354f04cb4182c5331c2c839377182d2d5a9d918dcd229b82e234b18ef0b5b"
+        "cycles": 17500,
+        "comparisons": 35000,
+        "input_coverage": {
+          "input_bits": 206,
+          "all_four_states_per_bit": true,
+          "covered_bits": 206,
+          "bit_observations": {
+            "zero": 1480875,
+            "one": 1278485,
+            "unknown": 422782,
+            "high_impedance": 422858
+          }
+        },
+        "directed_events": {
+          "direct_addresses": 1,
+          "split_addresses": 1,
+          "physical_addresses": 3,
+          "physical_data": 4,
+          "physical_responses": 3,
+          "logical_responses": 2,
+          "stalled_cycles": 1
+        },
+        "log_sha256": "dd6ad73ffa9bc2747eb98ce2642f742c536f2efb142b91d32f29df969df5617e"
       }
     ],
-    "comparisons": 131072
+    "coverage_helper_sha256": "ba4762ed86b389e3fb1fc6667932fe2ebb911b63b6cb78c1cffbe329e10faff2",
+    "comparisons": 136410
   },
   "protocol": {
     "source_sha256": {

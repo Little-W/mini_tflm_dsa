@@ -85,10 +85,32 @@ def expand_ports(path, output):
     return descriptions
 
 
+def match_optional_inputs(reference, current):
+    """为参照接口补充可选输入；新增输入在参照设计中保持未使用。"""
+    left, right = [json.loads(path.read_text()) for path in (reference, current)]
+    target, candidate = left['modules'][TOP], right['modules'][TOP]
+    added = []
+    for name, port in candidate['ports'].items():
+        if name in target['ports']:
+            continue
+        if name != 'rd_image_columns' or port['direction'] != 'input':
+            raise RuntimeError('Unsupported optional input: ' + name)
+        used = [bit for net in target['netnames'].values() for bit in net['bits'] if isinstance(bit, int)]
+        first = max(used, default=1) + 1
+        bits = list(range(first, first + len(port['bits'])))
+        target['ports'][name] = {'direction': 'input', 'bits': bits}
+        target['netnames'][name] = {'hide_name': 0, 'bits': bits, 'attributes': {}}
+        added.append(name)
+    reference.write_text(json.dumps(left) + '\n')
+    return added
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--reference-rev', required=True)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--prepared-image-columns', action='store_true',
+                        help='将保存列数按已证明的原始列数关系连接，并检查启用配置')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -106,6 +128,19 @@ def main():
                     if label == 'reference' else (ROOT / name).read_bytes())
             snapshot_hashes[label][name] = hashlib.sha256(data).hexdigest()
             text = data.decode()
+            if args.prepared_image_columns and label == 'current' and name == RTL:
+                text = text.replace("parameter bit p_prepared_image_columns = 1'b0",
+                                    "parameter bit p_prepared_image_columns = 1'b1")
+                declaration = re.search(r'^.*input[^\n]*\brd_image_columns\b[^\n]*\n', text, re.M)
+                if declaration is None:
+                    raise RuntimeError('Prepared column input is missing')
+                text = text[:declaration.start()] + text[declaration.end():]
+                connection = '''    logic [CONV_RW-1:0] rd_image_columns;
+    assign rd_image_columns=(rd_valid_cols>0 && rd_valid_cols<=REG_WIDTH'(IM2COL_SIZE)) ?
+        CONV_RW'(rd_valid_cols) : CONV_RW'(IM2COL_SIZE);
+'''
+                text = text.replace('    logic job_conv, job_read_guard;',
+                                    connection + '    logic job_conv, job_read_guard;')
             if name in CHILDREN:
                 text = module_header(text)
             path = folder / Path(name).name
@@ -130,6 +165,8 @@ def main():
         'passed': False, 'reference_revision': args.reference_rev,
         'source_sha256': source_hashes, 'snapshot_sha256': snapshot_hashes,
         'public_inputs_constrained': False, 'child_outputs_constrained': False,
+        'prepared_image_columns': args.prepared_image_columns,
+        'prepared_input_relation': 'The saved columns equal normalization of the raw command field; proven separately across command capture events.' if args.prepared_image_columns else None,
         'scope': 'Every public output, every shared clocked state, and every unchanged child port',
         'profiles': [],
     }
@@ -154,6 +191,8 @@ def main():
             ports[label] = expand_ports(raw, expanded)
         if ports['reference'] != ports['current']:
             raise RuntimeError('Child port boundaries differ')
+        optional_inputs = match_optional_inputs(out / (name + '_reference_expanded.json'),
+                                               out / (name + '_current_expanded.json'))
         commands = []
         for label in ('reference', 'current'):
             path = out / (name + '_' + label + '_expanded.json')
@@ -175,7 +214,8 @@ def main():
             'name': name, 'data_width': data, 'size': size, 'im2col_size': image_size,
             'bus_width': bus, 'window_lanes': lanes, 'cache_blocks': blocks,
             'passed': passed, 'equivalent_bits': int(match[1]) if match else None,
-            'child_ports': ports['current'], 'log_sha256': digest(log),
+            'child_ports': ports['current'], 'optional_reference_inputs': optional_inputs,
+            'log_sha256': digest(log),
         }
         report['profiles'].append(row)
         print(json.dumps({key: value for key, value in row.items() if key != 'child_ports'}), flush=True)

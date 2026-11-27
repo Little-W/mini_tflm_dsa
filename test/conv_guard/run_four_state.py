@@ -21,6 +21,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out",type=Path,required=True)
     parser.add_argument("--reference-ref",default="415a70a")
+    parser.add_argument("--fpga", action="store_true")
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     source=(ROOT/SOURCE).read_text()
     reference=read_rtl_source(f"{args.reference_ref}:{SOURCE}",cwd=ROOT,text=True)
@@ -75,23 +76,27 @@ def main():
     assert bench.count(marker)==1;bench=bench.replace(marker,extra+marker)
     tb=out/"tb.sv";tb.write_text(bench);binary=out/"simulation"
     dependencies=runpy.run_path(str(ROOT/"scripts/rtl/source_files.py"))["with_dependencies"](paths,ROOT)
+    source_hashes={str(path):digest(path) for path in dependencies}
     for path in dependencies:
         if path in paths:continue
         target=out/path.name
         target.write_text(path.read_text().replace("parameter int unsigned","parameter integer").replace("localparam int unsigned","localparam integer"))
         paths.append(target)
+    options=["-DSYNTHESIS=1", "-DXILINX_FPGA=1"] if args.fpga else []
     with (out/"build.log").open("w") as f:
-        subprocess.run(["iverilog","-g2012","-s","tb_guard_compare","-o",str(binary),*map(str,paths),str(tb)],stdout=f,stderr=subprocess.STDOUT,check=True)
+        subprocess.run(["iverilog","-g2012",*options,"-s","tb_guard_compare","-o",str(binary),*map(str,paths),str(tb)],stdout=f,stderr=subprocess.STDOUT,check=True)
     with (out/"run.log").open("w") as f:
         subprocess.run(["vvp",str(binary)],stdout=f,stderr=subprocess.STDOUT,check=True,timeout=120)
     output=(out/"run.log").read_text()
     assert "GUARD_COMPARE_PASS cycles=20000 configurations=4" in output
     assert output.count("GUARD_COMPARE_CASE_PASS")==4
     assert source==(ROOT/SOURCE).read_text()
+    assert all(digest(Path(path))==value for path,value in source_hashes.items())
     result={"passed":True,"source_sha256":hashlib.sha256(source.encode()).hexdigest(),
             "reference_sha256":hashlib.sha256(reference.encode()).hexdigest(),
             "test_sha256":digest(Path(__file__)),"testbench_sha256":digest(tb),"log_sha256":digest(out/"run.log"),
             "cycles":20000,"configurations":4,"strict_four_state":True,
+            "fpga":args.fpga,"dependency_sha256":source_hashes,
             "simulation_type_conversion":"same-width logic state and identical enumeration values"}
     (out/"summary.json").write_text(json.dumps(result,indent=2)+"\n")
     print(output)

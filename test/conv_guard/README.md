@@ -44,22 +44,32 @@ python3 test/dma_page_guard/run.py --guard-only --out build/guard_page_range/pag
 
 ## 当前结构验证
 
-`parallel_validation.json` 保存当前源文件哈希、完整状态证明、四态比较及独立映射结果。证明覆盖七组地址与数据位宽配置，共检查 7,292 个等价位；四态仿真在四组配置下各运行 20,000 个周期，比较全部公开输出和保存状态。
+读取起始地址和分配边界使用三位分组比较，各组独立计算大小关系，再按平衡结构归并。结束页号采用相同结构；页内字节检查和突发地址更新保持原有周期。含未知位的输入保留字节分组关系的四态传播规则。
+
+`parallel_validation.json` 保存全部依赖文件的 SHA-256、形式证明、四态比较及完整模块映射结果。普通配置和 FPGA 配置分别覆盖七组地址与数据位宽，共完成 14 项无约束状态等价证明。两种配置各比较四种参数组合，每种组合运行 20,000 个周期，比较全部公开输出与保存状态。
 
 ```bash
 python3 test/conv_guard/run_control_formal.py \
-  --reference-ref 8b3728c0 --fpga --out build/guard_parallel/formal
+  --reference-ref 9e3e5d6a --out build/guard_parallel/formal
+python3 test/conv_guard/run_control_formal.py \
+  --reference-ref 9e3e5d6a --fpga --out build/guard_parallel/formal_fpga
 python3 test/conv_guard/run_four_state.py \
-  --reference-ref 8b3728c0 --out build/guard_parallel/four_state
+  --reference-ref 9e3e5d6a --out build/guard_parallel/four_state
+python3 test/conv_guard/run_four_state.py \
+  --reference-ref 9e3e5d6a --fpga --out build/guard_parallel/four_state_fpga
+python3 test/conv_guard/synthesis.py \
+  --reference-ref 9e3e5d6a --out build/guard_parallel/reference_mapping
+python3 test/conv_guard/synthesis.py --out build/guard_parallel/current_mapping
 ```
 
 32 位地址、64 位数据、四笔在途事务并启用 GEMM 页拆分时，独立 Xilinx 7 系列映射结果如下。映射使用 6,667 ps 延迟目标、300 ps 连接代价和最多八输入的组合映射。
 
-| 指标 | `2d3142b3` | 当前结构 |
+| 指标 | 远端参考提交 `9e3e5d6a` | 当前结构 |
 |---|---:|---:|
-| 逻辑 LUT | 909 | 929 |
+| 逻辑 LUT | 674 | 845 |
 | 触发器 | 392 | 392 |
-| 寄存器之间的最长组合单元数 | 12 | 10 |
-| 输入地址到寄存器的最长组合单元数 | 11 | 9 |
+| 推断 DSP | 12 | 8 |
+| 寄存器之间的最长组合单元数 | 10 | 10 |
+| 分配起始地址至保存状态的最长组合单元数 | 10 | 9 |
 
-模块接口的周期行为保持一致。完整 SoC 的组合深度包含上游缓冲与下游接收逻辑；150 MHz 的实现时序需在目标器件上完成布局布线后检查。
+组合路径统计展开模块边界并包含 DSP 的未寄存部分。完整模块的当前最长路径来自突发地址递增。模块接口的周期行为保持一致；150 MHz 的实现时序需要目标器件的布局布线报告。

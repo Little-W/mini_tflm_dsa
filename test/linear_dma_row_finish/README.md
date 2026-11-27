@@ -6,7 +6,9 @@
 
 ## 验证
 
-`run.py` 比较完整 DMA 模块。五组参数分别采用普通编译和 FPGA 综合编译条件，检查全部公开输出、匹配的内部状态以及行末状态与拍计数的关系。功能输入不施加限制。两种编译条件另各执行 30,001 个四态周期，包含未知控制、数据和复位。
+`run.py` 比较完整 DMA 模块。五组参数分别采用普通编译和 FPGA 综合编译条件，检查全部公开输出、匹配的内部状态以及行末状态与拍计数的关系。功能输入不施加限制。两种编译条件另各执行 32,202 个四态周期，包含未知控制、数据和复位。
+
+四态刺激覆盖全部 429 位功能输入，每个输入位均独立经历 0、1、X、Z。两种编译条件各完成一笔读取、三笔写入、六个物理写地址、十四个写数据拍、四次普通行结束、两次跨字行结束和一次中止，握手及完成事件均独立计数。仿真副本将嵌套 packed 字段先赋给同位宽中间线，再执行原范围的位选择；数据位序及四态值保持一致。
 
 事务检查覆盖 64 位 AXI、一个或四个未完成写事务、固定延迟和随机阻塞。四种组合各运行 276 条命令、1,919 个物理突发和 103,590 个总线数据拍。中止与恢复检查覆盖 24 种并发读写、错误响应、等待数据保持、准备阶段中止、复位和恢复场景。结果均通过。
 
@@ -26,6 +28,7 @@
 
 ```bash
 python3 test/linear_dma_row_finish/run.py --out build/linear_dma_row_finish
+python3 test/linear_dma_row_finish/run.py --section four_state --out build/linear_dma_row_four_state
 python3 test/linear_dma_write_4k/run.py --fpga --bus-width 64 \
   --outstanding 1 4 --out build/linear_dma_row_write
 python3 test/dma_abort_boundary/run.py --fpga --bus-width 64 \

@@ -40,7 +40,7 @@ def main():
         model = out / 'lut6_2.sv'
         model.write_text(re.search(r'^module LUT6_2\b.*?^endmodule', library.read_text(), re.M | re.S).group(0) + '\n')
         sources.append(model)
-        options.append('-DSYNTHESIS=1')
+        options.extend(['-DSYNTHESIS=1', '-DXILINX_FPGA=1'])
         primitive_library_sha256 = hashlib.sha256(library.read_bytes()).hexdigest()
     hashes = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}
     obj = out / 'obj'

@@ -38,7 +38,7 @@ def main():
         library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
         model = out / 'lut6_2.sv'
         model.write_text(re.search(r'^module LUT6_2\b.*?^endmodule', library.read_text(), re.M | re.S).group(0) + '\n')
-        primitive_options = ' -D SYNTHESIS=1 ' + shlex.quote(str(model))
+        primitive_options = ' -D SYNTHESIS=1 -D XILINX_FPGA=1 ' + shlex.quote(str(model))
         primitive_library_sha256 = hashlib.sha256(library.read_bytes()).hexdigest()
     cases = [(32, width, split) for width in (32, 64) for split in (0, 1)]
     cases += [(16, 16, 1), (33, 128, 1), (40, 256, 1)]

@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import subprocess
 import sys
 
@@ -42,7 +43,6 @@ def main():
     sources += [p for p in sorted(conv.rglob('*.sv')) if p not in sources]
     sources += sorted((ROOT/'rtl/npu/dma').rglob('*.sv'))
     sources += [ROOT/'rtl/common/pseudo_dual_port_ram.v',HERE/'window_dma_top.sv',HERE/'main.cpp']
-    import runpy
     sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
     source_root = args.source_root.resolve()
     sources = [source_root / source.relative_to(ROOT)
@@ -65,31 +65,31 @@ def main():
         primitive_file = out / 'xilinx_primitives.sv'
         primitive_file.write_text('\n\n'.join(models) + '\n')
         simulation_sources = []
+        simulation_text = runpy.run_path(str(ROOT / 'test/monitors/observer_text.py'))['simulation_text']
         for source in sources:
             if source.parent == ROOT / 'test/monitors':
                 text = source.read_text()
-                opening = '`ifndef SYNTHESIS\n'
-                start, end = text.find(opening), text.rfind('`endif')
-                if start < 0:
-                    simulation_sources.append(source)
-                    continue
-                if end < start or text[end + len('`endif'):].strip():
-                    raise RuntimeError('Unexpected observer guard: ' + str(source))
                 destination = out / 'observers' / source.name
                 destination.parent.mkdir(exist_ok=True)
-                destination.write_text(text[:start] + text[start + len(opening):end] + text[end + len('`endif'):])
+                destination.write_text(simulation_text(text))
                 simulation_sources.append(destination)
             else:
                 simulation_sources.append(source)
         sources = [*simulation_sources, primitive_file]
         defines = ['-DSYNTHESIS=1', '-DXILINX_FPGA=1', '-DNPU_SIM_ASSERT=1']
         cppflags += ' -DWINDOW_RESPONSE_INTERVAL=3 -fsanitize=undefined -fno-sanitize-recover=all'
-    def verify(name,source_files,folder):
+    dependency_tools = runpy.run_path(str(ROOT / 'scripts/rtl/source_files.py'))
+    def verify(name,source_files,folder,include_root):
         folder.mkdir(parents=True,exist_ok=True)
-        hashes={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in source_files}
+        inputs = dependency_tools['input_files'](source_files, include_root,
+                                                 include_dirs=(include_root / 'include',))
+        inputs += [Path(__file__).resolve(), ROOT / 'test/monitors/sources.py',
+                   ROOT / 'test/monitors/observer_text.py', ROOT / 'scripts/rtl/source_files.py']
+        hashes={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
         command([args.verilator,'--cc','--exe','--timing','--assert','--top-module','window_dma_top',
                  '-Wno-fatal','-Wno-PINMISSING','--Mdir',folder/'obj','--output-groups','0',
                  '--output-split','12000','-CFLAGS',cppflags,
+                 '-I'+str(include_root/'include'),
                  *(['-LDFLAGS', '-fsanitize=undefined'] if args.fpga else []),
                  *defines, ROOT/'test/conv_npu/simulator.vlt',*source_files],folder/'elaborate.log')
         command(['make','-C',folder/'obj','-f','Vwindow_dma_top.mk','-j',args.jobs,
@@ -110,7 +110,7 @@ def main():
         (folder/'summary.json').write_text(json.dumps(result,indent=2)+'\n')
         print(text,end='')
         return result,trace
-    current,current_trace=verify('current',sources,out)
+    current,current_trace=verify('current',sources,out,source_root)
     if args.reference_ref:
         reference_sources=[]
         reference=out/'reference'
@@ -128,7 +128,11 @@ def main():
                 target.write_bytes(content);reference_sources.append(target)
             else:
                 reference_sources.append(source)
-        previous,previous_trace=verify(args.reference_ref,reference_sources,reference)
+        for header in (source_root/'include').glob('*.svh'):
+            target = reference/'sources/include'/header.name
+            target.parent.mkdir(parents=True,exist_ok=True)
+            target.write_bytes(read_rtl_source(f'{args.reference_ref}:include/{header.name}',cwd=ROOT))
+        previous,previous_trace=verify(args.reference_ref,reference_sources,reference,reference/'sources')
         if current_trace.read_bytes()!=previous_trace.read_bytes():
             raise RuntimeError('Resident-stream cycle comparison differs')
         current.update(reference=previous,reference_ref=args.reference_ref,

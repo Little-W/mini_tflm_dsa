@@ -1,4 +1,5 @@
 `timescale 1ns/1ps
+// 检查读取仲裁的命令接收、请求取消、AXI 地址保持以及返回标签释放。
 module arbiter_read_tb #(parameter int BUS_WIDTH=32);
     logic clk=0, rst_n=0, abort=0;
     always #5 clk=~clk;
@@ -9,6 +10,9 @@ module arbiter_read_tb #(parameter int BUS_WIDTH=32);
     wire [31:0] araddr;
     wire [7:0] arlen;
     wire [2:0] arsize;
+    wire [1:0] arburst;
+    logic address_stalled_q=0;
+    logic [44:0] stalled_address_q;
     int pending=0, ar_count=0, r_count=0;
     int completions[5]='{default:0};
     int cases=0, checks=0, cancellations=0, simultaneous_release=0;
@@ -36,7 +40,7 @@ module arbiter_read_tb #(parameter int BUS_WIDTH=32);
         .dw_base_addr(32'h5000),.dw_row_stride(32'd16),.dw_rows_to_read(32'd1),.dw_valid_cols(32'd4),
         .oa_req(1'b0),.oa_start(1'b0),.oa_base_addr(32'd0),.oa_row_stride(32'd0),
         .oa_rows_to_read(32'd0),.oa_burst_len_m1(8'd0),.oa_src_wdata('0),.oa_src_wmask('0),.oa_src_wvalid(1'b0),
-        .m_axi_arvalid(arvalid),.m_axi_arready(arready),.m_axi_araddr(araddr),.m_axi_arlen(arlen),.m_axi_arsize(arsize),
+        .m_axi_arvalid(arvalid),.m_axi_arready(arready),.m_axi_araddr(araddr),.m_axi_arlen(arlen),.m_axi_arsize(arsize),.m_axi_arburst(arburst),
         .m_axi_rvalid(rvalid),.m_axi_rready(rready),.m_axi_rdata({(BUS_WIDTH/8){8'h5a}}),.m_axi_rresp(2'b00),.m_axi_rlast(1'b1),
         .m_axi_awready(1'b1),.m_axi_wready(1'b1),.m_axi_bvalid(1'b0),.m_axi_bresp(2'b00),.idle
     );
@@ -49,9 +53,16 @@ module arbiter_read_tb #(parameter int BUS_WIDTH=32);
         cycle++;
         if(!rst_n)begin
             last_command_cycle=-1;
+            address_stalled_q<=0;
             pending<=0;ar_count<=0;r_count<=0;
             completions<='{default:0};
         end else begin
+            // AXI 地址未被接收时，后续周期必须保持有效和全部地址字段。
+            if(address_stalled_q)
+                check(arvalid && {araddr,arlen,arsize,arburst}==stalled_address_q,
+                      "Stalled AXI address remains valid and stable");
+            address_stalled_q<=arvalid&&!arready;
+            if(arvalid&&!arready)stalled_address_q<={araddr,arlen,arsize,arburst};
             case({arvalid&&arready,rvalid&&rready})
                 2'b10:pending<=pending+1;
                 2'b01:pending<=pending-1;
@@ -85,6 +96,13 @@ module arbiter_read_tb #(parameter int BUS_WIDTH=32);
         rst_n=1;
         @(negedge clk);
     endtask
+    task automatic address_offered;
+        for(int cycle=0;cycle<100;cycle++)begin
+            if(arvalid)return;
+            @(negedge clk);
+        end
+        $fatal(1,"Accepted descriptor did not produce an AXI address");
+    endtask
     task automatic launch(input int client);
         request=5'(1<<client);start=5'(1<<client);
         do @(posedge clk);while(!granted[client]);
@@ -117,11 +135,11 @@ module arbiter_read_tb #(parameter int BUS_WIDTH=32);
             check(ar_count==0 && completions[client]==0,"Cancelled descriptor issues no read or completion");
             recovery(client,0,0);
         end
-        // The command register may wait behind an accepted, stalled address.
+        // 首条命令已经提出 AXI 地址，第二条命令在寄存接收阶段取消。
         for(int client=0;client<5;client++)begin
             reset_case();arready=0;
-            launch(1);@(negedge clk);
-            check(arvalid && !dut.rd_dma_start_ready,"Accepted descriptor holds its AXI address");
+            launch(1);address_offered();
+            check(arvalid && !arready,"Accepted descriptor holds its AXI address");
             launch(client);abort=1;
             repeat(3)@(negedge clk);
             check(!dut.rd_dma_start_q && busy[1] && arvalid,"Abort cancels the pending descriptor and retains the accepted read");
@@ -129,22 +147,27 @@ module arbiter_read_tb #(parameter int BUS_WIDTH=32);
             check(ar_count==1 && completions[1]==1,"Only the accepted descriptor reaches AXI");
             recovery(client,1,client==1 ? 1 : 0);
         end
-        // Cancellation and an older registered completion may share an edge.
+        // 观察末拍接收资格，在同一边沿保存待取消命令和上一命令的完成事件。
         for(int client=0;client<5;client++)begin
             reset_case();launch(1);
             wait(pending==1);@(negedge clk);
-            request=5'(1<<client);start=5'(1<<client);
+            request=5'(1<<client);start=0;
             do @(negedge clk);while(!granted[client]);
             serve_reads=1;
+            #1;
+            while(!dut.rd_finish_beat)begin @(negedge clk);#1;end
+            check(granted[client],"Reserved client remains granted until its start");
+            start=5'(1<<client);
             @(posedge clk);
             @(negedge clk);request=0;start=0;abort=1;
-            check(dut.rd_dma_done,"Older response completion coincides with cancellation");
+            check(dut.rd_dma_done && dut.rd_dma_start_q,"Older response completion coincides with cancellation");
             drained();
             check(ar_count==1 && completions[1]==1,"Concurrent release preserves the older completion exactly once");
             recovery(client,1,client==1 ? 1 : 0);
         end
-        // Both kernel contexts already accepted by DMA retain their responses.
+        // 两个权重地址均已握手，其返回数据保持原有客户端归属。
         reset_case();launch(1);@(negedge clk);launch(1);@(negedge clk);
+        wait(ar_count==2);@(negedge clk);
         abort=1;serve_reads=1;drained();
         check(ar_count==2 && completions[1]==2,"Accepted kernel contexts drain in order");
         recovery(1,2,2);

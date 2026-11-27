@@ -7,7 +7,8 @@
 ## 已执行的检查
 
 - 23 组参数完成整个模块的状态及公开输出等价检查，覆盖 78,843 个比较位，输入未增加限制。
-- 4 组地址及数据位宽配置完成 131,072 次严格四态输出比较。
+- 4 组地址及数据位宽配置完成 136,410 次严格四态输出比较。43、90、126、206 位输入分别逐位覆盖 0、1、X、Z，运行期实际端口宽度与声明宽度同时检查。
+- 每组四态仿真包含页内请求与跨页请求，完成 3 个物理写地址、4 个数据拍、3 个物理响应和 2 个客户端响应，并实际经历背压。
 - 32、64 位数据接口与 1、4 个在途请求组合完成 16 次协议测试，每次提供 256 个命令，覆盖随机背压和错误响应。
 
 两侧使用相同的输入和输出寄存器进行独立映射：
@@ -23,7 +24,7 @@
 
 ```sh
 python test/write_page_address/run_formal.py \
-  --reference-ref cedf4ed33661a53c8194eca1d484cdc2279d7549 \
+  --reference-ref c9614d3f52d8cdb7baafeebffa26325d05d5a40d \
   --out build/write_page_compare/formal
 python test/write_page_compare/run_four_state.py --out build/write_page_compare/four_state
 python test/write_page_address/run_protocol.py --verilator verilator \
