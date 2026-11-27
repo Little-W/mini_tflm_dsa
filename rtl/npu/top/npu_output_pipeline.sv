@@ -69,6 +69,7 @@ module npu_output_pipeline #(
     input wire logic [p_s16_reserve_width-1:0] i_output_s16_ready_threshold, // 十六位输出缓冲允许接收的占用阈值。
     input wire logic [p_s16_reserve_width-1:0] i_output_s16_reserve_banks, // 十六位输出缓冲需要预留的存储体数。
     input wire logic [p_s8_reserve_width-1:0] i_output_s8_ready_threshold, // 八位输出缓冲允许接收的占用阈值。
+    input wire logic i_output_pending = 1'b1, // 当前输入分组需要生成最终输出。
     input wire logic i_ps_capacity_fault, // 部分和容量异常，清除待处理的偏置结果。
     input wire logic [p_bus_width-1:0] i_quant_dma_raw_data, // DMA 返回的原始量化参数数据拍。
     input wire logic i_quant_dma_raw_valid, // DMA 返回的量化参数数据拍有效。
@@ -86,6 +87,7 @@ module npu_output_pipeline #(
     output logic o_dw_quant_rsp_tag, // 深度卷积量化返回对应的请求标签。
     output logic o_dw_quant_rsp_valid, // 深度卷积量化结果有效。
     output logic o_fifo_full_flag, // 当前输出缓冲已达到需要暂停接收的容量阈值。
+    output logic o_fifo_issue_full_flag, // 当前分组需要输出且缓冲容量不足。
     output logic [p_is_bias_row_w-1:0] o_is_bias_read_idx, // 输入驻留分组下一次读取的标量偏置索引。
     output logic o_load_quant_req, // 请求装载逐通道量化参数。
     output logic o_oa_calc_over, // 当前任务的全部输出写回完成。
@@ -534,6 +536,7 @@ module npu_output_pipeline #(
     assign fifo_s16_output_mask='0;
     assign fifo_s16_output_data='0;
     assign fifo_s16_full_flag=1'b0;
+    assign o_fifo_issue_full_flag = o_fifo_full_flag && i_output_pending;
 `else
     vec_s16_to_fifo #(.BUS_WIDTH(p_bus_width),
         .VLEN (p_size),
@@ -554,7 +557,11 @@ module npu_output_pipeline #(
         .output_row_switch(fifo_s16_output_switch_row),
         .output_mask      (fifo_s16_output_mask),
         .output_data      (fifo_s16_output_data),
-        .fifo_full_flag   (fifo_s16_full_flag)
+        .fifo_full_flag   (fifo_s16_full_flag),
+        .i_full_select    (i_run_16x8),
+        .i_output_pending(i_output_pending),
+        .i_other_full     (fifo_s8_full_flag),
+        .o_issue_full     (o_fifo_issue_full_flag)
     );
 `endif
     // 输出写回

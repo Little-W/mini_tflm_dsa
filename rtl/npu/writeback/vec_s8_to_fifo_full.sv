@@ -176,9 +176,12 @@
   logic co_group_last_result;
   wire co_group_last = co_group_last_result;
   // 行列结束条件并行比较，转置模式按有效行数选择组结束结果。
-  assign co_group_last_result = co_row_last &&
-      (transpose_mode_eff ? (co_row[3:0] == vec_valid_num_row)
-                          : (co_row[8:4] == co_last_tile_row_q && co_selected_row_last));
+  vec_s8_fifo_group_end u_group_end (
+      .i_row_boundary(co_row_last), .i_transpose(transpose_mode_eff),
+      .i_transpose_row_last(co_row[3:0] == vec_valid_num_row),
+      .i_tile_row_last(co_row[8:4] == co_last_tile_row_q),
+      .i_bank_row_last(co_selected_row_last), .o_group_last(co_group_last_result)
+  );
   wire co_finish = co_fire && co_group_last;
   wire [BANK_WIDTH-1:0] co_bank_after = BANK_WIDTH'((int'(read_bank) + int'(co_tiles)) % BANKS);
   wire co_load_waiting = coalesce_enable && co_active && !co_data_valid && bank_ready[co_current_bank];
@@ -316,7 +319,19 @@
   end
   wire [COUNT_WIDTH-1:0] write_rows_next =
       in_valid ? (COUNT_WIDTH'(write_ptr) + COUNT_WIDTH'(1)) : COUNT_WIDTH'(write_ptr);
-  assign co_selected_row_last = co_row_limit_q >= co_bank_count;
+  if (p_count_storage) begin : g_parallel_co_row_match
+    // 各存储体先比较行数，当前存储体编号只选择单比特行结束结果。
+    vec_s8_fifo_row_match #(
+        .p_banks(BANKS), .p_count_width(COUNT_WIDTH), .p_bank_width(BANK_WIDTH)
+    ) u_row_match (
+        .i_clk(clk), .i_write_enable(bank_count_i_wr_en),
+        .i_write_bank(bank_count_i_wr_addr), .i_write_count(bank_count_i_wr_data),
+        .i_bank_ready(bank_ready), .i_row_limit(co_row_limit_q),
+        .i_read_bank(co_current_bank), .o_row_last(co_selected_row_last)
+    );
+  end else begin : g_selected_co_row_match
+    assign co_selected_row_last = co_row_limit_q >= co_bank_count;
+  end
   logic selected_read_bank_ready;
   if (p_count_storage) begin : g_read_bank_selection
     // 每层完成四选一，所保存的组合边界限制存储体有效位选择的深度。
@@ -483,9 +498,13 @@
   // 普通输出首拍等待时，同步重读新方向所需的数据，保持原有配置采样边沿。
   assign refresh_first_mode = p_use_cyclic_storage && !coalesce_enable && stream_active &&
       read_ptr == '0 && beat_idx == '0 && !output_ready && transpose_mode_eff != transpose_mode_tmp;
-  assign ram_read_en = coalesce_enable ? (co_start || co_load_waiting ||
-       (co_fire && !co_group_last && co_continue_bank_ready))
-                                      : (start_stream || stream_has_next || refresh_first_mode);
+  vec_s8_fifo_read_enable u_read_enable (
+      .i_coalesce(coalesce_enable), .i_group_start(co_start),
+      .i_waiting_ready(co_load_waiting), .i_group_fire(co_fire),
+      .i_group_last(co_group_last), .i_next_bank_ready(co_continue_bank_ready),
+      .i_stream_start(start_stream), .i_stream_next(stream_has_next),
+      .i_refresh_first(refresh_first_mode), .o_read_enable(ram_read_en)
+  );
 
   always_comb begin
     issue_read_ptr = read_ptr;

@@ -21,7 +21,11 @@ module vec_s16_to_fifo #(
     output logic                         output_row_switch /* 当前输出数据拍结束一行 */,
     output logic [BUS_WIDTH/8-1:0]       output_mask /* 当前输出拍的有效字节掩码 */,
     output logic [BUS_WIDTH-1:0]         output_data /* 当前输出拍的总线数据 */,
-    output logic                         fifo_full_flag /* 结果存储余量不足以接收下一计算组 */
+    output logic                         fifo_full_flag /* 结果存储余量不足以接收下一计算组 */,
+    input wire logic i_full_select = 1'b1, // 当前任务选择十六位输出缓冲。
+    input wire logic i_output_pending = 1'b1, // 当前计算分组需要生成最终输出。
+    input wire logic i_other_full = 1'b0, // 八位输出缓冲的容量阻塞状态。
+    output logic o_issue_full // 所选输出缓冲需要暂停当前输入分组。
 );
 
     localparam int PTR_WIDTH = (VLEN <= 1) ? 1 : $clog2(VLEN);
@@ -59,6 +63,12 @@ module vec_s16_to_fifo #(
     logic [MEM_ADDR_W-1:0] ram_wr_addr;
     logic [MEM_ADDR_W-1:0] ram_rd_addr;
     logic [PTR_WIDTH-1:0] next_read_row;
+    logic write_bank_blocked_q, next_write_bank_blocked_q;
+    logic partial_write_q;
+    logic [BANK_WIDTH-1:0] candidate_write_bank [3];
+    logic [2:0] candidate_blocked;
+    logic [1:0] selected_blocked;
+    logic [PTR_WIDTH-1:0] write_ptr_step;
 
     function automatic logic [BANK_WIDTH-1:0] next_bank(
         input logic [BANK_WIDTH-1:0] bank
@@ -67,8 +77,8 @@ module vec_s16_to_fifo #(
         else next_bank = bank + 1'b1;
     endfunction
 
-    wire write_bank_blocked = bank_ready[write_bank];
-    wire next_write_bank_blocked = bank_ready[next_bank(write_bank)];
+    wire write_bank_blocked = write_bank_blocked_q;
+    wire next_write_bank_blocked = next_write_bank_blocked_q;
     wire finish_write_bank = in_valid && in_tile_done;
     wire [COUNT_WIDTH-1:0] write_rows_next =
         in_valid ? COUNT_WIDTH'(write_ptr + 1'b1) : COUNT_WIDTH'(write_ptr);
@@ -98,7 +108,7 @@ module vec_s16_to_fifo #(
     logic watermark_i_partial_write, watermark_o_full;
     assign watermark_i_reserve = reserve_banks;
     assign watermark_i_ready_banks = ready_bank_count_q;
-    assign watermark_i_partial_write = write_ptr != '0;
+    assign watermark_i_partial_write = partial_write_q;
     assign fifo_full_flag = write_bank_blocked || next_write_bank_blocked || watermark_o_full;
     fifo_bank_watermark #(.p_banks(BANKS), .p_count_width(BANK_COUNT_WIDTH),
         .p_precomputed_threshold(p_precomputed_watermark)) u_watermark (
@@ -106,6 +116,18 @@ module vec_s16_to_fifo #(
         .i_partial_write(watermark_i_partial_write),
         .i_ready_threshold(BANK_COUNT_WIDTH'(i_ready_bank_threshold)), .o_full(watermark_o_full)
     );
+    if (p_precomputed_watermark) begin : g_issue_full
+        fifo_s16_issue_full #(.p_count_width(BANK_COUNT_WIDTH)) u_full (
+            .i_ready(ready_bank_count_q),
+            .i_threshold(BANK_COUNT_WIDTH'(i_ready_bank_threshold)),
+            .i_partial(partial_write_q), .i_write_blocked(write_bank_blocked_q),
+            .i_next_blocked(next_write_bank_blocked_q), .i_selected(i_full_select),
+            .i_output_pending(i_output_pending), .i_other_full(i_other_full),
+            .o_full(o_issue_full)
+        );
+    end else begin : g_issue_reserve
+        assign o_issue_full = (i_full_select ? fifo_full_flag : i_other_full) && i_output_pending;
+    end
 
     always_comb begin
         next_read_row = start_stream ? '0 : (read_ptr + 1'b1);
@@ -141,6 +163,45 @@ module vec_s16_to_fifo #(
         .rd_data(ram_rd_data)
     );
 
+    // 当前及后续两个写入银行并行计算下一状态，完成写入只选择需要保存的结果。
+    // 同拍释放具有较高优先级，与银行有效位和行数的更新顺序一致。
+    assign candidate_write_bank[0] = write_bank;
+    assign candidate_write_bank[1] = next_bank(write_bank);
+    assign candidate_write_bank[2] = next_bank(candidate_write_bank[1]);
+    for (genvar candidate = 0; candidate < 3; candidate++) begin : g_write_blocked
+        always_comb begin
+            candidate_blocked[candidate] = bank_ready[candidate_write_bank[candidate]];
+            if (last_row_in_bank && read_bank == candidate_write_bank[candidate]) begin
+                candidate_blocked[candidate] = 1'b0;
+            end else if (finish_write_bank && !write_bank_blocked &&
+                         write_bank == candidate_write_bank[candidate]) begin
+                candidate_blocked[candidate] = 1'b1;
+            end
+        end
+    end
+    always_comb begin
+        selected_blocked = candidate_blocked[1:0];
+        if (finish_write_bank && !write_bank_blocked) begin
+            selected_blocked = candidate_blocked[2:1];
+        end
+    end
+    assign write_ptr_step = write_ptr + 1'b1;
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            write_bank_blocked_q <= 1'b0;
+            next_write_bank_blocked_q <= 1'b0;
+            partial_write_q <= 1'b0;
+        end else begin
+            write_bank_blocked_q <= selected_blocked[0];
+            next_write_bank_blocked_q <= selected_blocked[1];
+            if (finish_write_bank && !write_bank_blocked) begin
+                partial_write_q <= 1'b0;
+            end else if (in_valid && !write_bank_blocked) begin
+                partial_write_q <= write_ptr_step != '0;
+            end
+        end
+    end
+
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             write_bank <= '0;
@@ -172,7 +233,7 @@ module vec_s16_to_fifo #(
                 if (!last_row_in_bank) ready_bank_count_q <= ready_bank_count_q + 1'b1;
 
             end else if (in_valid && !write_bank_blocked) begin
-                write_ptr <= write_ptr + 1'b1;
+                write_ptr <= write_ptr_step;
             end
 
             if (start_stream) begin
