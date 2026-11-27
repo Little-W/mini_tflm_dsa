@@ -7,12 +7,12 @@ module conv_descriptor_extent #(
   localparam int p_row_low_w = p_rw < 32 ? p_rw : 31,
   localparam int p_row_high_w = 32 - p_row_low_w
 ) (
-  input  logic [31:0] i_tile_p0,                                    // 描述符空间起点
-  input  logic [31:0] i_tile_q0,                                    // 描述符归约起点
-  input  logic [p_rw-1:0] i_tile_rows,                              // 描述符有效行数
-  input  logic [31:0] i_reduction_len,                              // 当前配置的归约长度
-  input  logic [31:0] i_position_count,                             // 当前配置的空间位置数量
-  input  logic [p_row_high_w-1:0] i_position_high_minus_one_q,        // 位置数量高段减一的保存值
+  input  wire logic [31:0] i_tile_p0,                                    // 描述符空间起点
+  input  wire logic [31:0] i_tile_q0,                                    // 描述符归约起点
+  input  wire logic [p_rw-1:0] i_tile_rows,                              // 描述符有效行数
+  input  wire logic [31:0] i_reduction_len,                              // 当前配置的归约长度
+  input  wire logic [31:0] i_position_count,                             // 当前配置的空间位置数量
+  input  wire logic [p_row_high_w-1:0] i_position_high_minus_one_q,        // 位置数量高段减一的保存值
   output logic o_tile_rows_in_range,                               // 描述符全部行处于有效范围
   output logic o_tile_q_before_end                                 // 归约起点小于有效归约长度
 );

@@ -90,37 +90,37 @@ module picorv32 #(
     parameter [31:0] PROGADDR_IRQ = 32'h 0000_0010,
     parameter [31:0] STACKADDR = 32'h ffff_ffff
 ) (
-    input clk /* 模块工作时钟。 */, resetn /* 低电平有效复位。 */,
+    input wire clk /* 模块工作时钟。 */, resetn /* 低电平有效复位。 */,
     output reg trap /* 处理器异常停止指示。 */,
 
     output logic        mem_valid /* 处理器存储访问请求有效。 */,
     output logic        mem_instr /* 当前存储请求为取指访问。 */,
-    input             mem_ready /* 处理器当前存储请求完成。 */,
+    input wire        mem_ready /* 处理器当前存储请求完成。 */,
 
     output logic [31:0] mem_addr /* 处理器存储访问字节地址。 */,
     output logic [31:0] mem_wdata /* 处理器写入数据。 */,
     output logic [ 3:0] mem_wstrb /* 处理器写入字节使能，全零表示读取。 */,
-    input      [31:0] mem_rdata /* 返回处理器的读取数据。 */,
+    input wire [31:0] mem_rdata /* 返回处理器的读取数据。 */,
 
     // Look-Ahead Interface
-    output            mem_la_read /* 下一周期的读取请求预告。 */,
-    output            mem_la_write /* 下一周期的写入请求预告。 */,
-    output     [31:0] mem_la_addr /* 预告请求的字节地址。 */,
+    output wire       mem_la_read /* 下一周期的读取请求预告。 */,
+    output wire       mem_la_write /* 下一周期的写入请求预告。 */,
+    output wire [31:0] mem_la_addr /* 预告请求的字节地址。 */,
     output logic [31:0] mem_la_wdata /* 预告写入请求的数据。 */,
     output logic [ 3:0] mem_la_wstrb /* 预告写入请求的字节使能。 */,
 
     // Pico Co-Processor Interface (PCPI)
     output reg        pcpi_valid /* 协处理器指令请求有效。 */,
     output logic [31:0] pcpi_insn /* 待执行的协处理器指令编码。 */,
-    output     [31:0] pcpi_rs1 /* 协处理器第一源操作数。 */,
-    output     [31:0] pcpi_rs2 /* 协处理器第二源操作数。 */,
-    input             pcpi_wr /* 协处理器结果需写回目标寄存器。 */,
-    input      [31:0] pcpi_rd /* 协处理器返回的目标寄存器数据。 */,
-    input             pcpi_wait /* 协处理器正在处理请求。 */,
-    input             pcpi_ready /* 协处理器指令已完成。 */,
+    output wire [31:0] pcpi_rs1 /* 协处理器第一源操作数。 */,
+    output wire [31:0] pcpi_rs2 /* 协处理器第二源操作数。 */,
+    input wire        pcpi_wr /* 协处理器结果需写回目标寄存器。 */,
+    input wire [31:0] pcpi_rd /* 协处理器返回的目标寄存器数据。 */,
+    input wire        pcpi_wait /* 协处理器正在处理请求。 */,
+    input wire        pcpi_ready /* 协处理器指令已完成。 */,
 
     // IRQ Interface
-    input      [31:0] irq /* 处理器中断请求向量。 */,
+    input wire [31:0] irq /* 处理器中断请求向量。 */,
     output reg [31:0] eoi /* 已响应的中断请求位。 */,
 
 `ifdef RISCV_FORMAL

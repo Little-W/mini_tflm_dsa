@@ -5,12 +5,12 @@
 // 清除优先于填充，未发生匹配写入时保持存储器读出的有效位。
 (* keep_hierarchy = "yes" *)
 module conv_cache_valid_forward (
-  input logic i_clear_write, // 本周期写入清除有效位
-  input logic i_clear_match, // 当前读取组号与清除组号相同
-  input logic i_fill_write, // 本周期写入填充有效位
-  input logic i_fill_match, // 当前读取组号与填充组号相同
-  input logic i_fill_valid, // 填充写入的有效位
-  input logic i_stored_valid, // 存储器读出的有效位
+  input wire logic i_clear_write, // 本周期写入清除有效位
+  input wire logic i_clear_match, // 当前读取组号与清除组号相同
+  input wire logic i_fill_write, // 本周期写入填充有效位
+  input wire logic i_fill_match, // 当前读取组号与填充组号相同
+  input wire logic i_fill_valid, // 填充写入的有效位
+  input wire logic i_stored_valid, // 存储器读出的有效位
   output logic o_valid // 处理同拍写入转发后的查询有效位
 );
   //! 0. 同拍有效位转发

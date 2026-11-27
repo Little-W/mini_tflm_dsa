@@ -4,8 +4,8 @@
 // 低段借位与高段两种结果并行形成，保持完整三十三位模减法及未知输入传播。
 (* keep_hierarchy = "yes" *)
 module conv_runtime_wrap_difference (
-  input logic [15:0] i_step, // 沿列推进的无符号步长。
-  input logic [32:0] i_span, // 已保存的完整空间跨度。
+  input wire logic [15:0] i_step, // 沿列推进的无符号步长。
+  input wire logic [32:0] i_span, // 已保存的完整空间跨度。
   output logic [32:0] o_difference // 步长减去跨度的三十三位回绕结果。
 );
   (* keep = "true" *) logic [16:0] low_difference;

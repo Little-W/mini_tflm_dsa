@@ -5,16 +5,16 @@
 module conv_descriptor_position #(
   parameter int unsigned p_count_width = 5
 ) (
-  input  logic                         clk,                  // 描述符时钟
-  input  logic                         rst_n,                // 异步低有效复位
-  input  logic                         i_configure,          // 当前周期接收新配置
-  input  logic                         i_commit,             // 当前周期提交描述符
-  input  logic                         i_invalid,            // 提交描述符未通过范围检查
-  input  logic [31:0]                  i_commit_position,    // 提交描述符的空间起点
-  input  logic [p_count_width-1:0]     i_commit_rows,        // 提交描述符的有效行数
-  input  logic [31:0]                  i_position,           // 当前描述符的空间起点
-  input  logic [p_count_width-1:0]     i_rows,               // 当前描述符的有效行数
-  input  logic [31:0]                  i_target,             // 待接收描述符的空间起点
+  input  wire logic                         clk,                  // 描述符时钟
+  input  wire logic                         rst_n,                // 异步低有效复位
+  input  wire logic                         i_configure,          // 当前周期接收新配置
+  input  wire logic                         i_commit,             // 当前周期提交描述符
+  input  wire logic                         i_invalid,            // 提交描述符未通过范围检查
+  input  wire logic [31:0]                  i_commit_position,    // 提交描述符的空间起点
+  input  wire logic [p_count_width-1:0]     i_commit_rows,        // 提交描述符的有效行数
+  input  wire logic [31:0]                  i_position,           // 当前描述符的空间起点
+  input  wire logic [p_count_width-1:0]     i_rows,               // 当前描述符的有效行数
+  input  wire logic [31:0]                  i_target,             // 待接收描述符的空间起点
   output logic                         o_equal               // 待接收起点紧随当前分块
 );
 

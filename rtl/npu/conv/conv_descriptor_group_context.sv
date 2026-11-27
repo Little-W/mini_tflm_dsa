@@ -7,20 +7,20 @@ module conv_descriptor_group_context #(
   parameter bit p_register_descriptor = 1'b1,
   localparam int p_high_width = 16 - p_low_width
 ) (
-  input  logic clk,                      // 通道状态时钟
-  input  logic rst_n,                    // 异步低有效复位
-  input  logic i_configure,              // 当前周期接收新配置
-  input  logic [15:0] i_config_group,     // 新配置的组内通道数
-  input  logic [15:0] i_group,            // 当前配置的组内通道数
-  input  logic [15:0] i_channel,          // 当前描述符的起始通道
-  input  logic i_commit,                 // 当前周期提交描述符
-  input  logic i_invalid,                // 提交描述符未通过范围检查
-  input  logic i_fast,                   // 提交描述符复用已准备的通道位置
-  input  logic [15:0] i_commit_channel,   // 寄存描述符保存的起始通道
-  input  logic [15:0] i_window_channel,   // 已保存窗口的起始通道
-  input  logic i_commit_window,          // 直连描述符采用窗口起始通道
-  input  logic i_decode_write,           // 当前周期完成起始通道解码
-  input  logic [15:0] i_decode_channel,   // 解码完成的起始通道
+  input  wire logic clk,                      // 通道状态时钟
+  input  wire logic rst_n,                    // 异步低有效复位
+  input  wire logic i_configure,              // 当前周期接收新配置
+  input wire logic [15:0] i_config_group,     // 新配置的组内通道数
+  input wire logic [15:0] i_group,            // 当前配置的组内通道数
+  input wire logic [15:0] i_channel,          // 当前描述符的起始通道
+  input wire logic i_commit,                 // 当前周期提交描述符
+  input wire logic i_invalid,                // 提交描述符未通过范围检查
+  input wire logic i_fast,                   // 提交描述符复用已准备的通道位置
+  input wire logic [15:0] i_commit_channel,   // 寄存描述符保存的起始通道
+  input wire logic [15:0] i_window_channel,   // 已保存窗口的起始通道
+  input wire logic i_commit_window,          // 直连描述符采用窗口起始通道
+  input wire logic i_decode_write,           // 当前周期完成起始通道解码
+  input wire logic [15:0] i_decode_channel,   // 解码完成的起始通道
   output logic o_high_before,            // 起始通道高段小于组宽高段
   output logic o_high_equal,             // 起始通道高段等于组宽高段
   output logic o_high_next_equal         // 起始通道高段加一后等于组宽高段

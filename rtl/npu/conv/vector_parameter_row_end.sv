@@ -9,8 +9,8 @@ module vector_parameter_row_end #(
     parameter int p_active_width = 5,
     parameter int p_bus_bytes = 8
 ) (
-    input logic [p_column_width-1:0] i_column_base, // 本拍返回数据的起始字节索引
-    input logic [p_active_width-1:0] i_active, // 本行需要返回的四字节参数数量
+  input wire logic [p_column_width-1:0] i_column_base, // 本拍返回数据的起始字节索引
+  input wire logic [p_active_width-1:0] i_active, // 本行需要返回的四字节参数数量
     output logic o_complete // 当前完整总线拍覆盖本行末尾
 );
     assign o_complete = 32'(i_column_base) + 32'(p_bus_bytes) >= (32'(i_active) << 2);

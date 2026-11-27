@@ -7,12 +7,12 @@
 module conv_cache_lookup_set_match #(
   parameter int p_set_width = 4
 ) (
-  input logic i_bypass, // 当前请求使用已经完成的需求填充旁路
-  input logic i_miss, // 前台状态正在处理需求缺失
-  input logic [p_set_width-1:0] i_fill_set, // 旁路需求填充的缓存组号
-  input logic [p_set_width-1:0] i_demand_set, // 已保存需求请求的缓存组号
-  input logic [p_set_width-1:0] i_work_set, // 当前工作请求的缓存组号
-  input logic [p_set_width-1:0] i_select_set, // 替换选择快照保存的缓存组号
+  input wire logic i_bypass, // 当前请求使用已经完成的需求填充旁路
+  input wire logic i_miss, // 前台状态正在处理需求缺失
+  input wire logic [p_set_width-1:0] i_fill_set, // 旁路需求填充的缓存组号
+  input wire logic [p_set_width-1:0] i_demand_set, // 已保存需求请求的缓存组号
+  input wire logic [p_set_width-1:0] i_work_set, // 当前工作请求的缓存组号
+  input wire logic [p_set_width-1:0] i_select_set, // 替换选择快照保存的缓存组号
   output logic o_match // 当前查询组号与替换选择快照的组号相同
 );
   //! 0. 并行候选结果

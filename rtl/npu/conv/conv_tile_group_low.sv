@@ -6,9 +6,9 @@ module conv_tile_group_low #(
   parameter int unsigned p_width = 5,
   parameter int unsigned p_size = 16
 ) (
-  input  logic [p_width-1:0] i_group,          // 通道组宽度的低段
-  input  logic [p_width-1:0] i_first,          // 起始通道的低段
-  input  logic [p_width-1:0] i_columns,        // 输入描述符的列数
+  input  wire logic [p_width-1:0] i_group,          // 通道组宽度的低段
+  input  wire logic [p_width-1:0] i_first,          // 起始通道的低段
+  input  wire logic [p_width-1:0] i_columns,        // 输入描述符的列数
   output logic               o_borrow,        // 通道余量低段产生借位
   output logic               o_less,          // 通道余量低段小于输入列数
   output logic               o_default_allows // 默认分块长度允许本次范围选择

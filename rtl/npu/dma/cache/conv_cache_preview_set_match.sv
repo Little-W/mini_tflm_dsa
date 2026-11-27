@@ -8,11 +8,11 @@ module conv_cache_preview_set_match #(
   parameter int p_set_width = 4,
   parameter int p_line_shift = 7
 ) (
-  input logic [31:0] i_request_address, // 正式请求的完整字节地址
-  input logic [31:0] i_request_index, // 正式请求的窗口索引
-  input logic i_windowed, // 当前配置启用窗口索引
-  input logic i_index_valid, // 正式请求提供有效的窗口索引
-  input logic [p_set_width-1:0] i_saved_set, // 预读快照保存的缓存组号
+  input wire logic [31:0] i_request_address, // 正式请求的完整字节地址
+  input wire logic [31:0] i_request_index, // 正式请求的窗口索引
+  input wire logic i_windowed, // 当前配置启用窗口索引
+  input wire logic i_index_valid, // 正式请求提供有效的窗口索引
+  input wire logic [p_set_width-1:0] i_saved_set, // 预读快照保存的缓存组号
   output logic o_match // 当前请求的组号与预读快照相同
 );
   //! 0. 分组匹配信号

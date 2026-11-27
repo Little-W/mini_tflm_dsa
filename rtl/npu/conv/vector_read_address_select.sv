@@ -5,15 +5,15 @@
 // 候选分量并行准备，末级按查表、池化、普通读取的次序选择，保留四态 if 语义。
 (* keep_hierarchy = "yes" *)
 module vector_read_address_select (
-  input logic i_lut_read, // 当前读取 Softmax 指数查找表
-  input logic i_pool_read, // 当前读取池化输入数据
-  input logic [31:0] i_load_base, // 普通读取的完整字节基址
-  input logic [31:0] i_load_offset, // 普通读取相对基址的字节偏移
-  input logic [31:0] i_lut_base, // Softmax 查找表的字节基址
-  input logic [7:0] i_lut_index, // Softmax 查找表中四字节表项的索引
-  input logic [31:0] i_pool_base, // 池化输入的完整字节基址
-  input logic [31:0] i_pool_offset, // 池化输入相对基址的字节偏移
-  input logic [15:0] i_pool_channel, // 池化输入当前通道的字节偏移
+  input wire logic i_lut_read, // 当前读取 Softmax 指数查找表
+  input wire logic i_pool_read, // 当前读取池化输入数据
+  input wire logic [31:0] i_load_base, // 普通读取的完整字节基址
+  input wire logic [31:0] i_load_offset, // 普通读取相对基址的字节偏移
+  input wire logic [31:0] i_lut_base, // Softmax 查找表的字节基址
+  input wire logic [7:0] i_lut_index, // Softmax 查找表中四字节表项的索引
+  input wire logic [31:0] i_pool_base, // 池化输入的完整字节基址
+  input wire logic [31:0] i_pool_offset, // 池化输入相对基址的字节偏移
+  input wire logic [15:0] i_pool_channel, // 池化输入当前通道的字节偏移
   output logic [31:0] o_base, // 本次读取选择的完整字节基址
   output logic [31:0] o_offset, // 本次读取选择的完整字节偏移
   output logic [15:0] o_channel // 本次读取选择的通道字节偏移

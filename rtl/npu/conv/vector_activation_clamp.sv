@@ -5,15 +5,15 @@
 // 量化上下限减去输出偏移后在时钟边沿保存，其他结果保持组合输出。
 // 输出数组依次为量化、量化加法、二次幂平均池化和通用平均池化结果。
 module vector_activation_clamp (
-    input  logic clk,                                // 限幅上下限预处理寄存器的时钟
-    input  logic signed [31:0] cfg_output_offset,      // 输出零点偏移，量化路径使用有效低八位
-    input  logic signed [31:0] cfg_minimum,            // 完整有符号激活下限
-    input  logic signed [31:0] cfg_maximum,            // 完整有符号激活上限
-    input  logic signed [63:0] i_quantized_value,      // 本地量化流水已经舍入的结果
-    input  logic signed [63:0] i_add_rounded_value,     // 量化加法已经舍入的结果
-    input  logic signed [7:0] i_average_floor,         // 二次幂平均池化向下取整的低八位结果
-    input  logic signed [7:0] i_average_rounded,       // 二次幂平均池化最近偶数舍入的低八位结果
-    input  logic signed [8:0] i_average_divided,       // 通用平均池化完成符号恢复的九位结果
+    input  wire logic clk,                                // 限幅上下限预处理寄存器的时钟
+    input  wire logic signed [31:0] cfg_output_offset,      // 输出零点偏移，量化路径使用有效低八位
+    input  wire logic signed [31:0] cfg_minimum,            // 完整有符号激活下限
+    input  wire logic signed [31:0] cfg_maximum,            // 完整有符号激活上限
+    input  wire logic signed [63:0] i_quantized_value,      // 本地量化流水已经舍入的结果
+    input  wire logic signed [63:0] i_add_rounded_value,     // 量化加法已经舍入的结果
+    input  wire logic signed [7:0] i_average_floor,         // 二次幂平均池化向下取整的低八位结果
+    input  wire logic signed [7:0] i_average_rounded,       // 二次幂平均池化最近偶数舍入的低八位结果
+    input  wire logic signed [8:0] i_average_divided,       // 通用平均池化完成符号恢复的九位结果
     output logic [3:0][31:0] o_result                 // 四类完整限幅结果，数组下标含义见模块说明
 );
 

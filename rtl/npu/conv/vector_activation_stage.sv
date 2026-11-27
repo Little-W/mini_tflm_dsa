@@ -5,15 +5,15 @@
 // 量化与池化保持组合输出；量化加法在舍入保存边沿捕获偏移候选和配置，下一周期完成限幅。
 // 加法阶段对应控制器 ADD_ROUND_WAIT 到 ADD_CLAMP 的现有边沿，任务的公开完成周期保持不变。
 module vector_activation_stage (
-    input logic clk, // 保存偏移候选和限幅配置的工作时钟
-    input logic signed [63:0] i_quantized_value, // 当前本地量化已经完成舍入的结果
-    input logic signed [63:0] i_add_rounding_value, // 当前舍入输出，在边沿后进入量化加法限幅阶段
-    input logic signed [7:0] i_average_floor, // 二次幂平均池化向下取整的低八位值
-    input logic signed [7:0] i_average_rounded, // 二次幂平均池化最近偶数舍入的低八位值
-    input logic signed [8:0] i_average_divided, // 通用平均池化完成符号恢复的九位值
-    input logic signed [31:0] cfg_output_offset, // 输出零点偏移，使用低八位有符号值
-    input logic signed [31:0] cfg_minimum, // 当前结果对应的完整激活下限
-    input logic signed [31:0] cfg_maximum, // 当前结果对应的完整激活上限
+    input wire logic clk, // 保存偏移候选和限幅配置的工作时钟
+    input wire logic signed [63:0] i_quantized_value, // 当前本地量化已经完成舍入的结果
+    input wire logic signed [63:0] i_add_rounding_value, // 当前舍入输出，在边沿后进入量化加法限幅阶段
+    input wire logic signed [7:0] i_average_floor, // 二次幂平均池化向下取整的低八位值
+    input wire logic signed [7:0] i_average_rounded, // 二次幂平均池化最近偶数舍入的低八位值
+    input wire logic signed [8:0] i_average_divided, // 通用平均池化完成符号恢复的九位值
+    input wire logic signed [31:0] cfg_output_offset, // 输出零点偏移，使用低八位有符号值
+    input wire logic signed [31:0] cfg_minimum, // 当前结果对应的完整激活下限
+    input wire logic signed [31:0] cfg_maximum, // 当前结果对应的完整激活上限
     output logic [3:0][31:0] o_result // 量化、量化加法、二次幂平均池化与通用平均池化的完整结果
 );
     //! 0. 内部数值与范围条件

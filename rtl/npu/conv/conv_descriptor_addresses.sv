@@ -7,28 +7,28 @@ module conv_descriptor_addresses #(
   parameter bit p_register_descriptor = 1'b1,
   parameter bit p_preview_registered = 1'b0
 ) (
-  input logic [31:0] i_word_addr, // 运行寄存器保存的数据字地址
-  input logic i_word_forward, // 检查周期使用当前描述符首地址对应的数据字
-  input logic [31:0] i_addr, // 当前运行通道地址
-  input logic [31:0] i_row_base_addr, // 当前输出行的字节基址
-  input logic [31:0] i_row_group_base, // 当前输出行的通道组基址
-  input logic [31:0] i_window_addr, // 已保存窗口的字节基址
-  input logic [31:0] i_window_group_base, // 已保存窗口的通道组基址
-  input logic [31:0] i_tap_step_bytes, // 相邻核列的字节步长
-  input logic [31:0] i_tap_wrap_bytes, // 核列回绕的字节步长
-  input logic [31:0] i_tap_pair_bytes, // 相邻核行之间的字节步长
-  input logic [31:0] i_row_step_bytes, // 相邻输出列的字节步长
-  input logic [31:0] i_row_wrap_bytes, // 输出列回绕的字节步长
-  input logic [31:0] i_next_row_addr, // 下一输出行的字节地址
-  input logic [15:0] i_kx0_q, // 当前描述符的卷积核列
-  input logic i_row_wrap, // 当前输出行在列方向回绕
-  input logic i_incoming_tap_wrap, // 待接收描述符在核列方向回绕
-  input logic i_q_equal, // 待接收归约位置与当前描述符相同
-  input logic i_position_previous_row, // 窗口复用前一卷积核行
-  input logic i_position_forward_tap, // 窗口复用后一卷积核列
-  input logic i_position_backward_tap, // 窗口复用前一卷积核列
-  input logic i_next_position_fast, // 待接收描述符复用下一空间窗口
-  input logic i_next_tile_fast, // 待接收描述符紧随当前空间分块
+  input wire logic [31:0] i_word_addr, // 当前保存数据字的地址
+  input wire logic i_word_forward, // 检查周期使用当前描述符首地址对应的数据字
+  input wire logic [31:0] i_addr, // 当前运行通道地址
+  input wire logic [31:0] i_row_base_addr, // 当前输出行的字节基址
+  input wire logic [31:0] i_row_group_base, // 当前输出行的通道组基址
+  input wire logic [31:0] i_window_addr, // 已保存窗口的字节基址
+  input wire logic [31:0] i_window_group_base, // 已保存窗口的通道组基址
+  input wire logic [31:0] i_tap_step_bytes, // 相邻核列的字节步长
+  input wire logic [31:0] i_tap_wrap_bytes, // 核列回绕的字节步长
+  input wire logic [31:0] i_tap_pair_bytes, // 相邻核行之间的字节步长
+  input wire logic [31:0] i_row_step_bytes, // 相邻输出列的字节步长
+  input wire logic [31:0] i_row_wrap_bytes, // 输出列回绕的字节步长
+  input wire logic [31:0] i_next_row_addr, // 下一输出行的字节地址
+  input wire logic [15:0] i_kx0_q, // 当前描述符的卷积核列
+  input wire logic i_row_wrap, // 当前输出行在列方向回绕
+  input wire logic i_incoming_tap_wrap, // 待接收描述符在核列方向回绕
+  input wire logic i_q_equal, // 待接收归约位置与当前描述符相同
+  input wire logic i_position_previous_row, // 窗口复用前一卷积核行
+  input wire logic i_position_forward_tap, // 窗口复用后一卷积核列
+  input wire logic i_position_backward_tap, // 窗口复用前一卷积核列
+  input wire logic i_next_position_fast, // 待接收描述符复用下一空间窗口
+  input wire logic i_next_tile_fast, // 待接收描述符紧随当前空间分块
   output logic [6:0][1:0][31:0] o_candidate_address, // 七种候选的字节地址和通道组地址
   output logic o_incoming_word_equal, // 待接收描述符命中保存的数据字
   output logic o_incoming_live_word_equal, // 待接收描述符命中当前运行数据字

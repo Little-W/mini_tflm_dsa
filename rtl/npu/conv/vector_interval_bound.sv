@@ -5,9 +5,9 @@
 // 两个端点采用三位分组比较，分组结果按固定层次归并后形成完整范围条件。
 (* keep_hierarchy = "yes" *)
 module vector_interval_bound (
-    input logic signed [16:0] i_coordinate, // 待检查的有符号坐标
-    input logic signed [16:0] i_minimum, // 有效坐标区间的左端点，包含该端点
-    input logic signed [16:0] i_maximum, // 有效坐标区间的右端点，不包含该端点
+  input wire logic signed [16:0] i_coordinate, // 待检查的有符号坐标
+  input wire logic signed [16:0] i_minimum, // 有效坐标区间的左端点，包含该端点
+  input wire logic signed [16:0] i_maximum, // 有效坐标区间的右端点，不包含该端点
     output logic o_inside // 当前坐标处于给定的左闭右开区间
 );
     //! 0. 比较接口信号

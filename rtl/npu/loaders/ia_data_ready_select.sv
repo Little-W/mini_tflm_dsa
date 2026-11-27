@@ -4,12 +4,12 @@
 // 并行合并控制状态与发送活动，输出当周期可接受分组就绪条件的发送许可。
 (* keep_hierarchy = "yes" *)
 module ia_data_ready_select (
-    input  logic i_eligible, // 下一控制状态允许输入分组发送
-    input  logic i_clear_output, // 空闲或初始化状态清除输入发送状态
-    input  logic i_output_active, // 当前输入分组正在输出
-    input  logic i_send_trigger, // 本周期启动输入分组发送
-    input  logic i_current_valid, // 当前保存的输入数据有效标志
-    input  logic i_output_done, // 当前输入分组输出完成
+    input  wire logic i_eligible, // 下一控制状态允许输入分组发送
+    input  wire logic i_clear_output, // 空闲或初始化状态清除输入发送状态
+    input  wire logic i_output_active, // 当前输入分组正在输出
+    input  wire logic i_send_trigger, // 本周期启动输入分组发送
+    input  wire logic i_current_valid, // 当前保存的输入数据有效标志
+    input  wire logic i_output_done, // 当前输入分组输出完成
     output logic o_data_valid // 下一周期控制状态及输出活动允许提供输入数据
 );
     logic output_active_after;

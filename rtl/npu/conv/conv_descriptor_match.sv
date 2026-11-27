@@ -6,8 +6,8 @@ module conv_descriptor_match #(
   parameter bit p_preserve_groups = 1'b0,
   parameter int unsigned p_reduce_group_width = 0 // 末级归并每组包含的相等条件数量
 ) (
-  input logic [p_width-1:0] i_a, // 第一比较字段
-  input logic [p_width-1:0] i_b, // 第二比较字段
+  input wire logic [p_width-1:0] i_a, // 第一比较字段
+  input wire logic [p_width-1:0] i_b, // 第二比较字段
   output logic o_equal // 两个完整字段相等
 );
   if (p_preserve_groups) begin : g_grouped_match

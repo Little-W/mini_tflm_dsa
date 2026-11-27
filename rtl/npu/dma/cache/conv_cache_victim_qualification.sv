@@ -7,10 +7,10 @@
 module conv_cache_victim_qualification #(
   parameter int p_ways = 2
 ) (
-  input logic i_lookup_ready, // 需求查询已完成，可使用当前缓存路命中结果
-  input logic i_demand_eligible, // 需求请求具备元数据更新资格
-  input logic i_bypass_eligible, // 旁路填充具备元数据更新资格
-  input logic [p_ways-1:0] i_selected_hits, // 每一位表示该路命中且被选为替换路
+  input wire logic i_lookup_ready, // 需求查询已完成，可使用当前缓存路命中结果
+  input wire logic i_demand_eligible, // 需求请求具备元数据更新资格
+  input wire logic i_bypass_eligible, // 旁路填充具备元数据更新资格
+  input wire logic [p_ways-1:0] i_selected_hits, // 每一位表示该路命中且被选为替换路
   output logic o_conflict // 当前需求与元数据替换操作发生冲突
 );
   //! 0. 归并替换冲突

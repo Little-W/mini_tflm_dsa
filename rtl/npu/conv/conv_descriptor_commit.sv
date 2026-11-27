@@ -16,23 +16,23 @@ module conv_descriptor_commit #(
   localparam int p_saved_group_lanes = p_lanes <= 16 ? p_lane_bytes : 4,
   localparam int p_prepared_tile_width = 458+2*p_coord_w+3*p_tile_count_w+p_slot_w+p_saved_group_lanes-p_word_shift
 ) (
-  input  logic [p_prepared_tile_width-1:0] i_prepared_tile_packed, // 已保存的待提交描述符
-  input  logic [p_prepared_tile_width-1:0] i_preparing_tile_packed, // 当前周期准备的描述符
-  input  conv_im2col_pkg::conv_cfg_t i_c, // 当前卷积配置
-  input  logic signed [32:0] i_row_wrap_dx, // 输出行回绕的水平坐标增量
-  input  logic signed [32:0] i_tap_wrap_dx, // 卷积核回绕的水平坐标增量
-  input  logic signed [32:0] i_tap_wrap_pixels, // 卷积核回绕的像素增量
-  input  logic signed [p_coord_w-1:0] i_tap_pair_dx, // 相邻核行之间的水平坐标增量
-  input  logic [31:0] i_tap_pair_pixels, // 相邻核行之间的像素增量
-  input  logic [31:0] i_tap_step_bytes, // 相邻核列的字节步长
-  input  logic [31:0] i_tap_wrap_bytes, // 核列回绕的字节步长
-  input  logic [31:0] i_tap_pair_bytes, // 相邻核行之间的字节步长
-  input  logic signed [p_coord_w-1:0] i_ix, // 当前提交位置的水平坐标
-  input  logic signed [p_coord_w-1:0] i_iy, // 当前提交位置的垂直坐标
-  input  logic [15:0] i_last_kernel_col_q, // 卷积核末列的保存值
-  input  logic [p_tile_count_w-1:0] i_active_columns, // 提交描述符的有效归约列数
-  input  logic [32:0] i_next_group, // 下一通道组的归约位置
-  input  logic [32:0] i_skip_group, // 跳过一个通道组的归约位置
+  input wire logic [p_prepared_tile_width-1:0] i_prepared_tile_packed, // 已保存的待提交描述符
+  input wire logic [p_prepared_tile_width-1:0] i_preparing_tile_packed, // 当前周期准备的描述符
+  input wire conv_im2col_pkg::conv_cfg_t i_c, // 当前卷积配置
+  input wire logic signed [32:0] i_row_wrap_dx, // 输出行回绕的水平坐标增量
+  input wire logic signed [32:0] i_tap_wrap_dx, // 卷积核回绕的水平坐标增量
+  input wire logic signed [32:0] i_tap_wrap_pixels, // 卷积核回绕的像素增量
+  input wire logic signed [p_coord_w-1:0] i_tap_pair_dx, // 相邻核行之间的水平坐标增量
+  input wire logic [31:0] i_tap_pair_pixels, // 相邻核行之间的像素增量
+  input wire logic [31:0] i_tap_step_bytes, // 相邻核列的字节步长
+  input wire logic [31:0] i_tap_wrap_bytes, // 核列回绕的字节步长
+  input wire logic [31:0] i_tap_pair_bytes, // 相邻核行之间的字节步长
+  input wire logic signed [p_coord_w-1:0] i_ix, // 当前提交位置的水平坐标
+  input wire logic signed [p_coord_w-1:0] i_iy, // 当前提交位置的垂直坐标
+  input wire logic [15:0] i_last_kernel_col_q, // 卷积核末列的保存值
+  input wire logic [p_tile_count_w-1:0] i_active_columns, // 提交描述符的有效归约列数
+  input wire logic [32:0] i_next_group, // 下一通道组的归约位置
+  input wire logic [32:0] i_skip_group, // 跳过一个通道组的归约位置
   output logic [p_prepared_tile_width-1:0] o_committing_tile_packed, // 完成操作计算的提交描述符
   output logic [1:0] o_coordinate_valid // 当前提交坐标分别处于有效宽度和高度内
 );

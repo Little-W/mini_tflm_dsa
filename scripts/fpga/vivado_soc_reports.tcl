@@ -346,7 +346,7 @@ proc soc_reports::write_module_paths {directory prefix {count 20}} {
     }
 }
 
-proc soc_reports::write_setup_endpoints {directory prefix {count 2000} {query_limit 10000}} {
+proc soc_reports::write_setup_endpoints {directory prefix {count 2000} {query_limit 2000}} {
     set paths [get_timing_paths -delay_type max -nworst 1 -max_paths $query_limit -no_report_unconstrained]
     set ranked {}
     foreach path $paths {
@@ -366,25 +366,84 @@ proc soc_reports::write_setup_endpoints {directory prefix {count 2000} {query_li
     }
     set report [open [file join $directory ${prefix}_timing_paths.rpt] w]
     set table [open [file join $directory ${prefix}_setup_unique_endpoints.tsv] w]
+    set endpoints [open [file join $directory ${prefix}_endpoints.tsv] w]
+    set module_table [open [file join $directory ${prefix}_module_endpoints.tsv] w]
+    set module_report [open [file join $directory ${prefix}_module_paths.rpt] w]
+    set level_report [open [file join $directory ${prefix}_logic_levels.rpt] w]
     try {
-        puts $report "Vivado setup paths, one worst path per endpoint pin"
+        puts $report "Vivado setup paths, $count worst paths deduplicated by endpoint pin"
         puts $report "requested=$count query_limit=$query_limit returned=[llength $paths] unique_reported=[llength $selected]"
-        puts $report "Paths are sorted by slack; timing summary contains full-design statistics."
+        puts $report "Deduplication keeps one worst path per endpoint pin; paths are sorted by slack."
         if {[llength $selected] < $count && [llength $paths] >= $query_limit} {
             puts $report "QUERY LIMIT REACHED: endpoint sample may be incomplete."
         }
         puts $table "endpoint\tslack_ns"
+        puts $endpoints "delay_type\tclock\tclock_period_ns\tstartpoint\tendpoint\tslack_ns\tlogic_levels"
+        puts $module_table "scope\tdelay_type\tclock\tclock_period_ns\tstartpoint\tendpoint\tslack_ns\tlogic_levels"
+        puts $module_report "Per-module setup samples are selected from the global worst-path sample."
+        puts $module_report "Detailed path reports are indexed in ${prefix}_timing_paths.rpt."
+        puts $level_report "Logic-level distribution for the global worst-path sample."
+        set scopes [dict create \
+            cpu [list {*u_picorv32/*}] \
+            axi [list {*g_npu_axi_timing_buffer* *u_cpu_axi_read_pingpong/* *u_cpu_axi_write_pingpong/* *u_axi_sim_ram/*}] \
+            control [list {*u_npu_axil_reg_if/* *u_npu_controller/* *u_frame_address/*}] \
+            scheduler [list {*g_frame_schedule*u_scheduler/*}] \
+            dma [list {*u_block_dma_arbiter/*}] \
+            im2col [list {*g_im2col.u_frontend/*}] \
+            vector [list {*g_vector_engine.u_engine/*}] \
+            compute [list {*u_compute_core/*}] \
+            requant [list {*u_vec_requant/*}] \
+            ia_loader [list {*u_ia_loader/*}] \
+            kernel_loader [list {*u_kernel_loader/*}] \
+            ps_storage [list {*u_ps_buffer/*}] \
+            shared_storage [list {*g_shared_ia_ps* *u_vector_shared_store/*}]]
+        set scope_counts [dict create]
+        set level_counts [dict create]
         set index 0
         foreach entry $selected {
             lassign $entry slack endpoint path
             if {[regexp {[\t\r\n]} $endpoint]} { error "Invalid endpoint name" }
             puts $table "$endpoint\t$slack"
-            puts $report "\n===== Endpoint [incr index]: $endpoint ====="
-            puts $report [unique_timing_paths::detail [report_timing -of_objects $path -return_string]]
+            set clock [get_property ENDPOINT_CLOCK $path]
+            set clock_name [get_property NAME $clock]
+            set period [get_property PERIOD $clock]
+            set startpoint [get_property NAME [get_property STARTPOINT_PIN $path]]
+            set levels [get_property LOGIC_LEVELS $path]
+            set values [list max $clock_name $period $startpoint $endpoint $slack $levels]
+            puts $endpoints [join $values \t]
+            dict incr level_counts $levels
+            set path_index [incr index]
+            puts $report "===== Endpoint $path_index: $endpoint ====="
+            dict for {scope patterns} $scopes {
+                set matches 0
+                foreach pattern $patterns {
+                    if {[string match $pattern $endpoint]} { set matches 1; break }
+                }
+                if {$matches} {
+                    puts $module_table [join [linsert $values 0 $scope] \t]
+                    puts $module_report "$scope\t$path_index\t$endpoint\t$slack\t$levels"
+                    dict incr scope_counts $scope
+                }
+            }
         }
+        dict for {scope patterns} $scopes {
+            if {![dict exists $scope_counts $scope]} { dict set scope_counts $scope 0 }
+        }
+        puts $module_report "\nScope sample counts:"
+        dict for {scope count} $scope_counts { puts $module_report "$scope\t$count" }
+        puts $level_report "logic_levels\tpaths"
+        foreach levels [lsort -integer [dict keys $level_counts]] {
+            puts $level_report "$levels\t[dict get $level_counts $levels]"
+        }
+        puts $report "\n[report_timing -of_objects [lmap entry $selected {lindex $entry 2}] \
+            -path_type full_clock_expanded -return_string]"
     } finally {
         close $report
         close $table
+        close $endpoints
+        close $module_table
+        close $module_report
+        close $level_report
     }
 }
 
@@ -394,34 +453,6 @@ proc soc_reports::write {directory {prefix soc_top}} {
     report_utilization -hierarchical -file [file join $directory ${prefix}_utilization_hier.rpt]
     report_timing_summary -delay_type min_max -report_unconstrained -check_timing_verbose \
         -file [file join $directory ${prefix}_timing_summary.rpt]
-    write_setup_endpoints $directory $prefix
-    # 连接图仅在完整写入后发布；结果汇总保留测量缺失状态。
-    foreach procedure {write_connectivity write_core_clock} {
-        if {[catch {$procedure $directory $prefix} message]} {
-            puts "Measurement unavailable ($procedure): $message"
-        }
-    }
-    unique_timing_paths::write [file join $directory ${prefix}_hold_paths.rpt] min
-    write_module_paths $directory $prefix
-    # 统计最差一万条建立时间路径的组合级数分布；该表保留明确的采样范围。
-    report_design_analysis -logic_level_distribution -logic_level_dist_paths 10000 \
-        -file [file join $directory ${prefix}_logic_levels.rpt]
-    report_high_fanout_nets -fanout_greater_than 100 -max_nets 200 \
-        -file [file join $directory ${prefix}_high_fanout.rpt]
-    # 限量样本只用于诊断；完整的 WNS/TNS 和端点数量以原生汇总报告为准。
-    set stream [open [file join $directory ${prefix}_endpoints.tsv] w]
-    puts $stream "delay_type\tclock\tclock_period_ns\tstartpoint\tendpoint\tslack_ns\tlogic_levels"
-    foreach clock [get_clocks -quiet] {
-        set name [get_property NAME $clock]
-        set period [get_property PERIOD $clock]
-        foreach delay_type {max min} {
-            foreach path [get_timing_paths -delay_type $delay_type -to $clock -nworst 1 -max_paths 100 -no_report_unconstrained] {
-                set values [list $delay_type $name $period \
-                    [get_property STARTPOINT_PIN $path] [get_property ENDPOINT_PIN $path] \
-                    [get_property SLACK $path] [get_property LOGIC_LEVELS $path]]
-                puts $stream [join $values \t]
-            }
-        }
-    }
-    close $stream
+    write_core_clock $directory $prefix
+    write_setup_endpoints $directory $prefix 2000 2000
 }

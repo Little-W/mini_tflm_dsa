@@ -45,12 +45,12 @@ module picorv32_frontend #(
     parameter logic ENABLE_IRQ_TIMER = 1'b1,
     parameter logic WITH_PCPI = 1'b0
 ) (
-    input  logic clk, // 模块工作时钟。
-    input  logic rst_n, // 低电平有效的同步复位。
-    input  picorv32_frontend_pkg::request_t i_request, // 主控制器的访存与译码请求。
-    input  logic i_mem_ready, // 当前外部存储请求完成。
-    input  logic [31:0] i_mem_rdata, // 当前外部存储读取数据。
-    output picorv32_frontend_pkg::response_t o_response // 存储接口、译码结果和执行记录。
+    input wire logic clk, // 模块工作时钟。
+    input wire logic rst_n, // 低电平有效的同步复位。
+    input wire picorv32_frontend_pkg::request_t i_request, // 主控制器的访存与译码请求。
+    input wire logic i_mem_ready, // 当前外部存储请求完成。
+    input wire logic [31:0] i_mem_rdata, // 当前外部存储读取数据。
+    output wire picorv32_frontend_pkg::response_t o_response // 存储接口、译码结果和执行记录。
 );
     //! 0. 参数与局部数据
     //! ---------------------
