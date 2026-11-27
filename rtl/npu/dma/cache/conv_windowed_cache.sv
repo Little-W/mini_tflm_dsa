@@ -150,6 +150,7 @@ module conv_windowed_cache #(
   logic [0:0][PF_AW-1:0] prefetch_index_i_rd_addr;
   logic [0:0][32:0] prefetch_index_o_rd_data;
   logic pf_push, pf_pop, pf_duplicate, pf_retire_q, pf_retire_ready;
+  logic select_prefetch_launch;
   logic [PF_DEPTH-1:0] pf_slot_valid, pf_current_by_slot;
   // 保留并行独热选择结果，使逻辑位置编码与物理读取地址分别归并。
   (* keep = "true" *) logic [PF_DEPTH-1:0] pf_pick_by_slot;
@@ -501,7 +502,7 @@ module conv_windowed_cache #(
       (offer_duplicate_q || !offer_in_range || pf_count<PF_CW'(PF_DEPTH));
   assign pf_push = offer_consume && !offer_duplicate_q && offer_in_range;
   assign pf_retire_ready=pf_pending && (pf_hit || pf_in_flight || range_below[2] || !range_below[3] ||
-                              (select_launch && select_prefetch));
+                              select_prefetch_launch);
   assign pf_pop=pf_pending && pf_retire_q;
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) pf_retire_q <= 1'b0;
@@ -686,20 +687,16 @@ module conv_windowed_cache #(
 
   assign pf_set = cache_set(pf_addr, windowed_q && pf_index_valid, pf_index);
 
-  localparam int p_prefetch_fill_tag_groups = (32-LB+2)/3;
-  logic [p_prefetch_fill_tag_groups-1:0] prefetch_fill_tag_matches;
+  logic prefetch_fill_tag_match;
   // 预取地址和在途填充地址按独立分组比较，末级只合并相等结果。
-  for (genvar tag_group=0; tag_group<p_prefetch_fill_tag_groups; tag_group++) begin : g_prefetch_fill_tag
-    localparam int p_low = LB+tag_group*3;
-    localparam int p_width = 32-p_low<3 ? 32-p_low : 3;
-    assign prefetch_fill_tag_matches[tag_group] =
-        pf_addr[p_low+:p_width] == fill_addr[p_low+:p_width];
-  end
+  conv_cache_snapshot_equal #(.p_width(32-LB)) u_prefetch_fill_tag (
+    .i_a(pf_addr[31:LB]), .i_b(fill_addr[31:LB]), .o_equal(prefetch_fill_tag_match)
+  );
   always_comb begin
     pf_hit_raw=0;
     for (int w=0;w<WAYS;w++)
       if (pf_lookup_ready && valid_prefetch[w] && pf_tag[w]==pf_addr[31:LB]) pf_hit_raw=1;
-    pf_in_flight=fill_state!=F_IDLE && (&prefetch_fill_tag_matches);
+    pf_in_flight=fill_state!=F_IDLE && prefetch_fill_tag_match;
   end
   logic [1:0][WAYS+PF_DEPTH-1:0] offer_duplicate_valid;
   logic [1:0][WAYS+PF_DEPTH-1:0][31-LB:0] offer_duplicate_tag;
@@ -764,21 +761,17 @@ module conv_windowed_cache #(
   logic select_victim_conflict;
   (* keep = 1 *) logic select_request_set_match, select_hint_busy;
   (* keep = 1 *) logic select_fill_busy;
-  logic select_prefetch_blocked, select_demand_blocked;
   wire metadata_fill;
 
   // 请求组号、提示冲突和命中结果并行准备，需求接收只在最后一级参与选择。
   // 预取同时检查同组访问和需求缺失，普通填充只检查同组访问。
-  assign select_request_set_match = lookup_set == select_set;
+  conv_cache_lookup_set_match #(.p_set_width(SI)) u_selected_request_set (
+    .i_bypass(bypass_q), .i_miss(fg_state == FG_MISS),
+    .i_fill_set(demand_fill_set), .i_demand_set(demand_set),
+    .i_work_set(work_request.set_index), .i_select_set(select_set),
+    .o_match(select_request_set_match)
+  );
   assign select_hint_busy = hint_pending_q && hint_effective_valid && hint_set == select_set;
-  conv_cache_select_busy #(.p_prefetch(1'b1)) u_prefetch_busy (
-    .i_hint_busy(select_hint_busy), .i_fire(req_fire),
-    .i_set_match(select_request_set_match), .i_hit(lookup_hit), .o_busy(select_prefetch_blocked)
-  );
-  conv_cache_select_busy #(.p_prefetch(1'b0)) u_demand_busy (
-    .i_hint_busy(select_hint_busy), .i_fire(req_fire),
-    .i_set_match(select_request_set_match), .i_hit(lookup_hit), .o_busy(select_demand_blocked)
-  );
   always_comb begin
     select_fill_capacity_ready = select_stage_valid && select_decision_valid &&
         (fill_state == F_IDLE || (fill_success && fill_set != select_set));
@@ -788,8 +781,10 @@ module conv_windowed_cache #(
           !(metadata_fill && fill_set == select_set) && (fill_state == F_IDLE || fill_success);
 `endif
   end
-  assign select_prefetch_ready = pf_pending && pf_match_ready && select_prefetch_address_matches &&
-      !pf_hit && !pf_in_flight;
+  (* keep_hierarchy = "yes" *) conv_cache_metadata_eligibility u_prefetch_launch_ready (
+    .i_conditions({pf_pending, pf_match_ready, select_prefetch_address_matches,
+        !pf_hit, !pf_in_flight}), .o_eligible(select_prefetch_ready)
+  );
   logic select_demand_snapshot_ready, select_demand_request_ready;
   // 替换需求直接检查保存的需求字段，前台状态在末级选择是否使用该结果。
   assign select_demand_snapshot_ready = bypass_q ||
@@ -818,7 +813,6 @@ module conv_windowed_cache #(
         !higher_way_hit && select_way == WI'(victim_way);
   end
   logic demand_victim_eligible, bypass_victim_eligible, victim_conflict_parallel;
-  (* keep = 1 *) logic victim_identity;
   conv_cache_metadata_eligibility u_demand_victim (
     .i_conditions({fg_state == FG_MISS, 1'b1, !bypass_q,
         select_set == demand_set, 1'b1}), .o_eligible(demand_victim_eligible)
@@ -830,10 +824,10 @@ module conv_windowed_cache #(
   );
   conv_cache_victim_qualification #(.p_ways(WAYS)) u_victim_qualification (
     .i_demand_eligible(demand_victim_eligible), .i_bypass_eligible(bypass_victim_eligible),
-    .i_selected_hits(demand_selected_victim), .o_conflict(victim_identity)
+    .i_selected_hits(demand_selected_victim), .i_lookup_ready(demand_lookup_ready),
+    .o_conflict(victim_conflict_parallel)
   );
   // 受影响缓存行的身份预先归并，查询就绪只控制最终冲突结果。
-  assign victim_conflict_parallel = demand_lookup_ready && victim_identity;
   always_comb begin
     select_victim_conflict = victim_conflict_parallel;
 `ifndef SYNTHESIS
@@ -845,24 +839,15 @@ module conv_windowed_cache #(
     end
 `endif
   end
-  logic select_launch_eligible;
-  // 替换请求及占用条件提前合并，填充完成只参与最终发送资格。
-  assign select_launch_eligible = !select_victim_conflict &&
-      ((select_prefetch && select_prefetch_ready && !select_prefetch_blocked) ||
-       (!select_prefetch && select_demand_ready && !lookup_hit && !select_demand_blocked));
+  // 两类请求独立合并资格，工作请求占用条件只在末级参与发送选择。
+  conv_cache_select_launch u_select_launch (
+    .i_capacity_ready(select_fill_capacity_ready), .i_victim_conflict(select_victim_conflict),
+    .i_prefetch(select_prefetch), .i_prefetch_ready(select_prefetch_ready),
+    .i_demand_ready(select_demand_ready), .i_hint_busy(select_hint_busy),
+    .i_fire(req_fire), .i_set_match(select_request_set_match), .i_hit(lookup_hit),
+    .o_launch(select_launch), .o_prefetch_launch(select_prefetch_launch)
+  );
   always_comb begin
-    select_launch = select_fill_capacity_ready && select_launch_eligible;
-    case (^{select_fill_capacity_ready, select_prefetch, select_prefetch_ready,
-             select_prefetch_blocked, select_demand_ready, lookup_hit,
-             select_demand_blocked, select_victim_conflict})
-      1'b0, 1'b1: begin end
-      default: begin
-        select_launch = select_fill_capacity_ready &&
-            (select_prefetch ? (select_prefetch_ready && !select_prefetch_blocked) :
-                               (select_demand_ready && !lookup_hit && !select_demand_blocked));
-        if (select_launch && select_victim_conflict) select_launch = 1'b0;
-      end
-    endcase
     select_way_next=0;farthest=select_ranks[0];
     for (int w=1;w<WAYS;w++)
       if (WAYS == 2 ? !rank_one_below_zero : select_ranks[w] >= farthest) begin
@@ -897,7 +882,9 @@ module conv_windowed_cache #(
       .i_a(line_index), .i_b({p_index_width{1'b0}}), .i_carry(1'b1),
       .o_sum(next_line_index), .o_carry(unused_index_carry)
     );
-    unsigned_compare #(.p_width(p_index_width)) u_line_limit (
+    parallel_unsigned_compare #(
+      .p_width(p_index_width), .p_preserve_groups(1'b1), .p_infer_arithmetic(1'b0)
+    ) u_line_limit (
       .i_a(line_index), .i_b(end_q[31:p_shift]),
       .o_less(line_before_limit), .o_equal(unused_limit_equal)
     );
@@ -1007,8 +994,10 @@ module conv_windowed_cache #(
   assign candidate_metadata_busy = candidate_prefetch ? candidate_prefetch_busy : candidate_demand_busy;
   // 地址相等与提示、填充冲突并行准备，正式请求只参与末级冲突归并。
   assign select_fill_busy = metadata_fill && fill_set == select_set;
-  assign select_metadata_busy = (req_fire && select_request_set_match) ||
-      select_fill_busy || select_hint_busy;
+  conv_cache_select_busy #(.p_prefetch(1'b0)) u_snapshot_busy (
+    .i_hint_busy(select_fill_busy || select_hint_busy), .i_fire(req_fire),
+    .i_set_match(select_request_set_match), .i_hit(1'b0), .o_busy(select_metadata_busy)
+  );
   // 各端口地址独立保存，异步复位仅清除对应的有效状态。
   always_ff @(posedge clk) begin
     if (!rst_n) begin
@@ -1038,14 +1027,17 @@ module conv_windowed_cache #(
       hint_snapshot_valid<=!(metadata_enable && metadata_fill_good && fill_set==hint_set);
     end
   end
-  // The active prefetch address is held until it retires. The idle cycle
-  // between entries clears this validity bit before another address is used.
+  logic pf_hit_checked_next;
+  // 活动预取保持到退休；已准备的查询资格与本周期替换发送分别控制有效位。
+  conv_cache_prefetch_check u_prefetch_check (
+    .i_configure(cfg_valid && cfg_ready), .i_pending(pf_pending),
+    .i_lookup_ready(pf_lookup_ready), .i_fill_busy(metadata_enable && metadata_fill),
+    .i_fill_set_match(fill_set == pf_set), .i_launch(select_launch),
+    .i_launch_set_match(select_set == pf_set), .o_next_checked(pf_hit_checked_next)
+  );
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) pf_hit_checked <= 1'b0;
-    else if (cfg_valid && cfg_ready) pf_hit_checked <= 1'b0;
-    else pf_hit_checked <= pf_pending && pf_lookup_ready &&
-        !(metadata_enable && metadata_fill && fill_set==pf_set) &&
-        !(select_launch && select_set==pf_set);
+    else pf_hit_checked <= pf_hit_checked_next;
   end
   always_ff @(posedge clk) pf_hit_q <= pf_hit_raw;
 
@@ -1229,27 +1221,22 @@ module conv_windowed_cache #(
     end
   end
 
-  (* keep = 1 *) logic select_snapshot_usable, select_retire_ready;
-  // 快照保持条件与替换完成条件并行计算，状态只合并已完成的判断。
-  assign select_snapshot_usable = !select_metadata_busy &&
-      (select_prefetch ?
-        (pf_pending && select_prefetch_address_matches && !pf_hit && !pf_in_flight) :
-        (fg_state == FG_MISS && select_demand_address_matches && !lookup_hit && lookup_range));
-  assign select_retire_ready = select_decision_valid && (fill_state == F_IDLE || fill_success) &&
-      (select_prefetch ?
-        (pf_match_ready && !(req_fire && !lookup_hit) &&
-          !select_victim_conflict) :
-        ((bypass_q || lookup_ready) && !completing_demand));
+  logic select_stage_next_valid;
+  // 两类请求分别准备快照保持与结束资格，命中结果只参与最终选择。
+  conv_cache_snapshot_hold u_snapshot_hold (
+    .i_configure(cfg_valid && cfg_ready), .i_valid(select_stage_valid),
+    .i_metadata_busy(select_metadata_busy), .i_prefetch(select_prefetch),
+    .i_prefetch_snapshot(pf_pending && select_prefetch_address_matches && !pf_hit && !pf_in_flight),
+    .i_demand_snapshot(fg_state == FG_MISS && select_demand_address_matches && lookup_range),
+    .i_retire_eligible(select_decision_valid && (fill_state == F_IDLE || fill_success)),
+    .i_prefetch_ready(pf_match_ready), .i_victim_conflict(select_victim_conflict),
+    .i_demand_retire((bypass_q || lookup_ready) && !completing_demand),
+    .i_fire(req_fire), .i_hit(lookup_hit), .i_launch(select_launch_candidate),
+    .i_candidate_busy(candidate_metadata_busy), .o_next_valid(select_stage_next_valid)
+  );
   always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      select_stage_valid <= 1'b0;
-    end else if (cfg_valid && cfg_ready) begin
-      select_stage_valid <= 1'b0;
-    end else if (select_stage_valid) begin
-      select_stage_valid <= select_snapshot_usable && !select_retire_ready;
-    end else begin
-      select_stage_valid <= select_launch_candidate && !candidate_metadata_busy;
-    end
+    if (!rst_n) select_stage_valid <= 1'b0;
+    else select_stage_valid <= select_stage_next_valid;
   end
   // Separate synchronous metadata reads and replacement comparison from the
   // fill/queue handshake. Any concurrent update to this set cancels the

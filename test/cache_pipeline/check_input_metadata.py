@@ -266,10 +266,11 @@ def run(command, log, cwd):
 
 def measure_cases(root, out, models, support):
     cases = {}
+    resolve = runpy.run_path(str(root / "scripts/rtl/source_files.py"))["with_dependencies"]
     for label, source in models.items():
         path = out / (label + ".sv")
         path.write_text(source + support)
-        cases[label] = dict(top=label, sources=[str(path), str(root / SELECTOR)],
+        cases[label] = dict(top=label, sources=[str(item) for item in resolve([path, root / SELECTOR], root)],
             options=["-GSETS=16", "-GSI=4", "-GLB=7"],
             configuration="真实元数据读取和命中保存，存储内容为自由输入")
     config = out / "synthesis_cases.json"
@@ -335,6 +336,8 @@ def main():
     root, out = args.source_root.resolve(), args.out.resolve()
     original = args.reference_root.resolve() if args.reference_root else None
     out.mkdir(parents=True, exist_ok=True)
+    resolve = runpy.run_path(str(ROOT / "scripts/rtl/source_files.py"))["with_dependencies"]
+    selector_sources = resolve([root / SELECTOR], root)
     sources = {str(p): digest(root / p) for p in (CACHE, METADATA, SELECTOR)}
     reference_sources = {path: read_sources(original, path) if original else
         read_reference_file(ROOT, args.reference_ref, path, text=True)
@@ -359,7 +362,8 @@ endmodule
     proof = out / "comparison.sv"
     proof.write_text(comparison)
     script = out / "formal.ys"
-    script.write_text("read_slang --top comparison " + shlex.join([str(proof), str(root / SELECTOR)]) +
+    script.write_text("read_slang --top comparison " + shlex.join(map(str, [proof, *selector_sources])) +
+        "\nsetattr -mod -unset keep_hierarchy\nsetattr -unset keep_hierarchy"
         "\nprep -top comparison -flatten\nopt -full\n"
         "sat -seq 2 -prove-skip 1 -set-init-zero -verify -prove equivalent 1 -show-inputs -show-outputs\n")
     run([sys.executable, ROOT / "scripts/fpga/open_fpga_synth.py", "--worker", script],
@@ -369,7 +373,7 @@ endmodule
     four_state = out / "four_state.sv"
     four_state.write_text("\n".join(models.values()) + support + bench())
     binary = out / "four_state.vvp"
-    run(["iverilog", "-g2012", "-s", "tb", "-o", binary, four_state, root / SELECTOR],
+    run(["iverilog", "-g2012", "-s", "tb", "-o", binary, four_state, *selector_sources],
         out / "four_state_compile.log", root)
     run(["vvp", binary], out / "four_state.log", root)
     match = re.search(r"METADATA_FOUR_STATE_PASS checks=(\d+)", (out / "four_state.log").read_text())

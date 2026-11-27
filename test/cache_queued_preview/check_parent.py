@@ -32,8 +32,10 @@ def digest(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference', default='3f4bc2a97dfecf0ec38ad49d704c2ee4ee7f8365')
+    parser.add_argument('--reference', default='0d437ded9299a7ad5ab70f30884b5344399d4d22')
     parser.add_argument('--preview', type=int, choices=(0, 1), default=1)
+    parser.add_argument('--reference-request-from-git', action='store_true', default=True,
+                        help='使用参考提交中的请求模块和预读比较模块')
     parser.add_argument('--jobs', type=int, default=2)
     args = parser.parse_args()
     out = args.out.resolve(); out.mkdir(parents=True, exist_ok=True)
@@ -42,10 +44,18 @@ def main():
     for relative in MODULES:
         path = out/'reference'/relative
         path.parent.mkdir(parents=True, exist_ok=True)
-        if args.preview and path.name == 'conv_cache_request_path.sv':
+        if args.preview and not args.reference_request_from_git and path.name == 'conv_cache_request_path.sv':
             path.write_bytes((Path(__file__).parent/'reference_request_path.sv').read_bytes())
         else:
             path.write_bytes(subprocess.check_output(['git','show',args.reference+':'+relative],cwd=ROOT))
+        initial.append(path)
+    if args.preview:
+        relative = 'rtl/npu/dma/cache/conv_cache_queued_preview.sv'
+        path = out/'reference'/relative
+        if args.reference_request_from_git:
+            path.write_bytes(subprocess.check_output(['git', 'show', args.reference+':'+relative], cwd=ROOT))
+        else:
+            path.write_bytes((Path(__file__).parent/'reference_queued_preview.sv').read_bytes())
         initial.append(path)
     sources = {'reference':resolver(initial, ROOT),
                'current':resolver([ROOT/MODULES[0]], ROOT)}
@@ -54,6 +64,7 @@ def main():
     # 这些名称表示组合中间值，其中部分仅参与四态计算；所有寄存状态和公开输出保留。
     renamed_combinational = ('w:u_request_path.g_queued_lookup_qualification.* '
                             'w:u_request_path.u_input_conflict.* '
+                            'w:u_request_path.g_queued_preview_active.u_active.* '
                             'w:g_metadata_way*.u_metadata.g_current_lookup_valid.lookup_candidate_valid')
     for mode, flags in MODES:
         for index, parameters in enumerate(PROFILES):

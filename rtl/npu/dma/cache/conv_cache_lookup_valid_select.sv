@@ -3,6 +3,7 @@
 
 // 缓存有效位来源选择：各候选先完成存储读取及写入转发，再选择一位结果。
 // 结果沿用调用方现有的查询寄存边沿，单项请求队列不增加处理周期。
+(* keep_hierarchy = "yes" *)
 module conv_cache_lookup_valid_select (
   input wire logic rst_n,                         // 复位电平，仅用于保持原有四态传播
   input wire logic i_cfg_accept,                  // 当前周期接收新配置

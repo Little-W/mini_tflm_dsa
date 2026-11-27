@@ -12,6 +12,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/dma/cache/conv_windowed_cache.sv')
+QUALIFICATION = Path('rtl/npu/dma/cache/conv_cache_victim_qualification.sv')
 PORTS = '''
   input logic [1:0] fg_state, // 当前前台状态
   input logic demand_lookup_ready, // 需求查询已经完成
@@ -61,7 +62,7 @@ def execute(command, log):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference', default='d485d636')
+    parser.add_argument('--reference', default='9e3e5d6a6f47befe6c86aceacad7999923206458')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -69,7 +70,12 @@ def main():
     current = (ROOT / SOURCE).read_text()
     source_hash = digest(ROOT / SOURCE)
     models = out / 'models.sv'
-    models.write_text(model('reference', reference) + model('current', current))
+    models.write_text(model('reference', reference).replace(
+        'conv_cache_victim_qualification', 'reference_victim_qualification') + model('current', current))
+    reference_qualification = out / 'reference_victim_qualification.sv'
+    reference_qualification.write_text(subprocess.check_output(
+        ['git', 'show', args.reference + ':' + str(QUALIFICATION)], cwd=ROOT, text=True).replace(
+            'module conv_cache_victim_qualification', 'module reference_victim_qualification', 1))
     connections = ','.join('.' + name + '(' + name + ')' for name in NAMES)
     proof = out / 'proof.sv'
     proof.write_text(f'''// 所有输入均可独立变化，不限制状态、地址或命中组合。
@@ -83,7 +89,9 @@ assign equivalent=a===b;
 endmodule
 ''')
     resolve = runpy.run_path(str(ROOT / 'scripts/rtl/source_files.py'))['with_dependencies']
-    sources = resolve([models, proof], ROOT)
+    sources = resolve([models, proof, reference_qualification], ROOT)
+    dependency_hashes = {str(path.relative_to(ROOT)): digest(path)
+                         for path in sources if path.is_relative_to(ROOT)}
     records = []
     for mode, flags in MODES:
         for sets, ways in ((2, 1), (16, 2), (256, 2)):
@@ -91,6 +99,7 @@ endmodule
             script = out / (name + '.ys')
             script.write_text('read_slang --top proof ' + shlex.join(
                 flags + [f'-GSI={sets.bit_length()-1}', f'-GWAYS={ways}'] + list(map(str, sources))) +
+                '\nsetattr -mod -unset keep_hierarchy\nsetattr -unset keep_hierarchy'
                 '\nprep -top proof -flatten\nopt -full\nsat -verify -prove equivalent 1 -show-inputs\n')
             log = out / (name + '.log')
             execute([sys.executable, ROOT / 'scripts/fpga/open_fpga_synth.py', '--worker', script], log)
@@ -147,9 +156,11 @@ endmodule
         four_state.append({'mode': mode, 'passed': True, 'comparisons': 442368,
                            'log_sha256': digest(log)})
     assert digest(ROOT / SOURCE) == source_hash
+    assert all(digest(ROOT / path) == expected for path, expected in dependency_hashes.items())
     (out / 'summary.json').write_text(json.dumps({
         'passed': True, 'reference_commit': args.reference, 'input_constraints': [],
         'formal': records, 'four_state': four_state, 'source_sha256': source_hash,
+        'dependency_sha256': dependency_hashes,
         'runner_sha256': digest(__file__),
     }, indent=2) + '\n')
 

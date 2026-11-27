@@ -1,0 +1,95 @@
+{
+  "cache_4k": {
+    "top": "conv_windowed_cache",
+    "configuration": "4 KiB 双路缓存，64 位数据与单项请求队列",
+    "parameters": {
+      "SETS": 128,
+      "WAYS": 2,
+      "LINE_BYTES": 16,
+      "BUS_WIDTH": 64,
+      "READ_WIDTH": 64,
+      "CACHE_POLICY": 3,
+      "DEMAND_DEPTH": 1,
+      "p_preview_request": 1
+    },
+    "sources": [
+      "rtl/npu/dma/cache/conv_windowed_cache.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GSETS=128",
+      "-GWAYS=2",
+      "-GLINE_BYTES=16",
+      "-GBUS_WIDTH=64",
+      "-GREAD_WIDTH=64",
+      "-GCACHE_POLICY=3",
+      "-GDEMAND_DEPTH=1",
+      "-Gp_preview_request=1"
+    ]
+  },
+  "cache_soc_registered": {
+    "top": "conv_windowed_cache",
+    "configuration": "4 KiB 双路缓存，128 字节缓存行、64 位数据和两项请求队列",
+    "parameters": {
+      "SETS": 16,
+      "WAYS": 2,
+      "LINE_BYTES": 128,
+      "BUS_WIDTH": 64,
+      "READ_WIDTH": 64,
+      "CACHE_POLICY": 3,
+      "DEMAND_DEPTH": 2,
+      "p_preview_request": 0
+    },
+    "sources": [
+      "rtl/npu/dma/cache/conv_windowed_cache.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GSETS=16",
+      "-GWAYS=2",
+      "-GLINE_BYTES=128",
+      "-GBUS_WIDTH=64",
+      "-GREAD_WIDTH=64",
+      "-GCACHE_POLICY=3",
+      "-GDEMAND_DEPTH=2",
+      "-Gp_preview_request=0"
+    ]
+  },
+  "cache_soc_preview": {
+    "top": "conv_windowed_cache",
+    "configuration": "4 KiB 双路缓存，128 字节缓存行、64 位数据和两项请求队列",
+    "parameters": {
+      "SETS": 16,
+      "WAYS": 2,
+      "LINE_BYTES": 128,
+      "BUS_WIDTH": 64,
+      "READ_WIDTH": 64,
+      "CACHE_POLICY": 3,
+      "DEMAND_DEPTH": 2,
+      "p_preview_request": 1
+    },
+    "sources": [
+      "rtl/npu/dma/cache/conv_windowed_cache.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GSETS=16",
+      "-GWAYS=2",
+      "-GLINE_BYTES=128",
+      "-GBUS_WIDTH=64",
+      "-GREAD_WIDTH=64",
+      "-GCACHE_POLICY=3",
+      "-GDEMAND_DEPTH=2",
+      "-Gp_preview_request=1"
+    ]
+  }
+}

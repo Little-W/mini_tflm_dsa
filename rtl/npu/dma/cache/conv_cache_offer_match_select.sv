@@ -2,6 +2,7 @@
 `default_nettype none
 
 // 正常读取和复位读取均使用预先计算的比较值，来源控制只经过一层布尔选择。
+(* keep_hierarchy = "yes" *)
 module conv_cache_offer_match_select #(
   parameter bit p_capture_matches = 1'b1
 ) (

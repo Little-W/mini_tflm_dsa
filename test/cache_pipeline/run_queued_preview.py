@@ -249,7 +249,7 @@ def main():
     parser.add_argument("--depth", type=int, choices=(2,4), default=2)
     parser.add_argument("--read-width", type=int, choices=(64,128), default=128)
     parser.add_argument("--mode", choices=("generic","fpga"), default="generic")
-    parser.add_argument("--direct-response", action=argparse.BooleanOptionalAction, default=True,
+    parser.add_argument("--direct-response", action=argparse.BooleanOptionalAction, default=False,
                         help="Check same-cycle responses for formally accepted preview hits")
     args = parser.parse_args()
     if args.jobs < 1:

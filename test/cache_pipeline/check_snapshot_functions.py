@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from rtl_source_view import read_sources, module_definition, source_manifest
 import re
+import runpy
 import shlex
 import subprocess
 import sys
@@ -15,7 +16,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/dma/cache/conv_windowed_cache.sv")
-HELPERS = ("conv_cache_snapshot_fields", "conv_cache_snapshot_equal", "conv_cache_snapshot_range")
+HELPERS = ("conv_cache_snapshot_fields", "conv_cache_snapshot_equal", "conv_cache_snapshot_range",
+           "conv_cache_registered_equal")
 NAMES = ("i_request", "i_fg_state", "i_request_count", "i_req_fire", "i_lookup_input_valid",
          "i_preview_source_select", "i_work_word", "i_demand_word", "i_expected_set",
          "i_base", "i_end", "i_request_range", "i_head_range", "i_reference")
@@ -115,7 +117,9 @@ def main():
     root, reference, out = args.source_root.resolve(), args.reference_root.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     original, current = read_sources(reference, SOURCE), read_sources(root, SOURCE)
-    common = [root / "rtl/common/unsigned_compare.sv", root / "rtl/common/parallel_unsigned_compare.sv"]
+    resolver = runpy.run_path(str(root / "scripts/rtl/source_files.py"))
+    common = resolver["with_dependencies"](
+        [root / "rtl/common/unsigned_compare.sv", root / "rtl/common/parallel_unsigned_compare.sv"], root)
     model = support(original, "reference_") + "\n" + support(current, "candidate_") + "\n" + comparison()
     proof = out / "comparison.sv"
     proof.write_text(model)

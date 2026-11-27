@@ -40,8 +40,9 @@ module conv_cache_snapshot_fields #(
   assign saved_address = request_fields_q[p_request_width-2-:32];
   assign request_address = i_request[p_request_width-1-:32];
   assign request_set = i_request[3+:p_set_width];
-  // 各组三位比较与完整请求字段在同一边沿保存，采样后归并完整相等关系。
-  conv_cache_registered_equal #(.p_width(30)) u_current_demand (
+  // 缺失请求的三十位字地址分成五组保存，响应条件只需归并五个比较结果。
+  // 其余比较使用三位分组，保持输入采样路径较短。
+  conv_cache_registered_equal #(.p_width(30), .p_group_width(6)) u_current_demand (
     .clk(clk),
     .i_a(request_address[31:2]), .i_b(i_demand_word), .o_equal(current_demand_equal)
   );

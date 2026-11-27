@@ -2,6 +2,7 @@
 `default_nettype none
 
 // 提示占用、请求接收和组号冲突并行计算，候选种类保持各自的阻塞条件。
+(* keep_hierarchy = "yes" *)
 module conv_cache_select_busy #(
   parameter bit p_prefetch = 1'b1
 ) (

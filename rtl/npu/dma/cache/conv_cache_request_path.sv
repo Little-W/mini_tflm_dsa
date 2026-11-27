@@ -472,16 +472,23 @@ module conv_cache_request_path #(
     assign preview_active = p_preview_request && req_valid && preview_selected_q &&
         request_count == 0 && outstanding_count == 0 && !cfg_valid;
   end else if (p_preview_request) begin : g_queued_preview_active
-    // 预读只提前完成同步读取，返回数据仍写入原响应寄存器。
+    // 预读提前完成同步读取，正式接收后按既有返回规则使用准备的数据。
     // 完整地址及组号必须与前一拍保存内容一致，配置和容量由处理事件统一检查。
     // 地址相同且配置保持时，保存的范围结果与正式请求一致，范围运算不参与来源选择。
     logic preview_match, accepted_known;
+    logic preview_set_match;
+    // 哈希组号与窗口索引各自比较，窗口模式只在末级选择一位匹配结果。
+    conv_cache_preview_set_match #(.p_set_width(SI), .p_line_shift(LB)) u_set_match (
+      .i_request_address(req_addr), .i_request_index(req_window_index),
+      .i_windowed(windowed_q), .i_index_valid(req_window_index_valid),
+      .i_saved_set(work_request.set_index), .o_match(preview_set_match)
+    );
     // 地址身份与正式接收并行计算，处理事件末级合并读取匹配和容量资格。
-    conv_cache_queued_preview #(.p_set_width(SI)) u_active (
+    conv_cache_queued_preview u_active (
       .i_preview_selected(preview_selected_q),
       .i_queue_empty(request_count == 0), .i_foreground_idle(fg_state == FG_IDLE),
       .i_request_address(incoming_request.address), .i_saved_address(work_request.address),
-      .i_request_set(incoming_request.set_index), .i_saved_set(work_request.set_index),
+      .i_set_match(preview_set_match),
       .i_saved_range(work_request.in_range), .o_match(preview_match)
     );
     always_comb begin
@@ -513,15 +520,25 @@ module conv_cache_request_path #(
     // 接收元数据后完成行释放位置移位，需求和预取分别使用已有接收寄存级。
     // 位[17:0]为被移位数，位[21:18]为右移量，位22表示禁止释放。
     for (genvar retire_port = 0; retire_port < 2; retire_port++) begin : g_port
-      logic [8:0] unused_padding;
-      logic disabled;
-      logic [3:0] shift;
-      logic [17:0] row_value;
-      logic [31:0] shifted_value;
+      if (retire_port == 0) begin : g_demand
+        // 输入和保存请求分别完成移位，来源资格只选择完整释放序号。
+        conv_cache_retire_decode u_decode (
+          .i_use_incoming((DEMAND_DEPTH > 1 && p_preview_request) ?
+              request_count == 0 : preview_active),
+          .i_incoming(incoming_request.retire), .i_saved(work_request.retire),
+          .o_retire(retire_decode_output[retire_port])
+        );
+      end else begin : g_prefetch
+        logic [8:0] unused_padding;
+        logic disabled;
+        logic [3:0] shift;
+        logic [17:0] row_value;
+        logic [31:0] shifted_value;
 
-      assign {unused_padding, disabled, shift, row_value} = retire_decode_input[retire_port];
-      assign shifted_value = {14'd0, row_value} >> shift;
-      assign retire_decode_output[retire_port] = disabled ? INF : shifted_value;
+        assign {unused_padding, disabled, shift, row_value} = retire_decode_input[retire_port];
+        assign shifted_value = {14'd0, row_value} >> shift;
+        assign retire_decode_output[retire_port] = disabled ? INF : shifted_value;
+      end
     end
   end else begin : g_retire_value
     assign retire_decode_output = retire_decode_input;
@@ -765,26 +782,13 @@ module conv_cache_request_path #(
   assign core_rsp_ready=response_count<DQ_CW'(DEMAND_DEPTH) ||
                         (response_count!=0 && rsp_ready);
   if (DEMAND_DEPTH > 1) begin : g_registered_response
-    // 返回队列保存普通完成结果和被下游停顿的预读结果。
-    // 已准备命中且当前没有在途请求时，正式接收与成功返回可在同拍完成。
-    logic preview_response;
-    always_comb begin
-      preview_response = 1'b0;
-      if (p_preview_request) begin
-        case (preview_active && req_fire && fast_hit_response &&
-              response_count == 0 && outstanding_count == 0)
-          1'b1: preview_response = 1'b1;
-          default: begin end
-        endcase
-      end
-    end
-    // 正式接收且完整地址匹配时使用同步读取的数据，反压时原样保存到响应队列。
-    assign rsp_valid = response_count != 0 || preview_response;
-    assign rsp_data = preview_response ? core_rsp_data : saved_response_data;
-    assign rsp_error = preview_response ? 1'b0 : saved_response_error;
-    assign response_push = core_rsp_valid && core_rsp_ready && !(preview_response && rsp_ready);
-    // 直达命中只产生成功响应，错误资格独立于直达选择。
-    assign rsp_success = preview_response || (response_count != 0 && !saved_response_error);
+    // 所有完成结果进入已有响应队列，数据、错误状态和有效位共用保存边沿。
+    // 队列允许同周期出队和入队，连续命中时每个周期可返回一个结果。
+    assign rsp_valid = response_count != 0;
+    assign rsp_data = saved_response_data;
+    assign rsp_error = saved_response_error;
+    assign response_push = core_rsp_valid && core_rsp_ready;
+    assign rsp_success = response_count != 0 && !saved_response_error;
     assign rsp_failure = response_count != 0 && saved_response_error;
   end else begin : g_single_response
     // 单个在途名额保持同步读出后的直接返回，以维持每周期一个字的吞吐率。
