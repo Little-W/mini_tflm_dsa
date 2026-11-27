@@ -1,0 +1,417 @@
+{
+  "design": "描述符像素分为四组，运行来源独立归并，完整像素与请求纪元使用末级选择",
+  "index_register": {
+    "source_sha256": {
+      "rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+      "rtl/npu/conv/conv_im2col_request_context.sv": "23726f1996bb0654f57e39e9ea74028b4dc0fcb4c62d9064b895a51ff1b30738",
+      "rtl/npu/conv/conv_request_index_register.sv": "6556886c35414db237eb444949c4b5c94b07783c81a130049073d6339ddb96e3",
+      "rtl/npu/conv/conv_group_range_select.sv": "369bdc07587ef11f269f62d6f8c27b813187cdfaeb20810e32637e71c7aed473",
+      "rtl/npu/conv/conv_im2col_address_sources.sv": "c2a17720285d1fcaf75ea83d30950651661789359aee045fa5fd67565c191361",
+      "rtl/npu/conv/conv_im2col_request_index.sv": "f052cf8a61f5d16e99faea1cea80514d8055860a666d9a8cecff18c3c0d9647b",
+      "rtl/common/onehot_mux.sv": "fa3b1c624d2c706d4926b2e0ecb33344ca60425b5c5e4347fc0b426a9f6d8b4a",
+      "rtl/npu/conv/conv_request_pixel_select.sv": "d0d9c49482e71d3abd05e756a17447a9a7e90bccc377a547a9773a17673c94ed",
+      "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972"
+    },
+    "formal": [
+      {
+        "coordinate_width": 33,
+        "line_bytes": 16,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "7c9aa02a3edbf681122948ed54fca1beac64b9386d5e4cff64ca1186951645a2"
+      },
+      {
+        "coordinate_width": 33,
+        "line_bytes": 16,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "127114bd576e086b89c415de0ff7f758ad24c39a01668a45ce68f22106876f12"
+      },
+      {
+        "coordinate_width": 33,
+        "line_bytes": 128,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "be05e1e4a6c7fb376112c97d15de2c432b63ecf897d6f484aed93613ac2bf004"
+      },
+      {
+        "coordinate_width": 33,
+        "line_bytes": 128,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "8ec1cb5c6a4d593d65f7d930248b2c72d8bb77d5c8010e284f8a02327f7cb003"
+      },
+      {
+        "coordinate_width": 35,
+        "line_bytes": 16,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "c60b4250c7be4431d2e1ff3d164f0c6d8cb9c0519441b6857bc1a766b725b8e0"
+      },
+      {
+        "coordinate_width": 35,
+        "line_bytes": 16,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "e1dff71d69febbf7baf5985c529b30db55192a2b6bd6d1dfffb58a0dedb8f68e"
+      },
+      {
+        "coordinate_width": 35,
+        "line_bytes": 128,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "c9eec554ff234b9b1b4065a1cf0d95c1fc8edea01cbcd8196c0deac2fa91a53c"
+      },
+      {
+        "coordinate_width": 35,
+        "line_bytes": 128,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "72dcc07ed763193c62c1d1bf047e562eff137c08f978218933e809333c52645b"
+      },
+      {
+        "coordinate_width": 40,
+        "line_bytes": 16,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "656e2be27b991483d920559ddbea041f9277203b8c82dff3b90d89d661597f0a"
+      },
+      {
+        "coordinate_width": 40,
+        "line_bytes": 16,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "d23cddbd8501366ddbda2ce4228156457d9c7c70a42446ceac58d7c419fecb52"
+      },
+      {
+        "coordinate_width": 40,
+        "line_bytes": 128,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "db39b6f91cd13e1434acf09af69a3f698fb87ac4c4a2d86401324a73d278591c"
+      },
+      {
+        "coordinate_width": 40,
+        "line_bytes": 128,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "e1a9758f089c81fdfa6ae0e4d58c266b8bd594aa7c402e313ece9879d740d085"
+      }
+    ],
+    "four_state": [
+      {
+        "profile": "generic",
+        "samples": 8192,
+        "input_bits": 1943,
+        "all_bits_seen_zero_one_x_z": true,
+        "passed": true,
+        "log_sha256": "e9eb391d7d442c6d5ec34b281d70d422c8638f94715845a1c726efc9209abec3"
+      },
+      {
+        "profile": "fpga",
+        "samples": 8192,
+        "input_bits": 1943,
+        "all_bits_seen_zero_one_x_z": true,
+        "passed": true,
+        "log_sha256": "e9eb391d7d442c6d5ec34b281d70d422c8638f94715845a1c726efc9209abec3"
+      },
+      {
+        "profile": "synthesis",
+        "samples": 8192,
+        "input_bits": 1943,
+        "all_bits_seen_zero_one_x_z": true,
+        "passed": true,
+        "log_sha256": "68216f799b400c4d44b1da98f263608e6427a3da04bc84cef351594e98def59b"
+      }
+    ],
+    "input_widths": {
+      "i_configuration": 292,
+      "i_descriptor": 1,
+      "i_row_metadata": 1,
+      "i_tap": 1,
+      "i_row": 1,
+      "i_stream": 1,
+      "i_select": 10,
+      "i_address_candidate": 320,
+      "i_pixel_candidate": 320,
+      "i_y_candidate": 350,
+      "i_incoming_address": 32,
+      "i_incoming_pixel": 32,
+      "i_incoming_y": 35,
+      "i_cache_address_reference": 32,
+      "i_next_tap_address": 32,
+      "i_next_row_address": 32,
+      "i_stream_address": 32,
+      "i_address": 32,
+      "i_pixel": 96,
+      "i_y": 105,
+      "i_epoch_sum": 128,
+      "i_short_pixel": 1,
+      "i_index_shift": 5,
+      "i_index_valid": 1,
+      "i_next_position": 1,
+      "i_next_tile": 1,
+      "i_row_wrap": 1,
+      "i_window_y": 16,
+      "i_output_y": 32
+    },
+    "four_state_input_bits": 1943,
+    "passed": true
+  },
+  "request_context": {
+    "passed": true,
+    "reference_commit": "f292e57fcf08d4562f06e879a8e198cd3c408736",
+    "formal": [
+      {
+        "coordinate_width": 33,
+        "line_bytes": 16,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "922bae87c970b41cbdda7d500df9e0fc5bd137da0eb2e02f95caeb55c329def4"
+      },
+      {
+        "coordinate_width": 33,
+        "line_bytes": 16,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "fc02f1ee0174f5f43b4267a837273ba9aa49c261a3bba65c409fd95f4e888e91"
+      },
+      {
+        "coordinate_width": 33,
+        "line_bytes": 128,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "852e650c3add2b080b39d7003c1a626a18f8d264c2893c9b910c1acf2c874419"
+      },
+      {
+        "coordinate_width": 33,
+        "line_bytes": 128,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "44b3ed5c169816e01f2f0c20135392cb6a7ab2931c36a4dada866f7dc8a7cbdd"
+      },
+      {
+        "coordinate_width": 35,
+        "line_bytes": 16,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "7dd68adfb33134e24578cf0483433baf96ff76e42c8f4b988dff1a4996195226"
+      },
+      {
+        "coordinate_width": 35,
+        "line_bytes": 16,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "964f26627c5d790cc0286af3124ab52fd4d3ea9d42136e3645f108c9545f1c6a"
+      },
+      {
+        "coordinate_width": 35,
+        "line_bytes": 128,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "7b0f9f25f3599a61e4ec1c8b70553e5ba7853b10c87599f730e56a57df400df1"
+      },
+      {
+        "coordinate_width": 35,
+        "line_bytes": 128,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "566151be445d27812ce3be53fdf52b928dd32dcc3acd710879bc41044a24e3cd"
+      },
+      {
+        "coordinate_width": 40,
+        "line_bytes": 16,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "053aa44c2ab7fda9f5bf4b42b9334ec581da6ca73af11eb004a43a98c2ff627e"
+      },
+      {
+        "coordinate_width": 40,
+        "line_bytes": 16,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "89d50949f896f05fea9a11bc56b6fa5ce318ca7da6cd853f25c420ec58b9b42f"
+      },
+      {
+        "coordinate_width": 40,
+        "line_bytes": 128,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "effd6b4655ffac6b51884cc834b82af76a324bc06dfbe2738fd8eb85c09a3161"
+      },
+      {
+        "coordinate_width": 40,
+        "line_bytes": 128,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "c8be0015740b5606ca5c17b754d253331fe2afae189102974c3c6c942a95a741"
+      }
+    ],
+    "four_state_samples": 8192,
+    "four_state_log_sha256": "612ba8af367b429e8b4ce941473b975b110f94fc3e32c333bbc91c853f33e346",
+    "four_state_coverage": {
+      "input_bits": 1943,
+      "port_widths": {
+        "i_configuration": 292,
+        "i_descriptor": 1,
+        "i_row_metadata": 1,
+        "i_tap": 1,
+        "i_row": 1,
+        "i_stream": 1,
+        "i_select": 10,
+        "i_address_candidate": 320,
+        "i_pixel_candidate": 320,
+        "i_y_candidate": 350,
+        "i_incoming_address": 32,
+        "i_incoming_pixel": 32,
+        "i_incoming_y": 35,
+        "i_cache_address_reference": 32,
+        "i_next_tap_address": 32,
+        "i_next_row_address": 32,
+        "i_stream_address": 32,
+        "i_address": 32,
+        "i_pixel": 96,
+        "i_y": 105,
+        "i_epoch_sum": 128,
+        "i_short_pixel": 1,
+        "i_index_shift": 5,
+        "i_index_valid": 1,
+        "i_next_position": 1,
+        "i_next_tile": 1,
+        "i_row_wrap": 1,
+        "i_window_y": 16,
+        "i_output_y": 32
+      },
+      "fully_covered_bits": 1943,
+      "bit_values": {
+        "0": 6963949,
+        "1": 6959379,
+        "X": 996864,
+        "Z": 996864
+      }
+    },
+    "source_sha256": {
+      "rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+      "rtl/npu/conv/conv_im2col_request_context.sv": "23726f1996bb0654f57e39e9ea74028b4dc0fcb4c62d9064b895a51ff1b30738",
+      "test/frontend_pipeline/request_context_reference.sv": "75845ac7594b2f9e7fcb5c3f00789ebea02f59051528d5761f030cb7f04e5652",
+      "rtl/npu/conv/conv_group_range_select.sv": "369bdc07587ef11f269f62d6f8c27b813187cdfaeb20810e32637e71c7aed473",
+      "rtl/npu/conv/conv_im2col_address_sources.sv": "c2a17720285d1fcaf75ea83d30950651661789359aee045fa5fd67565c191361",
+      "rtl/npu/conv/conv_im2col_request_index.sv": "f052cf8a61f5d16e99faea1cea80514d8055860a666d9a8cecff18c3c0d9647b",
+      "rtl/common/onehot_mux.sv": "fa3b1c624d2c706d4926b2e0ecb33344ca60425b5c5e4347fc0b426a9f6d8b4a",
+      "rtl/npu/conv/conv_request_pixel_select.sv": "d0d9c49482e71d3abd05e756a17447a9a7e90bccc377a547a9773a17673c94ed",
+      "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972"
+    }
+  },
+  "frontend_mapping": {
+    "source_commit": "e4415016",
+    "resources": {
+      "logic_lut_cells": 16067,
+      "distributed_ram_lut_sites_nominal": 136,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 16203,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 7422,
+      "dsp48e1": 88,
+      "ramb36e1": 1,
+      "ramb18e1": 24,
+      "carry4": 889,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 889,
+        "DSP48E1": 88,
+        "FDCE": 2251,
+        "FDPE": 98,
+        "FDRE": 5033,
+        "FDSE": 40,
+        "INV": 783,
+        "LUT1": 180,
+        "LUT2": 2935,
+        "LUT3": 2112,
+        "LUT4": 1996,
+        "LUT5": 3461,
+        "LUT6": 5383,
+        "MUXF7": 859,
+        "RAM32M": 34,
+        "RAMB18E1": 24,
+        "RAMB36E1": 1
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "longest_register_path_cells": 14,
+    "graph_complete": true,
+    "pixel_register_path_at_most_10": true,
+    "epoch_register_path_at_most_10": true,
+    "path_groups_over_10": [
+      {
+        "cells": 14,
+        "startpoint": "u_runtime_registers.o_configuration [196]",
+        "endpoint": "request_addr_q [16]"
+      },
+      {
+        "cells": 12,
+        "startpoint": "u_runtime_registers.o_wrap_bytes [48]",
+        "endpoint": "request_addr_q [26]"
+      },
+      {
+        "cells": 12,
+        "startpoint": "u_runtime_registers.o_wrap_bytes [0]",
+        "endpoint": "word_output_q"
+      },
+      {
+        "cells": 12,
+        "startpoint": "state [22]",
+        "endpoint": "u_stream.addr_word_hit_q"
+      },
+      {
+        "cells": 12,
+        "startpoint": "u_runtime_registers.o_configuration [181]",
+        "endpoint": "u_runtime_registers.o_group_base_addr [28]"
+      },
+      {
+        "cells": 12,
+        "startpoint": "u_stream.group_range_q [1]",
+        "endpoint": "u_wrap_state.o_wrap [1]"
+      },
+      {
+        "cells": 11,
+        "startpoint": "u_prefetch.accepted_coordinate_q[0] [35]",
+        "endpoint": "u_prefetch.projected_coordinate_q[0] [60]"
+      },
+      {
+        "cells": 11,
+        "startpoint": "u_runtime_registers.o_row_coordinate [38]",
+        "endpoint": "u_runtime_registers.o_padding"
+      },
+      {
+        "cells": 11,
+        "startpoint": "u_runtime_registers.o_row_coordinate [38]",
+        "endpoint": "state [21]"
+      },
+      {
+        "cells": 11,
+        "startpoint": "request_y_q [2]",
+        "endpoint": "u_cache.g_window.u_window.demand_retire [1]"
+      },
+      {
+        "cells": 11,
+        "startpoint": "u_stream.group_range_q [0]",
+        "endpoint": "u_runtime_registers.o_row_coordinate [0]"
+      },
+      {
+        "cells": 11,
+        "startpoint": "u_runtime_registers.o_decode [87]",
+        "endpoint": "u_runtime_registers.o_decode [64]"
+      },
+      {
+        "cells": 11,
+        "startpoint": "u_stream.group_range_q [0]",
+        "endpoint": "u_stream.o_ch_q [0]"
+      },
+      {
+        "cells": 11,
+        "startpoint": "u_runtime_registers.o_descriptor_index [71]",
+        "endpoint": "u_wrap_state.o_wrap [2]"
+      }
+    ]
+  }
+}

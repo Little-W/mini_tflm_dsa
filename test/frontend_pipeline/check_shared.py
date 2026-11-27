@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """证明实际运算输入选择与窗口归约差值关系。"""
 from pathlib import Path
-from source_sections import read_module, declarations
+from source_sections import read_module, declarations, dependencies
 import argparse
 import hashlib
 import json
 import re
+import shlex
 import subprocess
 import sys
 
@@ -33,26 +34,27 @@ model = '''module comparison #(parameter int MODE=0)(
 localparam logic [22:0] ADDRESS=23'h2000;
 logic [22:0] state;
 logic cfg_valid,cfg_ready;
-logic [1:0] cfg_prepare_phase,address_step_phase;
+logic [2:0] cfg_prepare_phase;
+logic [1:0] address_step_phase;
 logic [3:0] prefetch_phase;
 logic [3:0][15:0] coordinate_a,coordinate_b;
 logic [1:0][31:0] channel_a;
 logic [1:0][15:0] channel_b;
 assign cfg_valid=MODE==0;
 assign cfg_ready=MODE==0;
-assign cfg_prepare_phase=MODE==1?2'd1:MODE==2?2'd2:2'd0;
+assign cfg_prepare_phase=MODE==0?3'd1:MODE==1?3'd2:MODE==2?3'd3:3'd0;
 assign address_step_phase=MODE==7?2'd1:2'd0;
-assign prefetch_phase=MODE==5?4'd4:MODE==6?4'd5:4'd0;
+assign prefetch_phase=MODE==5?4'd5:MODE==6?4'd6:4'd0;
 assign state=MODE==4?ADDRESS:23'h400;
 COORDINATE
 CHANNEL
 always_comb begin
  equivalent=1'b0;
  case(MODE)
- 0: equivalent=coordinate_a[0]==cfg.input_h&&coordinate_b[0]==cfg.input_w&&
-     coordinate_a[1]==cfg.kernel_h&&coordinate_b[1]==cfg.kernel_w&&
-     coordinate_a[2]==cfg.output_h&&coordinate_b[2]==cfg.output_w&&
-     coordinate_a[3]==cfg.stride_h&&coordinate_b[3]==cfg.input_w;
+ 0: equivalent=coordinate_a[0]==c.input_h&&coordinate_b[0]==c.input_w&&
+     coordinate_a[1]==c.kernel_h&&coordinate_b[1]==c.kernel_w&&
+     coordinate_a[2]==c.output_h&&coordinate_b[2]==c.output_w&&
+     coordinate_a[3]==c.stride_h&&coordinate_b[3]==c.input_w;
  1: equivalent=coordinate_a[0]==c.output_w&&coordinate_b[0]==c.stride_w&&
      coordinate_a[1]==c.kernel_w&&coordinate_b[1]==c.dilation_w&&
      coordinate_a[2]==c.dilation_h&&coordinate_b[2]==c.input_w&&
@@ -80,7 +82,7 @@ endmodule
 (OUT / 'operand_selection.sv').write_text(model)
 WINDOW_SOURCE, rtl = read_module(args.source_root, 'descriptor')
 start = rtl.index('  assign negative_group =')
-end = rtl.index('  // 空间分块起点', start)
+end = rtl.index('  assign position_i_configure =', start)
 window = declarations(rtl, ('negative_group', 'target_difference', 'target_difference_match'))+rtl[start:end]
 window = window.replace('c.group_c', 'group_c')
 window_model = '''module comparison(
@@ -94,6 +96,11 @@ logic [15:0] group_c,last_group_channel_q;
 logic [31:0] window_next_q;
 logic [2:0][32:0] reference_targets;
 logic [3:0] incoming_tap_match_o_equal;
+localparam bit REGISTER_DESCRIPTOR=1'b1;
+logic [2:0] target_prepared_match;
+wire rst_n=1'b1;
+wire window_prepare_write=window_write&&!configure;
+wire group_nonzero_q=|group_c;
 always_ff @(posedge clk)begin
  if(configure)begin
   group_c<=input_group;
@@ -129,9 +136,9 @@ cases = []
 def run(name, model_path, options='', sequential=False):
     script = OUT / (name + '.ys')
     log = OUT / (name + '.log')
-    script.write_text(f'read_slang -D SYNTHESIS=1 --top comparison {options} '
-                     f'{args.source_root.resolve()}/rtl/npu/conv/conv_im2col_pkg.sv '
-                     f'{args.source_root.resolve()}/rtl/common/add_equal.sv {OUT/model_path}\n'
+    sources = dependencies(args.source_root, [args.source_root/'rtl/npu/conv/conv_im2col_pkg.sv',OUT/model_path])
+    script.write_text(f'read_slang -D SYNTHESIS=1 --top comparison {options} '+
+                     shlex.join(map(str,sources))+'\n'
                      'prep -top comparison -flatten\n' +
                      ('sat -seq 2 -maxsteps 4 -timeout 30 -set-init-zero -tempinduct -verify -prove equivalent 1\n'
                       if sequential else 'sat -verify -prove equivalent 1\n'))

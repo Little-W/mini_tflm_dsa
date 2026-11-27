@@ -15,6 +15,7 @@ parser = argparse.ArgumentParser(description=__doc__, add_help=False)
 parser.add_argument('--target', choices=('asic', 'fpga'), default='asic')
 parser.add_argument('--source-root', type=Path, default=ROOT)
 parser.add_argument('--register-descriptor', choices=('0', '1'), default='1')
+parser.add_argument('--cache-response-depth', choices=('1', '2'), default='1')
 args, remaining = parser.parse_known_args()
 SOURCE = args.source_root.resolve()
 source_bench = SOURCE/'test/frontend_pipeline/tb_frontend_pipeline.sv'
@@ -28,6 +29,9 @@ support.mkdir(parents=True, exist_ok=True)
 
 runner = ROOT/'test/conv_frontend/tools/run_rtl.py'
 runner_text = runner.read_text().replace("reviewed={'UNUSEDSIGNAL'", "reviewed={'GENUNNAMED','UNUSEDSIGNAL'")
+# 循环队列的最大头位置受地址位宽限制，该位置的范围比较允许展开为常量。
+runner_text = runner_text.replace("'conv_windowed_cache.sv')",
+                                  "'conv_windowed_cache.sv', 'conv_cache_prefetch_priority.sv')")
 runner_text = runner_text.replace("'tests/tb_conv_im2col_frontend.sv'",
                                   repr(str(source_bench)))
 runner_text = runner_text.replace(
@@ -68,6 +72,7 @@ original_which = shutil.which
 os.environ['FRONTEND_REAL_VERILATOR'] = original_which('verilator') or ''
 os.environ['FRONTEND_RTL_TARGET'] = args.target
 os.environ['FRONTEND_REGISTER_DESCRIPTOR'] = args.register_descriptor
+os.environ['FRONTEND_CACHE_RESPONSE_DEPTH'] = args.cache_response_depth
 os.environ['FRONTEND_RTL_ROOT'] = str(SOURCE)
 
 
@@ -85,6 +90,7 @@ status_path = output/'rtl_status.json'
 if status_path.exists():
     status = json.loads(status_path.read_text())
     status.update(target=args.target, register_descriptor=int(args.register_descriptor),
+                  cache_response_depth=int(args.cache_response_depth),
                   slot_width=6, build_jobs=1, source_sha256=input_hashes,
                   frontend_sha256=input_hashes[str(SOURCE/'rtl/npu/conv/conv_im2col_frontend.sv')])
     changed = [name for name, digest in input_hashes.items()

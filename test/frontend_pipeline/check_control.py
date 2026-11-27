@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """证明地址范围选择和带符号配置因子的定宽关系。"""
 from pathlib import Path
-from source_sections import read_module
+from source_sections import read_module, dependencies
 import argparse
 import hashlib
 import json
 import re
 import runpy
+import shlex
 import subprocess
 import sys
 
@@ -18,7 +19,8 @@ args = parser.parse_args()
 SOURCE, rtl = read_module(args.source_root, 'stream')
 OUT = args.out.resolve()
 OUT.mkdir(parents=True, exist_ok=True)
-choice=re.search(r'      assign next_available\[byte_index\] = tile_commit \?.*?;',rtl,re.S).group(0)
+choice=re.search(r'      assign next_available\[byte_index\] = active_select_commit \?.*?;',rtl,re.S).group(0)
+choice=choice.replace('active_select_commit','tile_commit')
 choice=choice.replace('state[$clog2(ADDRESS_CHANNEL)]','address_channel')
 word='''module comparison #(parameter int WORD_SHIFT=3)(
 input logic [1:0] mode,
@@ -86,9 +88,14 @@ endmodule
 '''
 (OUT/'range_events.sv').write_text(events)
 cases=[]
+checked_sources={SOURCE}
 def run(name,model,options='',sequential=False):
     script=OUT/(name+'.ys');log=OUT/(name+'.log')
-    script.write_text(f'read_slang --top comparison {options} {OUT/model}\n'
+    sources = dependencies(args.source_root, [OUT/model])
+    checked_sources.update(path for path in sources if path != OUT/model)
+    script.write_text(f'read_slang --top comparison {options} {shlex.join(map(str, sources))}\n'
+                     'setattr -mod -unset keep_hierarchy\n'
+                     'setattr -unset keep_hierarchy\n'
                      'prep -top comparison -flatten\n'+
                      ('sat -seq 8 -set-init-zero -tempinduct -verify -prove equivalent 1\n' if sequential else
                       'sat -verify -prove equivalent 1\n'))
@@ -102,10 +109,12 @@ for shift in (1,2,3,4):run('word_'+str(shift),'word_choice.sv',f'-GWORD_SHIFT={s
 run('signed_factor','factor.sv')
 for width in (5,9):run('range_events_'+str(width),'range_events.sv',f'-GWIDTH={width}',True)
 extractors=runpy.run_path(str(ROOT/'test/frontend_group_feedback/check.py'))
+control_sources, control_rtl = extractors['load_source'](args.source_root)
+checked_sources.update(control_sources)
 for lanes in (1,2,4,8):
     saved=8 if lanes>4 else 4
-    row=extractors['row_unit'](rtl,lanes,min(lanes,4)).replace('module comparison #(', 'module row_predicate #(')
-    qualifier=extractors['guard_unit'](rtl,lanes,True,min(lanes,4))
+    row=extractors['row_unit'](control_rtl,lanes,min(lanes,4)).replace('module comparison #(', 'module row_predicate #(')
+    qualifier=extractors['guard_unit'](control_rtl,lanes,True,min(lanes,4))
     qualifier=qualifier.replace('module comparison #(', 'module lane_predicate #(')
     qualifier=qualifier.replace('output logic equivalent','output logic equivalent,output logic [LANES-1:0] observed_lanes')
     qualifier=qualifier.replace('endmodule', 'assign observed_lanes=chunk_lane_allowed;\nendmodule')
@@ -142,7 +151,7 @@ for dimension in range(65536):
         actual=(factor_value*step)&((1<<33)-1)
         assert actual==expected
         checks+=1
-summary={'passed':True,'source_sha256':hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
+summary={'passed':True,'source_sha256':{str(path.relative_to(args.source_root.resolve())):hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(checked_sources)},
          'cases':cases,'configuration_product_comparisons':checks,
          'range_event_scope':'Abstract update-event model; observable data is restored by row, descriptor or decode loads.'}
 (OUT/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')

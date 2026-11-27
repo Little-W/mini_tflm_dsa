@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
-
 // 输入描述符准备、窗口复用及提交数据保存。
 module conv_im2col_descriptor #(
   parameter int p_size=16,
@@ -66,9 +65,12 @@ module conv_im2col_descriptor #(
   input wire logic [31:0] i_next_row_group_base, // 下一输出行的通道组字节基址
   input wire logic [31:0] i_addr, // 当前运行通道的字节地址
   input wire logic [p_cache_read_width-1:0] i_word_buf, // 已经返回并保存的数据字
-  input wire logic [31:0] i_word_addr, // 已经保存的数据字地址
+  input wire logic [31:0] i_word_addr, // 当前操作使用的数据字地址
+  input wire logic [31:0] i_compare_word_addr, // 运行寄存器保存的数据字地址
+  input wire logic i_word_forward, // 当前操作选择描述符保存的数据字
   input wire logic i_word_valid, // 已经保存的数据字有效
   input wire logic i_incoming_word_hit, // 输入描述符命中可复用数据字
+  input wire logic [31-p_word_shift:0] i_prepared_word_tag, // 已准备描述符实际首地址的数据字标签
   input wire logic i_descriptor_response_forward, // 当前返回数据可直接供输入描述符使用
   input wire logic [1:0] i_incoming_tile_group_fits, // 窗口及当前通道起点满足输入描述符列范围
   input wire logic [15:0] i_last_output_col_q, // 输出末列的保存值
@@ -138,16 +140,17 @@ module conv_im2col_descriptor #(
   output logic o_tile_commit, // 当前周期提交一个描述符
   output logic o_committing_saved_word_hit, // 提交描述符命中其保存的数据字
   output logic o_committing_live_word_hit, // 提交描述符命中当前返回的数据字
+  output logic o_committing_padding, // 当前提交项的首位置需要填充
   output logic o_descriptor_padding, // 提交描述符当前输入位置需要填充
   output logic [p_cache_read_width-1:0] o_descriptor_word_data_q, // 提交描述符保存的数据字内容
   output logic [1:0] o_next_row_word_match, // 下一行与保存字及运行字的标签匹配
+  output logic [9:0][1:0] o_incoming_word_candidates, // 十个描述符来源与保存字及运行字的匹配结果
   output logic [1:0] o_incoming_advanced_word_match, // 窗口分块及跳核候选的数据字匹配
   output logic [15:0] o_kernel_decode_column, // 按卷积核宽度掩码解出的核列
   output logic o_kernel_decode_last // 解出的核列为卷积核末列
 );
   //! 0. 辅助信号
   //! -------------
-
   import conv_im2col_pkg::*;
   import conv_im2col_frontend_pkg::*;
   localparam int p_prepared_count_w = p_tile_count_w;
@@ -164,6 +167,7 @@ module conv_im2col_descriptor #(
   logic extent_o_tile_q_before_end;
   logic [31:0] incoming_group_base;
   logic incoming_same_position_fast;
+  (* keep = "true" *) logic incoming_same_position_context;
   logic incoming_position_same_tap;
   logic incoming_position_forward_tap;
   logic incoming_position_backward_tap;
@@ -242,17 +246,20 @@ module conv_im2col_descriptor #(
   logic [31-p_word_shift:0] descriptor_word_address_q;
   logic committing_saved_word_match;
   logic prepared_live_word_match;
+  logic registered_saved_word_hit, registered_live_word_hit, registered_padding;
   logic [8:0] prepared_padding_select;
   logic [8:0] prepared_padding_value;
   logic [9:0] prepared_word_select;
   localparam int p_incoming_data_width = 96 + 2*p_coord_w;
   logic [9:0][p_incoming_data_width-1:0] incoming_data_candidate;
   logic [p_incoming_data_width-1:0] incoming_data_selected;
+  logic [4:0][p_incoming_data_width-1:0] incoming_data_pair;
+  logic [31:0] incoming_address_selected;
   logic [9:0][63:0] incoming_kernel_values;
   logic [63:0] incoming_kernel_selected;
-  logic [4:0][p_incoming_data_width-1:0] incoming_data_pair;
   logic incoming_padding_selected;
   logic incoming_padding_reference;
+  logic [1:0] incoming_base_valid;
   logic incoming_window_context, incoming_window_match;
   logic incoming_window_position_match, incoming_single_row;
   logic incoming_next_tile_context;
@@ -347,12 +354,10 @@ module conv_im2col_descriptor #(
   logic [1:0] addresses_o_incoming_advanced_word_match;
   //! 1. 准备描述符字段
   //! -------------------
-
   assign o_committing_tile_packed = committing_tile;
   // 已保存归约位置同时用于组边界和有效列数，结果直接写入运行寄存器。
   assign descriptor_reduction = p_register_descriptor ? prepared_tile_q.reduction : i_tile_q0;
   assign descriptor_columns = p_register_descriptor ? prepared_tile_q.columns : prepared_columns;
-
   // 空间行范围和归约起点分别比较，接收条件直接读取各自结果。
   assign extent_i_tile_p0 = i_tile_p0;
   assign extent_i_tile_q0 = i_tile_q0;
@@ -370,9 +375,8 @@ module conv_im2col_descriptor #(
     .o_tile_rows_in_range(extent_o_tile_rows_in_range),
     .o_tile_q_before_end(extent_o_tile_q_before_end)
   );
-
   // 候选地址与字标签共用各自的起点和步长，接收控制只选择比较结果。
-  assign addresses_i_word_addr = i_word_addr;
+  assign addresses_i_word_addr = i_compare_word_addr;
   assign addresses_i_addr = i_addr;
   assign addresses_i_row_base_addr = i_row_base_addr;
   assign addresses_i_row_group_base = i_row_group_base;
@@ -399,9 +403,10 @@ module conv_im2col_descriptor #(
   assign o_next_row_word_match = addresses_o_next_row_word_match;
   assign o_incoming_advanced_word_match = addresses_o_incoming_advanced_word_match;
   conv_descriptor_addresses #(
-    .p_word_shift(p_word_shift), .p_register_descriptor(p_register_descriptor)
+    .p_word_shift(p_word_shift), .p_register_descriptor(p_register_descriptor),
+    .p_preview_registered(p_register_descriptor)
   ) u_addresses (
-    .i_word_addr(addresses_i_word_addr),
+    .i_word_addr(addresses_i_word_addr), .i_word_forward(i_word_forward),
     .i_addr(addresses_i_addr),
     .i_row_base_addr(addresses_i_row_base_addr),
     .i_row_group_base(addresses_i_row_group_base),
@@ -426,22 +431,24 @@ module conv_im2col_descriptor #(
     .o_incoming_word_equal(addresses_o_incoming_word_equal),
     .o_incoming_live_word_equal(addresses_o_incoming_live_word_equal),
     .o_next_row_word_match(addresses_o_next_row_word_match),
-    .o_incoming_advanced_word_match(addresses_o_incoming_advanced_word_match)
+    .o_incoming_advanced_word_match(addresses_o_incoming_advanced_word_match),
+    .o_word_candidates(o_incoming_word_candidates)
   );
-
   // 普通核步进和换行分别完成像素加法，换行条件只选择结果。
   assign incoming_pixel_next = i_incoming_tap_wrap ? incoming_pixel_candidate[5] : incoming_pixel_candidate[6];
-
   // 三种坐标的边界关系并行计算，描述符只选择已经完成的填充判断。
   assign incoming_step_ix = $signed(i_bound_sum[4]);
   assign incoming_wrap_ix = $signed(i_bound_sum[5]);
   assign incoming_wrap_iy = $signed(i_bound_sum[6]);
-  assign incoming_base_padding = (|i_row_base_ix[p_coord_w-1:16]) || (|i_row_base_iy[p_coord_w-1:16]) ||
-    i_row_base_ix[15:0] >= i_c.input_w || i_row_base_iy[15:0] >= i_c.input_h;
-  assign incoming_step_padding = !i_bound_valid[4] || (|i_row_base_iy[p_coord_w-1:16]) ||
-    i_row_base_iy[15:0] >= i_c.input_h;
+  for (genvar axis = 0; axis < 2; axis++) begin : g_incoming_base_bound
+    conv_coordinate_limit #(.p_width(p_coord_w)) u_range (
+      .i_coordinate(axis == 0 ? i_row_base_ix : i_row_base_iy),
+      .i_limit(axis == 0 ? i_c.input_w : i_c.input_h), .o_valid(incoming_base_valid[axis])
+    );
+  end
+  assign incoming_base_padding = !(&incoming_base_valid);
+  assign incoming_step_padding = !i_bound_valid[4] || !incoming_base_valid[1];
   assign incoming_wrap_padding = !i_bound_valid[5] || !i_bound_valid[6];
-
   // 组内范围按描述符列数拆分，低位进位只选择已完成的高位关系。
   if (p_tile_count_w < 16) begin : g_incoming_group_range
     localparam int p_high_w = 16 - p_tile_count_w;
@@ -449,7 +456,6 @@ module conv_im2col_descriptor #(
     logic high_before, high_equal, low_within, remaining_wrap;
     logic [p_high_w-1:0] high_next_i_a, high_next_i_b, high_next_i_target;
     logic high_next_i_carry_in, high_next_o_equal;
-
     assign column_end_low = {1'b0, i_ch0_q[p_tile_count_w-1:0]} + {1'b0, i_cols_q};
     assign high_before = i_ch0_q[15:p_tile_count_w] < i_c.group_c[15:p_tile_count_w];
     assign high_equal = i_ch0_q[15:p_tile_count_w] == i_c.group_c[15:p_tile_count_w];
@@ -474,21 +480,18 @@ module conv_im2col_descriptor #(
   end else begin : g_incoming_group_range_wide
     assign incoming_group_fits_reference = 32'(i_cols_q) <= 32'(i_c.group_c) - i_ch0;
   end
-
   // 组范围资格随已解出的通道或接收描述符保存，连续接收直接使用当前任务的结果。
   if (!p_register_descriptor && p_tile_count_w < 16) begin : g_saved_group_range
     logic fits_q;
     logic [1:0][15:0] candidate_channel;
     logic [1:0] candidate_fits;
     logic accepted_fits;
-
     assign candidate_channel = {o_window_next_ch, i_ch0_q};
     for (genvar source = 0; source < 2; source++) begin : g_candidate
       localparam int p_high_w = 16 - p_tile_count_w;
       logic [p_tile_count_w-1:0] remaining_low;
       logic low_borrow, high_before, high_equal, high_next_equal;
       logic remaining_wrap, all_columns_fit, candidate_fits_value;
-
       // 通道余量先按高低位并行求界，列数只参与低位阈值比较。
       assign remaining_low = i_c.group_c[p_tile_count_w-1:0] -
           candidate_channel[source][p_tile_count_w-1:0];
@@ -554,7 +557,6 @@ module conv_im2col_descriptor #(
   end else begin : g_direct_group_range
     assign incoming_group_fits = incoming_group_fits_reference;
   end
-
   // 像素候选以四位分组并行求进位，候选选择保留完整三十二位模结果。
   assign incoming_pixel_i_a = {i_row_base_pixel, i_row_base_pixel, i_row_base_pixel,
     i_row_base_pixel, window_next_pixel, window_next_pixel, window_next_pixel};
@@ -573,19 +575,16 @@ module conv_im2col_descriptor #(
       .o_carry(unused_incoming_pixel_carry[candidate])
     );
   end
-
   // 核位置的正负常量步进并行计算，描述符控制不进入进位计算。
   assign incoming_tap_i_a = {i_tap0, i_tap0, window_next_tap, window_next_tap, window_next_tap};
   assign incoming_tap_i_b = {32'd1, 32'd2, 32'hffff_ffff, 32'd1, 32'hffff_fffe};
   for (genvar candidate = 0; candidate < 5; candidate++) begin : g_incoming_tap
-    parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1), .p_carry_select_width(16)) u_sum (
+    parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(!p_register_descriptor), .p_carry_select_width(16)) u_sum (
       .i_a(incoming_tap_i_a[candidate]), .i_b(incoming_tap_i_b[candidate]), .i_carry(1'b0),
       .o_sum(incoming_tap_candidate[candidate]), .o_carry(unused_incoming_tap_carry[candidate])
     );
   end
-
   // 描述符字段分组比较，步长和低位进位使用同一个接收条件。
-
   assign incoming_compare_a[0] = {1'b0, i_tile_p0};
   assign incoming_compare_a[1] = {1'b0, i_tile_q0};
   assign incoming_compare_a[2] = {1'b0, i_tile_q0};
@@ -605,10 +604,9 @@ module conv_im2col_descriptor #(
     .i_a(i_tile_q0), .i_b(i_q0), .o_equal(incoming_q_equal)
   );
   // 两个核位置的目标序号随描述符保存，后续接收直接比较目标序号。
-  conv_descriptor_match #(.p_width(33), .p_preserve_groups(1'b1)) u_skip_reduction_match (
+  conv_descriptor_match #(.p_width(33), .p_preserve_groups(1'b1), .p_reduce_group_width(6)) u_skip_reduction_match (
     .i_a(i_skip_group_q), .i_b({1'b0, i_tile_q0}), .o_equal(incoming_tap_match_o_equal[0])
   );
-
 `ifndef SYNTHESIS
   logic [32:0] reduction_difference;
   assign reduction_difference = {1'b0, i_tile_q0} - {1'b0, window_next_q};
@@ -624,7 +622,6 @@ module conv_im2col_descriptor #(
       logic [32:0] target_sum, target_q;
       logic unused_target_carry;
       logic target_eligible, target_eligible_nxt, target_low_equal;
-
       // 窗口起点和三个完整目标序号同时保存，接收周期直接比较目标值。
       parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1), .p_carry_select_width(16)) u_sum (
         .i_a({1'b0, i_q0}), .i_b(target_difference[target]), .i_carry(1'b0),
@@ -704,9 +701,10 @@ module conv_im2col_descriptor #(
   assign incoming_fast_i_flags[2] = incoming_group_fits;
   assign incoming_fast_i_flags[4:3] = incoming_position_equal;
   assign incoming_fast_i_flags[5] = incoming_q_fast;
-  assign incoming_same_position_fast = p_cache_policy == 3 && (&incoming_fast_i_flags);
+  assign incoming_same_position_context = p_cache_policy == 3 && (&incoming_fast_i_flags[4:0]);
+  assign incoming_same_position_fast = incoming_same_position_context && incoming_q_fast;
   // 相邻空间位置可从同一核行的前后一个有效位置开始，列边界只调整水平步长。
-  conv_descriptor_match #(.p_width(32), .p_preserve_groups(1'b1)) u_window_reduction_match (
+  conv_descriptor_match #(.p_width(32), .p_preserve_groups(1'b1), .p_reduce_group_width(6)) u_window_reduction_match (
     .i_a(i_tile_q0), .i_b(window_next_q), .o_equal(incoming_position_same_tap)
   );
   // 直接描述符使用同一准备边沿保存的许可；寄存描述符继续按原窗口状态选择。
@@ -725,7 +723,7 @@ module conv_im2col_descriptor #(
   assign incoming_position_previous_row = window_match_select[3] &&
       incoming_tap_match_o_equal[3];
   // 完整坐标比较先独立完成，运行资格只归并各比较的一位结果。
-  conv_descriptor_match #(.p_width(32), .p_preserve_groups(1'b1)) u_window_position_match (
+  conv_descriptor_match #(.p_width(32), .p_preserve_groups(1'b1), .p_reduce_group_width(6)) u_window_position_match (
     .i_a(i_tile_p0), .i_b(window_next_p), .o_equal(incoming_window_position_match)
   );
   conv_descriptor_match #(.p_width(p_rw)) u_single_row_match (
@@ -736,7 +734,7 @@ module conv_im2col_descriptor #(
               incoming_single_row, incoming_window_position_match, i_incoming_tile_group_fits[0]}),
     .i_window(2'b00), .o_valid(incoming_window_context)
   );
-  onehot_mux #(.p_choices(4), .p_width(1)) u_window_match (
+  (* keep_hierarchy = "yes" *) onehot_mux #(.p_choices(4), .p_width(1), .p_preserve_groups(1'b1)) u_window_match (
     .i_select(window_match_select),
     .i_data({incoming_tap_match_o_equal[3:1], incoming_position_same_tap}),
     .o_data(incoming_window_match)
@@ -751,12 +749,11 @@ module conv_im2col_descriptor #(
     .i_window(2'b00), .o_valid(o_incoming_next_tile_fast)
   );
   // 空间窗口和另外两种快速来源并行归并，窗口资格在这一层参与选择。
-  onehot_mux #(.p_choices(3), .p_width(1)) u_incoming_fast (
-    .i_select({1'b1, 1'b1, incoming_window_context}),
-    .i_data({incoming_same_position_fast, o_incoming_next_tile_fast, incoming_window_match}),
+  (* keep_hierarchy = "yes" *) onehot_mux #(.p_choices(3), .p_width(1)) u_incoming_fast (
+    .i_select({incoming_same_position_context, 1'b1, incoming_window_context}),
+    .i_data({incoming_q_fast, o_incoming_next_tile_fast, incoming_window_match}),
     .o_data(o_incoming_fast)
   );
-
   // 位置递增和保存值的匹配并行计算，更新条件直接使用进位一致性比较。
   assign next_position_i_b = 32'd0;
   assign next_position_i_carry = 1'b1;
@@ -768,7 +765,6 @@ module conv_im2col_descriptor #(
     .i_a(i_p0), .i_b(next_position_i_b), .i_carry(next_position_i_carry),
     .o_sum(next_position), .o_carry(unused_next_position_carry)
   );
-
   // 窗口有效状态使用异步复位，坐标和地址只在准备事件的时钟边沿保存。
   always_comb begin
     window_prepare_write = 1'b0;
@@ -780,7 +776,7 @@ module conv_im2col_descriptor #(
       window_prepare_write = 1'b1;
     end
   end
-  if (!p_register_descriptor) begin : g_direct_candidate_geometry
+  if (1) begin : g_candidate_geometry
   logic [6:0][p_coord_w-1:0] candidate_coordinate_i_a, candidate_coordinate_i_b;
   logic [6:0] candidate_coordinate_carry, unused_candidate_coordinate_carry;
   assign candidate_coordinate_i_a = {i_row_base_iy, i_row_base_ix, i_row_base_iy, i_row_base_ix, window_next_iy, window_next_ix, window_next_ix};
@@ -796,12 +792,11 @@ module conv_im2col_descriptor #(
     logic [p_coord_w-1:0] sum_i_a, sum_i_b;
     assign sum_i_a = candidate_coordinate_i_a[source];
     assign sum_i_b = candidate_coordinate_i_b[source];
-    parallel_prefix_add #(.p_width(p_coord_w), .p_group_width(8), .p_preserve_groups(1'b1), .p_carry_select_width(16)) u_sum (
+    parallel_prefix_add #(.p_width(p_coord_w), .p_group_width(8), .p_preserve_groups(!p_register_descriptor), .p_carry_select_width(16)) u_sum (
       .i_a(sum_i_a), .i_b(sum_i_b), .i_carry(candidate_coordinate_carry[source]),
       .o_sum(candidate_coordinate_sum[source]), .o_carry(unused_candidate_coordinate_carry[source])
     );
   end
-
   for (genvar axis = 0; axis < 7; axis++) begin : g_candidate_bound
     logic [15:0] coordinate_limit;
     logic [8:0] low_byte, high_zero, high_one;
@@ -809,7 +804,6 @@ module conv_im2col_descriptor #(
     logic high_zero_equal, high_one_equal, high_carry, high_equal;
     logic [p_coord_w-17:0] high_i_a, high_i_b, high_i_target;
     logic low_carry;
-
     // 高字节的两种进位结果及比较并行完成，高位仅检查模加结果是否为零。
     assign coordinate_limit = axis == 2 || axis == 4 || axis == 6 ? i_c.input_h : i_c.input_w;
     assign low_byte = {1'b0, candidate_coordinate_i_a[axis][7:0]} +
@@ -858,12 +852,7 @@ module conv_im2col_descriptor #(
       (low_carry ? high_one_before : high_zero_before);
     end
   end
-  end else begin : g_saved_candidate_geometry
-    // 描述符保存坐标操作数，提交阶段共用两个坐标求和与范围检查。
-    assign candidate_coordinate_sum = '0;
-    assign candidate_coordinate_valid = '0;
   end
-
   if (!p_register_descriptor) begin : g_direct_kernel_end
   logic [3:0][15:0] incoming_kernel_i_a, incoming_kernel_i_target;
   logic [15:0] incoming_kernel_i_b;
@@ -915,11 +904,9 @@ module conv_im2col_descriptor #(
       default: begin end
     endcase
   end
-
   end else begin : g_saved_kernel_end
     assign incoming_kx_last = 1'b0;
   end
-
   assign kernel_decode_mask = i_last_kernel_col_q;
   assign o_kernel_decode_column = i_tap0[15:0] & kernel_decode_mask;
   // 两位掩码坐标与目标同时比较，各组独立后再归并。
@@ -928,7 +915,6 @@ module conv_im2col_descriptor #(
         o_kernel_decode_column[group_index*2 +: 2] == i_last_kernel_col_q[group_index*2 +: 2];
   end
   assign o_kernel_decode_last = &kernel_decode_column_equal;
-
   // 各候选坐标和填充状态独立计算，晚到的描述符仅选择计算结果。
   // 高位检查保留完整的有符号坐标范围，低十六位比较有效图像尺寸。
   assign window_forward_ix = $signed(candidate_coordinate_sum[0]);
@@ -939,7 +925,7 @@ module conv_im2col_descriptor #(
   assign window_backward_padding_reference = !candidate_coordinate_valid[1] ||
     (|window_next_iy[p_coord_w-1:16]) || window_next_iy[15:0] >= i_c.input_h;
   assign window_previous_padding_reference = !candidate_coordinate_valid[0] || !candidate_coordinate_valid[2];
-  if (!p_register_descriptor) begin : g_saved_window_padding
+  if (1) begin : g_saved_window_padding
     logic [2:0] padding_q;
     always_ff @(posedge i_clk) begin
       if (i_rst_n && window_prepare_write) padding_q <= i_window_padding;
@@ -962,10 +948,6 @@ module conv_im2col_descriptor #(
                              window_forward_padding_reference});
     end
 `endif
-  end else begin : g_direct_window_padding
-    assign window_previous_padding = window_previous_padding_reference;
-    assign window_backward_padding = window_backward_padding_reference;
-    assign window_forward_padding = window_forward_padding_reference;
   end
   assign incoming_skip_ix = $signed(i_kx0_q != 16'd0 ? candidate_coordinate_sum[3] : candidate_coordinate_sum[5]);
   assign incoming_skip_iy = $signed(i_kx0_q != 16'd0 ? candidate_coordinate_sum[4] : candidate_coordinate_sum[6]);
@@ -1051,12 +1033,27 @@ module conv_im2col_descriptor #(
       incoming_tap = incoming_tap_selected;
       {o_incoming_ky, o_incoming_kx} = incoming_kernel_selected;
       {o_incoming_ix, o_incoming_iy, o_incoming_pixel, incoming_group_base, o_incoming_addr} = incoming_data_selected;
+    end else begin
+      case (^{incoming_window_context, incoming_position_same_tap, incoming_position_previous_row,
+              incoming_position_forward_tap, incoming_position_backward_tap, o_incoming_next_tile_fast,
+              o_incoming_skip_tap, incoming_q_equal, i_incoming_tap_wrap, i_kx0_q, o_incoming_address_candidates})
+        1'b0, 1'b1: o_incoming_addr = incoming_address_selected;
+        default: ;
+      endcase
     end
 `endif
   end
 
 `ifdef SYNTHESIS
-  assign o_incoming_padding = p_register_descriptor ? incoming_padding_reference : incoming_padding_selected;
+  always_comb begin
+    o_incoming_padding = incoming_padding_reference;
+    case (^{incoming_window_context, incoming_position_same_tap, incoming_position_previous_row,
+             incoming_position_forward_tap, incoming_position_backward_tap, o_incoming_next_tile_fast,
+             o_incoming_skip_tap, incoming_q_equal, i_incoming_tap_wrap, prepared_padding_value})
+      1'b0, 1'b1: o_incoming_padding = incoming_padding_selected;
+      default: ;
+    endcase
+  end
 `else
   assign o_incoming_padding = incoming_padding_reference;
 `endif
@@ -1264,8 +1261,16 @@ module conv_im2col_descriptor #(
   end
   assign incoming_data_selected = incoming_data_pair[0] | incoming_data_pair[1] |
       incoming_data_pair[2] | incoming_data_pair[3] | incoming_data_pair[4];
+  // 寄存描述符的提前请求只保留实际使用的三十二位首地址选择。
+  if (p_register_descriptor) begin : g_prepared_first_address
+    (* keep_hierarchy = "yes" *) onehot_mux #(
+      .p_choices(10), .p_width(32), .p_preserve_groups(1'b1)
+    ) u_select (
+      .i_select(prepared_word_select), .i_data(o_incoming_address_candidates), .o_data(incoming_address_selected)
+    );
+  end else assign incoming_address_selected = '0;
   // 各填充候选完成范围判断后，由独立的分组选择模块归并。
-  onehot_mux #(.p_choices(9), .p_width(1)) u_incoming_padding (
+  (* keep_hierarchy = "yes" *) onehot_mux #(.p_choices(9), .p_width(1), .p_preserve_groups(1'b1)) u_incoming_padding (
     .i_select(prepared_padding_select), .i_data(prepared_padding_value),
     .o_data(incoming_padding_selected)
   );
@@ -1350,7 +1355,7 @@ module conv_im2col_descriptor #(
       (i_word_valid && i_word_addr[p_word_shift-1:0] == '0);
     preparing_tile.invalid = !channel_descriptor_valid;
     preparing_tile.fast = o_incoming_fast;
-    preparing_tile.padding = p_register_descriptor ? 1'b0 : o_incoming_padding;
+    preparing_tile.padding = o_incoming_padding;
     preparing_tile.word_hit = i_incoming_word_hit;
     preparing_tile.position = i_tile_p0;
     preparing_tile.reduction = i_tile_q0;
@@ -1386,15 +1391,27 @@ module conv_im2col_descriptor #(
   assign o_tile_commit = p_register_descriptor ?
     (o_tile_prepared_valid && !i_error && (i_state[$clog2(IDLE)] || i_tile_finish)) : tile_capture;
   // 检查阶段读取已保存地址，描述符输入队列可以同时保存后续准备项。
-  assign o_committing_saved_word_hit = descriptor_saved_word_valid_q && committing_saved_word_match;
-  assign o_descriptor_padding = descriptor_padding_select_q ? descriptor_padding_value_q :
-      !(&committing_coordinate_valid);
+  assign o_committing_saved_word_hit = p_register_descriptor ? registered_saved_word_hit :
+      descriptor_saved_word_valid_q && committing_saved_word_match;
+  assign o_committing_padding = p_register_descriptor ? prepared_tile_q.padding : preparing_tile.padding;
+  assign o_descriptor_padding = p_register_descriptor ? registered_padding :
+      descriptor_padding_select_q ? descriptor_padding_value_q : !(&committing_coordinate_valid);
+  conv_descriptor_word_status #(.p_tag_width(32-p_word_shift)) u_word_status (
+    .i_clk(i_clk), .i_write(p_register_descriptor && o_tile_commit && !committing_tile.invalid && committing_tile.fast),
+    .i_target_tag(i_prepared_word_tag), .i_saved_tag(prepared_tile_q.word_address),
+    .i_saved_valid(prepared_tile_q.saved_word_valid),
+    .i_live_tag(i_word_addr[31:p_word_shift]), .i_live_valid(i_word_valid),
+    .i_response_tag(i_addr[31:p_word_shift]), .i_response_valid(i_descriptor_response_forward),
+    .i_padding(prepared_tile_q.padding),
+    .o_saved_hit(registered_saved_word_hit), .o_live_hit(registered_live_word_hit),
+    .o_padding(registered_padding)
+  );
   // 两个数据字标签与运行地址并行比较，命中结果只控制检查阶段的状态。
   for (genvar target = 0; target < 2; target++) begin : g_commit_word_match
     localparam int p_tag_width = 32 - p_word_shift;
     localparam int p_group_count = (p_tag_width + 2) / 3;
     logic [p_tag_width-1:0] target_tag;
-    (* keep = "true" *) logic [p_group_count-1:0] tag_group_equal;
+    (* keep = !p_register_descriptor || target == 1 *) logic [p_group_count-1:0] tag_group_equal;
     assign target_tag = target == 0 ? descriptor_word_address_q : i_word_addr[31:p_word_shift];
     for (genvar part = 0; part < p_group_count; part++) begin : g_group
       localparam int p_first = part * 3;
@@ -1409,7 +1426,7 @@ module conv_im2col_descriptor #(
     end
   end
   // 当前数据字也可供下一描述符复用，标签和有效位均来自已经完成的返回。
-  assign o_committing_live_word_hit = i_word_valid && prepared_live_word_match;
+  assign o_committing_live_word_hit = p_register_descriptor ? registered_live_word_hit : i_word_valid && prepared_live_word_match;
   //! 2. 保存窗口及描述符
   //! ---------------------
 

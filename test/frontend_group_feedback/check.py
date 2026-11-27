@@ -14,12 +14,27 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT/'test/frontend_pipeline'))
-from source_sections import read_module
+from source_sections import read_module, dependencies
 SOURCE = Path('rtl/npu/conv/conv_im2col_frontend.sv')
 
 
 def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def load_source(root: Path):
+    """读取流式控制和通道范围模块，统一提取模型的局部信号名称。"""
+    stream_path, stream = read_module(root, 'stream')
+    range_path, ranges = read_module(root, 'group_ranges')
+    aliases = {'cfg_group_c': 'cfg.group_c', 'group_c': 'c.group_c',
+               'channel': 'ch_q', 'channel_source': 'group_range_channel',
+               'range': 'group_range_q', 'active_lane': 'active_lane_allowed_q',
+               'column_lane': 'column_lane_allowed_q', 'word_lane': 'word_lane_allowed',
+               'chunk_lane': 'chunk_lane_allowed', 'cfg_range': 'group_range_cfg',
+               'next_range': 'group_range_next', 'transfer_range': 'group_transfer_range'}
+    pattern = r'(?<![\w.$])(' + '|'.join(sorted(aliases, key=len, reverse=True)) + r')\b'
+    ranges = re.sub(pattern, lambda match: aliases[match[0]], ranges)
+    return [stream_path, range_path], stream + '\n' + ranges
 
 
 def unit(source: str, lanes: int) -> str:
@@ -69,8 +84,7 @@ endmodule
 
 
 def direct_range_unit(source: str, lanes: int) -> str:
-    first = source.index('  if (LANES <= 16) begin : g_short_group_lane\n')
-    first = source.index('\n', first) + 1
+    first = source.index('    localparam int p_lane_compare_width = $clog2(p_saved_group_lanes+1);')
     last = source.index('    // 配置及译码来源', first)
     configured = source[first:last].replace('cfg.group_c', 'group_c')
     first = source.index('      end else begin : g_direct_range\n', last)
@@ -153,6 +167,14 @@ def tile_group_unit(source: str, size: int) -> str:
     first = source.index('  for (genvar source = 0; source < 2; source++) begin : g_tile_group_range')
     last = source.index('  assign incoming_tap_wrap =', first)
     body = source[first:last].replace('c.group_c', 'group_c')
+    start = body.index('      logic context_configure;')
+    end = body.index('      conv_tile_group_range_result u_result', start)
+    body = body[:start] + '''      // 此组合性质以保存的高段关系与当前通道一致为前提。
+      assign high_before = first_channel[15:TILE_COUNT_W] < group_c[15:TILE_COUNT_W];
+      assign high_equal = first_channel[15:TILE_COUNT_W] == group_c[15:TILE_COUNT_W];
+      assign high_next_equal = (16-TILE_COUNT_W)'(first_channel[15:TILE_COUNT_W]+1'b1) ==
+          group_c[15:TILE_COUNT_W];
+''' + body[end:]
     return f'''module comparison #(
 parameter int SIZE={size},TILE_COUNT_W=$clog2(SIZE+1),RW=TILE_COUNT_W
 )(
@@ -213,13 +235,6 @@ endmodule
 
 
 def row_unit(source: str, lanes: int, narrow_lanes: int) -> str:
-    start = source.index('    if (TILE_COUNT_W >= CHUNK_COUNT_W) begin : g_complete_column')
-    end = source.index('    end else begin : g_wrapped_column', start)
-    actual_lane = source[start:end]
-    actual_lane = actual_lane[actual_lane.index('      // 数据区和补零区'):]
-    start = source.index('  if (TILE_COUNT_W >= CHUNK_COUNT_W) begin : g_direct_chunk_end')
-    end = source.index('  end else begin : g_narrow_chunk_end', start)
-    actual_end = source[source.index('\n', start)+1:end].replace('c.input_s16', 'input_s16')
     return f'''module comparison #(
 parameter int LANES={lanes},NARROW_LANES={narrow_lanes}
 )(
@@ -228,31 +243,28 @@ input logic [LANES:0] active_lane_allowed_q,column_lane_allowed_q,
 input logic narrow_output,word_output_q,past_active_q,input_s16,
 output logic actual_end,expected_end,equivalent
 );
-logic [LANES-1:0] chunk_end_s8,chunk_end_s16,chunk_static_end;
-logic [LANES-1:0] expected_s8,expected_s16,chunk_end_lane;
-logic chunk_reaches_end;
-assign chunk_end_lane='0;
+logic [LANES-1:0] expected_s8,expected_s16;
+conv_stream_chunk_end #(.p_lanes(LANES),.p_narrow_lanes(NARROW_LANES)) u_actual (
+ .i_column_lane(column_lane_allowed_q),.i_group_lane(group_lane_allowed),
+ .i_active_lane(active_lane_allowed_q[LANES-1:0]),.i_word_s8(word_s8),.i_word_s16(word_s16),
+ .i_narrow_output(narrow_output),.i_past_active(past_active_q),
+ .i_word_output(word_output_q),.i_input_s16(input_s16),.o_end(actual_end)
+);
 for(genvar lane=0;lane<LANES;lane++)begin:g_lane
- logic allowed_s8,allowed_s16;
- assign allowed_s8=word_s8[lane];
- assign allowed_s16=word_s16[lane];
-{actual_lane}
  assign expected_s8[lane]=(!narrow_output||lane<NARROW_LANES)&&
     (past_active_q||(group_lane_allowed[lane]&&active_lane_allowed_q[lane]))&&
-    column_lane_allowed_q[lane]&&!column_lane_allowed_q[lane+1]&&(!word_output_q||allowed_s8);
+    column_lane_allowed_q[lane]&&!column_lane_allowed_q[lane+1]&&(!word_output_q||word_s8[lane]);
  assign expected_s16[lane]=(!narrow_output||lane<NARROW_LANES)&&
     (past_active_q||(group_lane_allowed[lane]&&active_lane_allowed_q[lane]))&&
-    column_lane_allowed_q[lane]&&!column_lane_allowed_q[lane+1]&&(!word_output_q||allowed_s16);
+    column_lane_allowed_q[lane]&&!column_lane_allowed_q[lane+1]&&(!word_output_q||word_s16[lane]);
 end
-{actual_end}
-assign actual_end=chunk_reaches_end;
 assign expected_end=!column_lane_allowed_q[0]||(input_s16?(|expected_s16):(|expected_s8));
 assign equivalent=actual_end===expected_end;
 endmodule
 '''
 
 
-def four_state(source: str, out: Path) -> dict:
+def four_state(source: str, out: Path, root: Path) -> dict:
     rtl = out / 'row_four_state.sv'
     text = []
     for lanes in (1, 2, 4, 8, 16):
@@ -303,7 +315,7 @@ endmodule
     simulator = out / 'row_four_state.vvp'
     build_log, run_log = out / 'row_four_state_build.log', out / 'row_four_state_run.log'
     with build_log.open('w') as stream:
-        subprocess.run([shutil.which('iverilog') or 'iverilog', '-g2012', '-s', 'tb', '-o', str(simulator), str(rtl)],
+        subprocess.run([shutil.which('iverilog') or 'iverilog', '-g2012', '-s', 'tb', '-o', str(simulator), *map(str, dependencies(root, [rtl]))],
                        stdout=stream, stderr=subprocess.STDOUT, check=True)
     with run_log.open('w') as stream:
         subprocess.run([shutil.which('vvp') or 'vvp', str(simulator)], stdout=stream, stderr=subprocess.STDOUT, check=True)
@@ -320,7 +332,8 @@ def main() -> None:
     args = parser.parse_args()
     root, out = args.source_root.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    source_path, source = read_module(root, 'stream')
+    source_paths, source = load_source(root)
+    checked_sources = set(source_paths)
     rows = []
     cases = [(f'lanes_{lanes}', lanes, unit(source, lanes)) for lanes in range(1, 17)]
     cases += [(f'direct_range_lanes_{lanes}', lanes, direct_range_unit(source, lanes))
@@ -330,7 +343,7 @@ def main() -> None:
               for lanes in (1, 4, 8, 16)]
     cases += [(f'channel_step_lanes_{lanes}', lanes, channel_step_unit(source, lanes))
               for lanes in range(1,17)]
-    cases += [(f'tile_group_size_{size}', 0, tile_group_unit(source,size))
+    cases += [(f'tile_group_size_{size}_given_context', 0, tile_group_unit(source,size))
               for size in (1,2,3,4,7,8,16,31,32,256)]
     cases += [(f'guard_lanes_{lanes}_narrow_{narrow_lanes}_contiguous_{int(contiguous)}', lanes,
                guard_unit(source, lanes, contiguous, narrow_lanes))
@@ -341,13 +354,11 @@ def main() -> None:
     for name, lanes, text in cases:
         rtl, script, log = [out / (name + ext) for ext in ('.sv', '.ys', '.log')]
         rtl.write_text(text)
-        script.write_text(f'read_slang --top comparison '
-                          f'{shlex.quote(str(root / "rtl/common/onehot_mux.sv"))} '
-                          f'{shlex.quote(str(root / "rtl/common/add_equal.sv"))} '
-                          f'{shlex.quote(str(root / "rtl/common/borrow_select_subtract.sv"))} '
-                          f'{shlex.quote(str(root / "rtl/common/increment_equal.sv"))} '
-                          f'{shlex.quote(str(root / "rtl/npu/conv/conv_channel_range_compare.sv"))} '
-                          f'{shlex.quote(str(rtl))}\n'
+        sources = dependencies(root, [rtl])
+        checked_sources.update(path for path in sources if path != rtl)
+        script.write_text(f'read_slang --top comparison {shlex.join(map(str, sources))}\n'
+                          'setattr -mod -unset keep_hierarchy\n'
+                          'setattr -unset keep_hierarchy\n'
                           'prep -top comparison -flatten\n'
                           'sat -verify -prove equivalent 1 -show-inputs -show-outputs\n')
         with log.open('w') as stream:
@@ -364,12 +375,13 @@ def main() -> None:
         'passed': True,
         'scope': 'All 16-bit group and channel values; transfer count from zero through LANES; '
                  'all active and column counts for the tested tile widths',
+        'tile_range_scope': 'Combinational range result given saved high-part comparisons consistent with current channels; state consistency is checked by test/descriptor_group_context/run.py',
         'channel_arithmetic': '16-bit wrapping increment followed by a 17-bit wrapping subtraction',
-        'source_sha256': digest(source_path),
+        'source_sha256': {str(path.relative_to(root)): digest(path) for path in sorted(checked_sources)},
         'range_compare_sha256': digest(root / 'rtl/npu/conv/conv_channel_range_compare.sv'),
         'arithmetic_helper_sha256': {name: digest(root / 'rtl/common' / name)
                                     for name in ('add_equal.sv', 'borrow_select_subtract.sv', 'increment_equal.sv', 'onehot_mux.sv')}, 'cases': rows,
-        'row_four_state': four_state(source, out),
+        'row_four_state': four_state(source, out, root),
     }, indent=2) + '\n')
 
 

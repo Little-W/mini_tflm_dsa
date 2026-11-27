@@ -1,0 +1,102 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "name": "word_b1",
+      "passed": true
+    },
+    {
+      "name": "word_b2",
+      "passed": true
+    },
+    {
+      "name": "word_b3",
+      "passed": true
+    },
+    {
+      "name": "word_b4",
+      "passed": true
+    },
+    {
+      "name": "range_s32_l17_n4",
+      "passed": true
+    },
+    {
+      "name": "range_s32_l17_n8",
+      "passed": true
+    },
+    {
+      "name": "range_s32_l20_n4",
+      "passed": true
+    },
+    {
+      "name": "range_s32_l20_n8",
+      "passed": true
+    },
+    {
+      "name": "range_s32_l24_n4",
+      "passed": true
+    },
+    {
+      "name": "range_s32_l24_n8",
+      "passed": true
+    },
+    {
+      "name": "range_s64_l32_n4",
+      "passed": true
+    },
+    {
+      "name": "range_s64_l32_n8",
+      "passed": true
+    }
+  ],
+  "complete_stream_control": {
+    "passed": true,
+    "reference": "32379597",
+    "source_sha256": {
+      "/workspace/scratch/30bff11e002a/mini_tflm_dsa/rtl/npu/conv/conv_im2col_stream_control.sv": "424768398ae350e0ae65f9482278ba79f08ed3e7f832f89cadadb4c82bb34657",
+      "/workspace/scratch/30bff11e002a/mini_tflm_dsa/rtl/npu/conv/conv_im2col_frontend_pkg.sv": "133f1bc893333aefa9d10084f4514348688579d716722ad64be72051616feb2c",
+      "/workspace/scratch/30bff11e002a/experiments/frontend_public_current/stream_control/stream_state/reference.sv": "2fd54649048b8a8244a2477f87cbf6138e3850fc92a300f92d49d5b591c91a50",
+      "/workspace/scratch/30bff11e002a/experiments/frontend_public_current/stream_control/stream_state/current.sv": "bde65df3c95b09e3f01c0f61603afd4fb2db8fb342262d4746ff904116b33122",
+      "/workspace/scratch/30bff11e002a/mini_tflm_dsa/rtl/common/onehot_mux.sv": "fa3b1c624d2c706d4926b2e0ecb33344ca60425b5c5e4347fc0b426a9f6d8b4a",
+      "/workspace/scratch/30bff11e002a/mini_tflm_dsa/rtl/npu/conv/conv_stream_column_request.sv": "6d892b3467a674b306940af0cf498619b73023921fd951aa2a23e8f802a6e6ba",
+      "/workspace/scratch/30bff11e002a/mini_tflm_dsa/rtl/npu/conv/conv_stream_row_request.sv": "d35c9421fa28ad66387138825fe016df87f4c5933b50b6ad861a7ee60f2ec743",
+      "/workspace/scratch/30bff11e002a/mini_tflm_dsa/rtl/npu/conv/conv_stream_tap_request.sv": "64fcd52a89559bf6bb5aabc873f8a60bfd8edc6fb462aab47e50336de79017eb",
+      "/workspace/scratch/30bff11e002a/mini_tflm_dsa/rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972"
+    },
+    "input_assumptions": [],
+    "all_public_outputs_compared": true,
+    "profiles": [
+      {
+        "synthesis": false,
+        "slang_definitions": [
+          "-USYNTHESIS",
+          "-UXILINX_FPGA"
+        ],
+        "passed": true,
+        "formal_log_sha256": "9b04e308ad4d8419c65708286a5eca69af2371df8c72a8f781531975606af7d6",
+        "four_state_checks": 159778,
+        "four_state_log_sha256": "54f593d3d339afc16b9dc9dfb2c029538954153c7273228efb158ff0face5e17"
+      },
+      {
+        "synthesis": true,
+        "slang_definitions": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1"
+        ],
+        "passed": true,
+        "formal_log_sha256": "f3c927be390d2538977811ec8f5fc1d254da5d4e7d4331f47d4a6a7e83e741ca",
+        "four_state_checks": 159778,
+        "four_state_log_sha256": "54f593d3d339afc16b9dc9dfb2c029538954153c7273228efb158ff0face5e17"
+      }
+    ],
+    "test_sha256": "a19042c5d020999da62fd5d87f615c3549989d4cb15645720c9f00f5dc102e30"
+  },
+  "range_scope": "Qualified range-write branch; speculative stream updates are checked by test/frontend_pipeline/check_control.py.",
+  "reference_ref": "ef0dc75",
+  "source_sha256": {
+    "rtl/npu/conv/conv_im2col_frontend.sv": "a96730daa61dbe4547160484559bbacdb1cff91ef481d88b1c5fe490a2841d44",
+    "rtl/npu/conv/conv_im2col_stream.sv": "c5db0de84173f593def00e0e841d62773c4803544c150b886725cdcc00584380",
+    "rtl/npu/conv/conv_im2col_frontend_pkg.sv": "133f1bc893333aefa9d10084f4514348688579d716722ad64be72051616feb2c"
+  }
+}

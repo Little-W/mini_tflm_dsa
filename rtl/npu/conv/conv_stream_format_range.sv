@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-// 分别计算八位数据、十六位数据和补零输出的剩余范围，格式只参与最终选择。
+// 各通道提前选择数据字覆盖许可，通道范围与后续列资格按两路分组归并。
 (* keep_hierarchy = "yes" *)
 module conv_stream_format_range #(
   parameter int p_lanes = 8
@@ -16,38 +16,24 @@ module conv_stream_format_range #(
   output logic o_after // 当前输出推进后仍处于有效范围内
 );
   localparam int p_data_groups = (p_lanes+1)/2;
-  localparam int p_padding_groups = (p_lanes+2)/3;
-  (* keep = "true" *) logic [p_data_groups-1:0] s8_group, s16_group;
-  (* keep = "true" *) logic [p_padding_groups-1:0] padding_group;
-  (* keep = "true" *) logic s8_after, s16_after, padding_after;
-  logic [p_lanes-1:0] word_lane;
+  (* keep = "true" *) logic [p_data_groups-1:0] after_group;
+  logic [p_lanes-1:0] word_lane, effective_word;
   logic reference_after;
   for (genvar group_index = 0; group_index < p_data_groups; group_index++) begin : g_data
     localparam int p_first = group_index*2;
     localparam int p_bits = p_lanes-p_first < 2 ? p_lanes-p_first : 2;
-    assign s8_group[group_index] = &(~(i_static_lane[p_first+:p_bits] &
-        i_word_s8[p_first+:p_bits]) | i_after_lane[p_first+:p_bits]);
-    assign s16_group[group_index] = &(~(i_static_lane[p_first+:p_bits] &
-        i_word_s16[p_first+:p_bits]) | i_after_lane[p_first+:p_bits]);
+    assign after_group[group_index] = &(~(i_static_lane[p_first+:p_bits] &
+        effective_word[p_first+:p_bits]) | i_after_lane[p_first+:p_bits]);
   end
-  for (genvar group_index = 0; group_index < p_padding_groups; group_index++) begin : g_padding
-    localparam int p_first = group_index*3;
-    localparam int p_bits = p_lanes-p_first < 3 ? p_lanes-p_first : 3;
-    assign padding_group[group_index] = &(~i_static_lane[p_first+:p_bits] |
-        i_after_lane[p_first+:p_bits]);
-  end
-  assign s8_after = &s8_group;
-  assign s16_after = &s16_group;
-  assign padding_after = &padding_group;
   assign word_lane = i_input_s16 ? i_word_s16 : i_word_s8;
+  assign effective_word = {p_lanes{!i_word_output}} | word_lane;
   assign reference_after = i_first_allowed &&
       (&(~(i_static_lane & ({p_lanes{!i_word_output}} | word_lane)) | i_after_lane));
-  // 确定格式直接选取一位结果，未知格式继续使用逐通道的位合并语义。
+  // 未知格式继续使用逐通道的位合并语义。
   always_comb begin
     o_after = reference_after;
     case (^{i_word_output, i_input_s16})
-      1'b0, 1'b1: o_after = i_first_allowed &&
-          (i_word_output ? (i_input_s16 ? s16_after : s8_after) : padding_after);
+      1'b0, 1'b1: o_after = i_first_allowed && (&after_group);
       default: ;
     endcase
   end

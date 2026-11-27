@@ -20,7 +20,9 @@ module conv_stream_chunk_end #(
 );
   logic [p_lanes-1:0] static_end, selected_word;
   logic [2:0] reference_format;
-  logic complete_end, word_end, reference_end, parallel_end;
+  localparam int p_groups = (p_lanes + 2) / 3;
+  logic [p_groups-1:0] group_end;
+  logic reference_end, parallel_end;
   for (genvar lane = 0; lane < p_lanes; lane++) begin : g_lane
     // 每条通道独立完成完整范围资格，输出格式不进入该比较。
     (* keep_hierarchy = "yes" *)
@@ -30,14 +32,19 @@ module conv_stream_chunk_end #(
       .i_group_allowed(i_group_lane[lane]), .i_active_allowed(i_active_lane[lane]),
       .o_end(static_end[lane])
     );
-    assign selected_word[lane] = i_input_s16 ? i_word_s16[lane] : i_word_s8[lane];
+    assign selected_word[lane] = !i_word_output ||
+        (i_input_s16 ? i_word_s16[lane] : i_word_s8[lane]);
   end
-  // 缓存字覆盖和完整范围并行归并，是否使用数据字只控制最后一层选择。
-  conv_group_range_select #(.p_choices(p_lanes), .p_width(1)) u_word_end (
-    .i_select(static_end), .i_data(selected_word), .o_data(word_end)
-  );
-  assign complete_end = |static_end;
-  assign parallel_end = !i_column_lane[0] || (i_word_output ? word_end : complete_end);
+  // 输出格式提前形成各通道的字覆盖许可，末级只归并列边界。
+  for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_group
+    localparam int p_first = group_index * 3;
+    localparam int p_count = p_lanes-p_first < 3 ? p_lanes-p_first : 3;
+    (* keep_hierarchy = "yes" *) onehot_mux_group #(.p_count(p_count)) u_reduce (
+      .i_select(static_end[p_first+:p_count]), .i_data(selected_word[p_first+:p_count]),
+      .o_data(group_end[group_index])
+    );
+  end
+  assign parallel_end = !i_column_lane[0] || (|group_end);
   assign reference_format = {|static_end, |(static_end & i_word_s16), |(static_end & i_word_s8)};
   conv_im2col_chunk_end_select u_unknown (
     .i_first_column_allowed(i_column_lane[0]), .i_word_output(i_word_output), .i_input_s16(i_input_s16),

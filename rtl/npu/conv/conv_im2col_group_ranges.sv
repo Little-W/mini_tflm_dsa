@@ -32,8 +32,10 @@ module conv_im2col_group_ranges #(
     (* keep = "true" *) logic configured_high_equal, configured_high_next_equal, configured_high_last;
     (* keep = "true" *) logic configured_high_nonzero;
 
-    assign configured_remaining = {1'b0, i_cfg_group_c[p_lane_compare_width-1:0]} -
-        {1'b0, i_channel[p_lane_compare_width-1:0]};
+    borrow_select_subtract #(.p_width(p_lane_compare_width)) u_configured_remaining (
+      .i_a(i_cfg_group_c[p_lane_compare_width-1:0]), .i_b(i_channel[p_lane_compare_width-1:0]),
+      .o_difference(configured_remaining)
+    );
     conv_group_high_compare #(.p_width(16-p_lane_compare_width)) u_configured_high (
       .i_group(i_cfg_group_c[15:p_lane_compare_width]),
       .i_channel(i_channel[15:p_lane_compare_width]),
@@ -143,8 +145,10 @@ module conv_im2col_group_ranges #(
         logic [p_lane_compare_width:0] remaining;
         (* keep = "true" *) logic high_equal, high_next_equal, high_last;
         (* keep = "true" *) logic high_nonzero;
-        assign remaining = {1'b0, i_group_c[p_lane_compare_width-1:0]} -
-            {1'b0, i_channel_source[source][p_lane_compare_width-1:0]};
+        borrow_select_subtract #(.p_width(p_lane_compare_width)) u_remaining (
+          .i_a(i_group_c[p_lane_compare_width-1:0]),
+          .i_b(i_channel_source[source][p_lane_compare_width-1:0]), .o_difference(remaining)
+        );
         conv_group_high_compare #(.p_width(16-p_lane_compare_width)) u_high (
           .i_group(i_group_c[15:p_lane_compare_width]),
           .i_channel(i_channel_source[source][15:p_lane_compare_width]),

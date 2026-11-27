@@ -7,6 +7,7 @@ module tb_conv_im2col_frontend;
   parameter int SIZE=16, LANES=16, CACHE_POLICY=3, BUS_WIDTH=64;
   parameter int SLOT_W=6;
   parameter bit REGISTER_DESCRIPTOR=1'b1;
+  parameter int CACHE_RESPONSE_DEPTH=1;
   parameter int NARROW_MODE=0;
   localparam int BUS_BYTES=BUS_WIDTH/8;
   parameter bit PREFETCH=0, WINDOWED=0;
@@ -80,7 +81,7 @@ module tb_conv_im2col_frontend;
   string vectors;
   logic [31:0] virtual_stride;
   generate if (!USE_TILE_PATH) begin : g_direct
-    conv_im2col_frontend #(.SIZE(SIZE),.SLOT_W(SLOT_W),.REGISTER_DESCRIPTOR(REGISTER_DESCRIPTOR),.LANES(LANES),.BUS_WIDTH(BUS_WIDTH),.CACHE_POLICY(CACHE_POLICY),.CACHE_SETS(CACHE_SETS),.CACHE_WAYS(CACHE_WAYS),.LINE_BYTES(LINE_BYTES)) dut (
+    conv_im2col_frontend #(.SIZE(SIZE),.SLOT_W(SLOT_W),.REGISTER_DESCRIPTOR(REGISTER_DESCRIPTOR),.CACHE_RESPONSE_DEPTH(CACHE_RESPONSE_DEPTH),.LANES(LANES),.BUS_WIDTH(BUS_WIDTH),.CACHE_POLICY(CACHE_POLICY),.CACHE_SETS(CACHE_SETS),.CACHE_WAYS(CACHE_WAYS),.LINE_BYTES(LINE_BYTES)) dut (
       .clk,.rst_n,.cfg_valid,.cfg_ready,.cfg,
       .cfg_sched_r(NATIVE_SCHED_R),.cfg_sched_groups(NATIVE_SCHED_GROUPS),
       .tile_valid,.tile_ready,.tile_p0,.tile_q0,.tile_rows,.tile_slot,.tile_narrow,
@@ -88,6 +89,35 @@ module tb_conv_im2col_frontend;
       .tile_done,.tile_error,.error,.busy,
       .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,.rresp,.rlast
     );
+    // 独立记录需求读取的接收顺序，返回首字必须对应当前运行地址。
+    logic [31:0] request_address_queue[16];
+    int request_write_index, request_read_index, request_count;
+    always @(posedge clk) begin
+      if (!rst_n) begin
+        request_write_index=0;
+        request_read_index=0;
+        request_count=0;
+      end else begin
+        if (cfg_valid && cfg_ready && request_count!=0)
+          $fatal(1,"configuration accepted with outstanding demand reads");
+        if (dut.cache_port_valid && dut.cache_port_ready) begin
+          if (request_count==16) $fatal(1,"demand request scoreboard overflow");
+          request_address_queue[request_write_index]=dut.REGISTER_CACHE_REQUEST ?
+              dut.request_addr_q : dut.cache_req_addr;
+          request_write_index=(request_write_index+1)%16;
+          request_count++;
+        end
+        if (dut.cache_rsp_valid && dut.cache_rsp_ready) begin
+          if (request_count==0) $fatal(1,"demand response without accepted request");
+          if (!error &&
+              (request_address_queue[request_read_index] >> dut.p_word_shift) !=
+              (dut.addr >> dut.p_word_shift))
+            $fatal(1,"demand response address differs from running descriptor");
+          request_read_index=(request_read_index+1)%16;
+          request_count--;
+        end
+      end
+    end
     // 对停顿、行切换和归约尾部检查新寄存状态与原组合判断一致。
     always @(posedge clk) begin
       if (rst_n && dut.past_active_q !== (dut.col_idx >= dut.active_cols_q))

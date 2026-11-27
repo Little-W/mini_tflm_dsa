@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 // 合并描述符候选的资格条件，并按参数处理优先窗口的占用关系。
+(* keep_hierarchy = "yes" *)
 module conv_descriptor_qualify #(
   parameter int unsigned p_flags = 6,
   parameter logic [p_flags-1:0] p_expected = '1,

@@ -158,7 +158,7 @@ module conv_im2col_frontend #(
   logic [1:0] address_axis_valid;
   logic address_position_valid;
   logic address_reduction_valid, unused_address_reduction_equal;
-  logic [31:0] pixel_product;
+  logic [31:0] pixel_product, address_pixel_sum;
   logic [31:0] channel_product;
   logic [31:0] group_base_addr;
   logic [31:0] channel_addr;
@@ -175,6 +175,26 @@ module conv_im2col_frontend #(
   logic [p_cache_read_width-1:0] word_buf;
   logic [31:0] word_addr;
   logic word_valid;
+  logic [p_cache_read_width-1:0] operation_word_buf;
+  logic [31:0] operation_word_addr;
+  logic operation_word_valid;
+  logic operation_padding;
+  logic descriptor_output_available;
+  logic descriptor_check;
+  logic descriptor_accept_fire;
+  logic descriptor_read_fire;
+  logic descriptor_early_context;
+  logic [2:0] tile_base_context;
+  logic descriptor_response_available;
+  logic descriptor_preview_safe;
+  logic prepared_single_word;
+  logic prepared_word_ready;
+  logic [31:p_word_shift] prepared_word_tag;
+  logic [31:0] incoming_columns;
+  logic request_cancel, request_capture_ready;
+  logic prepared_read_pending;
+  logic active_read_pending;
+  st_t operation_state;
   logic current_word_hit;
   logic [CHUNK_COUNT_W-1:0] chunk_count;
   logic [SLOT_W-1:0] slot_q;
@@ -189,40 +209,40 @@ module conv_im2col_frontend #(
   logic cache_rsp_success;
   logic cache_rsp_failure;
   logic cache_req_valid;
+  logic stream_cache_req_valid;
+  logic stream_cache_rsp_ready;
+  logic incoming_geometry;
   logic request_tap_context;
   logic cache_rsp_ready;
   logic stream_next_request;
-  logic next_row_request;
+  logic next_row_request, row_request_valid, row_request_padding;
+  logic [31:0] row_request_address, row_request_pixel;
+  logic [COORD_W-1:0] row_request_y;
   logic request_stream_context;
   logic request_row_context;
   logic request_row_metadata_context;
   logic request_descriptor_metadata_context;
-  logic [31:0] request_epoch_selected;
-  logic [COORD_W-1:0] request_y_selected;
-  logic [31:0] request_index_selected;
   logic [31:0] unused_geometry_request_index, unused_geometry_request_epoch;
   logic active_after_chunk;
   logic [p_word_shift+1:0] byte_offset_sum;
   logic incoming_context;
   logic incoming_word_hit;
+  logic [9:0][1:0] incoming_word_candidates;
   logic finishing_tile;
   logic descriptor_response_forward;
-  logic incoming_next_tile_fast;
-  logic incoming_next_position_fast;
+  logic incoming_next_tile_fast, incoming_next_position_fast;
   logic incoming_skip_tap;
   logic [15:0] window_next_x;
   logic [15:0] window_next_y;
   logic [15:0] window_next_ch;
   logic [1:0] incoming_tile_group_fits;
   logic cache_port_valid;
-  logic preview_capture_valid;
+  logic preview_valid_q;
   logic [31:0] cache_req_addr;
   logic [31:0] cache_req_addr_reference;
   logic [31:0] stream_request_addr;
   logic request_pending;
   logic cache_port_ready;
-  logic [31:0] current_req_index;
-  logic [31:0] current_req_epoch;
   logic [31:0] request_addr_q;
   logic [31:0] request_index_q;
   logic [31:0] request_epoch_q;
@@ -277,7 +297,7 @@ module conv_im2col_frontend #(
   logic signed [COORD_W-1:0] incoming_iy;
   logic [31:0] incoming_pixel;
   logic [1:0] p_cache_select;
-  logic [31:0] req_index;
+  logic [31:0] req_index, request_pixel_value;
   logic [31:0] req_epoch;
   logic [31:0] request_retire;
   logic [1:0][31:0] retirement_result;
@@ -311,7 +331,6 @@ module conv_im2col_frontend #(
   logic [4:0] current_q_div3;
   logic [15:0] current_q_remainder;
   logic signed [COORD_W-1:0] request_y;
-  logic [31:0] incoming_req_index;
   logic [9:0][31:0] incoming_pixel_candidates;
   logic [9:0][31:0] incoming_address_candidates;
   logic [9:0][31:0] incoming_group_candidates;
@@ -319,10 +338,7 @@ module conv_im2col_frontend #(
   logic [9:0][COORD_W-1:0] incoming_y_candidates;
   logic [9:0] incoming_pixel_select;
   logic [31:0] request_output_y;
-  logic [31:0] incoming_req_epoch;
-  logic [1:0][31:0] incoming_epoch_candidate;
   logic [31:0] request_address_value;
-  logic [31:0] request_address_reference;
   logic [4:0][31:0] epoch_o_sum;
   logic [31:0] stream_channel_full;
   logic signed [32:0] row_pair_dx;
@@ -387,6 +403,7 @@ module conv_im2col_frontend #(
   logic tile_commit;
   logic committing_saved_word_hit;
   logic committing_live_word_hit;
+  logic committing_padding;
   logic descriptor_padding;
   logic [p_cache_read_width-1:0] descriptor_word_data_q;
   logic cfg_output_last;
@@ -420,11 +437,54 @@ module conv_im2col_frontend #(
   logic stream_row_coordinate_update, stream_row_data_update;
   logic stream_tap_coordinate_update, stream_tap_data_update;
   logic error_next, tile_error_next;
-
-  // 查询运行状态是否使用缓存字输出格式。
-  function automatic logic state_uses_word(input st_t next_state);
-    state_uses_word = next_state[$clog2(STREAM)] || next_state[$clog2(WAIT_WORD)];
-  endfunction
+  // 已提交描述符在检查周期即可使用保存字或填充值；输出停顿时继续保留检查状态。
+  // 数据、标签和有效位选择相同来源，下一描述符可以继承本次实际输出的数据字。
+  assign descriptor_output_available = descriptor_padding || committing_saved_word_hit || committing_live_word_hit;
+  assign descriptor_check = state[$clog2(DESCRIPTOR_CHECK)];
+  always_comb begin
+    operation_state = state;
+    if (descriptor_check) begin
+      if (active_read_pending) operation_state = WAIT_WORD;
+      else if (descriptor_output_available) operation_state = descriptor_padding ? ZERO_STREAM : STREAM;
+      else operation_state = FETCH;
+    end
+  end
+  assign operation_word_buf = state[$clog2(DESCRIPTOR_CHECK)] && committing_saved_word_hit ?
+      descriptor_word_data_q : word_buf;
+  assign operation_word_addr = state[$clog2(DESCRIPTOR_CHECK)] && committing_saved_word_hit ?
+      {addr[31:p_word_shift], {p_word_shift{1'b0}}} : word_addr;
+  assign operation_word_valid = (state[$clog2(DESCRIPTOR_CHECK)] && committing_saved_word_hit) || word_valid;
+  assign operation_padding = state[$clog2(DESCRIPTOR_CHECK)] ? descriptor_padding : pad_q;
+  // 每个准备项保存首字请求是否已进入请求寄存器，提交时把响应归属交给运行项。
+  // 同周期提交和接收分别读取旧准备标志、写入新准备标志，保持缓存响应顺序。
+  assign descriptor_accept_fire = tile_valid && tile_ready;
+  assign descriptor_read_fire = REGISTER_DESCRIPTOR && descriptor_accept_fire &&
+      descriptor_preview_safe && incoming_fast &&
+      !incoming_padding && !incoming_word_hit && tile_rows != RW'(0) &&
+      32'(tile_rows) <= SIZE && 32'(tile_cols) <= SIZE && tile_q_before_end &&
+      tile_rows_in_range && cache_req_ready;
+  // 下一项只有一个输出拍时，其首字就是末字，后续项可复用该待返回字。
+  // 多拍项后面的请求在提交后发出，使响应顺序始终与运行项的数据需求相同。
+  assign incoming_columns = tile_cols == 0 ? 32'(SIZE) : 32'(tile_cols);
+  assign descriptor_preview_safe = !REGISTER_DESCRIPTOR || !tile_prepared_valid ||
+      (prepared_single_word && (prepared_read_pending || prepared_word_ready));
+  conv_descriptor_read_state #(
+    .p_word_shift(p_word_shift), .p_lanes(LANES), .p_narrow_lanes(NARROW_LANES),
+    .p_enabled(REGISTER_DESCRIPTOR && REGISTER_CACHE_REQUEST)
+  ) u_descriptor_read_state (
+    .i_clk(clk), .i_rst_n(rst_n), .i_configure(cfg_valid && cfg_ready), .i_error(error),
+    .i_accept(descriptor_accept_fire), .i_commit(tile_commit), .i_read_fire(descriptor_read_fire),
+    .i_response_consumed(cache_rsp_valid && cache_rsp_ready), .i_prepared_valid(tile_prepared_valid),
+    .i_request_write(request_capture_ready), .i_request_pending(request_pending),
+    .i_request_tag(request_addr_q[31:p_word_shift]), .i_incoming_address(incoming_addr),
+    .i_columns(incoming_columns), .i_one_row(tile_rows == RW'(1)), .i_narrow(tile_narrow),
+    .i_input_s16(c.input_s16), .i_fast(incoming_fast), .i_padding(incoming_padding),
+    .i_group_fits(incoming_next_position_fast ? incoming_tile_group_fits[0] : incoming_tile_group_fits[1]),
+    .i_word_hit(incoming_word_hit), .o_prepared_pending(prepared_read_pending),
+    .o_active_pending(active_read_pending), .o_prepared_tag(prepared_word_tag),
+    .o_prepared_word_ready(prepared_word_ready), .o_single_word(prepared_single_word),
+    .o_request_cancel(request_cancel)
+  );
 
   conv_im2col_geometry #(
     .p_size(SIZE), .p_slot_w(SLOT_W), .p_lanes(LANES), .p_line_bytes(LINE_BYTES), .p_register_cache_request(REGISTER_CACHE_REQUEST), .p_register_descriptor(REGISTER_DESCRIPTOR), .p_cw(CW)
@@ -434,7 +494,7 @@ module conv_im2col_frontend #(
     .i_cfg_valid(cfg_valid),
     .i_cfg_ready(cfg_ready),
     .i_cfg(cfg),
-    .i_state(state),
+    .i_state(operation_state),
     .i_c(c),
     .o_cfg_ok(cfg_ok),
     .o_cfg_basic_valid(cfg_basic_valid),
@@ -594,7 +654,7 @@ module conv_im2col_frontend #(
     .i_tile_group(tile_group),
     .i_tile_narrow(tile_narrow),
     .i_error(error),
-    .i_state(state),
+    .i_state(operation_state),
     .i_c(c),
     .i_reduction_len(reduction_len),
     .i_position_count(position_count),
@@ -626,11 +686,13 @@ module conv_im2col_frontend #(
     .i_row_group_base(row_group_base),
     .i_next_row_group_base(next_row_group_base),
     .i_addr(addr),
-    .i_word_buf(word_buf),
-    .i_word_addr(word_addr),
-    .i_word_valid(word_valid),
+    .i_word_buf(operation_word_buf),
+    .i_word_addr(operation_word_addr), .i_compare_word_addr(word_addr),
+    .i_word_forward(descriptor_check && committing_saved_word_hit),
+    .i_word_valid(operation_word_valid),
     .i_incoming_word_hit(incoming_word_hit),
-    .i_descriptor_response_forward(descriptor_response_forward),
+    .i_prepared_word_tag(prepared_word_tag),
+    .i_descriptor_response_forward(descriptor_response_available),
     .o_incoming_next_tile_fast(incoming_next_tile_fast),
     .o_incoming_next_position_fast(incoming_next_position_fast),
     .o_incoming_skip_tap(incoming_skip_tap),
@@ -665,6 +727,7 @@ module conv_im2col_frontend #(
     .i_skip_bound_valid(skip_bound_valid),
     .i_window_padding(window_padding),
     .o_incoming_word_o_equal(incoming_word_o_equal),
+    .o_incoming_word_candidates(incoming_word_candidates),
     .o_incoming_live_word_o_equal(incoming_live_word_o_equal),
     .i_row_wrap_dx(row_wrap_dx),
     .i_tap_wrap_dx(tap_wrap_dx),
@@ -696,6 +759,7 @@ module conv_im2col_frontend #(
     .o_tile_commit(tile_commit),
     .o_committing_saved_word_hit(committing_saved_word_hit),
     .o_committing_live_word_hit(committing_live_word_hit),
+    .o_committing_padding(committing_padding),
     .o_descriptor_padding(descriptor_padding),
     .o_descriptor_word_data_q(descriptor_word_data_q),
     .o_next_row_word_match(next_row_word_match),
@@ -722,7 +786,9 @@ module conv_im2col_frontend #(
     .o_wr_data(wr_data),
     .o_wr_mask(wr_mask),
     .i_wr_last(wr_last),
-    .i_state(state),
+    .i_state(operation_state),
+    .i_descriptor_check(descriptor_check),
+    .i_descriptor_preview_safe(descriptor_preview_safe),
     .i_word_output_q(word_output_q),
     .i_c(c),
     .i_tile_rows_in_range(tile_rows_in_range),
@@ -749,11 +815,11 @@ module conv_im2col_frontend #(
     .i_ch0(ch0),
     .i_q_current(q_current),
     .i_channel_addr(channel_addr),
-    .i_pad_q(pad_q),
+    .i_pad_q(operation_padding),
     .o_addr(addr),
-    .i_word_buf(word_buf),
-    .i_word_addr(word_addr),
-    .i_word_valid(word_valid),
+    .i_word_buf(operation_word_buf),
+    .i_word_addr(operation_word_addr), .i_saved_word_addr(word_addr),
+    .i_word_valid(operation_word_valid),
     .o_current_word_hit(current_word_hit),
     .o_chunk_count(chunk_count),
     .i_decode_index(decode_index),
@@ -761,8 +827,8 @@ module conv_im2col_frontend #(
     .i_cache_req_ready(cache_req_ready),
     .i_cache_rsp_valid(cache_rsp_valid),
     .i_cache_rsp_error(cache_rsp_failure),
-    .o_cache_req_valid(cache_req_valid),
-    .o_cache_rsp_ready(cache_rsp_ready),
+    .o_cache_req_valid(stream_cache_req_valid),
+    .o_cache_rsp_ready(stream_cache_rsp_ready),
     .o_stream_next_request(stream_next_request),
     .o_next_row_request(next_row_request),
     .o_request_stream_context(request_stream_context),
@@ -794,11 +860,14 @@ module conv_im2col_frontend #(
     .i_current_q_remainder(current_q_remainder),
     .i_next_word_o_equal(next_word_o_equal),
     .i_incoming_word_o_equal(incoming_word_o_equal),
+    .i_incoming_word_candidates(incoming_word_candidates), .i_incoming_word_select(incoming_pixel_select),
     .i_incoming_live_word_o_equal(incoming_live_word_o_equal),
     .i_row_base_valid(row_base_valid),
     .i_coordinate_address_valid(coordinate_address_valid),
     .i_row_coordinate_valid(row_coordinate_valid),
     .i_next_row_padding(next_row_padding),
+    .i_row_request_valid(row_request_valid), .i_row_request_address(row_request_address),
+    .i_row_request_padding(row_request_padding),
     .i_next_tap_padding(next_tap_padding),
     .i_incoming_tap_wrap_q(incoming_tap_wrap_q),
     .i_next_row_addr(next_row_addr),
@@ -904,144 +973,49 @@ module conv_im2col_frontend #(
     .i_prefetch_pixel_sum(prefetch_pixel_sum),
     .i_shared_channel_product(shared_channel_product)
   );
-  // 行末的数据来源提前选择，填充和保存字命中只控制实际请求资格。
-  assign request_row_metadata_context = !REGISTER_ROW_ADDRESS &&
-      (request_stream_context || state[$clog2(ZERO_STREAM)]) &&
-      chunk_reaches_end && !row_last_q && row_base_valid && !geometry_tile;
-  assign request_descriptor_metadata_context = !REGISTER_DESCRIPTOR && descriptor_payload_context;
-  assign request_address_reference = request_row_metadata_context ? next_row_addr : cache_req_addr_reference;
-
-  // 描述符地址与运行位置地址共用末级归并，选择条件分别准备。
-  if (!REGISTER_DESCRIPTOR) begin : g_parallel_request_address
-    logic [4:0] cache_select, request_select;
-    logic [13:0] cache_candidate_select, request_candidate_select;
-    logic [13:0][31:0] address_candidate;
-    logic [31:0] cache_address_selected, request_address_selected;
-    conv_im2col_address_sources u_sources (
-      .i_tap(request_tap_context), .i_incoming(incoming_context),
-      .i_row(request_row_context), .i_stream(request_stream_context),
-      .i_row_metadata(request_row_metadata_context),
-      .o_cache(cache_select), .o_saved(request_select)
-    );
-    for (genvar candidate = 0; candidate < 10; candidate++) begin : g_incoming
-      assign address_candidate[candidate] = incoming_address_candidates[candidate];
-      assign cache_candidate_select[candidate] = cache_select[0] && incoming_pixel_select[candidate];
-      assign request_candidate_select[candidate] = request_select[0] && incoming_pixel_select[candidate];
-    end
-    assign address_candidate[13:10] = {addr, stream_request_addr, next_row_addr, next_tap_addr};
-    assign cache_candidate_select[13:10] = cache_select[4:1];
-    assign request_candidate_select[13:10] = request_select[4:1];
-    onehot_mux #(.p_choices(14), .p_width(32)) u_cache_address (
-      .i_select(cache_candidate_select), .i_data(address_candidate), .o_data(cache_address_selected)
-    );
-    onehot_mux #(.p_choices(14), .p_width(32)) u_saved_address (
-      .i_select(request_candidate_select), .i_data(address_candidate), .o_data(request_address_selected)
-    );
-    always_comb begin
-      cache_req_addr = cache_req_addr_reference;
-      request_address_value = request_address_reference;
-      // 未知输入继续使用条件选择的逐位合并语义。
-      case (^{request_tap_context, incoming_context, request_row_context, request_stream_context,
-               request_row_metadata_context, incoming_pixel_select, incoming_address_candidates,
-               incoming_addr, next_tap_addr, next_row_addr, stream_request_addr, addr})
-        1'b0, 1'b1: begin
-          cache_req_addr = cache_address_selected;
-          request_address_value = request_address_selected;
-        end
-        default: begin end
-      endcase
-    end
-  end else begin : g_saved_descriptor_address
-    assign cache_req_addr = cache_req_addr_reference;
-    assign request_address_value = request_address_reference;
-  end
-
-  // 请求索引和输入行坐标由同一组候选来源生成。
-  conv_im2col_request_index #(
-    .p_coord_width(COORD_W),
-    .p_register_descriptor(REGISTER_DESCRIPTOR)
-  ) u_request_index (
-    .i_short_pixel(short_pixel_q), .i_index_shift(window_index_shift_q),
-    .i_descriptor(request_descriptor_metadata_context), .i_row(request_row_metadata_context),
-    .i_tap(request_tap_context), .i_incoming_select(incoming_pixel_select),
-    .i_incoming_pixel(incoming_pixel_candidates), .i_incoming_y(incoming_y_candidates),
-    .i_saved_pixel(incoming_pixel), .i_running_pixel({pixel_index, next_tap_pixel, next_row_pixel}),
-    .i_running_y({iy, next_tap_iy, next_row_iy}), .i_current_index(current_req_index),
-    .o_incoming_index(incoming_req_index), .o_request_index(request_index_selected),
-    .o_request_y(request_y_selected)
+  conv_im2col_row_request #(.p_coord_width(COORD_W), .p_enabled(REGISTER_ROW_ADDRESS)) u_row_request (
+    .i_clk(clk), .i_rst_n(rst_n), .i_cfg_fire(cfg_valid && cfg_ready), .i_error(error),
+    .i_configuration(c), .i_step_phase(address_step_phase), .i_base_valid(row_base_valid),
+    .i_coordinate_valid(coordinate_address_valid), .i_geometry(geometry_tile), .i_tile_commit(tile_commit),
+    .i_commit_next_row(committing_tile.fast && !committing_tile.invalid && !committing_tile.geometry && committing_tile.operation[5]),
+    .i_advance(stream_operation_accept && chunk_reaches_end && !row_last_q),
+    .i_row_wrap(row_wrap), .i_output_x(ox_q), .i_second_last_x(second_last_col_q),
+    .i_base_address(row_base_addr), .i_base_pixel(row_base_pixel), .i_base_coordinate({row_base_iy, row_base_ix}),
+    .i_wrap_dx(row_wrap_dx), .i_pair_dx(row_pair_dx), .i_wrap_pixels(row_wrap_pixels),
+    .i_step_bytes(row_step_bytes), .i_wrap_bytes(row_wrap_bytes), .i_next_address(next_row_addr),
+    .i_next_pixel(next_row_pixel), .i_next_y(next_row_iy), .i_next_padding(next_row_padding),
+    .o_valid(row_request_valid), .o_address(row_request_address), .o_pixel(row_request_pixel),
+    .o_y(row_request_y), .o_padding(row_request_padding)
   );
-  // 两个描述符纪元独立计算格式和行内偏移，窗口匹配只选择最终结果。
-  for (genvar candidate = 0; candidate < 2; candidate++) begin : g_incoming_request_epoch
-    assign incoming_epoch_candidate[candidate] = short_pixel_q ? 32'd0 :
-      (epoch_o_sum[candidate] << c.input_s16) >> $clog2(LINE_BYTES);
-  end
-  assign incoming_req_epoch = incoming_next_position_fast ? incoming_epoch_candidate[0] : incoming_epoch_candidate[1];
-
-  // 各来源的纪元先完成格式变换，互斥选择只归并完整结果。
-  if (1) begin : g_request_epoch
-    logic [4:0] epoch_select;
-    logic [4:0][31:0] epoch_candidate;
-    assign epoch_select[0] = request_descriptor_metadata_context;
-    assign epoch_select[1] = !request_descriptor_metadata_context && request_row_metadata_context;
-    assign epoch_select[2] = !request_descriptor_metadata_context && !request_row_metadata_context &&
-        request_tap_context;
-    assign epoch_select[3] = !request_descriptor_metadata_context && !request_row_metadata_context &&
-        !request_tap_context && request_stream_context;
-    assign epoch_select[4] = !request_descriptor_metadata_context && !request_row_metadata_context &&
-        !request_tap_context && !request_stream_context;
-    assign epoch_candidate[0] = incoming_req_epoch;
-    assign epoch_candidate[1] = short_pixel_q ? 32'd0 :
-        (epoch_o_sum[1] << c.input_s16) >> $clog2(LINE_BYTES);
-    assign epoch_candidate[2] = short_pixel_q ? 32'd0 :
-        ({16'd0, c.group_offset} << c.input_s16) >> $clog2(LINE_BYTES);
-    assign epoch_candidate[3] = short_pixel_q ? 32'd0 :
-        (epoch_o_sum[3] << c.input_s16) >> $clog2(LINE_BYTES);
-    assign epoch_candidate[4] = current_req_epoch;
-    onehot_mux #(.p_choices(5), .p_width(32)) u_select (
-      .i_select(epoch_select), .i_data(epoch_candidate), .o_data(request_epoch_selected)
-    );
-  end
-
-  // 换核位置的元数据与下一地址共用静态上下文选择。
-  always_comb begin
-    request_y=request_descriptor_metadata_context ? incoming_iy : request_row_metadata_context ? next_row_iy :
-      request_tap_context ? next_tap_iy : iy;
-    request_output_y=request_descriptor_metadata_context ?
-      (incoming_next_position_fast ? {16'd0, window_next_y} :
-       incoming_next_tile_fast ? (row_wrap ? oy+32'd1 : oy) : oy) :
-      request_row_metadata_context && row_wrap ? oy+32'd1 : oy;
-    req_index_valid=window_index_valid_q;
-    req_index=request_descriptor_metadata_context ? incoming_req_index : request_row_metadata_context ?
-      (short_pixel_q ? next_row_pixel>>window_index_shift_q : next_row_pixel) :
-      request_tap_context ? (short_pixel_q ? next_tap_pixel>>window_index_shift_q : next_tap_pixel) :
-      current_req_index;
-    req_epoch=request_descriptor_metadata_context ? incoming_req_epoch : request_row_metadata_context ?
-      (short_pixel_q ? 32'd0 : (epoch_o_sum[1]<<c.input_s16)>>$clog2(LINE_BYTES)) :
-      request_tap_context ? (short_pixel_q ? 32'd0 :
-        ({16'd0,c.group_offset}<<c.input_s16)>>$clog2(LINE_BYTES)) :
-      request_stream_context ? (short_pixel_q ? 32'd0 :
-        (epoch_o_sum[3]<<c.input_s16)>>$clog2(LINE_BYTES)) : current_req_epoch;
-    // 未知输入保持条件选择的逐位合并语义。
-    case (^{request_descriptor_metadata_context, request_row_metadata_context,
-             request_tap_context, incoming_pixel_select, incoming_y_candidates,
-             incoming_iy, next_row_iy, next_tap_iy, iy, incoming_pixel_candidates,
-             incoming_pixel, short_pixel_q, window_index_shift_q,
-             next_row_pixel, next_tap_pixel, current_req_index})
-      1'b0, 1'b1: begin
-        request_y = request_y_selected;
-        req_index = request_index_selected;
-      end
-      default: begin end
-    endcase
-    case (^{request_descriptor_metadata_context, request_row_metadata_context,
-             request_tap_context, request_stream_context, incoming_req_epoch,
-             short_pixel_q, epoch_o_sum[1], epoch_o_sum[3], c.input_s16,
-             c.group_offset, current_req_epoch})
-      1'b0, 1'b1: req_epoch = request_epoch_selected;
-      default: begin end
-    endcase
-  end
-
+  // 行末的数据来源提前选择，填充和保存字命中只控制实际请求资格。
+  assign request_row_metadata_context = row_request_valid &&
+      (request_stream_context || operation_state[$clog2(ZERO_STREAM)]) &&
+      chunk_reaches_end && !row_last_q && row_base_valid && !geometry_tile;
+  assign request_descriptor_metadata_context = incoming_context;
+  // 地址、索引与纪元通过同一组上下文选择后进入请求寄存器。
+  conv_im2col_request_context #(
+    .p_coord_width(COORD_W), .p_line_bytes(LINE_BYTES),
+    .p_register_descriptor(REGISTER_DESCRIPTOR)
+  ) u_request_context (
+    .i_configuration(c), .i_descriptor(request_descriptor_metadata_context),
+    .i_row_metadata(request_row_metadata_context), .i_tap(request_tap_context),
+    .i_row(request_row_context), .i_stream(request_stream_context),
+    .i_select(incoming_pixel_select), .i_address_candidate(incoming_address_candidates),
+    .i_pixel_candidate(incoming_pixel_candidates), .i_y_candidate(incoming_y_candidates),
+    .i_incoming_address(incoming_addr), .i_incoming_pixel(incoming_pixel),
+    .i_incoming_y(incoming_iy), .i_cache_address_reference(cache_req_addr_reference),
+    .i_next_tap_address(next_tap_addr), .i_next_row_address(row_request_address),
+    .i_stream_address(stream_request_addr), .i_address(addr),
+    .i_pixel({pixel_index, next_tap_pixel, row_request_pixel}), .i_y({iy, next_tap_iy, row_request_y}),
+    .i_epoch_sum(epoch_o_sum[3:0]), .i_short_pixel(short_pixel_q),
+    .i_index_shift(window_index_shift_q), .i_index_valid(window_index_valid_q),
+    .i_next_position(incoming_next_position_fast), .i_next_tile(incoming_next_tile_fast),
+    .i_row_wrap(row_wrap), .i_window_y(window_next_y),
+    .i_output_y(oy), .o_cache_address(cache_req_addr),
+    .o_request_address(request_address_value), .o_request_y(request_y),
+    .o_output_y(request_output_y), .o_index(req_index), .o_request_pixel(request_pixel_value),
+    .o_epoch(req_epoch), .o_index_valid(req_index_valid)
+  );
 
   for (genvar axis = 0; axis < 2; axis++) begin : g_address_bounds
     logic [COORD_W-1:0] coordinate;
@@ -1093,7 +1067,7 @@ module conv_im2col_frontend #(
     assign cfg_idle_group_clear[group_index] = !(|cfg_idle_groups[group_index]);
   end
   assign cfg_ready = (&cfg_idle_group_clear) && cache_cfg_ready && !cache_hint_pending && !tile_prepared_valid;
-  assign stream_response_error = state[$clog2(WAIT_WORD)] && cache_rsp_failure;
+  assign stream_response_error = operation_state[$clog2(WAIT_WORD)] && cache_rsp_failure;
   assign stream_output_accept = wr_valid && wr_ready;
   // 描述符资格与输出接收并行计算，运行寄存器在最终边沿选择保存。
   assign stream_operation_accept = stream_output_accept && !descriptor_state_context;
@@ -1110,7 +1084,7 @@ module conv_im2col_frontend #(
     .o_tap_coordinate(stream_tap_coordinate_update), .o_tap_data(stream_tap_data_update)
   );
   conv_im2col_error_update u_error_update (
-    .i_state(state), .i_error(error), .i_configuration_complete(cfg_prepare_phase == 4),
+    .i_state(operation_state), .i_error(error), .i_configuration_complete(cfg_prepare_phase == 4),
     .i_configuration_ok(cfg_ok), .i_cfg_fire(cfg_valid && cfg_ready),
     .i_basic_valid(cfg_basic_valid), .i_tile_commit(tile_commit),
     .i_tile_invalid(committing_tile.invalid), .i_stream_error(stream_response_error),
@@ -1119,7 +1093,10 @@ module conv_im2col_frontend #(
   );
   assign finishing_tile=stream_output_accept && wr_last;
   // 描述符在返回阶段选择当前缓存字，描述符接收条件控制保存。
-  assign descriptor_response_forward = state[$clog2(WAIT_WORD)];
+  assign descriptor_response_forward = operation_state[$clog2(WAIT_WORD)];
+  // 等待中的运行字可以抑制同字重复请求，数据保存只在实际响应有效时使用返回值。
+  assign descriptor_response_available = descriptor_response_forward &&
+      (!REGISTER_DESCRIPTOR || cache_rsp_success);
   // 描述符就绪的静态条件共用，配置有效只参与最终接收选择。
   assign tile_ready_static = cfg_prepare_phase==0 && configured && !error &&
                               !pred_busy && !pred_cfg_busy && !pred_cfg_pending && !cache_cfg_pending &&
@@ -1127,26 +1104,31 @@ module conv_im2col_frontend #(
   assign tile_admission_ready = tile_ready_static && !cfg_valid;
   conv_im2col_tile_context u_tile_context (
     .i_static_ready(tile_ready_static), .i_idle(state[$clog2(IDLE)]),
-    .i_stream(state[$clog2(STREAM)]), .i_zero_stream(state[$clog2(ZERO_STREAM)]),
-    .i_wait_word(state[$clog2(WAIT_WORD)]), .i_write_ready(wr_ready),
-    .i_row_last(row_last_q), .i_chunk_end(chunk_reaches_end), .o_ready(tile_context_ready)
+    .i_stream(operation_state[$clog2(STREAM)]), .i_zero_stream(operation_state[$clog2(ZERO_STREAM)]),
+    .i_wait_word(operation_state[$clog2(WAIT_WORD)]), .i_write_ready(wr_ready),
+    .i_row_last(row_last_q), .i_chunk_end(chunk_reaches_end), .o_base(tile_base_context), .o_ready(tile_context_ready)
   );
   // 返回成功只合并已经准备的描述符接收资格。
   assign tile_ready_context = tile_context_ready[0] ||
       (cache_rsp_success && tile_context_ready[1]);
-  // 接收上下文已经包含空闲或输出完成条件，可同时提交已经准备的描述符。
-  always_comb begin
-    tile_ready = tile_ready_context && !cfg_valid &&
-        (!REGISTER_DESCRIPTOR || !tile_prepared_valid || tile_commit);
-    case (^{state, error, tile_prepared_valid, cfg_valid, wr_ready, row_last_q,
-             chunk_reaches_end, cache_rsp_success, tile_ready_static})
-      1'b0, 1'b1: tile_ready = tile_ready_context && !cfg_valid;
-      default: ;
-    endcase
-  end
+  // 准备队列为空且运行项只剩最后一拍时，描述符准备可与缓存等待或输出背压重叠。
+  // 运行项完成后再提交准备项，保持请求返回、地址和输出元数据的先后次序。
+  assign descriptor_early_context = REGISTER_DESCRIPTOR && !tile_prepared_valid &&
+      tile_ready_static && row_last_q &&
+      (operation_state[$clog2(WAIT_WORD)] || operation_state[$clog2(STREAM)] ||
+       operation_state[$clog2(ZERO_STREAM)]) && !cache_rsp_failure;
+  conv_descriptor_admission #(.p_register_descriptor(REGISTER_DESCRIPTOR)) u_descriptor_admission (
+    .i_idle_context(tile_base_context[0]),
+    .i_output_context(tile_base_context[1] || (cache_rsp_success && tile_base_context[2])),
+    .i_early_output(descriptor_early_context), .i_chunk_end(chunk_reaches_end),
+    .i_prepared_valid(tile_prepared_valid),
+    .i_commit_context({tile_prepared_valid && !error && wr_valid && wr_ready && row_last_q,
+                       tile_prepared_valid && !error && operation_state[$clog2(IDLE)]}),
+    .i_fast(incoming_fast), .i_configure(cfg_valid), .o_ready(tile_ready)
+  );
   assign busy = !cfg_ready;
-  assign wr_valid = state[$clog2(STREAM)] || state[$clog2(ZERO_STREAM)] ||
-                    (state[$clog2(WAIT_WORD)] && cache_rsp_success);
+  assign wr_valid = operation_state[$clog2(STREAM)] || operation_state[$clog2(ZERO_STREAM)] ||
+                    (operation_state[$clog2(WAIT_WORD)] && cache_rsp_success);
   assign wr_slot = slot_q;
   assign wr_row = CW'(row_idx);
   assign wr_col = CW'(col_idx);
@@ -1206,7 +1188,11 @@ module conv_im2col_frontend #(
   end
   // 数据来源由运行阶段提前选择，描述符和输出接收只决定保存时刻。
   assign descriptor_payload_context = state[$clog2(IDLE)] ||
-      ((state[$clog2(WAIT_WORD)] || state[$clog2(STREAM)] || state[$clog2(ZERO_STREAM)]) && wr_last);
+      ((operation_state[$clog2(WAIT_WORD)] || operation_state[$clog2(STREAM)] ||
+        operation_state[$clog2(ZERO_STREAM)]) && wr_last);
+  conv_full_address_add u_address_pixel_sum (
+    .i_a(pixel_product), .i_b(32'(ix)), .o_sum(address_pixel_sum)
+  );
   always_comb begin
     coordinate_payload[0] = next_tap_ix;
     coordinate_payload[1] = next_tap_iy;
@@ -1223,7 +1209,7 @@ module conv_im2col_frontend #(
       coordinate_payload[0] = coordinate_padded_x;
       coordinate_payload[1] = coordinate_padded_y;
     end
-    if (state[$clog2(ADDRESS_PIXEL)]) pixel_payload = pixel_product + 32'(ix);
+    if (state[$clog2(ADDRESS_PIXEL)]) pixel_payload = address_pixel_sum;
     if (state[$clog2(ADDRESS_CHANNEL)]) begin
       tap_group_reference = group_base_addr;
       row_group_reference = group_base_addr;
@@ -1238,7 +1224,7 @@ module conv_im2col_frontend #(
   end
 
   conv_im2col_payload_select #(.p_register_descriptor(REGISTER_DESCRIPTOR)) u_payload_select (
-    .i_state(state), .i_descriptor(descriptor_payload_context),
+    .i_state(operation_state), .i_descriptor(descriptor_payload_context),
     .i_select(incoming_pixel_select), .i_kernel_candidate(incoming_kernel_x_candidates),
     .i_group_candidate(incoming_group_candidates), .i_saved_kernel_column(committing_tile.kernel_x),
     .i_chunk_end(chunk_reaches_end), .i_kernel_shape_valid(kernel_shape_o_valid),
@@ -1252,55 +1238,49 @@ module conv_im2col_frontend #(
 
   // 请求地址、窗口索引和有效位同时寄存，缓存只接收已保存的完整请求。
   // 输出接收旧请求的同一周期可保存新请求，停顿期间保持全部字段。
-  assign cache_port_valid = REGISTER_CACHE_REQUEST ? request_pending : cache_req_valid;
-  assign cache_req_ready = REGISTER_CACHE_REQUEST ?
-      (!request_pending || cache_port_ready) : cache_port_ready;
-  // 请求字段保存时同步准备读取快照，下一周期由正式请求有效位决定是否消费。
-  always_comb begin
-    preview_capture_valid = REGISTER_CACHE_REQUEST && cache_req_valid && cache_req_ready;
-    case (cache_req_ready)
-      1'b1: preview_capture_valid = REGISTER_CACHE_REQUEST;
-      default: ;
-    endcase
-  end
-  always_comb begin
-    current_req_index = pixel_index;
-    current_req_epoch = (epoch_o_sum[2]<<c.input_s16)>>$clog2(LINE_BYTES);
-    if (short_pixel_q) begin
-      current_req_index = pixel_index>>window_index_shift_q;
-      current_req_epoch = 0;
-    end
-  end
-  always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) request_pending <= 1'b0;
-    else if (cache_req_ready) request_pending <= REGISTER_CACHE_REQUEST && cache_req_valid;
-  end
-  always_ff @(posedge clk) begin
-    if (!request_pending || cache_port_ready) begin
-      request_addr_q <= request_address_value;
-      request_geometry_q <= incoming_context ? committing_tile.geometry : geometry_tile;
-      request_event_first_q <= (incoming_context ? committing_tile.geometry : geometry_tile) && cache_req_addr[3:0]==0;
-      request_index_valid_q <= req_index_valid;
-      request_index_q <= req_index;
-      request_epoch_q <= req_epoch;
-      request_y_q <= request_y[15:0];
-      request_progress_q <= request_output_y;
-    end
-  end
+  // 错误状态继续接收已经进入缓存的响应，响应数据不产生写输出。
+  assign cache_rsp_ready = stream_cache_rsp_ready || error;
+  assign incoming_geometry = pred_enabled && (CACHE_POLICY != 3 || !c.windowed) &&
+      (tile_cols == 0 || 32'(tile_cols) == SIZE) && tile_p0[3:0] == 0 &&
+      tile_q0[3:0] == 0 && tile_group < groups_q;
+  conv_im2col_request_pipeline #(
+    .p_size(SIZE), .p_count_width(TILE_COUNT_W), .p_word_shift(p_word_shift),
+    .p_response_depth(CACHE_RESPONSE_DEPTH), .p_registered(REGISTER_CACHE_REQUEST), .p_lookahead(REGISTER_ROW_ADDRESS)
+  ) u_request_pipeline (
+    .i_clk(clk), .i_rst_n(rst_n), .i_configure(cfg_valid && cfg_ready), .i_error(error),
+    .i_response_failure(cache_rsp_failure), .i_tile_commit(tile_commit), .i_configuration(c),
+    .i_request_valid(stream_cache_req_valid), .i_cache_ready(cache_port_ready), .i_cancel(request_cancel),
+    .i_address(request_address_value), .i_pixel(request_pixel_value), .i_index_reference(req_index),
+    .i_short_pixel(short_pixel_q), .i_index_shift(window_index_shift_q), .i_index_valid(req_index_valid),
+    .i_geometry(incoming_context ? incoming_geometry : geometry_tile),
+    .i_event_first((incoming_context ? incoming_geometry : geometry_tile) && cache_req_addr[3:0]==0),
+    .i_epoch(req_epoch), .i_y(request_y[15:0]), .i_progress(request_output_y),
+    .i_stream(request_stream_context), .i_row_eligible(request_row_context), .i_row_wrap(row_wrap),
+    .i_narrow(narrow_output), .i_past_active(past_active_q), .i_row(row_idx), .i_rows(rows_q),
+    .i_column(col_idx), .i_columns(cols_q), .i_active_columns(active_cols_q),
+    .i_channel(ch_q), .i_initial_channel(ch0_q), .i_next_row(next_row_idx),
+    .i_next_input_x(next_row_ix[15:0]), .i_output_x(ox_q),
+    .i_seed_address(row_request_address), .i_seed_pixel(row_request_pixel),
+    .o_request_valid(cache_req_valid), .o_request_ready(cache_req_ready), .o_capture_ready(request_capture_ready),
+    .o_cache_valid(cache_port_valid), .o_pending(request_pending), .o_preview_valid(preview_valid_q),
+    .o_address(request_addr_q), .o_index(request_index_q), .o_index_valid(request_index_valid_q),
+    .o_geometry(request_geometry_q), .o_event_first(request_event_first_q),
+    .o_epoch(request_epoch_q), .o_y(request_y_q), .o_progress(request_progress_q)
+  );
   conv_read_cache #(.SETS(CACHE_SETS),.WAYS(CACHE_WAYS),.LINE_BYTES(LINE_BYTES),
     .CACHE_POLICY(CACHE_POLICY),.BUS_WIDTH(BUS_WIDTH),.READ_WIDTH(p_cache_read_width),.DMA_MAX_BYTES(DMA_MAX_BYTES),
     .DEMAND_DEPTH(CACHE_RESPONSE_DEPTH),
     .p_defer_retire_shift(CACHE_POLICY == 3),
-    .p_preview_request(REGISTER_CACHE_REQUEST && CACHE_RESPONSE_DEPTH == 1)) u_cache (
+    .p_preview_request(REGISTER_CACHE_REQUEST)) u_cache (
     .clk,.rst_n,
     .cfg_valid(cache_config_valid),.cfg_ready(cache_cfg_ready),
     .cfg_base(c.input_base),.cfg_bytes(tensor_bytes),.cfg_bypass(c.bypass_cache),
     .cfg_geometry(pred_cfg_eligible),
     .cfg_windowed(c.windowed),.cfg_prefetch_enable(c.prefetch_enable),
     .req_valid(cache_port_valid),.req_ready(cache_port_ready),
-    .preview_valid(preview_capture_valid),
-    .preview_addr(request_address_value),
-    .preview_index_valid(req_index_valid),.preview_index(req_index),
+    .preview_valid(preview_valid_q),
+    .preview_addr(request_addr_q),
+    .preview_index_valid(request_index_valid_q),.preview_index(request_index_q),
     .req_addr(REGISTER_CACHE_REQUEST ? request_addr_q : cache_req_addr),
     .req_geometry(REGISTER_CACHE_REQUEST ? request_geometry_q : geometry_tile),
     .req_event_first(REGISTER_CACHE_REQUEST ? request_event_first_q :
@@ -1329,10 +1309,16 @@ module conv_im2col_frontend #(
   assign decode_index_advance = decode_index + 1;
   assign decode_inner_advance = decode_inner + 1;
   assign position_high_minus_one = cfg_positions[31:p_row_low_w] - p_row_high_w'(1);
-
-  // 输出资格由保存的运行状态确定。
-  assign word_output_q = state_uses_word(state);
-
+  // 首地址的输出格式与状态同时保存，缓存字命中只控制数据是否可发送。
+  if (REGISTER_DESCRIPTOR) begin : g_saved_word_format
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) word_output_q <= 1'b0;
+      else if (state_update) word_output_q <= tile_commit && !committing_tile.invalid && committing_tile.fast ?
+          !committing_padding : (selected_state[$clog2(STREAM)] || selected_state[$clog2(WAIT_WORD)]);
+    end
+  end else begin : g_direct_word_format
+    assign word_output_q = operation_state[$clog2(STREAM)] || operation_state[$clog2(WAIT_WORD)];
+  end
   // 描述符数据在当前传输完成前形成候选状态。
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -1346,7 +1332,7 @@ module conv_im2col_frontend #(
       tile_valid && tile_admission_ready;
   assign descriptor_state_context = descriptor_commit_eligible &&
       (state[$clog2(IDLE)] ||
-       ((state[$clog2(WAIT_WORD)] || state[$clog2(STREAM)] || state[$clog2(ZERO_STREAM)]) && wr_last));
+       ((operation_state[$clog2(WAIT_WORD)] || operation_state[$clog2(STREAM)] || operation_state[$clog2(ZERO_STREAM)]) && wr_last));
 
   // 描述符字段提前决定候选状态，接收事件控制保存。
   conv_im2col_descriptor_state #(.p_register_descriptor(REGISTER_DESCRIPTOR)) u_descriptor_state (
@@ -1356,7 +1342,7 @@ module conv_im2col_frontend #(
   );
 
   conv_im2col_state_control #(.p_count_width(TILE_COUNT_W)) u_state_control (
-    .i_state(state), .i_descriptor_state(descriptor_state),
+    .i_state(operation_state), .i_descriptor_state(descriptor_state),
     .i_stream_state(stream_advance_state), .i_descriptor_context(descriptor_state_context),
     .i_descriptor_eligible(descriptor_commit_eligible), .i_tile_commit(tile_commit),
     .i_descriptor_padding(descriptor_padding), .i_saved_word_hit(committing_saved_word_hit),
@@ -1388,7 +1374,7 @@ module conv_im2col_frontend #(
   conv_im2col_wrap_state u_wrap_state (
     .clk(clk), .rst_n(rst_n),
     .i_cfg_valid(cfg_valid), .i_cfg_ready(cfg_ready),
-    .i_state(state), .i_tile_commit(tile_commit),
+    .i_state(operation_state), .i_tile_commit(tile_commit),
     .i_descriptor_invalid(committing_tile.invalid), .i_descriptor_fast(committing_tile.fast),
     .i_position_update(committing_tile.output_position_update), .i_stream_error(stream_response_error),
     .i_stream_accept(stream_operation_accept), .i_chunk_end(chunk_reaches_end),
@@ -1410,7 +1396,8 @@ module conv_im2col_frontend #(
     .p_cache_ways(CACHE_WAYS), .p_saved_group_lanes(p_saved_group_lanes),
     .p_register_descriptor(REGISTER_DESCRIPTOR), .p_prepared_tile_width($bits(prepared_tile_t))
   ) u_runtime_registers (
-    .i_state(state),
+    .i_state(operation_state),
+    .i_descriptor_check(descriptor_check),
     .o_descriptor_index({tap0, q0, p0}), .o_group_advance({skip_group_q, next_group_q}),
     .o_output_count({active_cols_q, cols_q, rows_q, col_idx, row_idx}), .o_output_coordinate({oy_q, ox_q}),
     .o_kernel_coordinate({kx0_q, ky0_q, kx_q, ky_q}), .o_group_base({row_group_base, tap_group_base}),

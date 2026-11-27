@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 // 为配置、描述符和运行操作准备回绕候选，并保存三个位置对应的回绕标志。
+(* keep_hierarchy = "yes" *)
 module conv_im2col_wrap_state (
   input wire logic clk, // 回绕状态寄存器的工作时钟。
   input wire logic rst_n, // 低有效异步复位。

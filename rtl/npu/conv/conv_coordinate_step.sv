@@ -3,7 +3,8 @@
 
 // 并行计算坐标步进量和低位范围关系，共享两路十七位普通算术。
 module conv_coordinate_step #(
-  parameter int p_width = 35
+  parameter int p_width = 35,
+  parameter bit p_preserve_range = 1'b1 // 保留实际需要范围结果的分组条件
 ) (
   input wire logic [p_width-1:0] i_base, // 当前坐标的基值。
   input wire logic [p_width-1:0] i_delta, // 待加入坐标的定宽步进量。
@@ -24,11 +25,11 @@ module conv_coordinate_step #(
   logic [p_width-1:0] coordinate_sum;
   localparam int p_upper_bits = p_width-17;
   localparam int p_upper_groups = (p_upper_bits+1)/2;
-  (* keep = 1 *) logic upper_valid;
+  (* keep = p_preserve_range *) logic upper_valid;
   if (p_upper_bits == 0) begin : g_no_upper_bits
     assign upper_valid = 1'b1;
   end else begin : g_upper_bits
-    (* keep = 1 *) logic [p_upper_groups-1:0] group_valid;
+    (* keep = p_preserve_range *) logic [p_upper_groups-1:0] group_valid;
     for (genvar group_index = 0; group_index < p_upper_groups; group_index++) begin : g_group
       localparam int p_first = 17+2*group_index;
       localparam int p_bits = p_width-p_first < 2 ? p_width-p_first : 2;

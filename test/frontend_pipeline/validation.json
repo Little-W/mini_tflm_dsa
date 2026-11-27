@@ -3,40 +3,49 @@
   "scope": "im2col 前端公开接口、描述符队列、配置准备和实际算术表达式",
   "source_sha256": {
     "include/conv_im2col_prepared_tile.svh": "82fad7a236b4bf174779c7618c9023258d64253c4d117124df15eb69e7af73dd",
-    "rtl/common/add_equal.sv": "c182ae272546271431039c69213e91623533edd8d77ffa9fa4a98adfcde49cd7",
-    "rtl/common/onehot_check.sv": "636af0d4298118594dea7229cef13c4b652bab30f457e891d37a807278357515",
-    "rtl/common/parallel_prefix_add.sv": "5034d4f360081581b871ec088fd482fd98fb34a1d40c2ad82c35146d8b27428d",
-    "rtl/common/regfile.v": "9f483f904203fd3b096d57cc542a04ae1330e183cfc5643e2762f5d07cd110da",
-    "rtl/common/unsigned_compare.sv": "2f8a56bf2356ab9ef3bbe1691290758e110f275409a55b2ebee2025cdefb74dc",
-    "rtl/npu/conv/conv_axi_span_reader.sv": "c4da511ad0622b432de89bc214d25c7e51d438ccf480e915980530ef474f4bc1",
-    "rtl/npu/conv/conv_coordinate_step.sv": "9073be97d32f41d06c62873dc584dd6ae50a878473f1c571bd74371144d5ca9c",
-    "rtl/npu/conv/conv_ia_tile_path.sv": "f41af594a0daa40d42681d7878a1266dfcc3d07a9c6271e482d1e9e689d0bab3",
-    "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
-    "rtl/npu/conv/conv_im2col_descriptor.sv": "c8f2f255f63e3087e3aa69c1c8f684d981b6b2dcb510f69ead6b3f1242861db2",
-    "rtl/npu/conv/conv_im2col_frontend.sv": "2236af3c99cb255adb3bce8945ae1d2b4b582f81af2311c299b31b37500fd4b8",
-    "rtl/npu/conv/conv_im2col_frontend_pkg.sv": "b4c238259a7d92a1b606ec71f09ab6d9ebbbb8639c2aaefbd9d6531709c14da8",
-    "rtl/npu/conv/conv_im2col_geometry.sv": "f739f90dda60998f98e787688ce6ece9336f8e0f6affc22d24cb2cb26b34f334",
-    "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
-    "rtl/npu/conv/conv_im2col_prefetch.sv": "29c97cfdaa2666224269d726904554532299974f7644d28c8cb41aca4d452934",
-    "rtl/npu/conv/conv_im2col_stream.sv": "1f3c687b16d0221a515077eb31527f842b34dcadc1d46233fa6629b2719319e0",
-    "rtl/npu/dma/cache/conv_cache_metadata_way.sv": "9a7b15c4bec7307f337f1c0cd4c39f3d0d4ac8cc2bb85e9213c6167a6e131206",
-    "rtl/npu/dma/cache/conv_cache_rank_table.sv": "81ac00ef6d995b3811c672b45a017d904dbb231612a616caef3062de76e9f6a1",
-    "rtl/npu/dma/cache/conv_next_use_predictor.sv": "e433deb2121741c26cca45d13b8bd34d772f6883a6e57042236ea061dfb01903",
-    "rtl/npu/dma/cache/conv_read_cache.sv": "e12ead99193fb9c67162374e4c07d0a28493abc9c3b2422ad5431f82aa86e979",
-    "rtl/npu/dma/cache/conv_read_cache_reference.sv": "e8df6f0144247653b4baa1b328e7bc136e6fd2e810893091d8402cab6a2aa7ea",
-    "rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
-    "rtl/npu/dma/cache/conv_windowed_cache.sv": "c9d4949cc676710319adb1fcb763bb68fedd28224ab08c26278081aa6b82a114",
-    "test/frontend_pipeline/tb_frontend_pipeline.sv": "0c6eee57cda160e041343c85c5f48073236f1b78ce80f01754e6d244daea8b91"
+    "rtl/common/add_equal.sv": "ee63f77dae251c5e43ef6d7b9f0c3ee30a74da735bdd0164be65a4206eb3a4a0",
+    "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+    "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+    "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+    "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8",
+    "rtl/npu/conv/conv_axi_span_reader.sv": "beb487464fc23329db537f5d2b2a50995b08ddbe57bd561dbe11bb5d68ebf271",
+    "rtl/npu/conv/conv_coordinate_step.sv": "d464254d2904ac109f59ee4a4263b774db75918adf29d3f790ca37ec5765502c",
+    "rtl/npu/conv/conv_ia_tile_path.sv": "3876ff2066ddc33f925499568a20f06f044c99da9a118b9a8488a9a076c0887a",
+    "rtl/npu/conv/conv_ia_write_adapter.sv": "3d6d3436e3c2b396585018e47d57520defe09e89f0cd23af054331a5e38d5891",
+    "rtl/npu/conv/conv_im2col_descriptor.sv": "e54b4a203023ffc7b6cdbb5f89dc4396e48d906c35a145f6ea81962a51fde1fd",
+    "rtl/npu/conv/conv_im2col_frontend.sv": "92e2d7c4cd18baeb631f8f268d60a2e9ab198b0e42e9131328ce7491c9620d08",
+    "rtl/npu/conv/conv_im2col_frontend_pkg.sv": "133f1bc893333aefa9d10084f4514348688579d716722ad64be72051616feb2c",
+    "rtl/npu/conv/conv_im2col_geometry.sv": "848f6398572d9a50578167997c0460e223da7465b13a1560a947409742c027fb",
+    "rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+    "rtl/npu/conv/conv_im2col_prefetch.sv": "d5e81c30e6f158b87009d952a716df726d2522737296c9a3c67afa2dc3ed8a6c",
+    "rtl/npu/conv/conv_im2col_stream.sv": "bf34f3039849adbe2ae36e30e217efa37cf8e1aa3ec4c26c3109654e69b63582",
+    "rtl/npu/dma/cache/conv_cache_metadata_way.sv": "9cdc93c0b9977f1c8812cc75ff9a3018579cfaf37652b19841736821e05640d7",
+    "rtl/npu/dma/cache/conv_cache_rank_table.sv": "84f93cde64ca69a8ccbc7d50010ca1d99175eab36aa39570be19850a8031741f",
+    "rtl/npu/dma/cache/conv_next_use_predictor.sv": "453e48fc6464597f7a38b233f2ccd6c0f9d35d832c002cce9586faa6ef608386",
+    "rtl/npu/dma/cache/conv_read_cache.sv": "487e7a6a847c670da18d9c9a3d460a036cbdd96a0d56df17c4af006df313f7d4",
+    "rtl/npu/dma/cache/conv_read_cache_reference.sv": "c40cf7aa266096f2737bcbcdcd0a54d4dc68b562d390963617c25e319a98ed43",
+    "rtl/npu/dma/cache/conv_sdp_ram.sv": "10db112047f1f1a9b8af336ce519034c7c19bbc473d9c18c84a33941e7dc3ff7",
+    "rtl/npu/dma/cache/conv_windowed_cache.sv": "52cef81e3bec3b62a83d64278d5e91360bcacc9c03a3a6fd031f4efc1abe3132",
+    "test/frontend_pipeline/tb_frontend_pipeline.sv": "d27f76f3ef08f64f85860d21953115942af6eaf1fe05b2bceb7d500b4cfd255f",
+    "rtl/npu/conv/conv_descriptor_addresses.sv": "bed6bafdc68d05a525cc43745808113f1dea75a721b9480d4e5805f583caae02",
+    "rtl/npu/conv/conv_im2col_descriptor_request.sv": "42a38aaa21c86a4a680ab2171d4c930e692f1b3d7dd6d24a9f413164cbd7230c",
+    "rtl/npu/conv/conv_im2col_request_control.sv": "3b1d75bd6c894ea28a9af7bd3296a32760376afb60dbedb3c73697d3262492de",
+    "rtl/npu/conv/conv_im2col_request_index.sv": "b0ac979022c97343ba20e399bc205c2767545f001e21044bbbc0b8fd2f749314",
+    "rtl/npu/conv/conv_im2col_runtime_registers.sv": "eb6eac30215bac4e11aa398e0b3000617617a3aec3736f07e804a095dd010481",
+    "rtl/npu/conv/conv_im2col_request_context.sv": "c2de41f53a0fae8d48a718fdff6f9130aaea783d1e597a1dee99375b0ce91246",
+    "rtl/npu/conv/conv_im2col_row_request.sv": "b691716173e00399394ef6890335c8d789f5e1fdb2efa33e8494be1ecd8ca20f"
   },
   "module_lines": {
-    "rtl/npu/conv/conv_coordinate_step.sv": 71,
-    "rtl/npu/conv/conv_im2col_descriptor.sv": 1244,
-    "rtl/npu/conv/conv_im2col_frontend.sv": 1490,
+    "rtl/npu/conv/conv_coordinate_step.sv": 78,
+    "rtl/npu/conv/conv_im2col_descriptor.sv": 1476,
+    "rtl/npu/conv/conv_im2col_frontend.sv": 1489,
     "rtl/npu/conv/conv_im2col_frontend_pkg.sv": 32,
-    "rtl/npu/conv/conv_im2col_geometry.sv": 1062,
+    "rtl/npu/conv/conv_im2col_geometry.sv": 1442,
     "rtl/npu/conv/conv_im2col_pkg.sv": 20,
-    "rtl/npu/conv/conv_im2col_prefetch.sv": 473,
-    "rtl/npu/conv/conv_im2col_stream.sv": 1102
+    "rtl/npu/conv/conv_im2col_prefetch.sv": 483,
+    "rtl/npu/conv/conv_im2col_stream.sv": 1464,
+    "rtl/npu/conv/conv_im2col_request_context.sv": 196,
+    "rtl/npu/conv/conv_im2col_row_request.sv": 196
   },
   "numeric": {
     "numeric16": {
@@ -45,8 +54,9 @@
         "size": 16,
         "lanes": 16,
         "bus_width": 64,
-        "target": "asic",
+        "target": "fpga",
         "register_descriptor": 1,
+        "cache_response_depth": 2,
         "cache_sets": 16,
         "cache_ways": 2,
         "line_bytes": 128,
@@ -56,20 +66,22 @@
         "slot_width": 6
       },
       "tasks": 42,
-      "cycles": 158950,
+      "cycles": 118862,
       "configuration_cases": 1024,
       "configuration_cycles_total": 9148,
       "expected_axi_error_tasks": 1,
       "vector_sha256": "f7282840d1be30c892fd4b6bfb81b91ba6dbcd35d13b5ff0e1bfef58afa649a0",
-      "simulation_log_sha256": "54caadcad63163c6a17d67b3e619801ae36a2c0a24f2163799694aab5c61dd18",
-      "report_sha256": "f4fa81453584d86fd82cf98f677b6a3f2df7fc68e2463633275dd707bb5d2a79",
+      "simulation_log_sha256": "29039322e1469000b4a775efcccc3bb8b2f270b43e46519fbc71bd90d029b320",
+      "report_sha256": "4e6f41a2007e006186ade7264fa306b373b0fe6727ba9969a43595e9f1d0776d",
       "inputs_unchanged": true,
+      "request_response_order_checked": true,
       "accepted": 2160,
       "completed": 2159,
-      "overlap": 2118,
+      "overlap": 1404,
       "output_beats": 21838,
-      "consecutive_beats": 7580,
-      "minimum_accept_gap": 1
+      "consecutive_beats": 11457,
+      "minimum_accept_gap": 1,
+      "row_request_context_checked_each_cycle": true
     },
     "numeric8": {
       "passed": true,
@@ -79,6 +91,7 @@
         "bus_width": 64,
         "target": "fpga",
         "register_descriptor": 1,
+        "cache_response_depth": 2,
         "cache_sets": 16,
         "cache_ways": 2,
         "line_bytes": 128,
@@ -88,52 +101,22 @@
         "slot_width": 6
       },
       "tasks": 42,
-      "cycles": 182366,
+      "cycles": 128089,
       "configuration_cases": 1024,
       "configuration_cycles_total": 9148,
       "expected_axi_error_tasks": 1,
       "vector_sha256": "f7282840d1be30c892fd4b6bfb81b91ba6dbcd35d13b5ff0e1bfef58afa649a0",
-      "simulation_log_sha256": "55fe2989bd46579a9ef219b71572338dc41771407abcb844d7ce4975bb9ef36a",
-      "report_sha256": "20ad51b2542bd64124d4b9b312874ea50240448156dba36c8de76b5f9a9b5b59",
+      "simulation_log_sha256": "c8ffee1e30dfea318da25585cbd4697ed04637a57b99d2f2eb3810891e715559",
+      "report_sha256": "220d2220baae461e91c1b6c36cee6360ce0c6d98b5cf60a8a5cbdc501604cbda",
       "inputs_unchanged": true,
+      "request_response_order_checked": true,
       "accepted": 2160,
       "completed": 2159,
-      "overlap": 2118,
+      "overlap": 1404,
       "output_beats": 26728,
-      "consecutive_beats": 6236,
-      "minimum_accept_gap": 1
-    },
-    "numeric_direct4": {
-      "passed": true,
-      "parameters": {
-        "size": 4,
-        "lanes": 2,
-        "bus_width": 32,
-        "target": "fpga",
-        "register_descriptor": 0,
-        "cache_sets": 4,
-        "cache_ways": 2,
-        "line_bytes": 16,
-        "narrow_mode": 2,
-        "windowed": false,
-        "prefetch": true,
-        "slot_width": 6
-      },
-      "tasks": 42,
-      "cycles": 1258434,
-      "configuration_cases": 1024,
-      "configuration_cycles_total": 7564,
-      "expected_axi_error_tasks": 1,
-      "vector_sha256": "eef163f14cf8190aa2bc28cdda138033d8ee01ce74d71c27795bc721338cf2d8",
-      "simulation_log_sha256": "1385305ea5accf2e2f5fb3cf2526ea34f943726be774156f5577dc588f69df5a",
-      "report_sha256": "bf27eb41cfd4e8dd01698fc3097a6e71c8938b938c9931a6a60debcdf83bd869",
-      "inputs_unchanged": true,
-      "accepted": 11573,
-      "completed": 11572,
-      "overlap": 11573,
-      "output_beats": 59128,
-      "consecutive_beats": 15307,
-      "minimum_accept_gap": 10
+      "consecutive_beats": 14110,
+      "minimum_accept_gap": 1,
+      "row_request_context_checked_each_cycle": true
     }
   },
   "formal": {
@@ -188,168 +171,124 @@
         16
       ],
       "prefix_mask_required": true
-    }
-  },
-  "structure": {
-    "scope": "RTL arithmetic after width reduction and register optimization; no ASIC cell mapping.",
-    "parameters": {
-      "SIZE": 16,
-      "SLOT_W": 6,
-      "LANES": 16,
-      "BUS_WIDTH": 64,
-      "CACHE_SETS": 16,
-      "CACHE_WAYS": 2,
-      "LINE_BYTES": 128
     },
-    "reference_commit": "6f8ad0c5",
-    "report_sha256": "8f7a0423356c8a3ac620e7569453fe48b6de192895a36802bb3c181e8c73ff1c",
-    "results": {
-      "reference": {
-        "register_bits": 4436,
-        "register_bits_by_type": {
-          "$adffe": 1874,
-          "$dffe": 2322,
-          "$sdffce": 56,
-          "$adff": 184
+    "request_context": {
+      "passed": true,
+      "formal_cases": 12,
+      "coordinate_widths": [
+        33,
+        35,
+        40
+      ],
+      "line_bytes": [
+        16,
+        128
+      ],
+      "register_descriptor": [
+        0,
+        1
+      ],
+      "report_sha256": "236ede406e692ed0d484de5f1cc7aa4230ffb93f07693646e2b39711ee1fd25b",
+      "verification_scope": "完整公开输出的无输入限制二态形式比较与逐位四态检查",
+      "four_state_comparisons": 8192,
+      "four_state_coverage": {
+        "input_bits": 1943,
+        "port_widths": {
+          "i_configuration": 292,
+          "i_descriptor": 1,
+          "i_row_metadata": 1,
+          "i_tap": 1,
+          "i_row": 1,
+          "i_stream": 1,
+          "i_select": 10,
+          "i_address_candidate": 320,
+          "i_pixel_candidate": 320,
+          "i_y_candidate": 350,
+          "i_incoming_address": 32,
+          "i_incoming_pixel": 32,
+          "i_incoming_y": 35,
+          "i_cache_address_reference": 32,
+          "i_next_tap_address": 32,
+          "i_next_row_address": 32,
+          "i_stream_address": 32,
+          "i_address": 32,
+          "i_pixel": 96,
+          "i_y": 105,
+          "i_epoch_sum": 128,
+          "i_short_pixel": 1,
+          "i_index_shift": 5,
+          "i_index_valid": 1,
+          "i_next_position": 1,
+          "i_next_tile": 1,
+          "i_row_wrap": 1,
+          "i_window_y": 16,
+          "i_output_y": 32
         },
-        "multiplier_count": 7,
-        "multipliers": [
-          {
-            "name": "$21934",
-            "a_width": 32,
-            "b_width": 31,
-            "y_width": 32,
-            "src": "../dc_frontend_work/reference/rtl/npu/conv/conv_im2col_prefetch.sv:420.26-420.56"
-          },
-          {
-            "name": "$7520",
-            "a_width": 16,
-            "b_width": 16,
-            "y_width": 32,
-            "src": "../dc_frontend_work/reference/rtl/npu/conv/conv_im2col_geometry.sv:795.9-795.64"
-          },
-          {
-            "name": "$7522",
-            "a_width": 16,
-            "b_width": 16,
-            "y_width": 32,
-            "src": "../dc_frontend_work/reference/rtl/npu/conv/conv_im2col_geometry.sv:795.9-795.64"
-          },
-          {
-            "name": "$7524",
-            "a_width": 16,
-            "b_width": 16,
-            "y_width": 32,
-            "src": "../dc_frontend_work/reference/rtl/npu/conv/conv_im2col_geometry.sv:795.9-795.64"
-          },
-          {
-            "name": "$7526",
-            "a_width": 16,
-            "b_width": 16,
-            "y_width": 32,
-            "src": "../dc_frontend_work/reference/rtl/npu/conv/conv_im2col_geometry.sv:795.9-795.64"
-          },
-          {
-            "name": "$7539",
-            "a_width": 32,
-            "b_width": 16,
-            "y_width": 48,
-            "src": "../dc_frontend_work/reference/rtl/npu/conv/conv_im2col_geometry.sv:818.9-818.58"
-          },
-          {
-            "name": "$7541",
-            "a_width": 32,
-            "b_width": 16,
-            "y_width": 48,
-            "src": "../dc_frontend_work/reference/rtl/npu/conv/conv_im2col_geometry.sv:818.9-818.58"
-          }
-        ]
-      },
-      "current": {
-        "register_bits": 4765,
-        "register_bits_by_type": {
-          "$sdffce": 92,
-          "$dffe": 2480,
-          "$adffe": 1877,
-          "$adff": 188,
-          "$dff": 128
+        "fully_covered_bits": 1943,
+        "bit_values": {
+          "0": 6963949,
+          "1": 6959379,
+          "X": 996864,
+          "Z": 996864
+        }
+      }
+    },
+    "row_request": {
+      "passed": true,
+      "formal_cases": 3,
+      "four_state_comparisons": 8192,
+      "coordinate_widths": [
+        33,
+        35,
+        40
+      ],
+      "report_sha256": "6bd8b3822b1e3c351b42d079a33b51ff5dd2897e5ba0b7248a93d7750d333c05",
+      "four_state_coverage": {
+        "input_bits": 732,
+        "port_widths": {
+          "i_cfg_fire": 1,
+          "i_error": 1,
+          "i_configuration": 292,
+          "i_step_phase": 2,
+          "i_base_valid": 1,
+          "i_coordinate_valid": 1,
+          "i_geometry": 1,
+          "i_tile_commit": 1,
+          "i_commit_next_row": 1,
+          "i_advance": 1,
+          "i_row_wrap": 1,
+          "i_output_x": 16,
+          "i_second_last_x": 16,
+          "i_base_address": 32,
+          "i_base_pixel": 32,
+          "i_base_coordinate": 70,
+          "i_wrap_dx": 33,
+          "i_pair_dx": 33,
+          "i_wrap_pixels": 33,
+          "i_step_bytes": 32,
+          "i_wrap_bytes": 32,
+          "i_next_address": 32,
+          "i_next_pixel": 32,
+          "i_next_y": 35,
+          "i_next_padding": 1
         },
-        "multiplier_count": 9,
-        "multipliers": [
-          {
-            "name": "$28727",
-            "a_width": 32,
-            "b_width": 31,
-            "y_width": 32,
-            "src": "rtl/npu/conv/conv_im2col_prefetch.sv:425.26-425.56"
-          },
-          {
-            "name": "$7064",
-            "a_width": 16,
-            "b_width": 16,
-            "y_width": 32,
-            "src": "rtl/npu/conv/conv_im2col_geometry.sv:810.9-810.64"
-          },
-          {
-            "name": "$7066",
-            "a_width": 16,
-            "b_width": 16,
-            "y_width": 32,
-            "src": "rtl/npu/conv/conv_im2col_geometry.sv:810.9-810.64"
-          },
-          {
-            "name": "$7068",
-            "a_width": 16,
-            "b_width": 16,
-            "y_width": 32,
-            "src": "rtl/npu/conv/conv_im2col_geometry.sv:810.9-810.64"
-          },
-          {
-            "name": "$7070",
-            "a_width": 16,
-            "b_width": 16,
-            "y_width": 32,
-            "src": "rtl/npu/conv/conv_im2col_geometry.sv:810.9-810.64"
-          },
-          {
-            "name": "$7084",
-            "a_width": 16,
-            "b_width": 16,
-            "y_width": 32,
-            "src": "rtl/npu/conv/conv_im2col_geometry.sv:834.38-834.83"
-          },
-          {
-            "name": "$7085",
-            "a_width": 16,
-            "b_width": 16,
-            "y_width": 32,
-            "src": "rtl/npu/conv/conv_im2col_geometry.sv:835.38-835.84"
-          },
-          {
-            "name": "$7090",
-            "a_width": 16,
-            "b_width": 16,
-            "y_width": 32,
-            "src": "rtl/npu/conv/conv_im2col_geometry.sv:834.38-834.83"
-          },
-          {
-            "name": "$7091",
-            "a_width": 16,
-            "b_width": 16,
-            "y_width": 32,
-            "src": "rtl/npu/conv/conv_im2col_geometry.sv:835.38-835.84"
-          }
-        ]
+        "fully_covered_bits": 732,
+        "bit_values": {
+          "0": 2623035,
+          "1": 2619845,
+          "X": 376832,
+          "Z": 376832
+        }
       }
     }
   },
   "totals": {
-    "numeric_tasks": 126,
-    "numeric_cycles": 1599750,
-    "configuration_cases": 3072,
-    "formal_combinational_cases": 132,
+    "numeric_tasks": 84,
+    "numeric_cycles": 246951,
+    "configuration_cases": 2048,
+    "formal_combinational_cases": 147,
     "formal_history_inductions": 1,
-    "four_state_comparisons": 500000
+    "four_state_comparisons": 516384
   },
   "epoch_selection_mapping": {
     "scope": "16 通道独立纪元计算；保留计数输出寄存器；xc7 布局前映射",
@@ -370,5 +309,22 @@
         "mask_to_epoch_path_cells": 5
       }
     }
+  },
+  "operator_checks": {
+    "dw3x3_s1_48_c8": {
+      "passed": true,
+      "cycles": 27922
+    },
+    "conv3x3_32_c16_o16": {
+      "passed": true,
+      "cycles": 20544
+    }
+  },
+  "row_request_mapping": {
+    "scope": "35位行请求模块、输入与输出寄存器、xc7 abc9布局前映射",
+    "logic_lut_cells": 902,
+    "dsp48e1": 0,
+    "longest_register_path_cells": 10,
+    "report_sha256": "f749ea1e64febbb889a70fcd2442744e2b8f7c6daa2d526cfa0cfbe61ecd824f"
   }
 }

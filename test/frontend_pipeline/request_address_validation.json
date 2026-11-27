@@ -1,0 +1,269 @@
+{
+  "design": "先完成描述符地址选择，末端归并五种完整请求来源",
+  "source_sha256": "c3186c5303c2e6c909f4ed75f3955f7df3a84c63f0e5b16932fe6e0f7ae857ce",
+  "proof": {
+    "passed": true,
+    "reference_commit": "f292e57fcf08d4562f06e879a8e198cd3c408736",
+    "formal": [
+      {
+        "coordinate_width": 33,
+        "line_bytes": 16,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "184c822b2031065acb056043080b5e1caa46f6d89f403cd708b3105e2c0d65d3"
+      },
+      {
+        "coordinate_width": 33,
+        "line_bytes": 16,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "721d98d958fbb4750e923d6866a3004799072000e5c88876f5d7994c836706dd"
+      },
+      {
+        "coordinate_width": 33,
+        "line_bytes": 128,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "fe9727e021d9d71bc9c4a5a05056097db8028a44862a5403ede0e42f585f109f"
+      },
+      {
+        "coordinate_width": 33,
+        "line_bytes": 128,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "1ffec8d14a63d7d7dd4c7ceea91271279c3cc31c433321fb00797cfd90c769c2"
+      },
+      {
+        "coordinate_width": 35,
+        "line_bytes": 16,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "c876bb7763747ec373a4eab88da9d57c20a98abf27f4e2e40ba434b2b1c9be70"
+      },
+      {
+        "coordinate_width": 35,
+        "line_bytes": 16,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "3015dfa52e0a2aea70b0e7379d36f33f7f522ee315896a387ff08f0504983af4"
+      },
+      {
+        "coordinate_width": 35,
+        "line_bytes": 128,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "f4e0f6e5c6cb7b0441001518f0bc3ba9bc01b6012ba9a45fa6cc965c0d2d8d31"
+      },
+      {
+        "coordinate_width": 35,
+        "line_bytes": 128,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "c73c121dafb907a0ca54b3ae0208b58f1fba3698fb9f469e9c12bddab063c57a"
+      },
+      {
+        "coordinate_width": 40,
+        "line_bytes": 16,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "a1bc685558af1b326a85bfa42c99bb781e4897f92be3e8a9f09e5f05c9a9a35c"
+      },
+      {
+        "coordinate_width": 40,
+        "line_bytes": 16,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "d5af80fe2804d4e3080827b6da0eecb07c11e6ba61c514b4d46e3b5bc44253e3"
+      },
+      {
+        "coordinate_width": 40,
+        "line_bytes": 128,
+        "register_descriptor": 0,
+        "passed": true,
+        "log_sha256": "e6cf60697aa0ed3804eb03136c0a46cba0a2c113d6b539e6faca61fb15cbaaeb"
+      },
+      {
+        "coordinate_width": 40,
+        "line_bytes": 128,
+        "register_descriptor": 1,
+        "passed": true,
+        "log_sha256": "0f4ed400239fa4c8507bb6b3ce8ef1a2c5dee18beef6898c1c476bbee73e742a"
+      }
+    ],
+    "four_state_samples": 8192,
+    "four_state_log_sha256": "a2d416576e9c592b78e72085d9de4a1bcd22d8f10e2f5184020b7799a7ed47c5",
+    "four_state_coverage": {
+      "input_bits": 1943,
+      "port_widths": {
+        "i_configuration": 292,
+        "i_descriptor": 1,
+        "i_row_metadata": 1,
+        "i_tap": 1,
+        "i_row": 1,
+        "i_stream": 1,
+        "i_select": 10,
+        "i_address_candidate": 320,
+        "i_pixel_candidate": 320,
+        "i_y_candidate": 350,
+        "i_incoming_address": 32,
+        "i_incoming_pixel": 32,
+        "i_incoming_y": 35,
+        "i_cache_address_reference": 32,
+        "i_next_tap_address": 32,
+        "i_next_row_address": 32,
+        "i_stream_address": 32,
+        "i_address": 32,
+        "i_pixel": 96,
+        "i_y": 105,
+        "i_epoch_sum": 128,
+        "i_short_pixel": 1,
+        "i_index_shift": 5,
+        "i_index_valid": 1,
+        "i_next_position": 1,
+        "i_next_tile": 1,
+        "i_row_wrap": 1,
+        "i_window_y": 16,
+        "i_output_y": 32
+      },
+      "fully_covered_bits": 1943,
+      "bit_values": {
+        "0": 6963949,
+        "1": 6959379,
+        "X": 996864,
+        "Z": 996864
+      }
+    },
+    "source_sha256": {
+      "rtl/npu/conv/conv_im2col_pkg.sv": "483fdff64d562eb4b4e72b4459eac067ef60366a1f54191b0fb9175357c82d53",
+      "rtl/npu/conv/conv_im2col_request_context.sv": "c3186c5303c2e6c909f4ed75f3955f7df3a84c63f0e5b16932fe6e0f7ae857ce",
+      "test/frontend_pipeline/request_context_reference.sv": "75845ac7594b2f9e7fcb5c3f00789ebea02f59051528d5761f030cb7f04e5652",
+      "rtl/npu/conv/conv_group_range_select.sv": "369bdc07587ef11f269f62d6f8c27b813187cdfaeb20810e32637e71c7aed473",
+      "rtl/npu/conv/conv_im2col_address_sources.sv": "c2a17720285d1fcaf75ea83d30950651661789359aee045fa5fd67565c191361",
+      "rtl/npu/conv/conv_im2col_request_index.sv": "2c761c6264c57e26b4092d251858c109badd0906d3263da33a0ed79e05ac6b6f",
+      "rtl/common/onehot_mux.sv": "8df01b2b7726d7d3d8d98aee050c02dadb6e0ec05414c4c1376af676cd8b5b47",
+      "rtl/common/onehot_mux_group.sv": "3926dfaa2f26fb717acc09adcd4cddd54a8eab7cf29c77629d8c03ecbdbde972"
+    }
+  },
+  "connected_frontend_mapping": {
+    "parameter_manifest_sha256": "8fc7bd142d440903fc64475e2a27b69138bd0e8164b212e3707a95444a57281b",
+    "metrics_sha256": "0db98eea585474980b95172e9379c5e489336161088e64c9f2912985d3bcf629",
+    "logic_lut_cells": 15711,
+    "lut_sites_nominal_before_packing": 15847,
+    "request_address_maximum_combinational_cells": 10,
+    "request_address_path": {
+      "combinational_cells": 10,
+      "startpoint": {
+        "cell": "$auto$ff.cc:337:slice$90729",
+        "type": "FDCE",
+        "port": "Q",
+        "net": "u_stream.group_range_q[0]",
+        "detail": "register output",
+        "source": "rtl/npu/conv/conv_im2col_frontend.sv:785.5|rtl/npu/conv/conv_im2col_stream.sv:1062.3|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+        "register_origin": "u_stream.group_range_q [0]"
+      },
+      "endpoint": {
+        "cell": "$auto$ff.cc:337:slice$90738",
+        "type": "FDRE",
+        "port": "D",
+        "net": "request_address_value[0]",
+        "category": "data",
+        "source": "rtl/npu/conv/conv_im2col_frontend.sv:1270.3|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+        "register_origin": "request_addr_q [0]"
+      },
+      "path": [
+        {
+          "cell": "$flatten\\u_stream.g_direct_chunk_end.u_end.\\g_lane[0].u_boundary.$abc$554063$lut$aiger$o0",
+          "type": "LUT5",
+          "input_port": "I1[0]",
+          "output_port": "O[0]",
+          "input_net": "u_stream.group_range_q[0]",
+          "output_net": "u_stream.g_direct_chunk_end.u_end.static_end[0]",
+          "source": "rtl/npu/conv/conv_im2col_frontend.sv:785.5|rtl/npu/conv/conv_im2col_stream.sv:782.81|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30|rtl/npu/conv/conv_stream_chunk_end.sv:27.69"
+        },
+        {
+          "cell": "$flatten\\u_stream.g_direct_chunk_end.u_end.$abc$557921$lut$aiger557920$81",
+          "type": "LUT4",
+          "input_port": "I3[0]",
+          "output_port": "O[0]",
+          "input_net": "u_stream.g_direct_chunk_end.u_end.static_end[0]",
+          "output_net": "$flatten\\u_stream.g_direct_chunk_end.u_end.$techmap562461$abc$557921$lut$aiger557920$85.A[4]",
+          "source": "rtl/npu/conv/conv_im2col_frontend.sv:785.5|rtl/npu/conv/conv_im2col_stream.sv:782.81|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+        },
+        {
+          "cell": "$flatten\\u_stream.g_direct_chunk_end.u_end.$abc$557921$lut$aiger557920$85",
+          "type": "LUT5",
+          "input_port": "I4[0]",
+          "output_port": "O[0]",
+          "input_net": "$flatten\\u_stream.g_direct_chunk_end.u_end.$techmap562461$abc$557921$lut$aiger557920$85.A[4]",
+          "output_net": "$flatten\\u_stream.g_direct_chunk_end.u_end.$techmap562462$auto$abc_ops_reintegrate.cc:722:reintegrate$557922.A[3]",
+          "source": "rtl/npu/conv/conv_im2col_frontend.sv:785.5|rtl/npu/conv/conv_im2col_stream.sv:782.81|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+        },
+        {
+          "cell": "$flatten\\u_stream.g_direct_chunk_end.u_end.$auto$abc_ops_reintegrate.cc:722:reintegrate$557922",
+          "type": "LUT4",
+          "input_port": "I3[0]",
+          "output_port": "O[0]",
+          "input_net": "$flatten\\u_stream.g_direct_chunk_end.u_end.$techmap562462$auto$abc_ops_reintegrate.cc:722:reintegrate$557922.A[3]",
+          "output_net": "chunk_reaches_end",
+          "source": "rtl/npu/conv/conv_im2col_frontend.sv:785.5|rtl/npu/conv/conv_im2col_stream.sv:782.81|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+        },
+        {
+          "cell": "$abc$554083$lut$aiger$o28046",
+          "type": "LUT2",
+          "input_port": "I0[0]",
+          "output_port": "O[0]",
+          "input_net": "chunk_reaches_end",
+          "output_net": "u_wrap_state.wrap_update_candidate[15]",
+          "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+        },
+        {
+          "cell": "$abc$554083$lut$aiger554082$42994",
+          "type": "LUT2",
+          "input_port": "I1[0]",
+          "output_port": "O[0]",
+          "input_net": "u_wrap_state.wrap_update_candidate[15]",
+          "output_net": "$techmap562524$abc$554083$lut$aiger$o26020.A[1]",
+          "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+        },
+        {
+          "cell": "$abc$554083$lut$aiger$o26020",
+          "type": "LUT3",
+          "input_port": "I1[0]",
+          "output_port": "O[0]",
+          "input_net": "$techmap562524$abc$554083$lut$aiger$o26020.A[1]",
+          "output_net": "request_row_metadata_context",
+          "source": "/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+        },
+        {
+          "cell": "$flatten\\u_request_context.g_parallel_request_address.u_sources.$abc$554061$lut$aiger$o9",
+          "type": "LUT4",
+          "input_port": "I3[0]",
+          "output_port": "O[0]",
+          "input_net": "request_row_metadata_context",
+          "output_net": "u_request_context.g_parallel_request_address.request_select[4]",
+          "source": "rtl/npu/conv/conv_im2col_frontend.sv:1011.5|rtl/npu/conv/conv_im2col_request_context.sv:64.62|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+        },
+        {
+          "cell": "$flatten\\u_request_context.g_parallel_request_address.u_saved_address.$auto$abc_ops_reintegrate.cc:722:reintegrate$553960",
+          "type": "LUT4",
+          "input_port": "I2[0]",
+          "output_port": "O[0]",
+          "input_net": "u_request_context.g_parallel_request_address.request_select[4]",
+          "output_net": "u_request_context.g_parallel_request_address.u_saved_address.group_data[1]",
+          "source": "rtl/npu/conv/conv_im2col_frontend.sv:1011.5|rtl/npu/conv/conv_im2col_request_context.sv:79.60|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+        },
+        {
+          "cell": "$flatten\\u_request_context.g_parallel_request_address.u_saved_address.$auto$abc_ops_reintegrate.cc:722:reintegrate$553897",
+          "type": "LUT2",
+          "input_port": "I0[0]",
+          "output_port": "O[0]",
+          "input_net": "u_request_context.g_parallel_request_address.u_saved_address.group_data[1]",
+          "output_net": "request_address_value[0]",
+          "source": "rtl/npu/conv/conv_im2col_frontend.sv:1011.5|rtl/npu/conv/conv_im2col_request_context.sv:79.60|/workspace/scratch/30bff11e002a/task_tools/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+        }
+      ]
+    },
+    "complete_frontend_maximum_combinational_cells": 15,
+    "placement_timing": null
+  }
+}

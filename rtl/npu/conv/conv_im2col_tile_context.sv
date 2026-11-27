@@ -11,11 +11,13 @@ module conv_im2col_tile_context (
   input wire logic i_write_ready, // 写入接口能够接收当前输出。
   input wire logic i_row_last, // 当前输出行为描述符最后一行。
   input wire logic i_chunk_end, // 当前传输到达输出行末。
+  output logic [2:0] o_base, // 空闲、保存字和缓存响应三类接收的独立前置条件
   output logic [1:0] o_ready // 常规输出和缓存响应场景的描述符接收资格。
 );
-  logic transfer_last;
-  assign transfer_last = i_write_ready && i_row_last && i_chunk_end;
-  assign o_ready[0] = i_static_ready && (i_idle || ((i_stream || i_zero_stream) && transfer_last));
-  assign o_ready[1] = i_static_ready && i_wait_word && transfer_last;
+  assign o_base[0] = i_static_ready && i_idle;
+  assign o_base[1] = i_static_ready && (i_stream || i_zero_stream) && i_write_ready && i_row_last;
+  assign o_base[2] = i_static_ready && i_wait_word && i_write_ready && i_row_last;
+  assign o_ready[0] = o_base[0] || (o_base[1] && i_chunk_end);
+  assign o_ready[1] = o_base[2] && i_chunk_end;
 endmodule
 `default_nettype wire

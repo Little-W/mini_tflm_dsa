@@ -1,0 +1,112 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "rtl/npu/conv/conv_im2col_frontend.sv": "9cf9ee8e23b475e4ad7696e134bc1aa00cd4d1adddf90a1f1b0e0425e2eef936",
+    "rtl/npu/conv/conv_im2col_geometry.sv": "8287cc04b05ab14293f03637c0f3d4a202a0b0740b8b385c2043dcdaa9c675c9",
+    "rtl/npu/conv/conv_descriptor_addresses.sv": "b2cbdcec47c8068a9a1b79e3568a016dd277e6371adca3df05ef87bd3ff83665",
+    "rtl/npu/conv/conv_im2col_prefetch.sv": "369c3d5ab3e89605012faad22480c165e4185b6def8e4204840fd169f5754767",
+    "rtl/npu/conv/conv_coordinate_step.sv": "d464254d2904ac109f59ee4a4263b774db75918adf29d3f790ca37ec5765502c",
+    "rtl/npu/conv/conv_geometry_movement_add.sv": "3375dcbc394f3b2e11c4526a076f21778397f4408329885aa7bc3218fa0e3cdf",
+    "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+    "rtl/npu/conv/conv_coordinate_step_four_state.sv": "24046e5b095909ed6b6c784011c735ea608a9672e9da7be8b526da9be032daae",
+    "rtl/npu/conv/conv_coordinate_upper_group.sv": "cd458520b861a599e796dfb6002026518c8eb5105c8c49867c575aacc72f64d0",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+    "rtl/common/add_equal.sv": "d67c3931ccbfe2dc8d3a180d56aeb317cbeef17d94b57ee17215ad06ff06270b",
+    "rtl/npu/conv/conv_descriptor_match.sv": "654db46960028f405fd8d0bb43f9e84d5d50403706c6b5141f9b72862c244056",
+    "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f"
+  },
+  "formal": [
+    {
+      "name": "coordinate_33",
+      "passed": true,
+      "log_sha256": "fb1bbff642e3185f290d63af009633189201b5311054cdf400111e386f19c6a1"
+    },
+    {
+      "name": "horizontal_33",
+      "passed": true,
+      "log_sha256": "5610271c5b83caa2b658ede25ae6e5f9463ae1ec32cd02e47b14eae1c79e5c4a"
+    },
+    {
+      "name": "coordinate_35",
+      "passed": true,
+      "log_sha256": "4473b8e37e634344f17f0b820ee2057813825ee92f29b2a6188debf795f5bd0a"
+    },
+    {
+      "name": "horizontal_35",
+      "passed": true,
+      "log_sha256": "2a14d09418754616263b2831312137d0e450a2f9562206f97ad5bbcd52c03fb1"
+    },
+    {
+      "name": "coordinate_40",
+      "passed": true,
+      "log_sha256": "6b3dff5ef64eecbd747dc752fe9d65b157f684bce0b28815e6cb183ddecee84f"
+    },
+    {
+      "name": "horizontal_40",
+      "passed": true,
+      "log_sha256": "fc70a4a2f149b86879fa00d9be8feffc6caff02f9e2d0ce699902c8160b7430f"
+    },
+    {
+      "name": "movement",
+      "passed": true,
+      "log_sha256": "bb4396eb4dc8585d4bfa92dab6c5320a9e1ad5f94c105573da99918178f7de9b"
+    },
+    {
+      "name": "row_shift1",
+      "passed": true,
+      "log_sha256": "b10310b18e0dc500864f929c6440660d29a0d0ac7c414954afe7c7da6311d90d"
+    },
+    {
+      "name": "row_shift2",
+      "passed": true,
+      "log_sha256": "95196d03ca6f1c137b20956285a98e4746077f6b84f219bf1910708eddc8be86"
+    },
+    {
+      "name": "row_shift3",
+      "passed": true,
+      "log_sha256": "e13dbd2b72b6ae42e3cf6426491f877d28ff58bd3c5fcefcb6c75315198ce303"
+    },
+    {
+      "name": "row_shift4",
+      "passed": true,
+      "log_sha256": "d448045189111e73bccf60369ac8af96466dd7534d7c6022f67fa44e615a1f52"
+    },
+    {
+      "name": "row_shift5",
+      "passed": true,
+      "log_sha256": "353a8a31d77eb040b6bd6c568ae6e77179890b6f374e7224a9aa7392696d5dd0"
+    },
+    {
+      "name": "row_shift6",
+      "passed": true,
+      "log_sha256": "471b2c9a906d446ce397a1174506fa4f55e4950f865175c7ed200e02f2cf18e1"
+    },
+    {
+      "name": "row_shift7",
+      "passed": true,
+      "log_sha256": "e34f9b5fe230a5408d4878051270459eedf05e0ab497a3cf35e982edda3fd003"
+    }
+  ],
+  "four_state": {
+    "passed": true,
+    "vectors": 41280,
+    "comparisons": 371520,
+    "input_coverage": {
+      "input_bits": 320,
+      "all_four_states_per_bit": true,
+      "covered_bits": 320,
+      "bit_observations": {
+        "zero": 6797208,
+        "one": 6392165,
+        "unknown": 10111,
+        "high_impedance": 10116
+      }
+    },
+    "log_sha256": "92b4d14e231956da0d767bb370428e106b73109a1fe2a809044850318d88d48c"
+  },
+  "scope": "坐标完整和值与范围、五种地址移动、正式地址模块的两种字宽行字匹配，以及预取横坐标两阶段合成的完整组合数学表达式",
+  "prefetch_stage_validation": "test/frontend_address_arithmetic/run.py 完整预取状态及公开输出等价"
+}

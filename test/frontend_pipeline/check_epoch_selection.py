@@ -9,10 +9,11 @@ parser.add_argument('--source-root',type=Path,default=ROOT)
 parser.add_argument('--out',type=Path,required=True)
 args=parser.parse_args()
 root=args.source_root.resolve();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
-read=runpy.run_path(str(ROOT/'test/frontend_pipeline/source_sections.py'))['read_module']
+sections=runpy.run_path(str(ROOT/'test/frontend_pipeline/source_sections.py'))
+read=sections['read_module'];dependencies=sections['dependencies']
 gp,g=read(root,'geometry');sp,s=read(root,'stream')
 source_hashes={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in [gp,sp]}
-a=g.index('      logic [LANES:0][17:0] channel_sum;');b=g.index('    end else begin : g_general',a)
+a=g.index('      logic [17:0] stream_channel_sum;');b=g.index('    end else begin : g_general',a)
 body=g[a:b].replace('epoch_o_sum[candidate]','result').replace('c.group_offset','group_offset')
 body=body.replace("      assign unused_epoch_carry[candidate] = 1'b0;\n",'')
 a=s.index('  assign chunk_selected[0]');b=s.index('  if (CHUNK_COUNT_W + 1 < 32)',a)
@@ -33,7 +34,7 @@ for(int lane=0;lane<LANES;lane++)
 if(chunk_lane_allowed[lane])chunk_count=CHUNK_COUNT_W'(lane+1);
 end
 '''
-reference='module reference'+header+body.replace('chunk_selected[step]',"chunk_count == CHUNK_COUNT_W'(step)")+'\nendmodule\n'
+reference='module reference'+header+"assign result={16'd0,group_offset}+{16'd0,ch_q}+32'(chunk_count);\nendmodule\n"
 candidate='module candidate'+header+selection+body+'\nendmodule\n'
 model=out/'epoch_select.sv';model.write_text(reference+candidate+'''
 module comparison #(parameter int LANES=16, CHUNK_COUNT_W=$clog2(LANES+1))(
@@ -67,10 +68,14 @@ end
 endmodule
 ''')
 worker=ROOT/'scripts/fpga/open_fpga_synth.py'
+sources=dependencies(root,[model])
+source_arguments=shlex.join(map(str,sources))
+checked_sources=sorted({gp,sp,*[path for path in sources if path != model]})
+source_hashes={str(path.relative_to(root)):hashlib.sha256(path.read_bytes()).hexdigest() for path in checked_sources}
 proofs=[]
 for lanes in range(1,17):
  script=out/f'proof{lanes}.ys';log=out/f'proof{lanes}.log'
- script.write_text(f'read_slang --top comparison -GLANES={lanes} {model}\nprep -top comparison -flatten\ncheck -assert\nsat -verify -prove equivalent 1 -show-inputs -show-outputs\n')
+ script.write_text(f'read_slang --top comparison -GLANES={lanes} {source_arguments}\nprep -top comparison -flatten\ncheck -assert\nsat -verify -prove equivalent 1 -show-inputs -show-outputs\n')
  with log.open('w') as f:r=subprocess.run([sys.executable,str(worker),'--worker',str(script)],stdout=f,stderr=subprocess.STDOUT,timeout=120)
  assert r.returncode==0 and 'SUCCESS!' in log.read_text(),log
  proofs.append(lanes)
@@ -81,7 +86,7 @@ cases={}
 for name in ['reference','candidate']:
  folder=out/name;folder.mkdir(exist_ok=True);top='registered_'+name
  script=folder/'run.ys';log=folder/'run.log';pre=folder/'pre.il';mapped=folder/'mapped.json'
- script.write_text(f'read_slang --top {top} -GLANES=16 {model}\nread_verilog -lib -specify -overwrite +/xilinx/cells_sim.v\nhierarchy -check -top {top}\nsynth_xilinx -top {top} -family xc7 -noiopad -noclkbuf -flatten -run begin:map_luts\nwrite_rtlil {pre}\nsynth_xilinx -top {top} -family xc7 -noiopad -noclkbuf -flatten -run map_luts:\ncheck -assert\nwrite_json {mapped}\n')
+ script.write_text(f'read_slang --top {top} -DSYNTHESIS=1 -DXILINX_FPGA=1 -GLANES=16 {source_arguments}\nread_verilog -lib -specify -overwrite +/xilinx/cells_sim.v\nhierarchy -check -top {top}\nsynth_xilinx -top {top} -family xc7 -noiopad -noclkbuf -flatten -run begin:map_luts\nwrite_rtlil {pre}\nsynth_xilinx -top {top} -family xc7 -noiopad -noclkbuf -flatten -run map_luts:\nsetattr -mod -unset keep_hierarchy\nsetattr -unset keep_hierarchy\nflatten\ncheck -assert\nwrite_json {mapped}\n')
  with log.open('w') as f:r=subprocess.run([sys.executable,str(worker),'--worker',str(script)],stdout=f,stderr=subprocess.STDOUT,timeout=180)
  assert r.returncode==0,log
  m=json.loads(mapped.read_text())['modules'][top]
@@ -93,6 +98,6 @@ for name in ['reference','candidate']:
  assert paths['graph_complete'] and mask['graph_complete']
  cases[name]={'resources':resources(m['cells']),'paths':paths,'mask_paths':mask}
  print(name,'lut',cases[name]['resources']['logic_lut_cells'],'carry4',cases[name]['resources']['carry4'],'registers',cases[name]['resources']['flip_flops'],'depth',paths['longest_register_path_cells'],'mask_depth',mask['longest_register_path_cells'],flush=True)
-assert source_hashes=={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in [gp,sp]}
-summary={'passed':True,'scope':'16 通道独立纪元计算；保留计数输出寄存器；xc7 布局前映射','proved_lanes':proofs,'prefix_mask_required':True,'source_sha256':source_hashes,'model_sha256':hashlib.sha256(model.read_bytes()).hexdigest(),'cases':cases}
+assert source_hashes=={str(path.relative_to(root)):hashlib.sha256(path.read_bytes()).hexdigest() for path in checked_sources}
+summary={'passed':True,'scope':'16 通道独立纪元计算；保留计数输出寄存器；xc7 布局前映射','mapping_defines':['SYNTHESIS=1','XILINX_FPGA=1'],'proved_lanes':proofs,'prefix_mask_required':True,'source_sha256':source_hashes,'model_sha256':hashlib.sha256(model.read_bytes()).hexdigest(),'cases':cases}
 (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')

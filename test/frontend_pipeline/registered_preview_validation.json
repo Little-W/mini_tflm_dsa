@@ -1,0 +1,70 @@
+{
+  "design": "请求寄存器保存预读地址、索引与有效位",
+  "source_sha256": {
+    "rtl/npu/conv/conv_im2col_frontend.sv": "f26af1ee423132a8c83120b02f673b0264ca751713b011e6ed0e4fdd4061c596"
+  },
+  "numeric": [
+    {
+      "lanes": 16,
+      "jobs": 42,
+      "configuration_cases": 1024,
+      "cycles": 126783,
+      "cache_bytes": 4096,
+      "cache_ways": 2,
+      "line_bytes": 128,
+      "bus_width": 64,
+      "demand_depth": 2,
+      "passed": true,
+      "queue": {
+        "accepted": 2160,
+        "completed": 2159,
+        "overlap": 1404,
+        "output_beats": 21838
+      },
+      "status_sha256": "0bf456035d9613699ee172fbd45d850cd86b8c658b34604bce31eff072370a55",
+      "log_sha256": "2a4ac1e67c5507813c8c30bb00263b9334268bc0d0e1b64f21268e76747f67ea"
+    },
+    {
+      "lanes": 8,
+      "jobs": 42,
+      "configuration_cases": 1024,
+      "cycles": 140765,
+      "cache_bytes": 4096,
+      "cache_ways": 2,
+      "line_bytes": 128,
+      "bus_width": 64,
+      "demand_depth": 2,
+      "passed": true,
+      "queue": {
+        "accepted": 2160,
+        "completed": 2159,
+        "overlap": 1404,
+        "output_beats": 26728
+      },
+      "status_sha256": "33bda13886196c59430b67d8de0436ca0b3830d4d9000fcbc722e8549c018580",
+      "log_sha256": "f43f94562c08582c3cee92f759486865955c327d7a5c39f0ab7c492707319da5"
+    }
+  ],
+  "frontend_mapping": {
+    "parameters": {
+      "SIZE": 16,
+      "LANES": 8,
+      "SLOT_W": 6,
+      "BUS_WIDTH": 64,
+      "CACHE_SETS": 16,
+      "CACHE_WAYS": 2,
+      "LINE_BYTES": 128,
+      "CACHE_POLICY": 3,
+      "REGISTER_DESCRIPTOR": 1,
+      "REGISTER_ROW_ADDRESS": 1,
+      "REGISTER_CACHE_REQUEST": 1,
+      "CACHE_RESPONSE_DEPTH": 2,
+      "DMA_MAX_BYTES": 2048
+    },
+    "logic_lut_cells": 15835,
+    "lut_sites_nominal_before_packing": 15971,
+    "maximum_combinational_cells": 14,
+    "metrics_sha256": "603020c1fa80c4ff710011b677fdc6e2a1e3ecf718a1701f24b73862fbd5e07d",
+    "placement_timing": null
+  }
+}

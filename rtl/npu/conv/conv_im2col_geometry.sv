@@ -241,7 +241,7 @@ module conv_im2col_geometry #(
   logic [p_coord_w-1:0] bound_a [7];
   logic [p_coord_w-1:0] bound_b [7];
   logic [15:0] bound_limit [7];
-  (* keep = 1 *) logic [6:0] bound_valid_reference;
+  logic [6:0] bound_valid_reference;
   logic [31-p_word_shift:0] next_word_i_target;
   logic [1:0] next_word_match;
   logic [2:0][p_coord_w-1:0] tap_pair_i_a;
@@ -307,7 +307,6 @@ module conv_im2col_geometry #(
   logic [5:0] q_decode_value;
   logic [3:0] q_decode_o_quotient;
   logic [1:0] q_decode_o_remainder;
-  logic [31:0] group_channel_sum;
   logic [31:0] prefetch_channel_sum;
   logic [3:0][15:0] coordinate_a;
   logic [3:0][15:0] coordinate_b;
@@ -387,26 +386,24 @@ module conv_im2col_geometry #(
   assign bound_limit[5] = i_c.input_w;
   assign bound_limit[6] = i_c.input_h;
   for (genvar axis = 0; axis < 7; axis++) begin : g_coordinate_bound
-    if (axis < 4 || !p_register_descriptor) begin : g_evaluate
+    if (1) begin : g_evaluate
       // 坐标和值和范围条件使用同一组输入，边界检查独立于完整进位传播。
-      conv_coordinate_step #(.p_width(p_coord_w)) u_step (
+      conv_coordinate_step #(.p_width(p_coord_w), .p_preserve_range(1'b0)) u_step (
         .i_base(bound_a[axis]), .i_delta(bound_b[axis]), .i_limit(bound_limit[axis]),
         .o_sum(o_bound_sum[axis]), .o_valid(bound_valid_reference[axis])
       );
-    end else begin : g_prepared_coordinate
-      assign o_bound_sum[axis] = '0;
-      assign bound_valid_reference[axis] = 1'b0;
     end
   end
 
   // 固定步长对应的坐标区间在配置准备边沿保存，运行时分别比较高位和低十六位。
-  if (!p_register_descriptor) begin : g_prepared_bounds
+  if (1) begin : g_prepared_bounds
     logic [7:0][p_coord_w-1:0] range_delta, range_lower, range_upper;
     logic [7:0][p_coord_w-1:0] range_lower_q, range_upper_q;
     logic [7:0][15:0] range_limit;
     logic [7:0] range_cross, range_cross_q;
     logic [10:0] range_valid;
     logic row_y_valid, tap_y_valid;
+    logic [1:0] y_low_valid, unused_y_equal;
     logic [6:0] prepared_valid;
 
     assign range_delta[0] = p_coord_w'(i_c.stride_w);
@@ -450,8 +447,14 @@ module conv_im2col_geometry #(
         .o_valid(range_valid[candidate])
       );
     end
-    assign row_y_valid = !(|i_row_base_iy[p_coord_w-1:16]) && i_row_base_iy[15:0] < i_c.input_h;
-    assign tap_y_valid = !(|i_iy[p_coord_w-1:16]) && i_iy[15:0] < i_c.input_h;
+    for (genvar source = 0; source < 2; source++) begin : g_current_y_bound
+      parallel_unsigned_compare #(.p_width(16), .p_preserve_groups(1'b1)) u_compare (
+        .i_a(source == 0 ? i_row_base_iy[15:0] : i_iy[15:0]), .i_b(i_c.input_h),
+        .o_less(y_low_valid[source]), .o_equal(unused_y_equal[source])
+      );
+    end
+    assign row_y_valid = !(|i_row_base_iy[p_coord_w-1:16]) && y_low_valid[0];
+    assign tap_y_valid = !(|i_iy[p_coord_w-1:16]) && y_low_valid[1];
     assign prepared_valid[0] = o_row_wrap ? range_valid[1] : range_valid[0];
     assign prepared_valid[1] = o_row_wrap ? range_valid[2] : row_y_valid;
     assign prepared_valid[2] = o_tap_wrap ? range_valid[4] : range_valid[3];
@@ -539,10 +542,6 @@ module conv_im2col_geometry #(
       end
     end
 `endif
-  end else begin : g_direct_bounds
-    assign o_bound_valid = bound_valid_reference;
-    assign o_skip_bound_valid = '0;
-    assign o_window_padding = '0;
   end
 
   // 数据字匹配比较读取范围以外的高位，字内偏移单独提供进位。
@@ -554,7 +553,7 @@ module conv_im2col_geometry #(
     assign low_sum = {1'b0, i_tap_group_base[p_word_shift-1:0]} +
         {1'b0, byte_step[p_word_shift-1:0]};
     (* keep_hierarchy = "yes" *)
-    add_equal #(.p_width(32-p_word_shift), .p_preserve_bits(1'b1)) u_match (
+    add_equal #(.p_width(32-p_word_shift), .p_preserve_bits(1'b1), .p_late_carry(1'b1)) u_match (
       .i_a(i_tap_group_base[31:p_word_shift]), .i_b(byte_step[31:p_word_shift]),
       .i_target(next_word_i_target), .i_carry_in(low_sum[p_word_shift]),
       .o_equal(next_word_match[wrap])
@@ -827,18 +826,12 @@ module conv_im2col_geometry #(
   assign decode_end_i_target[1] = {16'd0, i_c.group_c};
   assign decode_end_i_target[2] = {16'd0, i_c.kernel_w};
   for (genvar decode_dimension = 0; decode_dimension < 3; decode_dimension++) begin : g_decode_end
-    logic [31:0] end_i_a, end_i_b, end_i_target;
-    logic end_i_carry_in;
-    logic end_o_equal;
-
-    assign end_i_a = i_decode_inner;
-    assign end_i_b = '0;
-    assign end_i_target = decode_end_i_target[decode_dimension];
-    assign end_i_carry_in = 1'b1;
-    assign o_decode_end_o_equal[decode_dimension] = end_o_equal;
-    add_equal #(.p_width(32)) u_end (
-      .i_a(end_i_a), .i_b(end_i_b), .i_target(end_i_target),
-      .i_carry_in(end_i_carry_in), .o_equal(end_o_equal)
+    // 相邻两位先独立检查加一关系，再分组归并完整三十二位结果。
+    (* keep_hierarchy = "yes" *) increment_equal #(
+      .p_width(32), .p_preserve_pairs(1'b1), .p_reduce_group_width(6)
+    ) u_end (
+      .i_a(i_decode_inner), .i_target(decode_end_i_target[decode_dimension]),
+      .o_equal(o_decode_end_o_equal[decode_dimension])
     );
   end
   // 接收位置与历史位置的差值采用并行分段算术，并在坐标解码前保存。
@@ -1242,8 +1235,11 @@ module conv_im2col_geometry #(
   end
   assign o_coordinate_padded_x = $signed({coordinate_high[0], i_coordinate_sum_q[0][15:0]});
   assign o_coordinate_padded_y = $signed({coordinate_high[1], i_coordinate_sum_q[1][15:0]});
-  assign group_channel_sum = i_channel_product + 32'(i_c.group_offset);
-  assign o_group_address_sum = i_c.input_base + (group_channel_sum << i_c.input_s16);
+  conv_group_base_address u_group_address (
+    .i_input_base(i_c.input_base), .i_channel_product(i_channel_product),
+    .i_group_offset(i_c.group_offset), .i_input_s16(i_c.input_s16),
+    .o_address(o_group_address_sum)
+  );
   assign prefetch_channel_sum = i_pf_address_term + i_pf1_channel;
   assign o_prefetch_byte_offset = prefetch_channel_sum << i_c.input_s16;
   assign o_prefetch_address_sum = i_c.input_base + i_pf_address_term;

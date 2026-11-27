@@ -23,7 +23,7 @@ module conv_descriptor_window_target (
   always_ff @(posedge i_clk) begin
     if (i_write) target_q <= target_sum;
   end
-  conv_descriptor_match #(.p_width(33), .p_preserve_groups(1'b1)) u_match (
+  conv_descriptor_match #(.p_width(33), .p_preserve_groups(1'b1), .p_reduce_group_width(6)) u_match (
     .i_a(target_q), .i_b({1'b0, i_target}), .o_equal(prepared_equal)
   );
   // 未知输入使用原逐位加法等式，已知字段使用窗口准备结果。

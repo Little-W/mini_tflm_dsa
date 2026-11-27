@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""验证实际前端的坐标、行地址和预取运算，并生成局部综合输入。"""
+"""验证前端完整定宽坐标、地址和预取运算，并生成组合运算的综合输入。"""
 import argparse
 import hashlib
 import json
 from pathlib import Path
-from source_sections import read_module, declarations
+from source_sections import read_module, declarations, dependencies
 import re
 import shlex
 import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT/'test'))
+from four_state_inputs import coverage_declarations, coverage_tasks, parse_coverage
 
 
 def sha(path):
@@ -99,25 +101,27 @@ def main():
     root, out = args.source_root.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     source = root/'rtl/npu/conv/conv_im2col_frontend.sv'
-    helpers = [root/'rtl/common/add_equal.sv', root/'rtl/common/parallel_prefix_add.sv',
-               root/'rtl/npu/conv/conv_coordinate_step.sv']
     geometry_path, geometry = read_module(root, 'geometry')
-    descriptor_path, descriptor = read_module(root, 'descriptor')
+    addresses_path, addresses = read_module(root, 'conv_descriptor_addresses')
     prefetch_path, prefetch = read_module(root, 'prefetch')
-    source_paths = (source, geometry_path, descriptor_path, prefetch_path, *helpers)
-    source_hashes = {str(p.relative_to(root)): sha(p) for p in source_paths}
     movement = re.search(r'  for \(genvar source = 0; source < 5; source\+\+\) begin : g_movement_sum\n'
                          r'.*?^  end\n', geometry, re.M | re.S)[0]
-    row_match = section(descriptor, '  for (genvar target = 0; target < 2; target++) begin : g_next_row_match',
-                        '    assign incoming_window_word_match') + '  end\n'
-    horizontal = section(prefetch, '  assign pf_horizontal_delta =', '  // 较大通道数按缓存行预测')
-    horizontal = declarations(prefetch, ('prefetch_horizontal_sum', 'unused_prefetch_horizontal_carry'))+horizontal
+    if 'begin : g_next_row_match' not in addresses:
+        raise RuntimeError('正式地址模块缺少下一行字匹配实例')
+    horizontal_start=prefetch.index('  parallel_prefix_add #(.p_width(16), .p_group_width(4), .p_preserve_groups(1\'b0)) u_prefetch_horizontal_prepare')
+    horizontal_end=prefetch.index('`endif',prefetch.index('  assign pf_horizontal_sum =',horizontal_start))+len('`endif')
+    horizontal=prefetch[horizontal_start:horizontal_end]
+    horizontal = declarations(prefetch, ('prefetch_horizontal_sum', 'unused_prefetch_horizontal_carry',
+        'prefetch_horizontal_low_carry','prefetch_horizontal_low_carry_q',
+        'unused_prefetch_horizontal_prepare_sum','unused_prefetch_horizontal_low_carry'))+horizontal
     horizontal = horizontal.replace('accepted_coordinate_q[0]', 'pfa_x')
-    ahead = section(prefetch, '  assign pf_window_ahead =', '  assign pf_horizontal_delta =')
-    ahead = ahead.replace('tile_extent_q[0]', 'pfa_rows').replace('tile_extent_q[1]', 'pfa_cols')
+    # 此模型组合完整低位准备和高位修正，管线阶段由完整预取模块的状态回归检查。
+    horizontal += '\nassign prefetch_horizontal_low_carry_q=prefetch_horizontal_low_carry;\n'
     phase_assignment = re.search(r'2: begin\s*//[^\n]*\n\s*pf_window_ahead_q <= pf_window_ahead;', prefetch)
     if phase_assignment is None:
         raise RuntimeError('Window mode must be captured in preparation phase 2')
+    if not re.search(r'3: begin\s*prefetch_horizontal_low_carry_q <= prefetch_horizontal_low_carry;',prefetch):
+        raise RuntimeError('低位进位必须在预取准备阶段三保存')
     arithmetic = out/'arithmetic.sv'
     arithmetic.write_text('''module coordinate_mathematical #(parameter int p_width=35)(
  input logic [p_width-1:0] i_base,i_delta,input logic [15:0] i_limit,
@@ -142,6 +146,11 @@ endmodule
 
 module movement_actual(input logic [4:0][31:0] movement_i_a,movement_i_b,
  output logic [4:0][31:0] movement_o_sum);
+ logic [4:0][31:0] movement_step_delta,movement_wrap_delta;
+ logic [4:0] movement_wrap_select;
+ assign movement_step_delta=movement_i_b;
+ assign movement_wrap_delta=movement_i_b;
+ assign movement_wrap_select='0;
 '''+movement+'''endmodule
 
 module movement_proof(input logic [4:0][31:0] movement_i_a,movement_i_b,
@@ -160,7 +169,19 @@ module row_actual #(parameter int p_word_shift=3)(
  input logic row_wrap,output logic [1:0] next_row_word_match);
  logic [31:0] next_row_addr;
  assign next_row_addr=row_base_addr+(row_wrap?row_wrap_bytes:row_step_bytes);
-'''+row_match+'''endmodule
+ conv_descriptor_addresses #(.p_word_shift(p_word_shift)) u_addresses(
+  .i_word_addr(word_addr),.i_word_forward(1'b0),.i_addr(addr),
+  .i_row_base_addr(row_base_addr),.i_row_group_base(32'd0),
+  .i_window_addr(32'd0),.i_window_group_base(32'd0),
+  .i_tap_step_bytes(32'd0),.i_tap_wrap_bytes(32'd0),.i_tap_pair_bytes(32'd0),
+  .i_row_step_bytes(row_step_bytes),.i_row_wrap_bytes(row_wrap_bytes),
+  .i_next_row_addr(next_row_addr),.i_kx0_q(16'd0),.i_row_wrap(row_wrap),
+  .i_incoming_tap_wrap(1'b0),.i_q_equal(1'b0),.i_position_previous_row(1'b0),
+  .i_position_forward_tap(1'b0),.i_position_backward_tap(1'b0),
+  .i_next_position_fast(1'b0),.i_next_tile_fast(1'b0),
+  .o_candidate_address(),.o_incoming_word_equal(),.o_incoming_live_word_equal(),
+  .o_next_row_word_match(next_row_word_match),.o_incoming_advanced_word_match());
+endmodule
 
 module row_proof #(parameter int p_word_shift=3)(
  input logic [31:0] row_base_addr,row_step_bytes,row_wrap_bytes,word_addr,addr,
@@ -191,46 +212,18 @@ module horizontal_proof #(parameter int COORD_W=35)(
  assign equivalent=pf_horizontal_sum==(pfa_x+delta);
 endmodule
 ''')
-    mode = out/'prefetch_mode.sv'
-    # 接收阶段保存上下文；配置只在预取空闲时接受，阶段二到阶段三之间上下文保持。
-    mode.write_text('''module prefetch_mode_proof(
- input logic clk,rst_n,configure,accept,
- input logic [15:0] input_c,group_c,stride_h,stride_w,
- input logic windowed,input logic [31:0] input_rows,input_cols,
- output logic equivalent);
- typedef struct packed {logic windowed;logic[15:0]input_c,group_c,stride_h,stride_w;} cfg_t;
- cfg_t c;
- logic [31:0] pfa_rows,pfa_cols;
- logic [3:0] phase;
- logic pf_stream_lookahead,pf_window_ahead,pf_window_ahead_q;
- assign pf_stream_lookahead=c.windowed&&c.input_c>=16'd16;
-'''+ahead+'''
- always_ff @(posedge clk)begin
-   if(!rst_n)begin phase<=4'd0;c<='0;end
-   else if(configure&&phase==4'd0)begin
-     c<={windowed,input_c,group_c,stride_h,stride_w};
-   end else case(phase)
-     0:if(accept)begin pfa_rows<=input_rows;pfa_cols<=input_cols;phase<=4'd1;end
-     1:phase<=4'd2;
-     2:begin pf_window_ahead_q<=pf_window_ahead;phase<=4'd3;end
-     3:phase<=4'd4;
-     4:phase<=4'd5;
-     5:phase<=4'd6;
-     6:phase<=4'd7;
-     7:phase<=4'd8;
-     default:phase<=4'd0;
-   endcase
- end
- assign equivalent=phase!=4'd3 || pf_window_ahead_q==pf_window_ahead;
-endmodule
-''')
+    sources=dependencies(root,[arithmetic])
+    helpers=[path for path in sources if path!=arithmetic]
+    source_paths=tuple(dict.fromkeys([source,geometry_path,addresses_path,prefetch_path,*helpers]))
+    source_hashes={str(path.relative_to(root)):sha(path) for path in source_paths}
     cases = []
 
     def prove(name, top, parameters='', sequential=False):
         script, log = out/(name+'.ys'), out/(name+'.log')
         script.write_text('read_slang -D SYNTHESIS=1 --top '+top+' '+parameters+' '+
-                          shlex.join(map(str, [*helpers, arithmetic, mode]))+
-                          '\nprep -top '+top+' -flatten\ncheck -assert\n'+
+                          shlex.join(map(str, [*helpers, arithmetic]))+
+                          '\nsetattr -mod -unset keep_hierarchy\nsetattr -unset keep_hierarchy\n'
+                          'prep -top '+top+' -flatten\ncheck -assert\n'+
                           ('sat -seq 5 -maxsteps 10 -set-init-zero -tempinduct -verify -prove equivalent 1\n'
                            if sequential else 'sat -verify -prove equivalent 1 -show-inputs -show-outputs\n'))
         run([sys.executable, str(ROOT/'scripts/fpga/open_fpga_synth.py'), '--worker', str(script)], log)
@@ -244,7 +237,6 @@ endmodule
     prove('movement', 'movement_proof')
     for shift in range(1, 8):
         prove(f'row_shift{shift}', 'row_proof', f'-Gp_word_shift={shift}')
-    prove('prefetch_mode', 'prefetch_mode_proof', sequential=True)
 
     bench = out/'tb_arithmetic.sv'
     bench.write_text('''module tb;
@@ -255,7 +247,9 @@ endmodule
  logic [4:0][31:0] movement_i_a,movement_i_b,movement_o_sum;
  logic [1:0] row_match3,row_match4,expected3,expected4;
  logic [31:0] row_address;
- integer sample_index,word_index,bit_index,lane;
+ integer sample_index,word_index,bit_index,lane,check_count=0;
+ localparam integer INPUT_W=320;
+INPUT_COVERAGE
  conv_coordinate_step u_coordinate(.i_base(data_value[34:0]),.i_delta(data_value[69:35]),
    .i_limit(data_value[85:70]),.o_sum(coordinate_sum),.o_valid(coordinate_valid));
  assign expected_coordinate=data_value[34:0]+data_value[69:35];
@@ -285,8 +279,32 @@ endmodule
    random_state=random_state^(random_state<<5);
    return random_state;
  endfunction
+ task check_vector;
+ begin
+   #1;observe_inputs();
+   if({coordinate_sum,coordinate_valid}!=={expected_coordinate,expected_valid})
+     $fatal(1,"coordinate sample %0d",sample_index);
+   for(lane=0;lane<5;lane++)
+     if(movement_o_sum[lane]!==32'(movement_i_a[lane]+movement_i_b[lane]))
+       $fatal(1,"movement sample %0d lane %0d",sample_index,lane);
+   if(row_match3!==expected3||row_match4!==expected4)$fatal(1,"row sample %0d",sample_index);
+   if(horizontal_sum!==expected_horizontal)$fatal(1,"horizontal sample %0d",sample_index);
+   check_count++;
+ end
+ endtask
  initial begin
    random_state=32'h2a8637b1;
+   initialize_input_coverage();
+   for(integer state_index=0;state_index<4;state_index++)begin
+     for(integer input_index=0;input_index<INPUT_W;input_index++)begin
+       data_value='0;
+       case(state_index)
+         0:data_value[input_index]=0;1:data_value[input_index]=1;
+         2:data_value[input_index]=1'bx;3:data_value[input_index]=1'bz;
+       endcase
+       check_vector();
+     end
+   end
    for(sample_index=0;sample_index<VECTORS;sample_index++)begin
      for(word_index=0;word_index<10;word_index++)data_value[word_index*32+:32]=random_word(1'b0);
      if(sample_index%2==1)begin
@@ -296,36 +314,35 @@ endmodule
      if(sample_index%11==0)begin
        data_value[34:0]=35'h7ffffffff;data_value[69:35]=35'd1;
      end
-     #1;
-     if({coordinate_sum,coordinate_valid}!=={expected_coordinate,expected_valid})
-       $fatal(1,"coordinate sample %0d",sample_index);
-     for(lane=0;lane<5;lane++)
-       if(movement_o_sum[lane]!==32'(movement_i_a[lane]+movement_i_b[lane]))
-         $fatal(1,"movement sample %0d lane %0d",sample_index,lane);
-     if(row_match3!==expected3||row_match4!==expected4)$fatal(1,"row sample %0d",sample_index);
-     if(horizontal_sum!==expected_horizontal)$fatal(1,"horizontal sample %0d",sample_index);
+     check_vector();
    end
-   $display("CRITICAL_ARITHMETIC_PASS vectors=%0d comparisons=%0d",VECTORS,9*VECTORS);
+   check_input_coverage();
+   $display("CRITICAL_ARITHMETIC_PASS vectors=%0d comparisons=%0d",check_count,9*check_count);
    $finish;
  end
 endmodule
-'''.replace('VECTORS', str(args.vectors)))
+'''.replace('VECTORS', str(args.vectors)).replace('INPUT_COVERAGE',
+    coverage_declarations('INPUT_W')+coverage_tasks('INPUT_W','data_value')))
     executable = out/'arithmetic.vvp'
     run(['iverilog', '-g2012', '-s', 'tb', '-o', str(executable),
          *map(str, helpers), str(arithmetic), str(bench)], out/'compile.log')
     run(['vvp', str(executable)], out/'numeric.log', timeout=600)
-    if 'CRITICAL_ARITHMETIC_PASS' not in (out/'numeric.log').read_text():
+    numeric=(out/'numeric.log').read_text()
+    match=re.search(r'CRITICAL_ARITHMETIC_PASS vectors=(\d+) comparisons=(\d+)',numeric)
+    if match is None:
         raise RuntimeError(str(out/'numeric.log'))
     if source_hashes != {str(p.relative_to(root)): sha(p) for p in source_paths}:
         raise RuntimeError('Source changed during validation')
     prepare_mapping(out, helpers, arithmetic)
     report = {'passed': True, 'source_sha256': source_hashes, 'formal': cases,
-              'four_state': {'passed': True, 'vectors': args.vectors, 'comparisons': 9*args.vectors,
+              'four_state': {'passed': True, 'vectors': int(match[1]), 'comparisons': int(match[2]),
+                             'input_coverage':parse_coverage(numeric),
                              'log_sha256': sha(out/'numeric.log')},
-              'scope': '坐标完整和值与范围、五种地址移动、两种字宽的行字匹配、预取横坐标与阶段二模式保存关系'}
+              'scope': '坐标完整和值与范围、五种地址移动、正式地址模块的两种字宽行字匹配，以及预取横坐标两阶段合成的完整组合数学表达式',
+              'prefetch_stage_validation':'test/frontend_address_arithmetic/run.py 完整预取状态及公开输出等价'}
     (out/'summary.json').write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n')
-    print(json.dumps({'passed': True, 'formal_cases': len(cases), 'four_state_vectors': args.vectors,
-                      'four_state_comparisons': 9*args.vectors}, ensure_ascii=False))
+    print(json.dumps({'passed': True, 'formal_cases': len(cases), 'four_state_vectors': int(match[1]),
+                      'four_state_comparisons': int(match[2])}, ensure_ascii=False))
 
 
 if __name__ == '__main__':

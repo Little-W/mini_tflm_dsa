@@ -4,9 +4,11 @@
 // 候选字节地址和数据字标签并行计算，后续上下文仅选择匹配结果。
 module conv_descriptor_addresses #(
   parameter int unsigned p_word_shift = 2,
-  parameter bit p_register_descriptor = 1'b1
+  parameter bit p_register_descriptor = 1'b1,
+  parameter bit p_preview_registered = 1'b0
 ) (
-  input logic [31:0] i_word_addr, // 当前保存数据字的地址
+  input logic [31:0] i_word_addr, // 运行寄存器保存的数据字地址
+  input logic i_word_forward, // 检查周期使用当前描述符首地址对应的数据字
   input logic [31:0] i_addr, // 当前运行通道地址
   input logic [31:0] i_row_base_addr, // 当前输出行的字节基址
   input logic [31:0] i_row_group_base, // 当前输出行的通道组基址
@@ -31,8 +33,38 @@ module conv_descriptor_addresses #(
   output logic o_incoming_word_equal, // 待接收描述符命中保存的数据字
   output logic o_incoming_live_word_equal, // 待接收描述符命中当前运行数据字
   output logic [1:0] o_next_row_word_match, // 下一行与保存字及运行字的匹配结果
+  output logic [9:0][1:0] o_word_candidates, // 十个来源与保存字及运行字分别匹配的结果
   output logic [1:0] o_incoming_advanced_word_match // 窗口分块及跳核候选的数据字匹配结果
 );
+
+  logic [31:0] comparison_word_addr;
+  logic comparison_forward;
+  logic match_incoming_word_equal, match_incoming_live_word_equal;
+  logic [1:0] match_next_row_word_match, match_incoming_advanced_word_match;
+
+  // 两个数据字标签分别完成加法等值检查，转发状态只选择末级匹配结果。
+  always_comb begin
+    comparison_word_addr = i_word_addr;
+    comparison_forward = i_word_forward;
+`ifndef SYNTHESIS
+    // 未知输入按先选择完整标签的表达式求值，保留四态传播。
+    if ((^{i_word_addr, i_word_forward, i_addr, i_row_base_addr,
+            i_row_group_base, i_window_addr, i_window_group_base, i_tap_step_bytes,
+            i_tap_wrap_bytes, i_tap_pair_bytes, i_row_step_bytes, i_row_wrap_bytes,
+            i_next_row_addr, i_kx0_q, i_row_wrap, i_incoming_tap_wrap,
+            i_q_equal, i_position_previous_row, i_position_forward_tap, i_position_backward_tap,
+            i_next_position_fast, i_next_tile_fast}) === 1'bx) begin
+      comparison_word_addr = i_word_forward ? {i_addr[31:p_word_shift], {p_word_shift{1'b0}}} : i_word_addr;
+      comparison_forward = 1'b0;
+    end
+`endif
+  end
+  assign o_incoming_word_equal = comparison_forward ? match_incoming_live_word_equal : match_incoming_word_equal;
+  assign o_incoming_live_word_equal = match_incoming_live_word_equal;
+  assign o_next_row_word_match = {match_next_row_word_match[1],
+      comparison_forward ? match_next_row_word_match[1] : match_next_row_word_match[0]};
+  assign o_incoming_advanced_word_match = {match_incoming_advanced_word_match[1],
+      comparison_forward ? match_incoming_advanced_word_match[1] : match_incoming_advanced_word_match[0]};
 
   //! 0. 辅助信号
   //! -------------
@@ -43,27 +75,29 @@ module conv_descriptor_addresses #(
   logic [6:0][1:0] incoming_candidate_word_match;
   logic [1:0] incoming_window_word_match;
   logic [1:0] incoming_skip_word_match;
+  logic [9:0][1:0] raw_word_candidates;
 
   //! 1. 计算地址及字匹配
   //! ---------------------
 
-  // 直连描述符在接收周期完成数据字匹配，寄存描述符使用提交后的检查周期。
-  if (!p_register_descriptor) begin : g_direct_incoming_word
+  // 接收周期的候选地址与数据字匹配支持提前请求，提交后的检查确认运行数据来源。
+  if (!p_register_descriptor || p_preview_registered) begin : g_direct_incoming_word
     logic [1:0] base_word_match, selected_word_match;
     for (genvar target = 0; target < 2; target++) begin : g_target
       logic [31-p_word_shift:0] target_word;
-      assign target_word = target == 0 ? i_word_addr[31:p_word_shift] : i_addr[31:p_word_shift];
+      assign target_word = target == 0 ? comparison_word_addr[31:p_word_shift] : i_addr[31:p_word_shift];
       conv_descriptor_match #(.p_width(32-p_word_shift)) u_base_match (
         .i_a(i_row_base_addr[31:p_word_shift]), .i_b(target_word),
         .o_equal(base_word_match[target])
       );
+      assign raw_word_candidates[0][target] = base_word_match[target];
       // 基址、核步进和核换行分别完成比较，归约位置只选择一位结果。
       assign selected_word_match[target] = i_q_equal ? base_word_match[target] :
           (i_incoming_tap_wrap ? incoming_candidate_word_match[1][target] :
                                 incoming_candidate_word_match[0][target]);
     end
 `ifdef SYNTHESIS
-    assign {o_incoming_live_word_equal, o_incoming_word_equal} = selected_word_match;
+    assign {match_incoming_live_word_equal, match_incoming_word_equal} = selected_word_match;
 `else
     logic [31:0] incoming_delta;
     logic [p_word_shift:0] incoming_step_low_sum, incoming_wrap_low_sum;
@@ -80,7 +114,7 @@ module conv_descriptor_addresses #(
     assign incoming_wrap_low_sum = {1'b0, i_row_base_addr[p_word_shift-1:0]} + {1'b0, i_tap_wrap_bytes[p_word_shift-1:0]};
     assign incoming_word_i_a = i_row_base_addr[31:p_word_shift];
     assign incoming_word_i_b = incoming_delta[31:p_word_shift];
-    assign incoming_word_i_target = i_word_addr[31:p_word_shift];
+    assign incoming_word_i_target = comparison_word_addr[31:p_word_shift];
     add_equal #(.p_width(32-p_word_shift)) u_incoming_word (
       .i_a(incoming_word_i_a), .i_b(incoming_word_i_b), .i_target(incoming_word_i_target),
       .i_carry_in(incoming_word_i_carry_in), .o_equal(reference_word_match[0])
@@ -94,15 +128,16 @@ module conv_descriptor_addresses #(
     always_comb begin
       // 未知位继续使用完整加法等值关系，已知地址采用并行匹配结果。
       case (^{i_row_base_addr, i_tap_step_bytes, i_tap_wrap_bytes,
-              i_word_addr, i_addr, i_q_equal, i_incoming_tap_wrap})
-        1'b0, 1'b1: {o_incoming_live_word_equal, o_incoming_word_equal} = selected_word_match;
-        default: {o_incoming_live_word_equal, o_incoming_word_equal} = reference_word_match;
+              comparison_word_addr, i_addr, i_q_equal, i_incoming_tap_wrap})
+        1'b0, 1'b1: {match_incoming_live_word_equal, match_incoming_word_equal} = selected_word_match;
+        default: {match_incoming_live_word_equal, match_incoming_word_equal} = reference_word_match;
       endcase
     end
 `endif
   end else begin : g_prepared_incoming_word
-    assign o_incoming_word_equal = 1'b0;
-    assign o_incoming_live_word_equal = 1'b0;
+    assign raw_word_candidates[0] = '0;
+    assign match_incoming_word_equal = 1'b0;
+    assign match_incoming_live_word_equal = 1'b0;
   end
 
   // 七种地址候选依次为核步进、核换行、跨两个核列、跨核行及列、
@@ -116,9 +151,10 @@ module conv_descriptor_addresses #(
         candidate == 1 ? i_tap_wrap_bytes : candidate == 3 ? i_tap_pair_bytes :
         candidate == 2 ? i_tap_step_bytes << 1 :
         candidate == 5 ? ~i_tap_step_bytes : candidate == 6 ? ~i_tap_pair_bytes : i_tap_step_bytes;
-      if (!p_register_descriptor) begin : g_direct_sum
-      parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1),
-          .p_carry_select_width(16), .p_dsp_split_width(16), .p_keep_carry(1'b0)) u_sum (
+      if (!p_register_descriptor || p_preview_registered) begin : g_direct_sum
+      parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(!p_register_descriptor || base == 0),
+          .p_carry_select_width(16), .p_dsp_split_width(16), .p_keep_carry(1'b0),
+          .p_parallel_high_prefix(1'b1)) u_sum (
         .i_a(incoming_address_i_a[candidate][base]), .i_b(incoming_address_i_b[candidate][base]),
         .i_carry((candidate == 5 || candidate == 6)), .o_sum(o_candidate_address[candidate][base]),
         .o_carry(unused_incoming_address_carry[candidate][base])
@@ -128,7 +164,7 @@ module conv_descriptor_addresses #(
         assign unused_incoming_address_carry[candidate][base] = 1'b0;
       end
     end
-    if (!p_register_descriptor) begin : g_direct_word_match
+    if (!p_register_descriptor || p_preview_registered) begin : g_direct_word_match
     for (genvar target = 0; target < 2; target++) begin : g_word_match
       logic [p_word_shift:0] low_sum;
       logic [31-p_word_shift:0] high_i_a, high_i_b, high_i_target;
@@ -138,9 +174,9 @@ module conv_descriptor_addresses #(
         (p_word_shift+1)'((candidate == 5 || candidate == 6));
       assign high_i_a = incoming_address_i_a[candidate][0][31:p_word_shift];
       assign high_i_b = incoming_address_i_b[candidate][0][31:p_word_shift];
-      assign high_i_target = target == 0 ? i_word_addr[31:p_word_shift] : i_addr[31:p_word_shift];
+      assign high_i_target = target == 0 ? comparison_word_addr[31:p_word_shift] : i_addr[31:p_word_shift];
       assign high_i_carry = low_sum[p_word_shift];
-      add_equal #(.p_width(32-p_word_shift), .p_preserve_bits(1'b1)) u_match (
+      add_equal #(.p_width(32-p_word_shift), .p_preserve_bits(1'b1), .p_late_carry(1'b1)) u_match (
         .i_a(high_i_a), .i_b(high_i_b), .i_target(high_i_target),
         .i_carry_in(high_i_carry), .o_equal(incoming_candidate_word_match[candidate][target])
       );
@@ -152,7 +188,7 @@ module conv_descriptor_addresses #(
   for (genvar target = 0; target < 2; target++) begin : g_next_row_match
     logic [31-p_word_shift:0] high_i_target;
     logic [1:0] row_match;
-    assign high_i_target = target == 0 ? i_word_addr[31:p_word_shift] : i_addr[31:p_word_shift];
+    assign high_i_target = target == 0 ? comparison_word_addr[31:p_word_shift] : i_addr[31:p_word_shift];
     // 两种行步长先完成字标签比较，行末状态只选择一位匹配结果。
     for (genvar wrap = 0; wrap < 2; wrap++) begin : g_step
       logic [31:0] byte_step;
@@ -160,18 +196,18 @@ module conv_descriptor_addresses #(
       assign byte_step = wrap == 0 ? i_row_step_bytes : i_row_wrap_bytes;
       assign low_sum = {1'b0, i_row_base_addr[p_word_shift-1:0]} +
           {1'b0, byte_step[p_word_shift-1:0]};
-      add_equal #(.p_width(32-p_word_shift), .p_preserve_bits(1'b1)) u_match (
+      add_equal #(.p_width(32-p_word_shift), .p_preserve_bits(1'b1), .p_late_carry(1'b1)) u_match (
         .i_a(i_row_base_addr[31:p_word_shift]), .i_b(byte_step[31:p_word_shift]),
         .i_target(high_i_target), .i_carry_in(low_sum[p_word_shift]), .o_equal(row_match[wrap])
       );
     end
 `ifdef SYNTHESIS
-    assign o_next_row_word_match[target] = i_row_wrap ? row_match[1] : row_match[0];
+    assign match_next_row_word_match[target] = i_row_wrap ? row_match[1] : row_match[0];
 `else
     always_comb begin
       case (^{i_row_base_addr, i_row_step_bytes, i_row_wrap_bytes, i_row_wrap, high_i_target})
-        1'b0, 1'b1: o_next_row_word_match[target] = i_row_wrap ? row_match[1] : row_match[0];
-        default: o_next_row_word_match[target] = i_next_row_addr[31:p_word_shift] == high_i_target;
+        1'b0, 1'b1: match_next_row_word_match[target] = i_row_wrap ? row_match[1] : row_match[0];
+        default: match_next_row_word_match[target] = i_next_row_addr[31:p_word_shift] == high_i_target;
       endcase
     end
 `endif
@@ -181,8 +217,24 @@ module conv_descriptor_addresses #(
       i_window_addr[31:p_word_shift] == high_i_target;
     assign incoming_skip_word_match[target] = i_kx0_q != 16'd0 ?
       incoming_candidate_word_match[3][target] : incoming_candidate_word_match[2][target];
-    assign o_incoming_advanced_word_match[target] = i_next_position_fast ? incoming_window_word_match[target] :
-      i_next_tile_fast ? o_next_row_word_match[target] : incoming_skip_word_match[target];
+    assign match_incoming_advanced_word_match[target] = i_next_position_fast ? incoming_window_word_match[target] :
+      i_next_tile_fast ? match_next_row_word_match[target] : incoming_skip_word_match[target];
+  end
+
+  // 候选顺序与描述符地址来源一致，数据字转发只处理每个候选的匹配结果。
+  for (genvar candidate = 0; candidate < 10; candidate++) begin : g_word_candidate
+    if (candidate > 0 && candidate < 5) begin : g_current
+      assign raw_word_candidates[candidate] = incoming_candidate_word_match[candidate-1];
+    end else if (candidate == 5) begin : g_row
+      assign raw_word_candidates[candidate] = match_next_row_word_match;
+    end else if (candidate == 6) begin : g_window
+      assign raw_word_candidates[candidate][0] = i_window_addr[31:p_word_shift] == comparison_word_addr[31:p_word_shift];
+      assign raw_word_candidates[candidate][1] = i_window_addr[31:p_word_shift] == i_addr[31:p_word_shift];
+    end else if (candidate > 6) begin : g_window_step
+      assign raw_word_candidates[candidate] = incoming_candidate_word_match[candidate-3];
+    end
+    assign o_word_candidates[candidate] = {raw_word_candidates[candidate][1],
+        comparison_forward ? raw_word_candidates[candidate][1] : raw_word_candidates[candidate][0]};
   end
 
 endmodule

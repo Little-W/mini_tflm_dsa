@@ -1,0 +1,77 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "rtl/npu/conv/conv_im2col_descriptor.sv": "a8dee72a544a8247d7eec6bf3a41931fb5be7ee15ea793fd0e75f431bdbdaec8",
+    "rtl/npu/conv/conv_descriptor_match.sv": "654db46960028f405fd8d0bb43f9e84d5d50403706c6b5141f9b72862c244056",
+    "rtl/npu/conv/conv_descriptor_window_target.sv": "20c8265f12b8bb6878f96528b6ad5572862423c7859b83738c07a52bfc9dbfe1",
+    "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+    "rtl/common/add_equal.sv": "d67c3931ccbfe2dc8d3a180d56aeb317cbeef17d94b57ee17215ad06ff06270b",
+    "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970",
+    "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f"
+  },
+  "formal": [
+    {
+      "mode": "generic",
+      "register_descriptor": 0,
+      "passed": true,
+      "unbounded_induction": true,
+      "log_sha256": "1e9697ac54de42d9618e80c3454f6137c125d37a5d7f33a5e99bc796523bd916"
+    },
+    {
+      "mode": "generic",
+      "register_descriptor": 1,
+      "passed": true,
+      "unbounded_induction": true,
+      "log_sha256": "5870d612daf6131b406b25db18213ea101c21d33aa0a4a9dfc5770811e63469d"
+    },
+    {
+      "mode": "fpga",
+      "register_descriptor": 0,
+      "passed": true,
+      "unbounded_induction": true,
+      "log_sha256": "1a9395fbb9228540447031b99e54174016567d51313d3b49ed47957e25ff7302"
+    },
+    {
+      "mode": "fpga",
+      "register_descriptor": 1,
+      "passed": true,
+      "unbounded_induction": true,
+      "log_sha256": "c75e072faf723b81795d5800121c79bb992df06bcbe7600e2a53abe74cbd6e06"
+    }
+  ],
+  "four_state": {
+    "passed": true,
+    "cycles": 120526,
+    "result_comparisons": 482104,
+    "input_coverage": {
+      "input_bits": 131,
+      "all_four_states_per_bit": true,
+      "covered_bits": 131,
+      "bit_observations": {
+        "zero": 9013880,
+        "one": 6725720,
+        "unknown": 27894,
+        "high_impedance": 21412
+      }
+    },
+    "configuration_events": 7500,
+    "window_prepare_events": 7500,
+    "window_hold_cycles": 105000,
+    "positive_matches": [
+      30026,
+      36035,
+      36041
+    ],
+    "log_sha256": "1585d6cc2a34df9014b5f7b8b4ffe5dc95b2df3ad4104f2cc9533d73b8a19938"
+  },
+  "generated_sha256": {
+    "window_match.sv": "497ac9c1464afef28c384db358fd8b5143d642ce8ee11ffbcc111e7bde650b05",
+    "tb_window_match.sv": "18f4231a2e51c08f40352cef5df8910c364895b1c743aa4567625bddc71dafbe",
+    "registered_window_match.sv": "21260f1973f0438b40aa4bbfca5a2c67391157bb0523fbdec06094e67e1f505e"
+  },
+  "scope": "配置保存、窗口目标准备及描述符查询的实际时钟关系；两种描述符模式的完整三十三位结果和公开四态匹配",
+  "generated_mapping_entries": 4
+}

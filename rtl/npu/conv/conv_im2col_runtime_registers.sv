@@ -20,7 +20,8 @@ module conv_im2col_runtime_registers #(
   input wire logic clk, // 寄存器更新时钟。
   input wire logic rst_n, // 低有效异步复位。
   input wire conv_im2col_frontend_pkg::st_t i_state, // 当前前端运行状态。
-  input wire logic [1:0][32:0] i_initial_group, // 配置接收时的连续分组和跨行分组位置。
+  input wire logic i_descriptor_check, // 当前周期保存已提交描述符的首字和填充结果。
+  input wire logic [1:0][32:0] i_initial_group, // 配置准备阶段计算的连续分组和跨组位置。
   input wire logic [3:0] i_stream_update, // 行与卷积核推进时的坐标和地址写入资格。
   input wire logic [1:0][31:0] i_group_payload, // 当前卷积核位置和输出行需要保存的通道组地址。
   input wire logic [1:0][p_coord_width-1:0] i_next_row_coordinate, // 下一输出行起点的输入列、行坐标。
@@ -160,6 +161,159 @@ module conv_im2col_runtime_registers #(
       .i_a(o_decode[0]), .i_b(o_descriptor_index[target_index]), .o_equal(decode_equal[target_index])
     );
   end
+  logic [1:0][32:0] configuration_wrap_difference;
+  // 配置阶段的完整回绕减法按低段借位和高段候选并行计算。
+  conv_runtime_wrap_difference u_row_wrap_difference (
+    .i_step(o_configuration.stride_w), .i_span(o_wrap_dx[0]),
+    .o_difference(configuration_wrap_difference[0])
+  );
+  conv_runtime_wrap_difference u_tap_wrap_difference (
+    .i_step(o_configuration.dilation_w), .i_span(o_wrap_dx[1]),
+    .o_difference(configuration_wrap_difference[1])
+  );
+
+  // 六个坐标字段按输出列、输出行、当前核行、当前核列、初始核行和初始核列排列。
+  logic [5:0] descriptor_coordinate_write, stream_coordinate_write, state_coordinate_write;
+  logic [5:0][15:0] descriptor_coordinate_data, stream_coordinate_data, state_coordinate_data;
+  logic [5:0] coordinate_write;
+  logic [5:0][15:0] coordinate_data;
+  logic tile_control_known, stream_control_known;
+
+  // 候选值与字段资格独立于晚到的提交、输出接收信号，末级只选择完整候选。
+  always_comb begin
+    descriptor_coordinate_write = '0;
+    descriptor_coordinate_data = '0;
+    descriptor_coordinate_data[0] = prepared_tile.output_x;
+    descriptor_coordinate_data[1] = prepared_tile.output_y;
+    descriptor_coordinate_data[2] = 16'(prepared_tile.kernel_y);
+    descriptor_coordinate_data[3] = i_kernel_column_payload;
+    descriptor_coordinate_data[4] = 16'(prepared_tile.kernel_y);
+    descriptor_coordinate_data[5] = 16'(prepared_tile.kernel_x);
+    if (prepared_tile.invalid) begin
+    end else if (prepared_tile.fast) begin
+      descriptor_coordinate_write[5:2] = '1;
+      if (prepared_tile.output_position_update) descriptor_coordinate_write[1:0] = '1;
+    end
+
+    stream_coordinate_write = '0;
+    stream_coordinate_data = '0;
+    if (i_chunk_reaches_end) begin
+      if (o_row_last) begin
+      end else begin
+        stream_coordinate_write[3:2] = '1;
+        stream_coordinate_data[2] = 16'(32'(o_kernel_coordinate[2]));
+        stream_coordinate_data[3] = i_kernel_column_payload;
+        stream_coordinate_write[0] = 1'b1;
+        if (i_row_wrap) begin
+          stream_coordinate_write[1] = 1'b1;
+          stream_coordinate_data[0] = 16'd0;
+          stream_coordinate_data[1] = 16'(32'(o_output_coordinate[1]) + 1);
+        end else stream_coordinate_data[0] = 16'(32'(o_output_coordinate[0]) + 1);
+      end
+    end else begin
+      if (o_past_active || !i_active_after_chunk) begin
+      end else if (i_group_end_o_equal) begin
+        stream_coordinate_write[3] = 1'b1;
+        stream_coordinate_data[3] = i_kernel_column_payload;
+        if (i_tap_wrap) begin
+          stream_coordinate_write[2] = 1'b1;
+          stream_coordinate_data[2] = 16'(32'(o_kernel_coordinate[0]) + 1);
+        end
+      end
+    end
+  end
+
+  // 四态控制保持顺序 case 的匹配规则；二态综合时两项完整性资格均为常量一。
+  always_comb begin
+    tile_control_known = 1'b0;
+    stream_control_known = 1'b0;
+    case (i_tile_commit)
+      1'b0, 1'b1: tile_control_known = 1'b1;
+      default: ;
+    endcase
+    case (i_stream_operation_accept)
+      1'b0, 1'b1: stream_control_known = 1'b1;
+      default: ;
+    endcase
+    // 状态候选保持原有先后顺序，空操作状态同样阻止后续状态写入坐标。
+    state_coordinate_write = '0;
+    state_coordinate_data = '0;
+    case (1'b1)
+      (i_state[$clog2(DESCRIPTOR_CHECK)] && tile_control_known && stream_control_known): ;
+      (tile_control_known && (i_state[$clog2(WAIT_WORD)] ||
+                             i_state[$clog2(STREAM)] || i_state[$clog2(ZERO_STREAM)])): ;
+      i_state[$clog2(P_HISTORY)]: ;
+      i_state[$clog2(P_DECODE)]: if (i_p_fast_valid) begin
+        state_coordinate_write[1:0] = '1;
+        state_coordinate_data[0] = 16'(i_fast_coordinate[0]);
+        state_coordinate_data[1] = 16'(i_fast_coordinate[1]);
+      end
+      i_state[$clog2(P_START)]: ;
+      i_state[$clog2(P_WAIT)]: if (decode_equal[0]) begin
+        state_coordinate_write[1:0] = '1;
+        state_coordinate_data[0] = 16'(o_decode[2]);
+        state_coordinate_data[1] = 16'(o_decode[1]);
+      end
+      i_state[$clog2(Q_DECODE)]: ;
+      i_state[$clog2(Q_START)]: ;
+      i_state[$clog2(Q_WAIT)]: ;
+      i_state[$clog2(K_DECODE)]: begin
+        if (i_kernel_shape_o_valid) begin
+          state_coordinate_write[5:2] = '1;
+          state_coordinate_data[2] = 16'(o_descriptor_index[2] >> i_kernel_width_shift);
+          state_coordinate_data[3] = i_kernel_column_payload;
+          state_coordinate_data[4] = 16'(o_descriptor_index[2] >> i_kernel_width_shift);
+          state_coordinate_data[5] = i_kernel_decode_column;
+        end else if (o_configuration.kernel_w == 3 && o_descriptor_index[2] < 9) begin
+          state_coordinate_write[5:2] = '1;
+          state_coordinate_data[2] = 16'(i_k_decode_value[5:2]);
+          state_coordinate_data[3] = i_kernel_column_payload;
+          state_coordinate_data[4] = 16'(i_k_decode_value[5:2]);
+          state_coordinate_data[5] = 16'(i_k_decode_value[1:0]);
+        end
+      end
+      i_state[$clog2(K_START)]: ;
+      i_state[$clog2(K_WAIT)]: if (decode_equal[2]) begin
+        state_coordinate_write[5:2] = '1;
+        state_coordinate_data[2] = 16'(o_decode[1]);
+        state_coordinate_data[3] = i_kernel_column_payload;
+        state_coordinate_data[4] = 16'(o_decode[1]);
+        state_coordinate_data[5] = 16'(o_decode[2]);
+      end
+      default: ;
+    endcase
+  end
+
+  conv_runtime_coordinate_select u_coordinate_select (
+    .i_cfg_write(i_cfg_valid && i_cfg_ready),
+    .i_tile_commit(i_tile_commit),
+    .i_stream_error(i_stream_response_error),
+    .i_stream_accept(i_stream_operation_accept),
+    .i_descriptor_write(descriptor_coordinate_write),
+    .i_descriptor_data(descriptor_coordinate_data),
+    .i_stream_write(stream_coordinate_write),
+    .i_stream_data(stream_coordinate_data),
+    .i_state_write(state_coordinate_write),
+    .i_state_data(state_coordinate_data),
+    .o_write(coordinate_write),
+    .o_data(coordinate_data)
+  );
+
+  // 使用既有寄存边沿保存各坐标，停顿及空操作保留原值。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      o_output_coordinate <= '0;
+      o_kernel_coordinate <= '0;
+    end else begin
+      for (int field_index = 0; field_index < 2; field_index++) begin
+        if (coordinate_write[field_index]) o_output_coordinate[field_index] <= coordinate_data[field_index];
+      end
+      for (int field_index = 0; field_index < 4; field_index++) begin
+        if (coordinate_write[field_index+2]) o_kernel_coordinate[field_index] <= coordinate_data[field_index+2];
+      end
+    end
+  end
+
   // 保存前端配置、描述符和坐标状态。
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -184,12 +338,6 @@ module conv_im2col_runtime_registers #(
       o_row_last <= 1'b0;
       o_past_active <= 1'b1;
       o_narrow_output <= 1'b0;
-      o_output_coordinate[0] <= 16'(0);
-      o_output_coordinate[1] <= 16'(0);
-      o_kernel_coordinate[0] <= 16'(0);
-      o_kernel_coordinate[1] <= 16'(0);
-      o_kernel_coordinate[2] <= 16'(0);
-      o_kernel_coordinate[3] <= 16'(0);
       o_initial_channel <= 16'(0);
       o_group_base[0] <= 0;
       o_group_base[1] <= 0;
@@ -233,6 +381,15 @@ module conv_im2col_runtime_registers #(
       o_row_base_addr <= 0;
     end else begin
       o_tile_done <= i_finishing_tile;
+      // 检查周期保存数据字与填充状态，同周期输出推进可以继续更新下一运行位置。
+      if (i_descriptor_check) begin
+        o_padding <= i_descriptor_padding;
+        if (i_committing_saved_word_hit) begin
+          o_word_data <= i_descriptor_word_data;
+          o_word_addr <= {i_addr[31:p_word_shift], {p_word_shift{1'b0}}};
+          o_word_valid <= 1'b1;
+        end
+      end
       if (i_state[$clog2(WAIT_WORD)] && i_wr_valid && i_wr_ready) begin
         o_word_data <= i_cache_rsp_data;
         o_word_addr <= {i_addr[31:p_word_shift],{p_word_shift{1'b0}}};
@@ -250,7 +407,11 @@ module conv_im2col_runtime_registers #(
         o_wrap_bytes[1] <= i_shared_channel_product[1][31:0] << o_configuration.input_s16;
         o_address_step_phase <= 0;
       end
-      if (i_cfg_prepare_phase == 3'd1) o_axis_pixels[0] <= {1'b0, i_shared_coordinate_product[3]};
+      if (i_cfg_prepare_phase == 3'd1) begin
+        o_axis_pixels[0] <= {1'b0, i_shared_coordinate_product[3]};
+        // 配置已由前一边沿保存，分块接收前完成初始通道组位置计算。
+        o_group_advance <= i_initial_group;
+      end
       if (i_cfg_prepare_phase == 3'd2) begin
         // 先保存无符号乘积，下一阶段计算有符号回绕位移。
         o_wrap_dx[0] <= {1'b0, i_shared_coordinate_product[0]};
@@ -259,8 +420,8 @@ module conv_im2col_runtime_registers #(
         o_step_bytes[0] <= i_shared_coordinate_product[3] << o_configuration.input_s16;
       end
       if (i_cfg_prepare_phase==3) begin
-        o_wrap_dx[0] <= 33'(o_configuration.stride_w) - o_wrap_dx[0];
-        o_wrap_dx[1] <= 33'(o_configuration.dilation_w) - o_wrap_dx[1];
+        o_wrap_dx[0] <= configuration_wrap_difference[0];
+        o_wrap_dx[1] <= configuration_wrap_difference[1];
         o_step_bytes[1] <= i_shared_coordinate_product[3] << o_configuration.input_s16;
         o_address_step_phase <= 2'd2;
       end
@@ -282,8 +443,6 @@ module conv_im2col_runtime_registers #(
         (i_cfg_valid && i_cfg_ready): begin
        o_configuration <= i_cfg;
        o_configured <= 0;
-        o_group_advance[0] <= i_initial_group[0];
-        o_group_advance[1] <= i_initial_group[1];
         o_word_valid <= 0;
         o_reduction_len <= 0;
         o_fragment_image_fits <= 0;
@@ -324,14 +483,6 @@ module conv_im2col_runtime_registers #(
           if (prepared_tile.fast) begin
             o_descriptor_index[2] <= prepared_tile.tap;
             o_initial_channel <= 16'(prepared_tile.channel);
-            if (prepared_tile.output_position_update) begin
-              o_output_coordinate[0] <= prepared_tile.output_x;
-              o_output_coordinate[1] <= prepared_tile.output_y;
-            end
-            o_kernel_coordinate[0] <= 16'(prepared_tile.kernel_y);
-            o_kernel_coordinate[2] <= 16'(prepared_tile.kernel_y);
-            o_kernel_coordinate[1] <= i_kernel_column_payload;
-            o_kernel_coordinate[3] <= 16'(prepared_tile.kernel_x);
             o_input_coordinate[0] <= i_coordinate_payload[0];
             o_input_coordinate[1] <= i_coordinate_payload[1];
             o_pixel_index <= i_pixel_payload;
@@ -347,14 +498,6 @@ module conv_im2col_runtime_registers #(
             o_row_base_addr <= prepared_tile.address;
           end
         end
-        end
-        i_state[$clog2(DESCRIPTOR_CHECK)]: begin
-          o_padding <= i_descriptor_padding;
-          if (i_committing_saved_word_hit) begin
-            o_word_data <= i_descriptor_word_data;
-            o_word_addr <= {i_addr[31:p_word_shift], {p_word_shift{1'b0}}};
-            o_word_valid <= 1'b1;
-          end
         end
         i_stream_response_error: begin
         end
@@ -380,13 +523,6 @@ module conv_im2col_runtime_registers #(
               o_output_count[1] <= 0;
               o_reduction_index <= {1'b0,o_descriptor_index[1]};
                o_past_active <= 1'b0;
-              o_kernel_coordinate[0] <= 16'(32'(o_kernel_coordinate[2]));
-              o_kernel_coordinate[1] <= i_kernel_column_payload;
-              if (i_row_wrap) begin o_output_coordinate[0] <= 16'(0);
-              o_output_coordinate[1] <= 16'(32'(o_output_coordinate[1])+1); end
-              else begin
-                o_output_coordinate[0] <= 16'(32'(o_output_coordinate[0])+1);
-              end
               if (o_coordinate_valid[0] && !o_geometry_tile) begin
                  o_coordinate_valid[1] <= 1;
                 o_row_coordinate[0] <= p_coord_width'(i_next_row_coordinate[0]);
@@ -410,29 +546,15 @@ module conv_im2col_runtime_registers #(
              end
             else if (i_group_end_o_equal) begin
               if (o_coordinate_valid[1]) begin
-                if (i_tap_wrap) begin o_kernel_coordinate[1] <= i_kernel_column_payload;
-                o_kernel_coordinate[0] <= 16'(32'(o_kernel_coordinate[0])+1);
-                end
-                else begin
-                  o_kernel_coordinate[1] <= i_kernel_column_payload;
-                end
-              end else begin
-                if (i_tap_wrap) begin o_kernel_coordinate[1] <= i_kernel_column_payload;
-                o_kernel_coordinate[0] <= 16'(32'(o_kernel_coordinate[0])+1);end
-                else begin
-                  o_kernel_coordinate[1] <= i_kernel_column_payload;
-                end
-                o_coordinate_valid[1] <= 0;
-              end
+              end else o_coordinate_valid[1] <= 0;
             end
           end
         end
+        (i_state[$clog2(DESCRIPTOR_CHECK)] && !i_tile_commit && !i_stream_operation_accept): ;
         (!i_tile_commit && i_stream_response_error !== 1'b1 && i_stream_operation_accept !== 1'b1 &&
           (i_state[$clog2(WAIT_WORD)] || i_state[$clog2(STREAM)] || i_state[$clog2(ZERO_STREAM)])): ;
         i_state[$clog2(P_HISTORY)]: ;
         i_state[$clog2(P_DECODE)]: if (i_p_fast_valid) begin
-          o_output_coordinate[1] <= 16'(i_fast_coordinate[1]);
-          o_output_coordinate[0] <= 16'(i_fast_coordinate[0]);
           o_history_position_valid <= 1;
           o_history_position <= o_descriptor_index[0];
           o_history_overflow <= (&o_descriptor_index[0][31:16]) && i_history_limit_carry;
@@ -442,8 +564,6 @@ module conv_im2col_runtime_registers #(
         end
         i_state[$clog2(P_START)]: ;
         i_state[$clog2(P_WAIT)]: if (decode_equal[0]) begin
-          o_output_coordinate[1] <= 16'(o_decode[1]);
-          o_output_coordinate[0] <= 16'(o_decode[2]);
           o_history_position_valid <= 1;
           o_history_position <= o_descriptor_index[0];
           o_history_overflow <= (&o_descriptor_index[0][31:16]) && i_history_limit_carry;
@@ -470,27 +590,9 @@ module conv_im2col_runtime_registers #(
           o_descriptor_index[2] <= o_decode[1];
           o_initial_channel <= 16'(o_decode[2]);
         end
-        i_state[$clog2(K_DECODE)]: begin
-          if (i_kernel_shape_o_valid) begin
-            o_kernel_coordinate[0] <= 16'(o_descriptor_index[2] >> i_kernel_width_shift);
-            o_kernel_coordinate[2] <= 16'(o_descriptor_index[2] >> i_kernel_width_shift);
-            o_kernel_coordinate[1] <= i_kernel_column_payload;
-            o_kernel_coordinate[3] <= i_kernel_decode_column;
-          end else if (o_configuration.kernel_w==3 && o_descriptor_index[2]<9) begin
-            // 三列卷积核的行列由同一完整组合译码得到。
-            o_kernel_coordinate[0] <= 16'(i_k_decode_value[5:2]);
-            o_kernel_coordinate[2] <= 16'(i_k_decode_value[5:2]);
-            o_kernel_coordinate[1] <= i_kernel_column_payload;
-            o_kernel_coordinate[3] <= 16'(i_k_decode_value[1:0]);
-          end
-        end
+        i_state[$clog2(K_DECODE)]: ;
         i_state[$clog2(K_START)]: ;
-        i_state[$clog2(K_WAIT)]: if (decode_equal[2]) begin
-          o_kernel_coordinate[0] <= 16'(o_decode[1]);
-          o_kernel_coordinate[2] <= 16'(o_decode[1]);
-          o_kernel_coordinate[1] <= i_kernel_column_payload;
-          o_kernel_coordinate[3] <= 16'(o_decode[2]);
-        end
+        i_state[$clog2(K_WAIT)]: ;
         i_state[$clog2(COORD)]: begin
           o_coordinate_valid[1] <= 0;
         end

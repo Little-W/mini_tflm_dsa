@@ -163,6 +163,9 @@ module conv_im2col_prefetch #(
   logic prefetch_horizontal_low_carry_q;
   logic [15:0] unused_prefetch_horizontal_prepare_sum;
   logic unused_prefetch_horizontal_low_carry;
+  logic [31:0] prefetch_fragment_y;
+  logic [p_coord_w-1:0] prefetch_window_y;
+  logic unused_prefetch_window_y_carry;
 
   // 同一预取只保存一份引用上下文，各阶段共用其地址和元数据。
   typedef struct packed {
@@ -218,7 +221,12 @@ module conv_im2col_prefetch #(
 
   assign prefetch_wrap_i_a = 32'(accepted_coordinate_q[0]);
   assign prefetch_wrap_i_b = ~{16'd0, i_c.input_w};
-  parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b1)) u_prefetch_wrap_base (
+  // 输入行宽只有低十六位，两个位段并行求差，高段按低位借位条件修正。
+  parallel_prefix_add #(
+    .p_width(32), .p_group_width(8), .p_preserve_groups(1'b1),
+    .p_dsp_split_width(16), .p_parallel_high_prefix(1'b1), .p_keep_carry(1'b0),
+    .p_preserve_grouped_unknowns(1'b1), .p_direct_subtract(1'b1)
+  ) u_prefetch_wrap_base (
     .i_a(prefetch_wrap_i_a), .i_b(prefetch_wrap_i_b), .i_carry(1'b1),
     .o_sum(prefetch_wrap_base), .o_carry(unused_prefetch_x_carry[0])
   );
@@ -308,6 +316,19 @@ module conv_im2col_prefetch #(
     endcase
   end
 `endif
+  // 核行加一使用分组进位，窗口纵坐标的两个位段并行求和。
+  conditional_increment #(.p_width(32), .p_group_width(4)) u_fragment_y (
+    .i_value(32'(accepted_coordinate_q[1])), .i_enable(1'b1),
+    .o_result(prefetch_fragment_y)
+  );
+  parallel_prefix_add #(
+    .p_width(p_coord_w), .p_group_width(8), .p_preserve_groups(1'b1),
+    .p_dsp_split_width(16), .p_parallel_high_prefix(1'b1), .p_keep_carry(1'b0)
+  ) u_window_y (
+    .i_a(accepted_coordinate_q[1]), .i_b(p_coord_w'(pf_window_dy_q)),
+    .i_carry(1'b0), .o_sum(prefetch_window_y), .o_carry(unused_prefetch_window_y_carry)
+  );
+
   // 较大通道数按缓存行预测后续像素，提前保存新进入卷积窗口的输入行。
   assign pf_stream_lookahead = i_c.windowed && i_c.input_c >= 16'd16;
   always_comb begin
@@ -325,7 +346,7 @@ module conv_im2col_prefetch #(
         pf_kernel_advance_q>=32'(i_c.kernel_w) &&
         pf_kernel_advance_q<2*32'(i_c.kernel_w)) begin
       pf_x=pf_wrap_x<0 ? 0 : 32'(pf_wrap_x);
-      pf_y=32'(accepted_coordinate_q[1])+1;
+      pf_y=prefetch_fragment_y;
     end
     // 小通道的跨步窗口预测后续两个输出位置，字偏移决定预测距离。
 
@@ -335,6 +356,10 @@ module conv_im2col_prefetch #(
     pf_wrap_twice=i_c.output_w==1 && pf_ahead_two;
     pf_window_x=pf_horizontal_sum;
     pf_window_y=accepted_coordinate_q[1]+$signed(p_coord_w'(pf_window_dy_q));
+    case (^{accepted_coordinate_q[1], pf_window_dy_q})
+      1'b0, 1'b1: pf_window_y=$signed(prefetch_window_y);
+      default: ;
+    endcase
     if(pf_window_ahead_q) begin pf_x=32'(pf_window_x);pf_y=32'(pf_window_y);end
     pf_coordinate_valid=accepted_coordinate_q[0]>=0 && accepted_coordinate_q[1]>=0 && accepted_coordinate_q[0]<$signed(p_coord_w'(i_c.input_w)) &&
       accepted_coordinate_q[1]<$signed(p_coord_w'(i_c.input_h)) &&

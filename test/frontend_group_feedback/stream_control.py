@@ -18,18 +18,6 @@ sys.path.insert(0, str(ROOT / 'test/frontend_pipeline'))
 from source_sections import read_module
 
 SOURCE = 'rtl/npu/conv/conv_im2col_frontend.sv'
-STATE_FLAGS = (
-    'tile_commit', 'word_output_q', 'cache_rsp_valid', 'cache_rsp_error', 'wr_ready',
-    'column_after_chunk', 'active_after_chunk', 'group_after_chunk', 'word_boundary',
-    'chunk_reaches_end', 'row_last_q', 'row_base_valid', 'geometry_tile', 'next_row_padding',
-    'next_row_word_hit', 'row_coordinate_valid', 'past_active_q', 'group_end_o_equal',
-    'coordinate_address_valid', 'next_tap_padding', 'next_word_o_equal', 'pad_q',
-    'current_coordinate_valid', 'tap_wrap', 'linear_channel_layout_q', 'ix_step_below_limit',
-    'cache_req_ready', 'row_wrap',
-)
-STATE_ASSIGNMENT = re.compile(
-    r'\{word_output_q, state\}\s*<=\s*\{state_uses_word\((.*?)\), \1\};')
-
 
 def section(source: str, first: str, last: str) -> str:
     begin = source.index(first)
@@ -42,70 +30,6 @@ def states(source: str) -> str:
     block = re.search(r'  typedef enum logic \[\d+:0\] \{.*?  \} st_t;', source, re.S)[0]
     return block.replace(declaration.group(0),
         f'typedef logic [{width}:0] st_t;\nlocalparam logic [{width}:0] ').replace('  } st_t;', ';')
-
-
-def state_branch(source: str, prefix: str) -> str:
-    body = section(source, '        (!tile_commit && (state[$clog2(WAIT_WORD)]',
-                   '        state[$clog2(P_DECODE)]:')
-    assignments: list[str] = []
-
-    def save(match: re.Match) -> str:
-        assignments.append(match.group(0))
-        return f'STATE_ASSIGNMENT_{len(assignments)-1};'
-
-    body = STATE_ASSIGNMENT.sub(save, body)
-    body = re.sub(r'\b[A-Za-z_]\w*(?:\[[^\]]+\])?\s*<=.*?;', ';', body, flags=re.S)
-    for index, assignment in enumerate(assignments):
-        assignment = assignment.replace('{word_output_q, state} <=',
-            f'{{{prefix}_word, {prefix}_state}} =')
-        body = body.replace(f'STATE_ASSIGNMENT_{index};', assignment)
-    return f'''always_comb begin
-  {prefix}_state = state;
-  {prefix}_word = word_output_q;
-  case (1'b1)
-{body}
-  default: ;
-  endcase
-end
-'''
-
-
-def state_unit(source: str, reference: str) -> str:
-    qualifiers = 'logic stream_request_eligible, row_request_eligible;\n'+'\n'.join(
-        re.search(r'  assign '+name+r' = .*?;', source, re.S)[0]
-        for name in ('stream_request_eligible', 'row_request_eligible'))
-    if 'module conv_im2col_stream' in source:
-        first = source.index('  always_comb begin\n    stream_static_state =')
-        preparation = ('st_t stream_static_state,stream_advance_state;\n'
-                       'logic stream_request_selected,stream_row_selected;\n'+
-                       source[first:source.index('endmodule', first)])
-    else:
-        preparation = section(source, '  // 流状态先选择行、通道及填充目标',
-                              '  // 保存前端配置、描述符和坐标状态。')
-    unit = '''module comparison #(parameter bit REGISTER_ROW_ADDRESS=1'b1)(
-input logic [21:0] state,
-input logic ''' + ','.join(STATE_FLAGS) + ''',
-output logic equivalent,
-output logic[21:0] reference_state,actual_state,
-output logic reference_word,actual_word
-);
-''' + states(source) + '''
-function automatic logic state_uses_word(input st_t next_state);
-  state_uses_word=next_state[$clog2(STREAM)] || next_state[$clog2(WAIT_WORD)];
-endfunction
-logic wr_valid,stream_next_request,next_row_request;
-assign wr_valid=state[$clog2(STREAM)] || state[$clog2(ZERO_STREAM)] ||
-  (state[$clog2(WAIT_WORD)] && cache_rsp_valid && !cache_rsp_error);
-assign stream_next_request=wr_valid && wr_ready && !state[$clog2(ZERO_STREAM)] &&
-  column_after_chunk && active_after_chunk && group_after_chunk && word_boundary;
-assign next_row_request=!REGISTER_ROW_ADDRESS && wr_valid && wr_ready && chunk_reaches_end &&
-  !row_last_q && row_base_valid && !geometry_tile && !next_row_padding && !next_row_word_hit;
-''' + qualifiers + preparation + state_branch(reference, 'reference') + state_branch(source, 'actual') + '''
-assign equivalent=(reference_state==actual_state)&&(reference_word==actual_word);
-endmodule
-'''
-    width = re.search(r'  typedef enum logic \[(\d+):0\] \{', source).group(1)
-    return unit.replace('[21:0]', f'[{width}:0]')
 
 
 def word_unit(source: str) -> str:
@@ -182,7 +106,7 @@ def range_unit(source: str, reference: str) -> str:
               if '  logic range_active_after_chunk;' in source else '')
     old = section(reference, "  always_comb begin\n    range_stream_allowed = 1'b0;",
                   '  // 译码选择保持状态优先次序')
-    new = section(source, '  (* keep = 1 *) logic range_write_context;',
+    new = section(source, '  logic range_write_context;',
                   '  end else begin : g_stream_range_write' if 'g_stream_range_write' in source else
                   '  // 译码选择保持状态优先次序')
     unit = '''module comparison #(
@@ -231,16 +155,19 @@ def main() -> None:
         source = package.read_text()+'\n'+stream+'\n'+source
         source_paths += [stream_path, package]
     reference = read_rtl_source(f'{args.reference_ref}:{SOURCE}', cwd=ROOT, text=True)
-    units = {'state': state_unit(source, reference), 'word': word_unit(source),
+    state_out=out/'stream_state'
+    subprocess.run([sys.executable,str(ROOT/'test/frontend_state_selection/run_stream_control.py'),
+                    '--source-root',str(args.source_root.resolve()),'--out',str(state_out)],check=True,cwd=ROOT)
+    state_report=json.loads((state_out/'summary.json').read_text())
+    units = {'word': word_unit(source.replace('active_select_commit','tile_commit')),
              'range': range_unit(source, reference)}
     for name, unit in units.items():
         (out / f'{name}.sv').write_text(unit)
-    cases = [('state', f'row{row}', {'REGISTER_ROW_ADDRESS': row}) for row in (0, 1)]
-    cases += [('word', f'b{shift}', {'p_word_shift': shift}) for shift in (1, 2, 3, 4)]
+    cases = [('word', f'b{shift}', {'p_word_shift': shift}) for shift in (1, 2, 3, 4)]
     cases += [('range', f's{size}_l{lanes}_n{narrow}',
                {'SIZE': size, 'LANES': lanes, 'NARROW_LANES': narrow})
-              for size, lanes, narrow in ((2,1,1),(4,2,2),(4,4,2),(4,8,4),
-                                          (16,5,4),(16,7,4),(16,8,4),(16,8,8))]
+              for size, lanes, narrow in ((32,17,4),(32,17,8),(32,20,4),(32,20,8),
+                                          (32,24,4),(32,24,8),(64,32,4),(64,32,8))]
     results = []
     for kind, suffix, parameters in cases:
         name = kind + '_' + suffix
@@ -255,7 +182,7 @@ def main() -> None:
                            stderr=subprocess.STDOUT, check=True)
         results.append({'name': name, 'passed': True})
         print('FRONTEND_STREAM_CONTROL_PASS', name, flush=True)
-    (out / 'summary.json').write_text(json.dumps({'passed': True, 'cases': results,
+    (out / 'summary.json').write_text(json.dumps({'passed': True, 'cases': results,'complete_stream_control':state_report,
         'range_scope': 'Qualified range-write branch; speculative stream updates are checked by test/frontend_pipeline/check_control.py.',
         'reference_ref': args.reference_ref,
         'source_sha256': {str(item.relative_to(args.source_root.resolve())):

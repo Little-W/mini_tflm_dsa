@@ -1,0 +1,257 @@
+{
+  "ports": [
+    [
+      "input",
+      "conv_im2col_pkg::conv_cfg_t",
+      "i_configuration",
+      "c",
+      "当前任务的输入格式与通道偏移"
+    ],
+    [
+      "input",
+      "logic",
+      "i_descriptor",
+      "request_descriptor_metadata_context",
+      "当前请求选择输入描述符"
+    ],
+    [
+      "input",
+      "logic",
+      "i_row_metadata",
+      "request_row_metadata_context",
+      "当前请求的元数据选择下一输出行"
+    ],
+    [
+      "input",
+      "logic",
+      "i_tap",
+      "request_tap_context",
+      "当前请求选择下一卷积核位置"
+    ],
+    [
+      "input",
+      "logic",
+      "i_row",
+      "request_row_context",
+      "当前请求地址选择下一输出行"
+    ],
+    [
+      "input",
+      "logic",
+      "i_stream",
+      "request_stream_context",
+      "当前请求选择连续输出位置"
+    ],
+    [
+      "input",
+      "logic [9:0]",
+      "i_select",
+      "incoming_pixel_select",
+      "十种描述符候选的独热选择位"
+    ],
+    [
+      "input",
+      "logic [9:0][31:0]",
+      "i_address_candidate",
+      "incoming_address_candidates",
+      "十种描述符字节地址候选"
+    ],
+    [
+      "input",
+      "logic [9:0][31:0]",
+      "i_pixel_candidate",
+      "incoming_pixel_candidates",
+      "十种描述符像素位置候选"
+    ],
+    [
+      "input",
+      "logic [9:0][p_coord_width-1:0]",
+      "i_y_candidate",
+      "incoming_y_candidates",
+      "十种描述符输入行坐标候选"
+    ],
+    [
+      "input",
+      "logic [31:0]",
+      "i_incoming_address",
+      "incoming_addr",
+      "输入描述符按优先次序选择的地址"
+    ],
+    [
+      "input",
+      "logic [31:0]",
+      "i_incoming_pixel",
+      "incoming_pixel",
+      "输入描述符按优先次序选择的像素位置"
+    ],
+    [
+      "input",
+      "logic [p_coord_width-1:0]",
+      "i_incoming_y",
+      "incoming_iy",
+      "输入描述符按优先次序选择的行坐标"
+    ],
+    [
+      "input",
+      "logic [31:0]",
+      "i_cache_address_reference",
+      "cache_req_addr_reference",
+      "运行与描述符共用的地址参考值"
+    ],
+    [
+      "input",
+      "logic [31:0]",
+      "i_next_tap_address",
+      "next_tap_addr",
+      "下一卷积核位置的字节地址"
+    ],
+    [
+      "input",
+      "logic [31:0]",
+      "i_next_row_address",
+      "next_row_addr",
+      "下一输出行的字节地址"
+    ],
+    [
+      "input",
+      "logic [31:0]",
+      "i_stream_address",
+      "stream_request_addr",
+      "连续输出的下一字节地址"
+    ],
+    [
+      "input",
+      "logic [31:0]",
+      "i_address",
+      "addr",
+      "当前运行项的字节地址"
+    ],
+    [
+      "input",
+      "logic [2:0][31:0]",
+      "i_pixel",
+      "{pixel_index, next_tap_pixel, next_row_pixel}",
+      "下一行、下一核位置和当前像素位置"
+    ],
+    [
+      "input",
+      "logic [2:0][p_coord_width-1:0]",
+      "i_y",
+      "{iy, next_tap_iy, next_row_iy}",
+      "下一行、下一核位置和当前输入行坐标"
+    ],
+    [
+      "input",
+      "logic [3:0][31:0]",
+      "i_epoch_sum",
+      "epoch_o_sum",
+      "四种通道纪元的未缩放候选"
+    ],
+    [
+      "input",
+      "logic",
+      "i_short_pixel",
+      "short_pixel_q",
+      "按窗口粒度缩放像素索引"
+    ],
+    [
+      "input",
+      "logic [4:0]",
+      "i_index_shift",
+      "window_index_shift_q",
+      "窗口索引的右移位数"
+    ],
+    [
+      "input",
+      "logic",
+      "i_index_valid",
+      "window_index_valid_q",
+      "当前配置支持窗口索引"
+    ],
+    [
+      "input",
+      "logic",
+      "i_next_position",
+      "incoming_next_position_fast",
+      "描述符复用下一空间窗口"
+    ],
+    [
+      "input",
+      "logic",
+      "i_next_tile",
+      "incoming_next_tile_fast",
+      "描述符紧随当前空间分块"
+    ],
+    [
+      "input",
+      "logic",
+      "i_row_wrap",
+      "row_wrap",
+      "当前输出列推进时换行"
+    ],
+    [
+      "input",
+      "logic [15:0]",
+      "i_window_y",
+      "window_next_y",
+      "已保存下一窗口的输出行"
+    ],
+    [
+      "input",
+      "logic [31:0]",
+      "i_output_y",
+      "oy",
+      "当前输出行坐标"
+    ],
+    [
+      "output",
+      "logic [31:0]",
+      "o_cache_address",
+      "cache_req_addr",
+      "当前缓存请求的字节地址"
+    ],
+    [
+      "output",
+      "logic [31:0]",
+      "o_request_address",
+      "request_address_value",
+      "进入请求寄存器的完整字节地址"
+    ],
+    [
+      "output",
+      "logic signed [p_coord_width-1:0]",
+      "o_request_y",
+      "request_y",
+      "与请求地址对应的输入行坐标"
+    ],
+    [
+      "output",
+      "logic [31:0]",
+      "o_output_y",
+      "request_output_y",
+      "与请求地址对应的输出进度"
+    ],
+    [
+      "output",
+      "logic [31:0]",
+      "o_index",
+      "req_index",
+      "与请求地址对应的窗口索引"
+    ],
+    [
+      "output",
+      "logic [31:0]",
+      "o_epoch",
+      "req_epoch",
+      "与请求地址对应的通道纪元"
+    ],
+    [
+      "output",
+      "logic",
+      "o_index_valid",
+      "req_index_valid",
+      "当前请求的窗口索引有效"
+    ]
+  ],
+  "reference_sha256": "75845ac7594b2f9e7fcb5c3f00789ebea02f59051528d5761f030cb7f04e5652"
+}

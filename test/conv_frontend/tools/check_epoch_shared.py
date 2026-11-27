@@ -11,7 +11,7 @@ import sys
 
 ROOT=Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT/'test/frontend_pipeline'))
-from source_sections import read_module
+from source_sections import read_module, dependencies
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
@@ -23,7 +23,7 @@ def main():
     assignments='\n'.join(re.search(r'  assign '+name+r' = .*?;',source,re.S).group(0)
                           for name in ('stream_epoch_xor','stream_epoch_carry'))
     assignments=assignments.replace('c.group_offset','group_offset')
-    first=source.index('      logic [LANES:0][17:0] channel_sum;')
+    first=source.index('      logic [17:0] stream_channel_sum;')
     last=source.index('    end else begin : g_general',first)
     actual=source[first:last].replace('epoch_i_a[candidate][17:0]','stream_epoch_xor[17:0]')
     actual=actual.replace('epoch_i_b[candidate][17:0]','stream_epoch_carry[17:0]')
@@ -46,10 +46,13 @@ def main():
  assign equivalent=int'(chunk_count)>LANES || current_sum==expected;
 endmodule
 """)
+    sources=dependencies(root,[model])
+    checked_sources=[path,*[source for source in sources if source != model]]
+    hashes={str(source.relative_to(root)):hashlib.sha256(source.read_bytes()).hexdigest() for source in checked_sources}
     cases=[]
     for lanes in range(1,17):
         script,log=out/f'l{lanes}.ys',out/f'l{lanes}.log'
-        script.write_text(f'read_slang --top comparison -GLANES={lanes} '+shlex.quote(str(model))+
+        script.write_text(f'read_slang --top comparison -GLANES={lanes} '+shlex.join(map(str,sources))+
                           '\nprep -top comparison -flatten\ncheck -assert\n'
                           'sat -verify -prove equivalent 1 -show-inputs -show-outputs\n')
         with log.open('w')as stream:
@@ -57,9 +60,10 @@ endmodule
                                   cwd=ROOT,stdout=stream,stderr=subprocess.STDOUT,timeout=60)
         if result.returncode or 'SUCCESS!'not in log.read_text():raise RuntimeError(str(log))
         cases.append({'lanes':lanes,'passed':True,'log_sha256':hashlib.sha256(log.read_bytes()).hexdigest()})
-    report={'passed':True,'source_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'cases':cases,
+    report={'passed':True,'source_sha256':hashes,'cases':cases,
             'input_scope':'group_offset 和 ch_q 为完整十六位值，chunk_count 为零至 LANES',
             'result_bits':32,'model_sha256':hashlib.sha256(model.read_bytes()).hexdigest()}
+    assert hashes=={str(source.relative_to(root)):hashlib.sha256(source.read_bytes()).hexdigest() for source in checked_sources}
     (out/'summary.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
     print('EPOCH_SHARED_PASS',len(cases))
 

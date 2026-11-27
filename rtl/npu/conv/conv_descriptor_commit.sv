@@ -128,10 +128,23 @@ module conv_descriptor_commit #(
     assign coordinate_i_carry = committing_coordinate_carry[axis];
     logic [p_coord_w-1:0] coordinate_sum;
     // 完整坐标先进入运行寄存器，范围检查读取下一拍的坐标。
-    conv_descriptor_add #(.p_width(p_coord_w)) u_coordinate_sum (
+    logic [p_coord_w-1:0] parallel_sum;
+    logic unused_sum_carry;
+    parallel_prefix_add #(
+      .p_width(p_coord_w), .p_group_width(4), .p_preserve_groups(1'b1),
+      .p_dsp_split_width(16), .p_parallel_high_prefix(1'b1), .p_keep_carry(1'b0)
+    ) u_coordinate_sum (
       .i_a(coordinate_i_a), .i_b(coordinate_i_b), .i_carry(coordinate_i_carry),
-      .o_sum(coordinate_sum)
+      .o_sum(parallel_sum), .o_carry(unused_sum_carry)
     );
+    // 已知输入的低段进位直接参与各高段结果，未知输入保留定宽算术传播。
+    always_comb begin
+      coordinate_sum = coordinate_i_a + coordinate_i_b + p_coord_w'(coordinate_i_carry);
+      case (^{coordinate_i_a, coordinate_i_b, coordinate_i_carry})
+        1'b0, 1'b1: coordinate_sum = parallel_sum;
+        default: ;
+      endcase
+    end
     assign committing_coordinate[axis] = coordinate_sum;
   end
   for (genvar axis = 0; axis < 2; axis++) begin : g_commit_bound

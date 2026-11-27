@@ -27,7 +27,7 @@ module conv_coordinate_range #(
           i_base[p_first+:p_bits] == endpoint[p_first+:p_bits];
     end
     logic unused_low_equal;
-    parallel_unsigned_compare #(.p_width(16)) u_low (
+    parallel_unsigned_compare #(.p_width(16), .p_preserve_groups(1'b1)) u_low (
       .i_a(i_base[15:0]), .i_b(endpoint[15:0]),
       .o_less(low_before[bound]), .o_equal(unused_low_equal)
     );

@@ -5,7 +5,8 @@
 module conv_im2col_request_control #(
   parameter int p_size = 16,
   parameter int p_rw = $clog2(p_size+1),
-  parameter bit p_register_descriptor = 1'b0
+  parameter bit p_register_descriptor = 1'b0,
+  parameter bit p_preview_registered = 1'b0
 ) (
   input wire logic i_tile_valid, // 输入分块描述符有效
   input wire logic i_tile_ready, // 当前周期允许接收分块
@@ -31,7 +32,8 @@ module conv_im2col_request_control #(
   logic descriptor_eligible;
 
   conv_im2col_descriptor_request #(
-    .p_size(p_size), .p_rw(p_rw), .p_register_descriptor(p_register_descriptor)
+    .p_size(p_size), .p_rw(p_rw), .p_register_descriptor(p_register_descriptor),
+    .p_preview_registered(p_preview_registered)
   ) u_descriptor_request (
     .i_tile_valid(i_tile_valid), .i_tile_ready(i_tile_ready), .i_incoming_fast(i_incoming_fast),
     .i_tile_rows(i_tile_rows), .i_tile_cols(i_tile_cols),

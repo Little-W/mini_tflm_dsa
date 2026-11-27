@@ -42,13 +42,18 @@ def main():
         case.mkdir(exist_ok=True)
         model = case / "proof.sv"
         model.write_text(f"""module proof(input logic[{width-1}:0]a,target,
- output logic actual,kept,expected,reference_equal,equivalent);
+ output logic actual,kept,grouped,expected,reference_equal,combined_equal,equivalent);
  increment_equal #(.p_width({width})) dut(.i_a(a),.i_target(target),.o_equal(actual));
  increment_equal #(.p_width({width}),.p_preserve_pairs(1'b1)) kept_dut(.i_a(a),.i_target(target),.o_equal(kept));
+ increment_equal #(.p_width({width}),.p_preserve_pairs(1'b1),.p_reduce_group_width(6)) grouped_dut(
+   .i_a(a),.i_target(target),.o_equal(grouped));
+ add_equal #(.p_width({width})) combined_dut(.i_a(a),.i_b({width}'b0),
+   .i_target(target),.i_carry_in(1'b1),.o_equal(combined_equal));
  add_equal #(.p_width({width}),.p_preserve_bits(1'b1),.p_keep_bits(1'b0)) reference_dut(.i_a(a),.i_b({width}'b0),
    .i_target(target),.i_carry_in(1'b1),.o_equal(reference_equal));
  assign expected=({width}'(a+{width}'d1)==target);
- assign equivalent=(actual===expected)&&(actual===reference_equal)&&(kept===reference_equal);
+ assign equivalent=(actual===expected)&&(actual===reference_equal)&&(kept===reference_equal)&&
+   (grouped===reference_equal)&&(grouped===combined_equal);
 endmodule
 """)
         script = case / "proof.ys"
@@ -58,17 +63,40 @@ endmodule
         bench = case / "tb.sv"
         bench.write_text(f"""module tb;
  logic[{width-1}:0]a,target;
- logic actual,kept,expected,reference_equal,equivalent;
+ logic actual,kept,grouped,expected,reference_equal,combined_equal,equivalent;
+ logic[{2*width-1}:0] stimulus;
+ bit[{2*width-1}:0] seen_zero='0,seen_one='0,seen_x='0,seen_z='0;
+ assign stimulus={{a,target}};
  proof dut(.*);
  initial begin
   for(integer sample=0;sample<16384;sample++)begin
-   a={width}'($urandom);target={width}'($urandom);
+   for(integer bit_index=0;bit_index<{width};bit_index+=32)begin
+    a[bit_index+:32]=$urandom;target[bit_index+:32]=$urandom;
+   end
    if(sample%2==0)target={width}'(a+{width}'d1);
    if(sample%3==0)a[(sample/3)%{width}]=1'bx;
    if(sample%5==0)target[(sample/5)%{width}]=1'bz;
+   case(sample%16)
+    0:begin a='0;target='0;end
+    1:begin a='1;target='1;end
+    2:begin a='x;target='x;end
+    3:begin a='z;target='z;end
+    default:;
+   endcase
    #1;
-   if(actual!==reference_equal||kept!==reference_equal)$fatal(1,"Increment comparison differs at sample %0d",sample);
+   for(integer bit_index=0;bit_index<{2*width};bit_index++)begin
+    case(stimulus[bit_index])
+     1'b0:seen_zero[bit_index]=1;
+     1'b1:seen_one[bit_index]=1;
+     1'bx:seen_x[bit_index]=1;
+     1'bz:seen_z[bit_index]=1;
+    endcase
+   end
+   if(actual!==reference_equal||kept!==reference_equal||grouped!==reference_equal||
+      grouped!==combined_equal)$fatal(1,"Increment comparison differs at sample %0d",sample);
   end
+  if(((&seen_zero)&&(&seen_one)&&(&seen_x)&&(&seen_z))!==1'b1)
+   $fatal(1,"Increment input coverage");
   $display("INCREMENT_EQUAL_PASS checks=16384");$finish;
  end
 endmodule
@@ -80,7 +108,9 @@ endmodule
         if "INCREMENT_EQUAL_PASS checks=16384" not in (case / "run.log").read_text():
             raise RuntimeError(f"Missing simulation result for width {width}")
         rows.append({"width": width, "all_input_proof": True, "preserve_pair_modes": [False, True],
-                     "four_state_samples": 16384, "four_state_comparisons": 32768})
+                     "reduce_group_widths": [0,6], "four_state_input_bits": 2*width,
+                     "all_bits_seen_zero_one_x_z": True,
+                     "four_state_samples": 16384, "four_state_comparisons": 65536})
         print("INCREMENT_EQUAL_PASS", width, flush=True)
     (out / "summary.json").write_text(json.dumps({"passed": True,
         "source_sha256": {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()

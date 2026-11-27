@@ -13,6 +13,7 @@ arguments += ['-DSYNTHESIS=1', define,
               '-I'+os.environ['FRONTEND_RTL_ROOT']+'/include',
               '-I'+os.environ['FRONTEND_RTL_ROOT']+'/asic/rtl',
               '-GREGISTER_DESCRIPTOR='+os.environ.get('FRONTEND_REGISTER_DESCRIPTOR', '1'),
+              '-GCACHE_RESPONSE_DEPTH='+os.environ.get('FRONTEND_CACHE_RESPONSE_DEPTH', '1'),
               '--output-split', '12000', '--output-groups', '0',
               '-CFLAGS', '-O1 -std=c++20', '-MAKEFLAGS',
               'OPT_FAST=-O1 OPT_SLOW=-O1 OPT_GLOBAL=-O1 '
