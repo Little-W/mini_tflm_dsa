@@ -4,7 +4,8 @@
 // 分组比较两个完整无符号操作数，输出小于及相等关系。
 module parallel_unsigned_compare #(
     parameter int unsigned p_width = 32,
-    parameter bit p_preserve_groups = 1'b0
+    parameter bit p_preserve_groups = 1'b0,
+    parameter bit p_infer_arithmetic = 1'b1
 ) (
     input wire logic [p_width-1:0] i_a, // 第一个定宽操作数
     input wire logic [p_width-1:0] i_b, // 第二个定宽操作数
@@ -28,7 +29,7 @@ module parallel_unsigned_compare #(
 
 `ifdef XILINX_FPGA
     // 宽比较使用两段差值，操作数上限保证每段借位独立保存。
-    if (p_width >= 24 && p_width <= 46) begin : g_inferred
+    if (p_infer_arithmetic && p_width >= 24 && p_width <= 46) begin : g_inferred
         logic less_binary, equal_binary;
         unsigned_compare #(.p_width(p_width)) u_compare (
             .i_a(i_a), .i_b(i_b), .o_less(less_binary), .o_equal(equal_binary)

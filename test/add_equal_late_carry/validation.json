@@ -1,0 +1,85 @@
+{
+  "passed": true,
+  "reference_commit": "9e3e5d6a6f47befe6c86aceacad7999923206458",
+  "input_constraints": null,
+  "source_sha256": {
+    "rtl/common/add_equal.sv": "ee63f77dae251c5e43ef6d7b9f0c3ee30a74da735bdd0164be65a4206eb3a4a0",
+    "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f"
+  },
+  "formal": [
+    {
+      "width": 1,
+      "passed": true,
+      "log_sha256": "ec793e855d351fe97a618dd935f1d08452429ff06a8df910473d01f331d375e9"
+    },
+    {
+      "width": 2,
+      "passed": true,
+      "log_sha256": "3b9f8a7ca7979e855dddb897ebfdd8d1c65664659d1e15ebf3fe0055ae29842e"
+    },
+    {
+      "width": 3,
+      "passed": true,
+      "log_sha256": "c984575adb6b126f0782afe0b9a4e23f173ed248e5b9cb5b7173de33126530c3"
+    },
+    {
+      "width": 4,
+      "passed": true,
+      "log_sha256": "207b04aaa97e39ae1f993328adee67ec082c99b5a5d2787470cbda439370153c"
+    },
+    {
+      "width": 5,
+      "passed": true,
+      "log_sha256": "5a00e7e51d8487490751e9726d82a4076d8bb5ea656d632818de62f3270edb4e"
+    },
+    {
+      "width": 8,
+      "passed": true,
+      "log_sha256": "3a93817ecdb785e5b26c20802a60f6c02a1a66898a0899d96563b8b14b47f4ec"
+    },
+    {
+      "width": 16,
+      "passed": true,
+      "log_sha256": "a122f457541b393c7394f906b7fa5ad888add5bca7031c3764c42f15356eb4d0"
+    },
+    {
+      "width": 24,
+      "passed": true,
+      "log_sha256": "0d73cd167f28a864d160babf9efde36b58776cc243babd6ea18420b1aa0c7ded"
+    },
+    {
+      "width": 28,
+      "passed": true,
+      "log_sha256": "f0ce23c27d0460f3129bf885deed5613d80b3bb781a06e2726717bb3fc1beecf"
+    },
+    {
+      "width": 29,
+      "passed": true,
+      "log_sha256": "532336b3991060d6cbae91e348334f8fafce830270468b75cecba0f9c5667c4f"
+    },
+    {
+      "width": 32,
+      "passed": true,
+      "log_sha256": "76a5defff71dfc29c2844166015ed9b8644b7ca1014cdebaf8f687d668a764a5"
+    },
+    {
+      "width": 33,
+      "passed": true,
+      "log_sha256": "ca89f6819643b2ae3235376809ea77218918a17b07543667322a668452570a6a"
+    },
+    {
+      "width": 48,
+      "passed": true,
+      "log_sha256": "796d36c420474cc7e3ff3cf24972ecd8deaa25114a0b6c773a34f9accdb982b1"
+    },
+    {
+      "width": 64,
+      "passed": true,
+      "log_sha256": "89b54ebd8eebae6a4f92bd7c00677e82313252b1c7b22be654367d3c021aa0e3"
+    }
+  ],
+  "four_state_input_vectors": 114944,
+  "four_state_candidate_comparisons": 689664,
+  "four_state_log_sha256": "6b4ed1a7d94081951e018c2670c96469dd8edea9f5d40c4c1278839284822d19"
+}

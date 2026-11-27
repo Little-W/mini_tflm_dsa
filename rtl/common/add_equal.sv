@@ -5,7 +5,9 @@
 module add_equal #(
     parameter int unsigned p_width = 32,
     parameter bit p_preserve_bits = 1'b0,
-    parameter bit p_keep_bits = p_preserve_bits // 是否保留各位比较结果，结构选择保持独立。
+    parameter bit p_keep_bits = p_preserve_bits, // 是否保留各位比较结果，结构选择保持独立。
+    parameter bit p_keep_groups = 1'b0, // 是否保留六位比较组，使完整等式按平衡结构归并。
+    parameter bit p_late_carry = 1'b0 // 高位匹配先独立归并，输入进位仅参与末级比较。
 ) (
     input  wire logic [p_width-1:0] i_a, // 第一个定宽操作数
     input  wire logic [p_width-1:0] i_b, // 第二个定宽操作数
@@ -14,10 +16,11 @@ module add_equal #(
     output logic                   o_equal // 定宽运算结果与目标值相等
 );
     (* keep = p_keep_bits *) logic [p_width-1:0] bit_equal;
+    logic complete_equal;
 
     if (p_preserve_bits) begin : g_parallel_bits
         localparam int unsigned p_groups = (p_width+5)/6;
-        logic [p_groups-1:0] group_equal;
+        (* keep = p_keep_groups *) logic [p_groups-1:0] group_equal;
         for (genvar bit_index = 0; bit_index < p_width; bit_index++) begin : g_bit
             logic [1:0] a_pair, b_pair, target_pair;
             assign a_pair[1] = i_a[bit_index];
@@ -44,7 +47,7 @@ module add_equal #(
                 .i_equal(bit_equal[p_first+:p_count]), .o_equal(group_equal[group])
             );
         end
-        assign o_equal = &group_equal;
+        assign complete_equal = &group_equal;
     end else begin : g_combined_bits
         assign bit_equal[0] = ~(i_a[0] ^ i_b[0] ^ i_target[0] ^ i_carry_in);
         for (genvar bit_index = 1; bit_index < p_width; bit_index++) begin : g_bit
@@ -53,7 +56,24 @@ module add_equal #(
                 ((i_a[bit_index-1] & i_b[bit_index-1]) |
                  ((i_a[bit_index-1] | i_b[bit_index-1]) & ~i_target[bit_index-1])));
         end
-        assign o_equal = &bit_equal;
+        assign complete_equal = &bit_equal;
+    end
+
+    if (p_late_carry && p_width > 1) begin : g_late_carry
+        localparam int unsigned p_groups = (p_width+4)/6;
+        (* keep = 1 *) logic [p_groups-1:0] group_equal;
+        (* keep = 1 *) logic upper_equal;
+        // 高于最低位的相邻位关系由操作数和目标值确定，与输入进位并行计算。
+        // 六位一组独立归并，使高位匹配保持并行树形结构。
+        for (genvar group = 0; group < p_groups; group++) begin : g_group
+            localparam int unsigned p_first = 1+6*group;
+            localparam int unsigned p_count = p_width-p_first < 6 ? p_width-p_first : 6;
+            assign group_equal[group] = &bit_equal[p_first+:p_count];
+        end
+        assign upper_equal = &group_equal;
+        assign o_equal = upper_equal && bit_equal[0];
+    end else begin : g_complete_compare
+        assign o_equal = complete_equal;
     end
 endmodule
 
