@@ -359,8 +359,8 @@
   "four_state": {
     "0": {
       "passed": true,
-      "reference_revision": "/tmp/npu_soc_write_release/reference",
-      "cycles": 20001,
+      "reference_revision": "91035729bef91966cd41aba1ad0814705b9ee91b",
+      "cycles": 22699,
       "public_outputs": [
         "s0_axi_arready",
         "s0_axi_rvalid",
@@ -436,35 +436,60 @@
         "m_ctrl_arvalid",
         "m_ctrl_rready"
       ],
+      "synthesis": false,
       "write_overlap": 0,
+      "input_coverage": {
+        "input_bits": 534,
+        "all_four_states_per_bit": true,
+        "covered_bits": 534,
+        "bit_observations": {
+          "zero": 6484614,
+          "one": 5050856,
+          "unknown": 292677,
+          "high_impedance": 293119
+        }
+      },
+      "directed_events": {
+        "cpu_read": 1,
+        "npu_read": 1,
+        "cpu_write": 1,
+        "npu_write": 1,
+        "ram_read": 2,
+        "ram_write": 2,
+        "ram_data": 2,
+        "read_response": 2,
+        "write_response": 2,
+        "stalled_cycles": 14
+      },
+      "coverage_helper_sha256": "ba4762ed86b389e3fb1fc6667932fe2ebb911b63b6cb78c1cffbe329e10faff2",
       "source_sha256": {
         "reference": "e524e508a2ec8a46f6172d0eacb50d0967b72295bfe10d21d7c0b088a02b82e2",
-        "current": "57916e0277d22d184cf3b0a01087c04579837aa6ffd42291e58582ac05cb5e5c"
+        "current": "dac250f07fb9f28aa738e84d514c59afd3030ce1c49d3bee7c0de2ddf9c1b34a"
       },
       "strict_four_state_comparison": true,
       "simulator_type_conversion": "枚举类型转换为相同位宽逻辑及同值常量；所有表达式和时序块保持",
       "simulation_source_sha256": {
         "reference.sv": "e9c8acd45d5ffda2607ec45d57211f8df865f4a06fdb716f92432cee67a99f69",
-        "current.sv": "b7f3a03f52c2943b02d6efa4e5332f0f95344b1ef3bc2b6a8f084e0fd21b9975"
+        "current.sv": "23e726dfa0dce0e64b6d9bcc8a831182ffeff5b12bdf8aee8a6db00c63066577"
       },
-      "testbench_sha256": "6ff1ff5adfc5eaea68d39073bb1482e21ae07195a888c5ccf1b6c74a06a8e0de",
-      "run_log_sha256": "95911812cfb8d4d6a9e278033fc716b7ea4f753804dfa2647f4e5fbe009d0a22",
+      "testbench_sha256": "b713610466e063a804d594b3340b0660fa2f4a98749663c263c609b421f2a1f4",
+      "run_log_sha256": "81571f5864a4b5f0c2a9d089f913a681d3a12f0aa4a5feee415619a7c5c44881",
       "build_command": [
         "iverilog",
         "-g2012",
         "-s",
         "tb",
         "-o",
-        "/tmp/npu_soc_write_release/four_state0/simulation.vvp",
-        "/tmp/npu_soc_write_release/four_state0/reference.sv",
-        "/tmp/npu_soc_write_release/four_state0/current.sv",
-        "/tmp/npu_soc_write_release/four_state0/tb.sv"
+        "/workspace/scratch/30bff11e002a/ps_results/four_state_input_coverage/interconnect_0/simulation.vvp",
+        "/workspace/scratch/30bff11e002a/ps_results/four_state_input_coverage/interconnect_0/reference.sv",
+        "/workspace/scratch/30bff11e002a/ps_results/four_state_input_coverage/interconnect_0/current.sv",
+        "/workspace/scratch/30bff11e002a/ps_results/four_state_input_coverage/interconnect_0/tb.sv"
       ]
     },
     "1": {
       "passed": true,
-      "reference_revision": "/tmp/npu_soc_write_release/reference",
-      "cycles": 20001,
+      "reference_revision": "91035729bef91966cd41aba1ad0814705b9ee91b",
+      "cycles": 22699,
       "public_outputs": [
         "s0_axi_arready",
         "s0_axi_rvalid",
@@ -540,29 +565,54 @@
         "m_ctrl_arvalid",
         "m_ctrl_rready"
       ],
+      "synthesis": false,
       "write_overlap": 1,
+      "input_coverage": {
+        "input_bits": 534,
+        "all_four_states_per_bit": true,
+        "covered_bits": 534,
+        "bit_observations": {
+          "zero": 6484614,
+          "one": 5050856,
+          "unknown": 292677,
+          "high_impedance": 293119
+        }
+      },
+      "directed_events": {
+        "cpu_read": 1,
+        "npu_read": 1,
+        "cpu_write": 1,
+        "npu_write": 1,
+        "ram_read": 2,
+        "ram_write": 2,
+        "ram_data": 2,
+        "read_response": 2,
+        "write_response": 2,
+        "stalled_cycles": 15
+      },
+      "coverage_helper_sha256": "ba4762ed86b389e3fb1fc6667932fe2ebb911b63b6cb78c1cffbe329e10faff2",
       "source_sha256": {
         "reference": "e524e508a2ec8a46f6172d0eacb50d0967b72295bfe10d21d7c0b088a02b82e2",
-        "current": "57916e0277d22d184cf3b0a01087c04579837aa6ffd42291e58582ac05cb5e5c"
+        "current": "dac250f07fb9f28aa738e84d514c59afd3030ce1c49d3bee7c0de2ddf9c1b34a"
       },
       "strict_four_state_comparison": true,
       "simulator_type_conversion": "枚举类型转换为相同位宽逻辑及同值常量；所有表达式和时序块保持",
       "simulation_source_sha256": {
         "reference.sv": "e9c8acd45d5ffda2607ec45d57211f8df865f4a06fdb716f92432cee67a99f69",
-        "current.sv": "b7f3a03f52c2943b02d6efa4e5332f0f95344b1ef3bc2b6a8f084e0fd21b9975"
+        "current.sv": "23e726dfa0dce0e64b6d9bcc8a831182ffeff5b12bdf8aee8a6db00c63066577"
       },
-      "testbench_sha256": "0da3a913f0f29228e9a6b16c1b620575062de423ffcc6b182d2477b7abd90543",
-      "run_log_sha256": "e5cc4709b07eb3ed48b414c2051e1e5dd8c8d08488fbb0bdabc8b61ed74c45df",
+      "testbench_sha256": "c3d30ccc46b2bce08f2ee9aaf8f6a5574eac8b08eb353c022a4916850c3f1e5e",
+      "run_log_sha256": "036ea9507553dbc48642483d6bf260f0c6967ad991b35262599427e9fc5ccbe0",
       "build_command": [
         "iverilog",
         "-g2012",
         "-s",
         "tb",
         "-o",
-        "/tmp/npu_soc_write_release/four_state1/simulation.vvp",
-        "/tmp/npu_soc_write_release/four_state1/reference.sv",
-        "/tmp/npu_soc_write_release/four_state1/current.sv",
-        "/tmp/npu_soc_write_release/four_state1/tb.sv"
+        "/workspace/scratch/30bff11e002a/ps_results/four_state_input_coverage/interconnect_1/simulation.vvp",
+        "/workspace/scratch/30bff11e002a/ps_results/four_state_input_coverage/interconnect_1/reference.sv",
+        "/workspace/scratch/30bff11e002a/ps_results/four_state_input_coverage/interconnect_1/current.sv",
+        "/workspace/scratch/30bff11e002a/ps_results/four_state_input_coverage/interconnect_1/tb.sv"
       ]
     }
   },

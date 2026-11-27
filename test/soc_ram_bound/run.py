@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import shlex
 import subprocess
 import sys
@@ -50,16 +51,22 @@ endmodule
 ''')
     profiles = [(aw, dw, dp) for aw, dw in ((8, 8), (8, 64), (16, 32), (32, 32), (32, 64), (40, 128))
                 for dp in (1, 3, 16, 32, 64, 128, 1024, 1031, 32768, 32769)]
+    resolver = runpy.run_path(str(ROOT / 'scripts/rtl/source_files.py'))
+    sources = resolver['with_dependencies']([harness], args.source_root)
+    source_hashes = {str(path.relative_to(args.source_root)): hashlib.sha256(path.read_bytes()).hexdigest()
+                     for path in sources if path.is_relative_to(args.source_root)}
     summary = {'passed': False, 'inputs_constrained': False,
                'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
                'model_sha256': hashlib.sha256(model_source.read_bytes()).hexdigest(),
+               'dependency_sha256': source_hashes,
                'profiles': []}
     for aw, dw, dp in profiles:
         name = f'aw{aw}_dw{dw}_dp{dp}'
         script = out / (name + '.ys')
         log = out / (name + '.log')
-        script.write_text('read_verilog -sv ' + shlex.quote(str(harness)) + '\n' +
+        script.write_text('read_verilog -sv ' + ' '.join(shlex.quote(str(path)) for path in sources) + '\n' +
                           f'chparam -set AW {aw} -set DW {dw} -set DP {dp} bound_formal\n' +
+                          'setattr -mod -unset keep_hierarchy\nsetattr -unset keep_hierarchy\n' +
                           'prep -top bound_formal -flatten\ncheck -assert\n' +
                           'sat -verify -prove correct 1 -show-inputs -show-outputs\n')
         with log.open('w') as stream:
@@ -70,6 +77,9 @@ endmodule
                                     'passed': passed})
         if not passed:
             raise RuntimeError(f'越界预测证明未通过：{log}')
+    if any(hashlib.sha256((args.source_root / name).read_bytes()).hexdigest() != value
+           for name, value in source_hashes.items()):
+        raise RuntimeError('验证期间依赖源码发生变化')
     summary['passed'] = True
     (out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(json.dumps({'passed': True, 'profiles': len(profiles)}))

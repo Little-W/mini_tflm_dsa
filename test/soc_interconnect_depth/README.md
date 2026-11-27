@@ -6,7 +6,9 @@ CPU 读地址进入两项队列时保存目的端口标志。写地址直接产�
 
 ## 验证
 
-十六组参数分别证明容量标志、目的端口标志与原始状态的关系，并在公开输入不增加限制的条件下比较完整模块状态与输出，共 16,450 位。参数覆盖 32、40、64 位地址、32、64 位数据、不同存储容量及地址起点，以及写地址与首拍数据的重叠开关。两组严格四态仿真共比较 40,002 个周期中的 73 个公开输出和读事务状态。
+十六组参数分别证明容量标志、目的端口标志与原始状态的关系，并在公开输入不增加限制的条件下比较完整模块状态与输出，共 16,450 位。参数覆盖 32、40、64 位地址、32、64 位数据、不同存储容量及地址起点，以及写地址与首拍数据的重叠开关。两组严格四态仿真共比较 45,398 个周期中的 73 个公开输出和读事务状态。
+
+四态仿真依据端口声明生成 534 位输入刺激，并在运行期检查实际端口宽度。每个输入位独立覆盖 0、1、X、Z。两种写入重叠配置均执行 CPU 与 NPU 各一笔读取和写入，分别记录地址、数据、响应握手及 14 个背压周期。
 
 写事务测试在 32、64 位数据接口、1、4 个在途请求和写入重叠开关的六种配置下完成 24,576 笔事务。测试检查背压、响应顺序、错误地址、复位和并发请求。并发读写事务测试入口另见 `test/soc_interconnect_transactions`。
 
@@ -18,9 +20,11 @@ CPU 读地址进入两项队列时保存目的端口标志。写地址直接产�
 
 ```bash
 python test/soc_interconnect_depth/run_formal.py \
-  --reference-ref fe0ed2325743c9b353b74377fbe7b4a1e9d19d64 --write-overlaps 0 1 --out build/interconnect_formal
+  --reference-ref 91035729bef91966cd41aba1ad0814705b9ee91b --write-overlaps 0 1 --out build/interconnect_formal
 python test/soc_interconnect_depth/check_four_state.py \
-  --reference-ref fe0ed2325743c9b353b74377fbe7b4a1e9d19d64 --out build/interconnect_four_state
+  --write-overlap 0 --out build/interconnect_four_state0
+python test/soc_interconnect_depth/check_four_state.py \
+  --write-overlap 1 --out build/interconnect_four_state1
 python test/soc_interconnect_writes/run.py --verilator verilator --out build/interconnect_writes
 ```
 

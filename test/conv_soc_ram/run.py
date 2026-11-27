@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import runpy
 import shutil
 import subprocess
 import tempfile
@@ -53,15 +54,25 @@ def main():
         report['compile_jobs'] = args.jobs
         snapshot = results / 'source'
         snapshot.mkdir(exist_ok=True)
-        (snapshot / 'soc_axi_ram.sv').write_bytes(source.read_bytes())
-        source = snapshot / 'soc_axi_ram.sv'
+        resolver = runpy.run_path(str(ROOT / 'scripts/rtl/source_files.py'))
+        sources = resolver['with_dependencies']([source], ROOT)
+        compile_sources = []
+        report['source_snapshot_sha256'] = {}
+        for dependency in sources:
+            relative = dependency.relative_to(ROOT) if dependency.is_relative_to(ROOT) else Path(dependency.name)
+            saved = snapshot / relative
+            saved.parent.mkdir(parents=True, exist_ok=True)
+            saved.write_bytes(dependency.read_bytes())
+            compile_sources.append(saved)
+            report['source_snapshot_sha256'][str(relative)] = hashlib.sha256(saved.read_bytes()).hexdigest()
         for dw, dp, outstanding, latency in [(dw, dp, outstanding, latency) for dw in (32,64) for dp,outstanding in configurations for latency in (args.first_read_latencies if (dp,outstanding)==(1031,4) else [8])]:
             with tempfile.TemporaryDirectory(prefix=f'dw{dw}_dp{dp}_o{outstanding}_l{latency}_', dir=temporary) as build_name:
                 build = Path(build_name)
                 log = results / f'{stem}_dw{dw}_dp{dp}_o{outstanding}_l{latency}_build.log'
                 command = [sim, '--binary', '--timing', '--assert', '-Wall', '-Wno-fatal',
                            '--top-module', 'tb_soc_axi_ram_narrow', f'-GFIRST_LATENCY={latency}', f'-GDW={dw}', f'-GDP={dp}', f'-GOUTSTANDING={outstanding}',
-                           '--Mdir', str(build), '-j', str(args.jobs), str(source), str(HERE / 'tb_soc_axi_ram_narrow.sv')]
+                           '--Mdir', str(build), '-j', str(args.jobs), *map(str, compile_sources),
+                           str(HERE / 'tb_soc_axi_ram_narrow.sv')]
                 if args.synthesis:
                     command.append('-DSYNTHESIS=1')
                 with log.open('w') as stream:

@@ -391,17 +391,17 @@ module soc_axi_ram #(
     if (((DP & (DP-1)) == 0) && ((WORD_ADDR_BITS+1)'(DP) != '0) &&
         ADDR_LSB + $clog2(DP) >= 8) begin : g_read_predicted_bound
         localparam int p_capacity_bits = ADDR_LSB + $clog2(DP);
-        logic [7:0] lower_keep_mask;
-        // 地址归约独立于突发选择，保留晚到控制信号之前的组合边界。
-        (* keep = 1 *) logic lower_carry;
+        logic lower_carry;
         logic middle_carry;
         (* keep = 1 *) logic current_oob, upper_all_ones;
         logic next_oob, command_oob;
 
         // 容量边界以下的进位与边界以上的地址独立归约，直接预测下一拍越界状态。
-        // 最高扩展位参与判断，地址空间末端的定宽回绕也保留相同结果。
-        assign lower_keep_mask = 8'hff << rd_size_active_q;
-        assign lower_carry = &(rd_byte_addr_q[7:0] | ~lower_keep_mask);
+        // 低字节的组合模块保留步长选择与后续容量判断之间的逻辑边界。
+        (* keep_hierarchy = "yes" *) soc_ram_low_carry u_lower_carry (
+            .i_address(rd_byte_addr_q[7:0]), .i_size(rd_size_active_q),
+            .o_carry(lower_carry)
+        );
         if (p_capacity_bits > 8) begin : g_middle
             localparam int p_middle_groups = (p_capacity_bits - 8 + 2) / 3;
             logic [p_middle_groups-1:0] middle_full;
