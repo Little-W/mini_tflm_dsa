@@ -32,6 +32,8 @@ PATH="$EXPERIMENT/tools/python/bin:$EXPERIMENT/tools/verilator/bin:$PATH" \
 
 `validation.json` 分别记录数值检查结果与 `all_case_cycles_not_increased`。`execution.json` 中的 `performance_passed` 给出性能比较结果。源码、工具、编译输入、仿真程序和压缩文件均保存 SHA-256。
 
+`cycle_summary` 同时记录全部任务的参考总周期、当前总周期、总周期变化百分比和周期增加、减少、相同的任务数。总周期变化百分比由两个总周期计算。`maximum_cycle_increase` 保存绝对增加周期最多的任务，`maximum_relative_cycle_increase` 保存增加百分比最高的任务；没有周期增加时，两项均为 `null`。生成的报告也列出这些统计及每项周期增加。
+
 比较函数检查可单独运行：
 
 ```bash
@@ -40,7 +42,7 @@ python test/uploaded_performance/test_compare.py
 
 ## 独立核对保存结果
 
-`audit.py` 再次核对冻结源码与 Git 对象、实际编译输入、仿真程序和压缩记录。它从压缩记录中读取全部任务的内存图像摘要、配置、输出及运行日志，并重新计算 68 项周期差。性能状态与数值状态分别保存。
+`audit.py` 再次核对冻结源码与 Git 对象、实际编译输入、仿真程序和压缩记录。它从压缩记录中读取全部任务的内存图像摘要、配置、输出及运行日志，并重新计算 68 项周期差、总周期和最大周期增加，核对运行入口保存的汇总结果。性能状态与数值状态分别保存。
 
 ```bash
 python test/uploaded_performance/audit.py \

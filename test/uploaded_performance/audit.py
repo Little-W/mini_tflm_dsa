@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 import tarfile
 
-from run import digest, read_json, require, source_snapshot, verify_profile, write_json
+from run import digest, read_json, require, source_snapshot, summarize_cycles, verify_profile, write_json
 
 
 COLLECTIONS = {"operators": 36, "supplementary": 26, "exact_ar2": 6}
@@ -142,6 +142,11 @@ def audit(source, current, reference):
         require(len(collection_rows) == count, "集合任务数量不同: " + collection)
         rows.extend(collection_rows)
     no_increase = all(row["cycle_delta"] <= 0 for row in rows)
+    cycle_summary = summarize_cycles([{**row, "checkpoint_cycles": row["reference_cycles"],
+                                      "measured_cycles": row["current_cycles"]} for row in rows])
+    for record in (execution, validation):
+        if "cycle_summary" in record:
+            require(record["cycle_summary"] == cycle_summary, "周期总数或最大增加任务不同")
     require(no_increase == execution["performance_passed"]
             == validation["all_case_cycles_not_increased"], "性能汇总不同")
     require(output_bytes == validation["actual_output_bytes"] == 411414
@@ -152,6 +157,7 @@ def audit(source, current, reference):
         "reference_commit": reference_execution["source_commit"], "case_count": len(rows),
         "memory_words_checked": 68*524288, "output_bytes": output_bytes,
         "performance_passed": no_increase, "increased_case_count": sum(row["cycle_delta"] > 0 for row in rows),
+        "cycle_summary": cycle_summary,
         "reference_cycles": sum(row["reference_cycles"] for row in rows),
         "current_cycles": sum(row["current_cycles"] for row in rows), "cases": rows,
         "current_validation_sha256": digest(current/"validation.json"),

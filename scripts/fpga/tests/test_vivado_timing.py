@@ -11,6 +11,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import unittest
 
@@ -79,6 +80,18 @@ class TimingTests(unittest.TestCase):
     tclsh: str
     picorv32: Path | None
     cases = []
+
+    @classmethod
+    def setUpClass(cls):
+        if not hasattr(cls, 'directory'):
+            temporary = tempfile.TemporaryDirectory(prefix='vivado_timing_')
+            cls.addClassCleanup(temporary.cleanup)
+            cls.directory = Path(temporary.name)
+        if not hasattr(cls, 'tclsh'):
+            cls.tclsh = 'tclsh'
+        if not hasattr(cls, 'picorv32'):
+            cls.picorv32 = None
+        cls.cases = []
 
     def setUp(self):
         self.work = self.directory / 'cases' / self._testMethodName
@@ -368,6 +381,11 @@ foreach path $include_dirs {{ puts "INCLUDE\\t[file normalize $path]" }}
         excluded = {ROOT / 'rtl/axi_top/axil_top_with_ram.sv'}
         self.assertTrue(excluded.issubset(set(required)))
         required = set(required) - excluded
+        memory_sources = {ROOT / 'test/models/soc_axi_ram.sv': ROOT / 'rtl/soc/soc_axi_ram.sv'}
+        for simulation_source, production_source in memory_sources.items():
+            self.assertIn(simulation_source, required)
+            required.remove(simulation_source)
+            required.add(production_source)
         self.assertTrue(required.issubset(set(actual)), '\n'.join(str(path) for path in sorted(required - set(actual))))
         self.assertTrue(all(path.is_file() for path in actual))
         actual_includes = {Path(line.split('\t', 1)[1]) for line in result.stdout.splitlines() if line.startswith('INCLUDE\t')}
@@ -375,6 +393,7 @@ foreach path $include_dirs {{ puts "INCLUDE\\t[file normalize $path]" }}
         self.assertIn(ROOT / 'rtl/soc_top.sv', actual)
         report = dict(command_model_only=True, dut_axil_sources=len(required),
                       vivado_sources=len(actual), excluded_simulation_wrappers=sorted(map(str, excluded)),
+                      simulation_memory_sources={str(source): str(target) for source, target in memory_sources.items()},
                       required_sources=sorted(map(str, required)), vivado_source_sha256={str(path): digest(path) for path in actual})
         (case / 'source_coverage.json').write_text(json.dumps(report, indent=2) + '\n')
 

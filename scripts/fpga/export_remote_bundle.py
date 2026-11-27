@@ -105,6 +105,7 @@ def main():
     if observed_ref != remote_ref:
         raise RuntimeError('远端返回的分支与请求不一致')
     git('fetch', '--no-tags', args.remote, base)
+    remote_url = git('remote', 'get-url', args.remote).decode().strip()
     git('merge-base', '--is-ancestor', base, revision)
     evaluation_path = args.evaluation.resolve()
     evaluation = json.loads(evaluation_path.read_text())
@@ -141,7 +142,7 @@ def main():
         while line := stream.readline().rstrip(b'\n'):
             if line.startswith(b'-'):
                 prerequisites.append(line[1:].split(b' ', 1)[0].decode())
-    independent_repository(ROOT, restored, base)
+    independent_repository(remote_url, restored, base)
     git('bundle', 'verify', bundle, directory=restored)
     git('fetch', '--no-tags', bundle,
         '+refs/checkpoints/'+args.label+'/*:refs/checkpoints/'+args.label+'/*', directory=restored)
@@ -187,7 +188,7 @@ def main():
         'bundle_bytes': bundle.stat().st_size, 'bundle_sha256': digest(bundle),
         'commits_since_remote': int(git('rev-list', '--count', base+'..'+revision)),
         'independent_restore': {'passed': True, 'independent_object_store': True,
-            'base_object_source': 'fetch of the verified remote commit from the local object store',
+            'base_object_source': 'fetch of the verified commit from the configured remote URL',
             'bundle_verified_against_base': True, 'fsck_full_strict_passed': True,
             'fsck_stdout_sha256': hashlib.sha256(fsck).hexdigest(),
             'head_matches': True, 'tree_matches': True, 'tracked_files': len(original_files),

@@ -169,6 +169,28 @@ def compare_numbers(previous, current):
     return rows
 
 
+def summarize_cycles(cases):
+    """汇总实际周期总数，并分别记录绝对增加最多和相对增加最多的任务。"""
+    require(cases, "周期汇总需要至少一项任务")
+    rows = []
+    for case in cases:
+        before, after = case["checkpoint_cycles"], case["measured_cycles"]
+        require(before > 0 and after >= 0, "周期计数超出有效范围: " + case["name"])
+        rows.append({"collection": case["collection"], "kind": case["kind"], "name": case["name"],
+                     "reference_cycles": before, "current_cycles": after, "cycle_delta": after - before,
+                     "cycle_change_percent": 100.0 * (after - before) / before})
+    increased = [row for row in rows if row["cycle_delta"] > 0]
+    before = sum(row["reference_cycles"] for row in rows)
+    after = sum(row["current_cycles"] for row in rows)
+    return {"case_count": len(rows), "increased_case_count": len(increased),
+            "decreased_case_count": sum(row["cycle_delta"] < 0 for row in rows),
+            "equal_case_count": sum(row["cycle_delta"] == 0 for row in rows),
+            "reference_cycles": before, "current_cycles": after, "cycle_delta": after - before,
+            "cycle_change_percent": 100.0 * (after - before) / before,
+            "maximum_cycle_increase": max(increased, key=lambda row: row["cycle_delta"], default=None),
+            "maximum_relative_cycle_increase": max(increased, key=lambda row: row["cycle_change_percent"], default=None)}
+
+
 def profile_records(text, fixed):
     result = {}
     for prefix in PROFILE_PREFIXES:
@@ -227,7 +249,7 @@ def verify_collection(directory, collection, count, interval, source_commit, fix
                     "输出校验值不同: " + name)
             require(len(output) == tensors["output_bytes"], "输出字节数不同")
             require([int(value, 16) for value in (folder / "config.mem").read_text().split()]
-                    == row["configuration_words"], "配置字不同")
+                    == row["configuration_words"] == previous["configuration_words"], "配置字不同")
             for filename, expected_hash in row["files"].items():
                 require(digest(folder / filename) == expected_hash, "内存输入不同: " + name + "/" + filename)
             require(fixed.memory_segment(folder / "golden.mem", row["addresses"]["c"], len(output)) == output,
@@ -294,6 +316,7 @@ def verify_reference(reference, fixed, snapshot, inputs):
 
 def write_report(out, validation):
     rows = validation["cases"]
+    cycles = validation["cycle_summary"]
     fields = ("collection", "name", "kind", "checkpoint_cycles", "measured_cycles", "cycle_delta",
               "cycle_change_percent", "actual_output_bytes", "actual_output_sha256")
     with (out / "cases.csv").open("w", newline="") as stream:
@@ -314,9 +337,13 @@ def write_report(out, validation):
              "| 集合 | 项数 | 449 周期 | 当前周期 | 周期差 |", "|---|---:|---:|---:|---:|"]
     for name, values in validation["totals"].items():
         lines.append(f"| {name} | {values['cases']} | {values['reference_cycles']:,} | {values['current_cycles']:,} | {values['cycle_delta']:+,} |")
+    lines.append(f"| 合计 | {cycles['case_count']} | {cycles['reference_cycles']:,} | {cycles['current_cycles']:,} | {cycles['cycle_delta']:+,} |")
     increased = [row for row in rows if row["cycle_delta"] > 0]
-    lines += ["", f"逐项周期增加：{len(increased)} 项。任何正的周期差均计入，比较不使用容差。", ""]
+    lines += ["", f"总周期变化为 {cycles['cycle_change_percent']:+.6f}%。逐项周期增加 {cycles['increased_case_count']} 项、减少 {cycles['decreased_case_count']} 项、相同 {cycles['equal_case_count']} 项。任何正的周期差均计入，比较不使用容差。", ""]
     if increased:
+        absolute = cycles["maximum_cycle_increase"]
+        relative = cycles["maximum_relative_cycle_increase"]
+        lines += [f"绝对周期增加最多的任务为 `{absolute['collection']}/{absolute['name']}`，增加 {absolute['cycle_delta']} 个周期，变化 {absolute['cycle_change_percent']:+.6f}%。相对周期增加最多的任务为 `{relative['collection']}/{relative['name']}`，变化 {relative['cycle_change_percent']:+.6f}%，增加 {relative['cycle_delta']} 个周期。", ""]
         lines += ["| 集合 | 任务 | 449 周期 | 当前周期 | 周期差 | 变化百分比 |", "|---|---|---:|---:|---:|---:|"]
         for row in increased:
             lines.append(f"| {row['collection']} | {row['name']} | {row['checkpoint_cycles']} | {row['measured_cycles']} | +{row['cycle_delta']} | {row['cycle_change_percent']:+.6f}% |")
@@ -407,12 +434,14 @@ def main():
                 "仿真程序压缩校验不同")
     binary.unlink()
     no_increase = all(row["cycle_delta"] <= 0 for row in rows)
+    cycle_summary = summarize_cycles(rows)
     validation = {"passed": True, "validated_at": now(), "source_commit": args.commit, "reference_commit": fixed.COMMIT,
                   "case_count": len(rows), "checked_memory_words_per_case": fixed.MEMORY_WORDS,
                   "checked_memory_words_total": fixed.MEMORY_WORDS * len(rows),
                   "actual_output_bytes": sum(row["actual_output_bytes"] for row in rows),
                   "all_actual_outputs_equal_input_reference": True, "all_external_responses_completed": True,
                   "all_case_cycles_not_increased": no_increase, "positive_cycle_difference_tolerance": 0,
+                  "cycle_summary": cycle_summary,
                   "reference_profile": reference_profile,
                   "current_profile": read_json(out / "records/operators/hardware_profile.json"),
                   "reference_pipeline_parameters": pipeline_profile(config["source"]),
@@ -430,10 +459,11 @@ def main():
                "started_at": started, "completed_at": now(), "commands": commands, "archives": archives,
                "simulator_archive": {"path": "archives/simulator.tar.gz", "sha256": digest(binary_archive)},
                "wrapper_sha256": wrapper_sha, "wrapper_file": "tools/run.py", "tools": versions,
-               "performance_passed": no_increase})
+               "performance_passed": no_increase, "cycle_summary": cycle_summary})
     write_report(out, validation)
     print(json.dumps({"numerical_passed": True, "performance_passed": no_increase,
-                      "case_count": len(rows), "totals": validation["totals"]}, ensure_ascii=False, indent=2))
+                      "case_count": len(rows), "totals": validation["totals"],
+                      "cycle_summary": cycle_summary}, ensure_ascii=False, indent=2))
     return 0 if no_increase else 1
 
 

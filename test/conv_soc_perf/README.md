@@ -10,6 +10,9 @@ RV32 固件执行完整 NMSIS 调用，通过真实 MMIO 提交任务；测试�
 [SoC 性能报告](../../docs/conv_soc_performance.md)；审计规则见
 [benchmark_review.md](benchmark_review.md)。
 
+当前共享存储配置下的 CPU、AXI、WS、IS 和 DMA 写回集成检查见
+[integration.md](integration.md)，其中列出完整复现命令及固件编译选项。
+
 ## 实验范围
 
 默认主实验为下列 **5 层 × 原软件路径/硬件 WS = 10 次**独立冷复位执行。
@@ -63,7 +66,8 @@ python3 test/conv_soc_perf/run.py \
   --verilator /path/to/verilator \
   --gcc /path/to/riscv64-unknown-elf-gcc \
   --newlib-include /path/to/newlib/include \
-  --runtime-lib build/conv_soc_runtime/libnewlib_memory.a
+  --runtime-lib build/conv_soc_runtime/libnewlib_memory.a \
+  --firmware-optimization Os --firmware-lto
 ```
 
 源版本和 package SHA 常量在
@@ -81,6 +85,7 @@ case 到生成向量的来源使用相对路径，不要求生成文件位于仓
 python3 test/conv_soc_perf/run.py \
   --out build/conv_soc_perf --skip-build --skip-firmware \
   --gcc /path/to/riscv64-unknown-elf-gcc \
+  --firmware-optimization Os --firmware-lto \
   --layers justure_detect_sg0_op7 --modes 0 1 --latency 4 \
   --summary-name latency4_summary.json
 
@@ -89,6 +94,7 @@ python3 test/conv_soc_perf/run.py \
   --gcc /path/to/riscv64-unknown-elf-gcc \
   --newlib-include /path/to/newlib/include \
   --runtime-lib build/conv_soc_runtime/libnewlib_memory.a \
+  --firmware-optimization Os --firmware-lto \
   --dataflow 1 --layers mnist_cnn_sg0_op0 --modes 2 \
   --summary-name is_summary.json
 
@@ -108,12 +114,13 @@ python3 test/conv_soc_perf/audit.py --evidence build/conv_soc_perf
 
 ## 固定条件与计量单位
 
-- 标准支持 Conv 的 profile：`PCR_ENGINE=0`、SIZE16、IA 4 slots、PS 16 frames，
-  默认 1 KiB 原图主 cache、policy2、16 B transient；不是默认 PCR profile。
+- 当前配置为 SIZE16、16 位输入和权重、32 位 AXI、PS 16 frames、向量计算 8 通道。
+  共享 IA/PS 存储由 7 个 8 KiB 银行组成；原图缓存为 4 KiB、16 组、2 路、128 B 缓存行、policy3。
 - PicoRV32 固定 submodule `ef203c2b0a3fb793280f5114941416c425c5b461`；
   RV32IM、乘除开启、无压缩指令、32 位 cycle CSR，CPU instruction cache 缺省关闭。
 - 2 MiB 共享 RAM，读写 outstanding 各 4，主实验固定附加响应延迟为 0。
-- 固件 `-O3 -march=rv32im_zicsr -mabi=ilp32`。可复现配置使用 GCC 14.2.0、
+- 当前集成固件使用 `-Os -flto -march=rv32im_zicsr -mabi=ilp32`，优化选项写入构建摘要。
+  可复现配置使用 GCC 14.2.0、
   newlib 4.5.0.20241231 官方优化内存函数；两个主模式链接同一个 ELF。
 - 主时间是 CPU `rdcycle` 包围完整 NMSIS 调用的模差。初始化、golden 生成、
   guard 初始化、完整输出比对、统计读回均在区间外，无函数级 `--wrap` 性能探针。

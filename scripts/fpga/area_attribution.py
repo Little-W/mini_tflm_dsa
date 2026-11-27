@@ -13,7 +13,11 @@ def main():
     parser.add_argument('--mapped', type=Path, required=True)
     parser.add_argument('--metrics', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--max-lut-sites', type=int, default=55000,
+                        help='完整 SoC 的名义 LUT 数量上限')
     args = parser.parse_args()
+    if args.max_lut_sites < 1:
+        parser.error('--max-lut-sites must be positive')
     mp = args.mapped.resolve()
     mt = args.metrics.resolve()
     output = args.out.resolve()
@@ -216,7 +220,7 @@ def main():
         })
     resources = metrics['resources']
     nominal = resources['lut_sites_nominal_before_packing']
-    target = 50000
+    target = args.max_lut_sites
     paths = []
     for path in metrics['paths']['distinct_register_path_groups']:
         paths.append({

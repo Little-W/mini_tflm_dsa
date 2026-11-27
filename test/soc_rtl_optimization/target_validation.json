@@ -1,27 +1,33 @@
 {
   "passed": true,
-  "slice_lut_target": 50000,
-  "physical_lut_position_target": 50000,
-  "test_count": 33,
+  "scope": "资源上限、连接路径完整性、时序报告解析与 Tcl 执行控制检查",
+  "slice_lut_target": 55000,
+  "physical_lut_position_target": 55000,
+  "test_count": 62,
   "resource_boundary_cases": [
-    49999,
-    50000,
-    50001
+    54999,
+    55000,
+    55001
   ],
   "register_path_limit": 10,
   "clock_target_mhz": 150,
   "custom_resource_limit_supported": true,
+  "actual_vivado_executed": false,
   "placement_executed": false,
   "commands": [
-    "python -m unittest discover -s scripts/fpga/tests -p test_vivado_soc_results.py",
-    "python -m unittest discover -s scripts/fpga/tests -p test_vivado_structural_coverage.py",
-    "python test/soc_rtl_optimization/run_physical.py --help"
+    "python -m unittest discover -s scripts/fpga/tests -p test_vivado_*.py",
+    "python test/soc_rtl_optimization/run_physical.py --help",
+    "python scripts/fpga/area_attribution.py --help"
   ],
+  "test_log_sha256": "f3f9fa191060f6a9a30ba50415c5c08f62721ae6618932377541c6b1c59fa511",
   "source_sha256": {
-    "scripts/fpga/vivado_soc_results.py": "bdf157f5b8161c2bddb2f797323e26db72f878e785663835136821fbc1d4f4fe",
-    "scripts/fpga/tests/test_vivado_soc_results.py": "798aa1127706c72ea8b2d923bb65b41a82fe13857a5fd33d07123346c62d6e7b",
-    "scripts/fpga/tests/test_vivado_structural_coverage.py": "ad6b781b22591ec9ded73ef7350e218a387fd9c49c844fdaa10c0f76ccb0ebac",
-    "test/soc_rtl_optimization/run_physical.py": "6e2a1e346aee33019124b635b0586bb90ceafbe2979ad6c2351870f8e808b994",
-    "scripts/fpga/area_attribution.py": "a96e4eb214d412227e85f056e8abba1fd1341921931f22dc59d43d6a9f07336e"
+    "scripts/fpga/tests/test_vivado_clock_configuration.py": "5e34cfd82f7825bf1734cc634d8d769b29c920ecc731ae5c2b4de555927465d9",
+    "scripts/fpga/tests/test_vivado_path_diagnostics.py": "b3067480fc215eced8c03924ad841d93b8535e966e1721233f4282c8048ac4bf",
+    "scripts/fpga/tests/test_vivado_soc_results.py": "d75efb5cf9cfe32b7325c450ca1fe02b366aab4442b4ae1d9cf6b97f9e8db2cc",
+    "scripts/fpga/tests/test_vivado_structural_coverage.py": "6e6cf9198e2606ddfcaf351676e19826e12f859500077a83ed978e99068ba897",
+    "scripts/fpga/tests/test_vivado_timing.py": "663f171efa7ca51bbd0a9028f0df159ab2331dba0bea7b60074727d969e4f5f8",
+    "scripts/fpga/vivado_soc_results.py": "592fccc04afb200b6764704f670ed3beb67e1487d9e7e543acfd8224d4450441",
+    "scripts/fpga/area_attribution.py": "83ee530383a03b48c415ef79f0b43067985f4d9c245fc724a1bb775c94696f1b",
+    "test/soc_rtl_optimization/run_physical.py": "fd646b1d7b5c0b540765409a2d8b76f78c3f6812716bea417780da56b6324fd1"
   }
 }

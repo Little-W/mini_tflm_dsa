@@ -105,8 +105,11 @@ def build_sim(out: Path, verilator: str, jobs: int, *, skip=False, icache=0, reu
         previous_binary = previous_root / 'obj/Vtb_conv_soc_perf'
         expected = {'cpu_icache': icache, 'size': 16, 'ram_words': RAM_WORDS,
                     'ia_cache_blocks': 4, 'ps_frame_count': 16,
-                    'conv_cache_sets': 32, 'conv_cache_ways': 2,
-                    'conv_line_bytes': 16, 'conv_cache_policy': 2}
+                    'conv_cache_sets': 16, 'conv_cache_ways': 2,
+                    'conv_line_bytes': 128, 'conv_cache_policy': 3,
+                    'bus_width': 32, 'shared_bank_bytes': 8192,
+                    'shared_bank_count': 7, 'ps_pool_bytes': 49152,
+                    'frame_storage_enabled': True, 'vector_pe_count': 8}
         if (manifest.get('returncode') != 0 or not manifest.get('sources_unchanged_during_build') or
                 manifest['source_sha256'] != before or
                 any(manifest.get(key) != value for key, value in expected.items()) or
@@ -126,8 +129,11 @@ def build_sim(out: Path, verilator: str, jobs: int, *, skip=False, icache=0, reu
         return binary
     args = [verilator, "--binary", "--timing", "--assert", "-sv", "--top-module",
             "tb_conv_soc_perf", "-Wno-fatal", "--Mdir", out / "obj", "-j", jobs,
-            "-CFLAGS", "-std=c++20 -O2", "-MAKEFLAGS", "OPT_FAST=-O2 OPT_SLOW=-O0",
-            f"-DSOC_PERF_ICACHE={icache}", "-f", filelist, HERE / "tb_conv_soc_perf.sv"]
+            "--output-groups", "0", "--output-split", "12000",
+            "-CFLAGS", "-std=c++20 -O2", "-MAKEFLAGS",
+            "OPT_FAST=-O2 OPT_SLOW=-O0 VK_PCH_I_FAST= VK_PCH_I_SLOW= CFG_CXXFLAGS_PCH=-E",
+            f"-DSOC_PERF_ICACHE={icache}", "-DGEMPACT_PS_COMPRESS",
+            "-DGEMMORA_PS_POOL_BYTES=49152", "-f", filelist, HERE / "tb_conv_soc_perf.sv"]
     rc = command(args, out / "compile.log", cwd=cwd)
     after = source_hashes(sources)
     log = (out / "compile.log").read_text()
@@ -139,7 +145,9 @@ def build_sim(out: Path, verilator: str, jobs: int, *, skip=False, icache=0, reu
         "cpu": "production picorv32", "cpu_isa": "RV32IM, no compressed ISA, 32-bit rdcycle",
         "cpu_icache": icache, "ram_words": RAM_WORDS, "size": 16,
         "ia_cache_blocks": 4, "ps_frame_count": 16,
-        "conv_cache_sets": 32, "conv_cache_ways": 2, "conv_line_bytes": 16, "conv_cache_policy": 2,
+        "conv_cache_sets": 16, "conv_cache_ways": 2, "conv_line_bytes": 128, "conv_cache_policy": 3,
+        "bus_width": 32, "shared_bank_bytes": 8192, "shared_bank_count": 7,
+        "ps_pool_bytes": 49152, "frame_storage_enabled": True, "vector_pe_count": 8,
         "axi_read_outstanding": 4, "axi_write_outstanding": 4,
         "cpu_axi_read_timing_buffer": 1, "cpu_axi_write_timing_buffer": 1,
         "npu_axi_timing_buffer": 1, "bypass_ram_pingpong": 1, "ram_write_timing_buffer": 1,
@@ -176,13 +184,16 @@ def compiler_sibling(gcc: str, name: str) -> str:
 
 
 def build_firmware(out: Path, gcc: str, *, dataflow=0, smoke=False, skip=False,
-                   newlib_include: Path | None = None, runtime_lib: Path | None = None) -> dict:
+                   newlib_include: Path | None = None, runtime_lib: Path | None = None,
+                   optimization="O3", link_time_optimization=False) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     manifest_path = out / "firmware.json"
     if skip:
         manifest = json.loads(manifest_path.read_text())
         verify_sources(manifest)
-        if manifest["compiled_dataflow"] != dataflow or manifest["smoke"] != smoke:
+        if (manifest["compiled_dataflow"] != dataflow or manifest["smoke"] != smoke or
+                manifest.get("optimization", "O3") != optimization or
+                manifest.get("link_time_optimization", False) != link_time_optimization):
             raise RuntimeError("firmware profile mismatch")
         if digest(out / "cpu.elf") != manifest["elf_sha256"]:
             raise RuntimeError("firmware ELF hash mismatch")
@@ -196,7 +207,7 @@ def build_firmware(out: Path, gcc: str, *, dataflow=0, smoke=False, skip=False,
     dependencies += list((ROOT / "drivers").glob("*.h")) + list((NN / "Include").glob("*.h"))
     dependencies += list((NN.parent / "Core/Include").glob("*.h"))
     before = source_hashes(dependencies)
-    args = [gcc, "-march=rv32im_zicsr", "-mabi=ilp32", "-std=c11", "-O3",
+    args = [gcc, "-march=rv32im_zicsr", "-mabi=ilp32", "-std=c11", "-" + optimization,
             "-ffreestanding", "-fno-builtin", "-fdata-sections", "-ffunction-sections",
             "-nostdlib", "-nostartfiles", "-DDSA_TILE_SIZE=16", "-DDSA_IA_CACHE_BLOCKS=4",
             "-DDSA_PS_FRAME_COUNT=16", f"-DDSA_NN_CONV_DATAFLOW_MODE={dataflow}",
@@ -205,6 +216,8 @@ def build_firmware(out: Path, gcc: str, *, dataflow=0, smoke=False, skip=False,
             "-T", SOC_C / "link.ld", "-Wl,--build-id=none", "-Wl,--gc-sections",
             f"-Wl,--defsym=__ram_length={RAM_WORDS * 4}", f"-Wl,-Map={out / 'cpu.map'}",
             *files]
+    if link_time_optimization:
+        args += ["-flto"]
     if newlib_include is not None:
         args += ["-isystem", newlib_include]
     args += ["-Wl,--start-group"]
@@ -216,6 +229,8 @@ def build_firmware(out: Path, gcc: str, *, dataflow=0, smoke=False, skip=False,
     manifest = {"returncode": rc, "command": [str(v) for v in args], "smoke": smoke,
                 "source_sha256": before, "sources_unchanged_during_build": before == after,
                 "compiled_dataflow": dataflow, "ram_bytes": RAM_WORDS * 4,
+                "optimization": optimization,
+                "link_time_optimization": link_time_optimization,
                 "newlib_include": str(newlib_include) if newlib_include is not None else None,
                 "runtime_lib": str(runtime_lib) if runtime_lib is not None else (None if smoke else "compiler default -lc"),
                 "runtime_lib_sha256": digest(runtime_lib) if runtime_lib is not None else None,
@@ -395,6 +410,9 @@ def main() -> int:
     ap.add_argument("--gcc", default="riscv64-unknown-elf-gcc")
     ap.add_argument("--newlib-include", type=Path, help="Optional standard newlib headers for a locally unpacked GCC")
     ap.add_argument("--runtime-lib", type=Path, help="Optional official target C runtime archive; otherwise use -lc")
+    ap.add_argument("--firmware-optimization", choices=["O0", "O1", "O2", "O3", "Os"], default="O3",
+                    help="固件编译优化选项；完整记录到固件摘要并用于构建复用检查")
+    ap.add_argument("--firmware-lto", action="store_true", help="对固件启用链接时优化并记录构建配置")
     ap.add_argument("--jobs", type=int, default=2)
     ap.add_argument("--skip-build", action="store_true")
     ap.add_argument("--reuse-sim", type=Path, help="Existing simulator directory; reused only after exact source, parameter and binary SHA checks")
@@ -422,7 +440,9 @@ def main() -> int:
     firmware = out / ("firmware_smoke" if args.stage == "smoke" else f"firmware_df{args.dataflow}")
     manifest = build_firmware(firmware, args.gcc, dataflow=args.dataflow,
                               smoke=args.stage == "smoke", skip=args.skip_firmware,
-                              newlib_include=args.newlib_include, runtime_lib=args.runtime_lib)
+                              newlib_include=args.newlib_include, runtime_lib=args.runtime_lib,
+                              optimization=args.firmware_optimization,
+                              link_time_optimization=args.firmware_lto)
     if args.stage == "smoke":
         cmd = [binary, f"+SOC_CPU_MEM={firmware / 'cpu.mem'}", "+EXPECTED_STATUS=1", "+TIMEOUT_CYCLES=10000000"]
         rc = command(cmd, out / "smoke.log", timeout=300)

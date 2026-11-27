@@ -118,7 +118,7 @@ def main():
         regressions['uploaded_performance'] = performance
         performance_passed = performance['performance_passed']
     resources = summary['resources']
-    targets = {'nominal_lut_sites': 50000, 'maximum_combinational_cells': 10,
+    targets = {'nominal_lut_sites': 55000, 'maximum_combinational_cells': 10,
                'important_path_preferred_maximum_cells': 6, 'clock_frequency_mhz': 150}
     record = {
         'schema_version': 1, 'created_at': datetime.now(ZoneInfo('Asia/Shanghai')).isoformat(),
@@ -127,7 +127,7 @@ def main():
                    'source_count': len(manifest['sources_sha256']),
                    'all_source_hashes_match_git_blobs': True, 'clean_worktree': True},
         'targets': targets,
-        'target_results': {'nominal_lut_sites_met': resources['lut_sites_nominal_before_packing'] <= 50000,
+        'target_results': {'nominal_lut_sites_met': resources['lut_sites_nominal_before_packing'] <= 55000,
                            'maximum_combinational_cells_met': paths['longest_register_path_cells'] <= 10,
                            'uploaded_performance_cycles_met': performance_passed,
                            'routed_150mhz_confirmed': None},

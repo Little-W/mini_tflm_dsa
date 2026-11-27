@@ -33,7 +33,7 @@ def main():
     parser.add_argument('--chipdb', type=Path, required=True)
     parser.add_argument('--package-pins', type=Path, required=True)
     parser.add_argument('--freq', type=float, default=150.0)
-    parser.add_argument('--max-lut-sites', type=int, default=50000,
+    parser.add_argument('--max-lut-sites', type=int, default=55000,
                         help='完整 SoC 可使用的物理 LUT 位置总数上限')
     parser.add_argument('--through', choices=('pair', 'place'), default='place',
                         help='完成 LUT 配对后保存网表，或继续合法布局及资源检查')

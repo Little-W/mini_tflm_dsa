@@ -76,14 +76,17 @@ def main() -> None:
             check(str(path.parent.name) + ":boot_image_hash", sha(read(path.parent / "cpu.mem")) == m["mem_sha256"])
             firmware_by_hash[m["elf_sha256"]] = m
     sim = load(evidence / "sim/build.json")
-    runtime_identities = {(fw.get("runtime_lib_sha256"), fw.get("compiler_sha256"))
+    runtime_identities = {(fw.get("runtime_lib_sha256"), fw.get("compiler_sha256"),
+                           fw.get("optimization", "O3"), fw.get("link_time_optimization", False))
                           for fw in firmware_by_hash.values()}
     check("shared_memory_runtime_and_compiler", len(runtime_identities) == 1)
     for fw in firmware_by_hash.values():
         if fw.get("runtime_lib_sha256") and Path(fw["runtime_lib"]).is_file():
             check("actual_runtime_library_hash", sha(read(Path(fw["runtime_lib"]))) == fw["runtime_lib_sha256"])
-        check("optimized_rv32_firmware_flags", all(flag in fw["command"] for flag in
-              ["-march=rv32im_zicsr", "-mabi=ilp32", "-O3", "-ffreestanding", "-fno-builtin"]))
+        check("recorded_rv32_firmware_flags", all(flag in fw["command"] for flag in
+              ["-march=rv32im_zicsr", "-mabi=ilp32", "-" + fw.get("optimization", "O3"),
+               "-ffreestanding", "-fno-builtin"]) and
+              (("-flto" in fw["command"]) == fw.get("link_time_optimization", False)))
 
     audited = []
     manifest_hashes = {str(path.relative_to(evidence)): sha(read(path)) for path in manifests}

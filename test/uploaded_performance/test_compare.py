@@ -2,7 +2,7 @@
 """检查逐字段比较的正差判定、零参考值及资源参数核对。"""
 import unittest
 
-from run import compare_numbers, verify_profile
+from run import compare_numbers, summarize_cycles, verify_profile
 
 
 class PerformanceComparisonTest(unittest.TestCase):
@@ -55,6 +55,37 @@ class PerformanceComparisonTest(unittest.TestCase):
     def test_production_macros(self):
         with self.assertRaises(ValueError):
             verify_profile({"size": 16, "rtl_simulation_defines": ["SYNTHESIS"]}, {"size": 16}, {})
+
+    def test_cycle_totals_and_largest_increases(self):
+        cases = [{"collection": "operators", "kind": "gemm", "name": name,
+                  "checkpoint_cycles": before, "measured_cycles": after}
+                 for name, before, after in (("large", 1000, 1010), ("small", 10, 11),
+                                             ("equal", 30, 30), ("faster", 100, 50))]
+        result = summarize_cycles(cases)
+        self.assertEqual(result["reference_cycles"], 1140)
+        self.assertEqual(result["current_cycles"], 1101)
+        self.assertEqual(result["cycle_delta"], -39)
+        self.assertAlmostEqual(result["cycle_change_percent"], -3900 / 1140)
+        self.assertEqual(result["increased_case_count"], 2)
+        self.assertEqual(result["decreased_case_count"], 1)
+        self.assertEqual(result["equal_case_count"], 1)
+        self.assertEqual(result["maximum_cycle_increase"]["name"], "large")
+        self.assertEqual(result["maximum_relative_cycle_increase"]["name"], "small")
+        self.assertEqual(result["maximum_relative_cycle_increase"]["cycle_change_percent"], 10.0)
+
+    def test_no_increased_cycle_count(self):
+        cases = [{"collection": "operators", "kind": "gemm", "name": "same",
+                  "checkpoint_cycles": 7, "measured_cycles": 7}]
+        result = summarize_cycles(cases)
+        self.assertEqual(result["cycle_change_percent"], 0.0)
+        self.assertEqual(result["increased_case_count"], 0)
+        self.assertIsNone(result["maximum_cycle_increase"])
+        self.assertIsNone(result["maximum_relative_cycle_increase"])
+
+    def test_zero_reference_cycles_are_rejected(self):
+        with self.assertRaises(ValueError):
+            summarize_cycles([{"collection": "operators", "kind": "gemm", "name": "invalid",
+                               "checkpoint_cycles": 0, "measured_cycles": 1}])
 
 
 if __name__ == "__main__":

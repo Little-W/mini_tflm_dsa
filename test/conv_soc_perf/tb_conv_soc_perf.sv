@@ -9,9 +9,8 @@
 `define SOC_PERF_ICACHE 0
 `endif
 
-// The CPU executes all MMIO accesses and all benchmark code. This bench only
-// clocks/resets the production SoC, observes accepted transfers, and inspects
-// its RAM after firmware has finished. There is no host MMIO driver.
+// 运行实际 SoC 的 RISC-V 固件，核对 CPU 配置、NPU 计算和 AXI DMA 写回。
+// 测试台负责存储初始化、时钟复位和传输统计，程序结束后检查结果及保护区。
 module tb_conv_soc_perf;
     localparam int RAM_WORDS = `SOC_PERF_RAM_WORDS;
     localparam int RAM_INDEX_BITS = $clog2(RAM_WORDS);
@@ -25,7 +24,10 @@ module tb_conv_soc_perf;
     always #5 clk = !clk;
 
     soc_top #(
-        .SIZE(`SOC_PERF_SIZE), .IA_CACHE_BLOCKS(4), .PS_FRAME_COUNT(16),
+        .SIZE(`SOC_PERF_SIZE), .DATA_WIDTH(16), .WEIGHT_WIDTH(16), .BUS_WIDTH(32),
+        .IA_CACHE_BLOCKS(4), .PS_FRAME_COUNT(16),
+        .SHARED_BANK_BYTES(8192), .SHARED_BANK_COUNT(7), .IM2COL_CACHE_BYTES(4096),
+        .VECTOR_PE_COUNT(8),
         .CPU_MEM_DP(RAM_WORDS), .CPU_MEM_PATH(""), .CPU_MEM_INIT_EN(1),
         .CPU_ENABLE_ICACHE(`SOC_PERF_ICACHE),
         .AXI_READ_OUTSTANDING(4), .AXI_WRITE_OUTSTANDING(4),
@@ -36,6 +38,16 @@ module tb_conv_soc_perf;
         .clk, .rst_n, .mem_reload_req(1'b0), .npu_busy, .npu_irq,
         .uart_tx, .uart_rx(1'b1), .soc_finish, .soc_status, .cpu_trap
     );
+
+    // 构建摘要使用以下固定参数，仿真开始时核对实际展开结果。
+    initial begin
+        assert(dut.BUS_WIDTH == 32 && dut.SHARED_BANK_BYTES == 8192 && dut.SHARED_BANK_COUNT == 7 &&
+               dut.u_npu_axil_top.SHARED_CAPABLE && dut.u_npu_axil_top.u_npu_top.SHARED_RAM_ENABLED)
+            else $fatal(1, "SoC shared storage parameters differ");
+        assert(dut.u_npu_axil_top.CONV_CACHE_SETS == 16 && dut.u_npu_axil_top.CONV_CACHE_WAYS == 2 &&
+               dut.u_npu_axil_top.CONV_LINE_BYTES == 128 && dut.u_npu_axil_top.CONV_CACHE_POLICY == 3)
+            else $fatal(1, "SoC convolution cache parameters differ");
+    end
 
     typedef struct packed {
         logic [63:0] cycles, npu_busy_cycles, npu_gate_cycles;

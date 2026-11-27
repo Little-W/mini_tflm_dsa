@@ -139,7 +139,8 @@ static uint32_t run_reg_directed(void)
     if (status != SOC_REG_TEST_OK) return status;
     status = check_reg(NPU_REG_WB_DATA, 0u);
     if (status != SOC_REG_TEST_OK) return status;
-    status = check_reg(0x0f0u, 0u);
+    /* 未分配的寄存器字地址返回零。 */
+    status = check_reg(0x0f8u, 0u);
     if (status != SOC_REG_TEST_OK) return status;
 
     return SOC_REG_TEST_OK;

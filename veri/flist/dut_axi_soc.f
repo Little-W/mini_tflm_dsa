@@ -1,3 +1,8 @@
+../../rtl/soc/picorv32_frontend_pkg.sv
+../../rtl/soc/pico_operand_comparison.sv
+../../rtl/soc/pico_sequential_address.sv
+../../rtl/soc/picorv32_frontend.sv
+../../rtl/soc/pico_result_negation.sv
 ../../rtl/soc/picorv32_npu.v
 ../../rtl/soc/picorv32_regs.v
 ../../rtl/soc/picorv32_pcpi_mul.v
@@ -17,7 +22,6 @@
 ../../rtl/soc/soc_axi_read_pingpong_buffer.sv
 ../../rtl/soc/soc_axi_write_pingpong_buffer.sv
 ../../rtl/soc/soc_axi_pingpong_buffer.sv
-../../test/models/soc_axi_ram.sv
 ../../rtl/soc/soc_axil_ctrl.sv
 ../../rtl/soc/soc_axil_simpleuart.sv
 ../../rtl/soc_top.sv

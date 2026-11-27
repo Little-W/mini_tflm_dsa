@@ -193,7 +193,7 @@ class CoverageTests(unittest.TestCase):
         self.prepare(depth=10)
         self.assertTrue(self.summary()['status']['all_targets_met'])
         self.assertEqual(self.summary()['requirements']['combinational_logic_levels_maximum'], 10)
-        self.prepare(depth=10, count=50001)
+        self.prepare(depth=10, count=55001)
         value = self.summary()['status']
         self.assertFalse(value['slice_luts_within_limit'])
         self.assertTrue(value['all_connected_paths_within_limit'])
@@ -223,8 +223,8 @@ class CoverageTests(unittest.TestCase):
         self.assertIsNone(value['all_targets_met'])
 
     def test_routed_cli_requires_every_target(self):
-        for depth, count, expected in ((10, 49999, 0), (10, 50000, 0),
-                                       (10, 50001, 1), (11, 50000, 1)):
+        for depth, count, expected in ((10, 54999, 0), (10, 55000, 0),
+                                       (10, 55001, 1), (11, 55000, 1)):
             self.prepare(depth=depth, count=count)
             process = subprocess.run([sys.executable, str(HELPER), 'summarize', '--manifest',
                 str(self.work / 'manifest.json'), '--directory', str(self.work), '--stage', 'routed'],
@@ -232,8 +232,8 @@ class CoverageTests(unittest.TestCase):
             self.assertEqual(process.returncode, expected, process.stderr)
             self.assertTrue((self.work / 'measurement.json').is_file())
             report = json.loads((self.work / 'measurement.json').read_text())
-            self.assertEqual(report['requirements']['slice_luts_maximum'], 50000)
-            self.assertEqual(report['status']['slice_luts_within_limit'], count <= 50000)
+            self.assertEqual(report['requirements']['slice_luts_maximum'], 55000)
+            self.assertEqual(report['status']['slice_luts_within_limit'], count <= 55000)
 
     def export_graph_model(self, *, board=False, unknown_inside=False, records=None, fail_export=False):
         script = self.work / 'export.tcl'
