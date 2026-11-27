@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-// 四帧组内编码与组间选择并行计算，保留实际的分组归并节点。
+// 两帧组内编码与组间选择并行计算，保留实际的分组归并节点。
 module ps_scheduler_priority #(
     parameter int p_frames = 16,
     parameter int p_id_width = (p_frames <= 1) ? 1 : $clog2(p_frames)
@@ -9,9 +9,10 @@ module ps_scheduler_priority #(
     input wire [p_frames-1:0] i_eligible /* 各候选帧的可调度标记 */,
     output logic [p_id_width-1:0] o_id /* 按模块优先顺序选中的候选帧编号 */
 );
-    localparam int p_group_width = 4;
+    localparam int p_group_width = 2;
     localparam int p_groups = (p_frames + p_group_width - 1) / p_group_width;
-    logic [p_groups-1:0] group_any, group_first;
+    logic [p_groups-1:0] group_any;
+    (* keep = 1 *) logic [p_groups-1:0] group_allowed;
     logic [p_id_width-1:0] group_id [p_groups];
     logic [p_id_width-1:0] grouped_id, flat_id;
     logic [p_frames-1:0] flat_first;
@@ -29,11 +30,12 @@ module ps_scheduler_priority #(
             assign group_any[group] = found;
         end
         if (group == 0) begin : g_first_group
-            assign group_first[group] = group_any[group];
+            assign group_allowed[group] = 1'b1;
         end else begin : g_later_group
-            (* keep = "true" *) logic selected;
-            assign selected = group_any[group] && !(|group_any[group-1:0]);
-            assign group_first[group] = selected;
+            // 每组独立检查更早的候选，组内编号为零时自然不参与结果归并。
+            zero_reduce #(.p_width(group), .p_group_width(6)) u_prior_empty (
+                .i_value(group_any[group-1:0]), .o_zero(group_allowed[group])
+            );
         end
         for (genvar frame = 0; frame < p_bits; frame++) begin : g_frame
             if (frame == 0) begin : g_first
@@ -60,7 +62,7 @@ module ps_scheduler_priority #(
     always_comb begin
         grouped_id = '0;
         for (int group = 0; group < p_groups; group++) begin
-            grouped_id |= group_id[group] & {p_id_width{group_first[group]}};
+            grouped_id |= group_id[group] & {p_id_width{group_allowed[group]}};
         end
         flat_id = '0;
         for (int frame = 0; frame < p_frames; frame++) begin

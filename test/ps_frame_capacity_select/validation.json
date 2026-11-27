@@ -1,0 +1,187 @@
+{
+  "passed": true,
+  "reference": "9e3e5d6a6f47befe6c86aceacad7999923206458",
+  "input_constraints": null,
+  "all_public_outputs_compared_each_cycle": true,
+  "capacity_relation_proven_with_outputs": true,
+  "nonnegative_capacity_bound_proven_with_outputs": true,
+  "source_sha256": {
+    "rtl/npu/ps_compact/ps_frame_store.sv": "a90c4269ba348e7d95f5127253bf647f41190765708321a33f0c6446033dcb09",
+    "rtl/common/add_equal.sv": "cd77a2bd35d8893d7ad694c2686ebc096a19c0405a5e6c2a21d7d662956189d2",
+    "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+    "rtl/npu/ps_compact/ps_frame_address_increment.sv": "3288752fc9390c44a3d149c92b953339a440cf749e0e8e9221b1600ecbee08d2",
+    "rtl/npu/ps_compact/ps_frame_prepare_branch.sv": "9f21a51299a14b14b952f98ff2f777b87e0977109cbc499df172fbada816f907",
+    "rtl/npu/ps_compact/ps_frame_prepare_enable.sv": "da143792d121e8b74c1f633f697c039b335f179788807b2103fcd54e95001329",
+    "rtl/npu/ps_compact/ps_frame_read_enable.sv": "bab00469bf7022a3cd8dda25db7b97ffa466fe6070336c8e355cbeb943ffe172",
+    "rtl/npu/ps_compact/ps_frame_ready_select.sv": "f58ab73fbef2e9bdf894b5b2f7c77e1f68fc7373ff4474301e4d45ccbac60919",
+    "rtl/npu/ps_compact/ps_raw_address.sv": "f8961aeeaec8bf938280d22f98deeffdb18f53fb1e4a19c93f05b04e24425024",
+    "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+    "rtl/common/add_equal_bit.sv": "2394c2344ff357f96b48161bd933a36eec4d432f9304433c3f6cae5e7af7c93b",
+    "rtl/common/add_equal_reduce.sv": "b7c010ef96df08c27435060f219f576b8b5dc387bcf63526855c4a89894e805f",
+    "rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+    "rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+    "rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+  },
+  "reference_sha256": "b9acd435825fc507d8c43f9ae7c97259d4cb202d1e2f5fa2491ab92880ef39ac",
+  "runs": [
+    {
+      "mode": "fpga",
+      "case": "compact",
+      "parameters": {
+        "MAX_FRAME_ROWS": 512,
+        "FRAME_COUNT": 16,
+        "POOL_BYTES": 49152,
+        "BANK_BYTES": 8192,
+        "EXTERNAL_RAM": 1,
+        "p_fixed_ps_channels": 1
+      },
+      "equivalent_bits": 7865,
+      "passed": true,
+      "script_sha256": "a97895f49210fdbe420a8bce5dc2e1864826d657131a6c84b2ebe306598f528c",
+      "log_sha256": "86ff355fa436f09348db291ad09e6a02671c0b811b9b8018dd7ccf09cf650e7c"
+    },
+    {
+      "mode": "fpga",
+      "case": "internal",
+      "parameters": {
+        "MAX_FRAME_ROWS": 47,
+        "FRAME_COUNT": 16,
+        "POOL_BYTES": 4096,
+        "BANK_BYTES": 2048,
+        "EXTERNAL_RAM": 0
+      },
+      "equivalent_bits": 41044,
+      "passed": true,
+      "script_sha256": "f6cdbdde4f3c878cb0179563d80d945e85c6cabc1ab39aaf5f0843ac3c9c0c27",
+      "log_sha256": "40228db095132264f178f5ec98a9009a3031b861545f17909dede1165d5a989d"
+    },
+    {
+      "mode": "fpga",
+      "case": "production",
+      "parameters": {
+        "MAX_FRAME_ROWS": 256,
+        "FRAME_COUNT": 16,
+        "POOL_BYTES": 49152,
+        "BANK_BYTES": 8192,
+        "EXTERNAL_RAM": 1,
+        "p_fixed_ps_channels": 1
+      },
+      "equivalent_bits": 7823,
+      "passed": true,
+      "script_sha256": "d2e742e89f2d72e69dbefa6d2e3f09478240a7142355403bbd906072f3486a5e",
+      "log_sha256": "403a1f6ae82516d0c4a9d194a009dce33c4c10fa84cd503c28e7d555e79c573a"
+    },
+    {
+      "mode": "fpga",
+      "case": "rotating",
+      "parameters": {
+        "MAX_FRAME_ROWS": 16,
+        "FRAME_COUNT": 4,
+        "POOL_BYTES": 14336,
+        "BANK_BYTES": 2048,
+        "EXTERNAL_RAM": 1,
+        "p_fixed_ps_channels": 0
+      },
+      "equivalent_bits": 6915,
+      "passed": true,
+      "script_sha256": "75739a397bd49a6e18902161218d2a78b2f9308c0710b1cc9e0a053c08961f92",
+      "log_sha256": "b334f1bc7209a0de3bd1e0955e580af6c16533e8fd37894ad4afb95bd3b847b3"
+    },
+    {
+      "mode": "generic",
+      "case": "compact",
+      "parameters": {
+        "MAX_FRAME_ROWS": 512,
+        "FRAME_COUNT": 16,
+        "POOL_BYTES": 49152,
+        "BANK_BYTES": 8192,
+        "EXTERNAL_RAM": 1,
+        "p_fixed_ps_channels": 1
+      },
+      "equivalent_bits": 7865,
+      "passed": true,
+      "script_sha256": "40579fe9a772c1f40f89a1ee01f87db7c70014a1a0e909e0f2dc36a505c41baf",
+      "log_sha256": "1698f15dda50544c8e787b28ae100eb6f9a046fd44b655cea5e9e0ba40cab2e4"
+    },
+    {
+      "mode": "generic",
+      "case": "internal",
+      "parameters": {
+        "MAX_FRAME_ROWS": 47,
+        "FRAME_COUNT": 16,
+        "POOL_BYTES": 4096,
+        "BANK_BYTES": 2048,
+        "EXTERNAL_RAM": 0
+      },
+      "equivalent_bits": 41044,
+      "passed": true,
+      "script_sha256": "f2327fb72430f73658971f8a7e0fcc23b5db93571f0099f3fe9ff35247fb5de1",
+      "log_sha256": "b0d9fb51175e65b5e7b9aa4378a1f18bb5ebed63e0fee6aa95fc5c4864e2a6d7"
+    },
+    {
+      "mode": "generic",
+      "case": "production",
+      "parameters": {
+        "MAX_FRAME_ROWS": 256,
+        "FRAME_COUNT": 16,
+        "POOL_BYTES": 49152,
+        "BANK_BYTES": 8192,
+        "EXTERNAL_RAM": 1,
+        "p_fixed_ps_channels": 1
+      },
+      "equivalent_bits": 7823,
+      "passed": true,
+      "script_sha256": "bf635958110790c98b46d01bc375740dfd37920b687bd9e20c22fc50cef98a0c",
+      "log_sha256": "645f4e8f27ce9d50763fb7e0a2ab9cc5333e82ef6753f1c8a7e88213f461f454"
+    },
+    {
+      "mode": "generic",
+      "case": "rotating",
+      "parameters": {
+        "MAX_FRAME_ROWS": 16,
+        "FRAME_COUNT": 4,
+        "POOL_BYTES": 14336,
+        "BANK_BYTES": 2048,
+        "EXTERNAL_RAM": 1,
+        "p_fixed_ps_channels": 0
+      },
+      "equivalent_bits": 6915,
+      "passed": true,
+      "script_sha256": "9ad6e8ec7c4b06fea71a1ecb981c85666a9917a37714ab780dd0b9c1534bdb48",
+      "log_sha256": "9059d6f857a7457b9b7eb051faa97efd095961537abd73eacee339f0912dfc4a"
+    }
+  ],
+  "four_state": {
+    "passed": true,
+    "runs": [
+      {
+        "mode": "generic",
+        "passed": true,
+        "profiles": [
+          "production",
+          "compact",
+          "internal",
+          "rotating"
+        ],
+        "cycles_per_profile": 8192,
+        "log_sha256": "a89ce8ced7ff90db11ee109dfcd6779b5fdcd6876207ac1d91eaa18ec23082f3"
+      },
+      {
+        "mode": "fpga",
+        "passed": true,
+        "profiles": [
+          "production",
+          "compact",
+          "internal",
+          "rotating"
+        ],
+        "cycles_per_profile": 8192,
+        "log_sha256": "a89ce8ced7ff90db11ee109dfcd6779b5fdcd6876207ac1d91eaa18ec23082f3"
+      }
+    ],
+    "all_public_outputs_compared_each_cycle": true
+  },
+  "equivalent_bits_total": 127294,
+  "four_state_cycles_total": 65536,
+  "source_copies_verified": true
+}

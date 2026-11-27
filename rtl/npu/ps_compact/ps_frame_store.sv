@@ -27,6 +27,7 @@
     output wire [127:0] ram_write_data [0:3] /* 四个部分和通道的各128 位写数据 */,
     input  wire frame_request /* 当前帧命令请求检查存储资源 */,
     input  wire frame_accept /* 当前帧命令已被接收 */,
+    input  wire frame_accept_permit = 1'b1 /* 当前执行模式允许命令使用部分和存储 */,
     input  wire [((FRAME_COUNT > 1) ? $clog2(FRAME_COUNT) : 1)-1:0] frame_id /* 当前部分和帧的物理槽号 */,
     input  wire [31:0] frame_rows /* 当前部分和帧的有效行数 */,
     input  wire [31:0] frame_reserve_rows /* 本次帧命令需要预留的部分和行数 */,
@@ -45,6 +46,7 @@
     output wire [511:0] replay_data /* 解码后返回的完整部分和行 */,
     output reg  replay_valid /* 当前返回的部分和回放行有效 */
 );
+    wire frame_accept_selected = frame_accept && frame_accept_permit;
     localparam integer BANKS=EXTERNAL_RAM!=0 ? POOL_BYTES/BANK_BYTES : 4;
     localparam integer BANK_DEPTH=EXTERNAL_RAM!=0 ? BANK_BYTES/16 : POOL_BYTES/64;
     localparam integer BANK_ADDR_BITS=$clog2(BANK_DEPTH)>0 ? $clog2(BANK_DEPTH) : 1;
@@ -113,9 +115,9 @@
     wire request_capture = frame_request && configuration_ready &&
         (!command_present || (command_accepted && request_released_q)) &&
         !request_pending_q && !capacity_fault;
-    wire cancel_prepared = !frame_request && !frame_accept && !command_accepted &&
+    wire cancel_prepared = !frame_request && !frame_accept_selected && !command_accepted &&
         (request_pending_q || command_present);
-    wire cancel_request = !frame_request && !frame_accept && request_pending_q;
+    wire cancel_request = !frame_request && !frame_accept_selected && request_pending_q;
     wire [RAW_LINEAR_BITS-1:0] initial_linear = request_q.initial_linear;
     (* keep = "true" *) logic request_rows_high_valid, request_rows_low_valid;
     (* keep = "true" *) logic request_frame_valid;
@@ -167,32 +169,15 @@
     logic [p_capacity_rows_width-1:0] configured_pool_rows;
     logic [p_capacity_rows_width:0] frame_available_rows_q [FRAME_COUNT];
     logic [FRAME_COUNT-1:0] frame_capacity_match;
+    localparam int p_compare_rows_width = p_pool_words_width-2;
+    logic compare_rows_bounded;
     logic incoming_rows_bounded;
     logic incoming_request_fits;
-    logic [p_capacity_rows_width:0] selected_available_rows;
-    logic selected_capacity_match;
-    logic [p_capacity_rows_width-1:0] pool_capacity_rows_q;
     logic [RAW_LINEAR_BITS-3:0] incoming_initial_row;
-    logic [p_capacity_rows_width:0] selected_available_fast;
-    logic selected_available_carry;
 
-    // 配置保存总行数，请求使用同一个起始行计算当前帧的剩余容量。
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            pool_capacity_rows_q <= p_capacity_rows_width'(EXTERNAL_RAM == 0 ? BANK_DEPTH : 0);
-        end else if (configuration_pending && !configure_start) begin
-            pool_capacity_rows_q <= configured_pool_rows;
-        end
-    end
+    // 地址在请求接收边沿保存，容量资格由各帧已保存的可用行数独立形成。
     assign incoming_initial_row = (RAW_LINEAR_BITS-2)'(frame_id) *
         (RAW_LINEAR_BITS-2)'(directory_stride_q);
-    parallel_prefix_add #(.p_width(p_capacity_rows_width+1),
-        .p_dsp_split_width((p_capacity_rows_width+1)/2), .p_preserve_groups(1'b1),
-        .p_parallel_high_prefix(1'b1), .p_keep_carry(1'b0), .p_direct_subtract(1'b1)) u_request_capacity (
-        .i_a({1'b0, pool_capacity_rows_q}),
-        .i_b(~(p_capacity_rows_width+1)'(incoming_initial_row)), .i_carry(1'b1),
-        .o_sum(selected_available_fast), .o_carry(selected_available_carry)
-    );
 
     assign configured_pool_words = p_pool_words_width'((BANK_ADDR_BITS+1)'(cfg_pool_bank_words)) *
         p_pool_words_width'((ROTATION_BITS+1)'(cfg_pool_bank_count));
@@ -204,7 +189,13 @@
         assign incoming_rows_bounded = 1'b1;
     end
 
-    // 各帧的容量表用于未确定配置或帧编号的四态选择。
+    if (p_compare_rows_width < 32) begin : g_compare_rows_bounded
+        assign compare_rows_bounded = !(|frame_rows[31:p_compare_rows_width]) &&
+            !(|frame_reserve_rows[31:p_compare_rows_width]);
+    end else begin : g_compare_rows_full
+        assign compare_rows_bounded = 1'b1;
+    end
+    // 配置更新时计算各帧容量，请求期间只比较行数并选择一位资格结果。
     for (genvar frame = 0; frame < FRAME_COUNT; frame++) begin : g_frame_capacity
         logic [RAW_LINEAR_BITS-3:0] configured_initial_row;
         logic [p_capacity_rows_width:0] available_rows, available_rows_direct;
@@ -284,48 +275,21 @@
                 frame_available_rows_q[frame] <= available_rows;
             end
         end
-        assign frame_capacity_match[frame] = incoming_rows_bounded &&
-            !frame_available_rows_q[frame][p_capacity_rows_width] &&
-            p_capacity_rows_width'(frame_rows) <= frame_available_rows_q[frame][p_capacity_rows_width-1:0] &&
-            p_capacity_rows_width'(frame_reserve_rows) <= frame_available_rows_q[frame][p_capacity_rows_width-1:0];
+        // 非负剩余行数不超过存储池乘积的有效行宽，两个请求高位共同提前检查。
+        always_comb begin
+            case (^{frame_rows, frame_reserve_rows, frame_available_rows_q[frame]})
+                1'b0, 1'b1: frame_capacity_match[frame] = compare_rows_bounded &&
+                    !frame_available_rows_q[frame][p_capacity_rows_width] &&
+                    p_compare_rows_width'(frame_rows) <= frame_available_rows_q[frame][p_compare_rows_width-1:0] &&
+                    p_compare_rows_width'(frame_reserve_rows) <= frame_available_rows_q[frame][p_compare_rows_width-1:0];
+                default: frame_capacity_match[frame] = incoming_rows_bounded &&
+                    !frame_available_rows_q[frame][p_capacity_rows_width] &&
+                    p_capacity_rows_width'(frame_rows) <= frame_available_rows_q[frame][p_capacity_rows_width-1:0] &&
+                    p_capacity_rows_width'(frame_reserve_rows) <= frame_available_rows_q[frame][p_capacity_rows_width-1:0];
+            endcase
+        end
     end
-    // 确定的请求共享起始行计算，两个行数上限比较使用同一剩余容量。
-    always_comb begin
-        selected_available_rows = frame_available_rows_q[frame_id];
-        case (^{frame_id, pool_capacity_rows_q, directory_stride_q})
-            1'b0, 1'b1: begin
-                if (32'(frame_id) < FRAME_COUNT)
-                    selected_available_rows = selected_available_fast;
-            end
-            default: begin end
-        endcase
-    end
-    logic rows_exceed_capacity, reserve_exceeds_capacity;
-    logic rows_capacity_equal, reserve_capacity_equal;
-    parallel_unsigned_compare #(.p_width(p_capacity_rows_width), .p_preserve_groups(1'b1)) u_rows_capacity (
-        .i_a(selected_available_rows[p_capacity_rows_width-1:0]),
-        .i_b(p_capacity_rows_width'(frame_rows)),
-        .o_less(rows_exceed_capacity), .o_equal(rows_capacity_equal)
-    );
-    parallel_unsigned_compare #(.p_width(p_capacity_rows_width), .p_preserve_groups(1'b1)) u_reserve_capacity (
-        .i_a(selected_available_rows[p_capacity_rows_width-1:0]),
-        .i_b(p_capacity_rows_width'(frame_reserve_rows)),
-        .o_less(reserve_exceeds_capacity), .o_equal(reserve_capacity_equal)
-    );
-    assign selected_capacity_match = incoming_rows_bounded &&
-        !selected_available_rows[p_capacity_rows_width] &&
-        !rows_exceed_capacity && !reserve_exceeds_capacity;
-    always_comb begin
-        case (^frame_id)
-            1'b0, 1'b1: begin
-                if (32'(frame_id) < FRAME_COUNT)
-                    incoming_request_fits = (frame_init && frame_final) || selected_capacity_match;
-                else
-                    incoming_request_fits = (frame_init && frame_final) || frame_capacity_match[frame_id];
-            end
-            default: incoming_request_fits = (frame_init && frame_final) || frame_capacity_match[frame_id];
-        endcase
-    end
+    assign incoming_request_fits = (frame_init && frame_final) || frame_capacity_match[frame_id];
     logic complete_now;
     logic complete_eligible, prepare_eligible;
     (* keep = "true" *) logic prepare_state_eligible;
@@ -525,17 +489,18 @@
         prefetch_credit_available && !clear_metadata;
     assign prefetch_requested_eligible = prepare_read_state_eligible || prefetch_continue_eligible;
     ps_frame_read_enable u_prefetch_read_enable (
-        .i_request(frame_request), .i_accept(frame_accept), .i_accepted(command_accepted),
+        .i_request(frame_request), .i_accept(frame_accept), .i_accept_permit(frame_accept_permit),
+        .i_accepted(command_accepted),
         .i_first_ready(prepare_read_state_eligible), .i_continue_ready(prefetch_continue_eligible),
         .i_fault(capacity_fault), .o_read_enable(prefetch_read_selected)
     );
     always_comb begin
         prefetch_eligible = prepare_read_eligible ||
             (prefetch_continue_eligible && !cancel_prepared);
-        case (^{frame_request, frame_accept, command_accepted, command_present})
+        case (^{frame_request, frame_accept_selected, command_accepted, command_present})
             1'b0, 1'b1: prefetch_eligible =
                 (frame_request && prefetch_requested_eligible) ||
-                ((frame_accept || command_accepted) && prefetch_continue_eligible);
+                ((frame_accept_selected || command_accepted) && prefetch_continue_eligible);
             default: ;
         endcase
     end
@@ -558,7 +523,7 @@
             end
         endcase
         // 已完成的首行、后续行状态与容量状态统一参与末级读取选择。
-        case (^{capacity_fault, frame_request, frame_accept, command_accepted, command_present})
+        case (^{capacity_fault, frame_request, frame_accept_selected, command_accepted, command_present})
             1'b0, 1'b1: prefetch_fire = prefetch_read_selected;
             default: ;
         endcase
@@ -794,16 +759,16 @@
     assign capacity_accept_set = capacity_accept_error || capacity_other_error;
     assign capacity_wait_set = capacity_context_open && capacity_other_error;
     always_comb begin
-        case (^{frame_accept, capacity_accept_error, capacity_other_error,
+        case (^{frame_accept_selected, capacity_accept_error, capacity_other_error,
                 capacity_context_open, cancel_prepared})
-            1'b0, 1'b1: capacity_set = (frame_accept && capacity_accept_set) || capacity_wait_set;
+            1'b0, 1'b1: capacity_set = (frame_accept_selected && capacity_accept_set) || capacity_wait_set;
             default: begin
                 capacity_set = 1'b0;
                 if (cancel_prepared) begin
                 end else begin
                     if (frame_request && configuration_ready && request_pending_q && !request_q.legal)
                         capacity_set = 1'b1;
-                    if (frame_accept) begin
+                    if (frame_accept_selected) begin
                         if (!frame_ready || !frame_request || frame_id != (prepare_start ? request_q.id : frame_id_q))
                             capacity_set = 1'b1;
                     end
@@ -862,7 +827,7 @@
                 (FIFO_PTR_BITS+1)'(decoded_read_en ? 1'b1 : 1'b0);
             decoder_inflight<=decoder_inflight+(FIFO_PTR_BITS+1)'(prefetch_fire ? 1'b1 : 1'b0)-
                 (FIFO_PTR_BITS+1)'(decoder_done ? 1'b1 : 1'b0);
-            if(frame_accept)begin
+            if(frame_accept_selected)begin
                 command_accepted<=1;
             end
             if(encoder_start)capture_count<=capture_count+1;
@@ -888,7 +853,7 @@
             if (replay_consume) begin
                 decoded_read_pointer <= decoded_read_pointer + 1'b1;
             end
-            if(replay_trigger && replay_armed && (command_accepted || frame_accept))begin replay_active<=1;replay_armed<=0;end
+            if(replay_trigger && replay_armed && (command_accepted || frame_accept_selected))begin replay_active<=1;replay_armed<=0;end
             if(replay_launch_q)begin replay_active<=1;replay_launch_q<=0;end
             if (replay_active) begin
                 if (!replay_consume) begin
@@ -904,13 +869,13 @@
             end
             // 完成拍使用当前写地址，随后命令从自身计数与地址开始。
             if(prepare_start)begin
-                command_present<=1;command_accepted<=frame_accept;input_ended<=0;
+                command_present<=1;command_accepted<=frame_accept_selected;input_ended<=0;
                 frame_id_q<=request_q.id;frame_rows_q<=LENGTH_BITS'(request_q.rows);
                 frame_single_row_q <= LENGTH_BITS'(request_q.rows) == LENGTH_BITS'(1);
                 frame_init_q<=request_q.init;frame_final_q<=request_q.final_row;
-                replay_armed<=!request_q.init && !(frame_accept && replay_trigger);replay_active<=0;
+                replay_armed<=!request_q.init && !(frame_accept_selected && replay_trigger);replay_active<=0;
                 // 首读与接受同拍时，同拍重放触发延迟到同步读返回后启动。
-                replay_launch_q<=!request_q.init && frame_accept && replay_trigger;
+                replay_launch_q<=!request_q.init && frame_accept_selected && replay_trigger;
                 capture_count<=0;commit_count<=0;read_index<=LENGTH_BITS'(prefetch_prepare);replay_index<=0;
                 read_cursor <= prefetch_prepare ? read_next_cursor : p_cursor_bits'(initial_row);
                 write_cursor <= p_cursor_bits'(initial_row);

@@ -107,7 +107,9 @@ module ps_window_scheduler #(
     assign stationary_rows_last = stationary_rows - 32'd1;
     // 帧资格、分组存在性和状态选择各自描述独立的组合关系。
     logic candidate_found;
-    logic [ID_W-1:0] candidate_id, scanned_id, selected_id_q;
+    logic [ID_W-1:0] candidate_id, scanned_id, scanned_reference, selected_id_q;
+    (* keep = 1 *) logic [ID_W-1:0] scan_open_candidate, scan_protected_candidate;
+    (* keep = 1 *) logic [ID_W-1:0] scan_after_candidate, scan_wrap_candidate;
     logic selected_id_valid, selected_init_q;
     logic [ROW_COUNT_W-1:0] selected_initial_offset;
     logic [31:0] initial_row_i_a, initial_row_i_b, initial_row_o_sum;
@@ -459,6 +461,15 @@ module ps_window_scheduler #(
         end
     end
 
+    // 开帧、保护帧和两个扫描范围并行生成编号，编码结果只经过一次归并。
+    assign scan_open_candidate = ID_W'(opened) & {ID_W{phase == OPENING}};
+    assign scan_protected_candidate = protected_id &
+        {ID_W{phase == DRAINING && protected_valid}};
+    assign scan_after_candidate = after_first_id &
+        {ID_W{phase == SWEEPING && candidate_after_exists}};
+    assign scan_wrap_candidate = eligible_first_id &
+        {ID_W{phase == SWEEPING && !candidate_after_exists}};
+
     always_comb begin
         initial_slice_shift = '0;
         for (int unsigned bit_index=0; bit_index<ROW_COUNT_W-SHIFT; bit_index++)
@@ -467,18 +478,25 @@ module ps_window_scheduler #(
         initial_slice_rows = (slice_tiles == 0) ? (reuse_rows << SHIFT) : (slice_tiles << SHIFT);
         candidate_found = 1'b0;
         candidate_id = selected_id_q;
-        scanned_id = '0;
+        scanned_reference = '0;
         candidate_init = selected_init_q;
         if (phase == OPENING) begin
             candidate_found = opened < target;
-            scanned_id = ID_W'(opened);
+            scanned_reference = ID_W'(opened);
         end else if (phase == DRAINING && protected_valid) begin
             candidate_found = 1'b1;
-            scanned_id = protected_id;
+            scanned_reference = protected_id;
         end else if (phase == SWEEPING) begin
             candidate_found = candidate_exists;
-            scanned_id = candidate_after_exists ? after_first_id : eligible_first_id;
+            scanned_reference = candidate_after_exists ? after_first_id : eligible_first_id;
         end
+        scanned_id = scanned_reference;
+        case (^{phase, protected_valid, candidate_after_exists, opened,
+                protected_id, after_first_id, eligible_first_id})
+            1'b0, 1'b1: scanned_id = scan_open_candidate | scan_protected_candidate |
+                scan_after_candidate | scan_wrap_candidate;
+            default: ;
+        endcase
         candidate_row = candidate_init ? initial_row_o_sum : stored_row_o_sum;
         case (^{row_base, initial_row_i_b, stored_row_i_b, candidate_init})
             1'b0, 1'b1: candidate_row = shared_row_sum;

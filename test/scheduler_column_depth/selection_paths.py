@@ -13,10 +13,10 @@ sys.path.insert(0, str(ROOT / "scripts/fpga"))
 from netlist_metrics import connected_paths, register_origins
 
 
-def analyze_selection(folder):
+def analyze_selection(folder, pre_lut=None):
     folder = Path(folder)
     module = json.loads((folder / "mapped.json").read_text())["modules"]["ps_window_scheduler"]
-    for name, value in register_origins(folder / "pre_lut.il").items():
+    for name, value in register_origins(Path(pre_lut) if pre_lut is not None else folder / "pre_lut.il").items():
         if name in module["cells"]:
             module["cells"][name].setdefault("attributes", {})["fpga_register_origin"] = value
 

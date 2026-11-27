@@ -17,8 +17,9 @@ def model(source,label):
  names=['bias_ready_for_compute','compute_tail_pending','compute_tail_done','input_tail_ready','issue_ia_now','reuse_stationary_now','commit_now']
  if label=='reference':names+=['send_ia_trigger']
  else:
-  names+=['issue_data_ready','issue_aux_ready','issue_state_ready','issue_tail_quant_ready']
-  if re.search(r'\bassign\s+issue_operand_ready\b',source):names+=['issue_operand_ready']
+  names+=['issue_data_ready','issue_aux_ready','issue_tail_quant_ready']
+  for name in ['issue_state_ready','issue_state_available','issue_operand_ready','issue_operand_available']:
+   if re.search(r'\bassign\s+'+name+r'\b',source):names+=[name]
   if re.search(r'\bassign\s+issue_bias_optional\b',source):names+=['issue_bias_optional']
  text=f'module {label}_control(input wire [{WIDTH-1}:0] values,output wire [1:0] result);\n'
  text+="localparam IA_START=4'b0011,WEIGHT_START=4'b0010;\n"

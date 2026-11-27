@@ -121,7 +121,7 @@
             .ram_read_data(ps_ram_read_data), .ram_write_en(ps_ram_write_en),
             .ram_write_addr(ps_ram_write_addr), .ram_write_data(ps_ram_write_data),
             .frame_request(frame_request && !direct_final_stream),
-            .frame_accept(frame_accept && !direct_final_stream),
+            .frame_accept(frame_accept), .frame_accept_permit(!direct_final_stream),
             .frame_id(frame_id), .frame_reserve_rows(frame_reserve_rows),
             .frame_word_cap(frame_word_cap), .frame_rows(frame_rows),
             .frame_init(frame_init), .frame_final(frame_final), .force_raw_i(force_raw),

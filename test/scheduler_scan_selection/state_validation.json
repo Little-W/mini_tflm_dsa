@@ -1,0 +1,142 @@
+{
+  "passed": true,
+  "inputs": {
+    "source": "rtl/npu/control/ps_window_scheduler.sv",
+    "reference_commit": null,
+    "reference_file": "/workspace/scratch/30bff11e002a/ps_results/scheduler_scan_parallel_priority_measure/reference_rtl/ps_window_scheduler.sv",
+    "source_path": "/workspace/scratch/30bff11e002a/ps_memory_worktree/rtl/npu/control/ps_window_scheduler.sv",
+    "reference_sha256": "aa5d33f063826bea93ecfd5b517b3c4b42f8f6cb6f6d9c98449ab4bc89a3c537",
+    "source_sha256": "65174329afa03cdc76a9577ec6b36f38f65464dd12798290f3f7bef4f8304ffe",
+    "helper_sha256": {
+      "rtl/common/onehot_check.sv": "0cf8746851306c47859ad3fb1eb18d6cdfc3126b955c3df893940db5cce094db",
+      "rtl/common/parallel_prefix_add.sv": "8d684073809f8382ef4837dc456a06bd432047cb28379bd0cd32df2e08d9b63e",
+      "rtl/common/regfile.v": "c7b8361d499cac01cdf32286d66e6d93dc27872ff4c0daf95c058db7a3b6a725",
+      "rtl/common/unsigned_compare.sv": "91d7f3e52f32372f20f378733b594288361bbbb7e34bc7cec6ef41e4453c37e8"
+    },
+    "dependency_sha256": {
+      "reference": {
+        "/workspace/scratch/30bff11e002a/ps_results/scheduler_scan_parallel_priority_measure/reference_rtl/ps_scheduler_priority.sv": "da745683f643b6ba2bf22435e0fdb421315f1f501886ab48464de34a238843b2",
+        "/workspace/scratch/30bff11e002a/ps_memory_worktree/rtl/common/parallel_equal.sv": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d",
+        "/workspace/scratch/30bff11e002a/ps_memory_worktree/rtl/common/zero_reduce.sv": "139caad4cb9b67e966c768e999821f62975cb2ab666eb669a18ed43242bb3233",
+        "/workspace/scratch/30bff11e002a/ps_memory_worktree/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "/workspace/scratch/30bff11e002a/ps_memory_worktree/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "/workspace/scratch/30bff11e002a/ps_memory_worktree/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+      },
+      "current": {
+        "/workspace/scratch/30bff11e002a/ps_memory_worktree/rtl/npu/control/ps_scheduler_priority.sv": "e31008ea39ef3eac79fef6737381bc259c4d06a1538686d09fbc419a664fdcaf",
+        "/workspace/scratch/30bff11e002a/ps_memory_worktree/rtl/common/parallel_equal.sv": "bd902e83432624c38e1345a523d5c4269b71db871bfab78754aa68f318c5239d",
+        "/workspace/scratch/30bff11e002a/ps_memory_worktree/rtl/common/zero_reduce.sv": "139caad4cb9b67e966c768e999821f62975cb2ab666eb669a18ed43242bb3233",
+        "/workspace/scratch/30bff11e002a/ps_memory_worktree/rtl/common/parallel_prefix_high_group.sv": "7163c9b27bf15f564b784cddbc0a702425109eb7725482f1eaf7900d9be0e52f",
+        "/workspace/scratch/30bff11e002a/ps_memory_worktree/rtl/common/parallel_prefix_native_differences.sv": "78a9f54f05564ba8d1fcf2a9a0d812f713e83ef51b87afbd8f8098646dfb2504",
+        "/workspace/scratch/30bff11e002a/ps_memory_worktree/rtl/common/parallel_prefix_native_sums.sv": "a0441a90eefe2c4ac3b0f1507615e0e30e10c5db3ecf28d2a135087209aa7970"
+      }
+    },
+    "prepared_source_sha256": {
+      "reference": "300704e031c06858f9b415fb756fa0c302bc547e1ae957b4330ac4005379358e",
+      "current": "f12a02d18b261f0ca180b5c74babd38beca093fd59bde1ce9c54817c5f82e253"
+    },
+    "module_sha256": {
+      "reference": {
+        "ps_window_scheduler": "200547f1f76a1e5131cbbf0afd62d3184a2b0d4fe91310b02fdce049f90d01b2",
+        "ps_scheduler_priority": "7112c9285cd01c43b84429d3138f0583e9ba2f9c57332a54b47b23f088e97ddd",
+        "parallel_equal": "8e47f441cd8754994e26ac40272263469ec025adcff812c477f4f1b034782b2c",
+        "zero_reduce": "34df89ea6d58ffe0e9277732b73fc967001f0829f9216a6263f3c733fe40935c",
+        "parallel_prefix_high_group": "7ad6e3ef595d25a81ccc21984964aa901ab8d2893f68091667374d1e8ff59499",
+        "parallel_prefix_native_differences": "2901a4f57b2058020e042d0d3cec0ab96b2e327e07ad44518daad5ba1e86bb23",
+        "parallel_prefix_native_sums": "15b72b71867362dea123ece305e2f5503694565c30b1983955c3f499a88522d2"
+      },
+      "current": {
+        "ps_window_scheduler": "beb3ae764d8a474ef24fc504c93929e9bcac4765e049f1bbdadd93ed7299d603",
+        "ps_scheduler_priority": "9ecce3160c34f42f93131c5d77e901d07f3a90ecba58420a8f7d1693fec65f14",
+        "parallel_equal": "8e47f441cd8754994e26ac40272263469ec025adcff812c477f4f1b034782b2c",
+        "zero_reduce": "34df89ea6d58ffe0e9277732b73fc967001f0829f9216a6263f3c733fe40935c",
+        "parallel_prefix_high_group": "7ad6e3ef595d25a81ccc21984964aa901ab8d2893f68091667374d1e8ff59499",
+        "parallel_prefix_native_differences": "2901a4f57b2058020e042d0d3cec0ab96b2e327e07ad44518daad5ba1e86bb23",
+        "parallel_prefix_native_sums": "15b72b71867362dea123ece305e2f5503694565c30b1983955c3f499a88522d2"
+      }
+    }
+  },
+  "input_assumptions": [],
+  "state_relation": "Every public output and every shared clocked state is compared; equal register states remain equal for every input sequence.",
+  "memory_relation": "Both complete metadata memories and frame K memories are expanded and compared.",
+  "additional_relation_outputs": [
+    "frame_open"
+  ],
+  "proof_state_aliases": {
+    "reference": {
+      "prediction_depth_q[0]": "prediction_q_s0",
+      "prediction_depth_q[1]": "prediction_q_direct_s1",
+      "prediction_depth_q[2]": "prediction_q_s1",
+      "prediction_column_q[0]": "prediction_column_s0",
+      "prediction_column_q[1]": "prediction_column_direct_s1",
+      "prediction_column_q[2]": "prediction_column_s1",
+      "prediction_reads_frame_q[0]": "prediction_reads_frame_s0",
+      "prediction_reads_frame_q[1]": "prediction_reads_frame_q"
+    },
+    "current": {
+      "prediction_depth_q[0]": "prediction_q_s0",
+      "prediction_depth_q[1]": "prediction_q_direct_s1",
+      "prediction_depth_q[2]": "prediction_q_s1",
+      "prediction_column_q[0]": "prediction_column_s0",
+      "prediction_column_q[1]": "prediction_column_direct_s1",
+      "prediction_column_q[2]": "prediction_column_s1",
+      "prediction_reads_frame_q[0]": "prediction_reads_frame_s0",
+      "prediction_reads_frame_q[1]": "prediction_reads_frame_q"
+    }
+  },
+  "increment_profiles": [
+    {
+      "width": 29,
+      "passed": true,
+      "script_sha256": "a933aa9b5a1bbf337d1aaafb168b1fe4c27018b7ce219b2f5045c0c3ec8b4cc0",
+      "log_sha256": "ce78f9058beab152fe4d194c467eb7be2539636ac4e2c64eb963f35a01e381b6"
+    }
+  ],
+  "scheduler_profiles": [
+    {
+      "SIZE": 1,
+      "FRAME_COUNT": 1,
+      "MAX_REUSE_TILES": 1,
+      "equivalent_bits": 1242,
+      "passed": true,
+      "script_sha256": "d7d0f1a8fe0423c83fc91c9ffece4aab9c71ac0b54e04fa3230ea67fde6b5cbc",
+      "log_sha256": "4993cd37741bc7fc2f8cee898e6b1ecfa3f72f6ebc9ac0d02f1ccc8c76c4f975"
+    },
+    {
+      "SIZE": 4,
+      "FRAME_COUNT": 3,
+      "MAX_REUSE_TILES": 4,
+      "equivalent_bits": 1446,
+      "passed": true,
+      "script_sha256": "cc39a684049681cb1e073e199ac4fac647c463ef627087a605ffe17dee042cf3",
+      "log_sha256": "38d4c21bf7a7d8ccff02956d457f1c28965403c0710728378a460badd12a3575"
+    },
+    {
+      "SIZE": 16,
+      "FRAME_COUNT": 16,
+      "MAX_REUSE_TILES": 32,
+      "equivalent_bits": 2533,
+      "passed": true,
+      "script_sha256": "006c1b3db47103514885138f6f2ebc7b2cac3d0cd2ff39215f983ba3c63bbe44",
+      "log_sha256": "b4d0b17414d779b6124aa4cad98b4ea50736d8457791f32fdb13795e733b4aa4"
+    },
+    {
+      "SIZE": 16,
+      "FRAME_COUNT": 16,
+      "MAX_REUSE_TILES": 0,
+      "equivalent_bits": 3522,
+      "passed": true,
+      "script_sha256": "c30a402fe3a409e756f47442e279c318147b49b940f4735964e29a8bddf9ea95",
+      "log_sha256": "9aa65108a84c419fb16afe4930ad8a12fbec75bf1bf2c014d3fcbc8a76b45989"
+    },
+    {
+      "SIZE": 16,
+      "FRAME_COUNT": 17,
+      "MAX_REUSE_TILES": 64,
+      "equivalent_bits": 2673,
+      "passed": true,
+      "script_sha256": "58be2f5cd4a3a3379daf7e1f10bdb350892a614e61c130cb854c05501b7a456d",
+      "log_sha256": "0264d69daed009c10bf37b6d84b9d4fb8e5c9da21da5819cbdef829a85a29b94"
+    }
+  ]
+}

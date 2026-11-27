@@ -1,0 +1,45 @@
+{
+  "passed": true,
+  "input_assumptions": [],
+  "reference": "92f722e6",
+  "source_sha256": {
+    "rtl/npu/control/ps_window_scheduler.sv": "65174329afa03cdc76a9577ec6b36f38f65464dd12798290f3f7bef4f8304ffe"
+  },
+  "cases": [
+    {
+      "id_width": 1,
+      "formal_passed": true,
+      "four_state_checks": 81922,
+      "formal_log_sha256": "fb1a0d145458a0d8cb669023d9254b8a4fc145c57d0912af5d6b8928a7877bba",
+      "simulation_log_sha256": "c6ede92625d59a4ec61fa8a82d3a66be10f5968c33d134d254e602d7a3cae9d9"
+    },
+    {
+      "id_width": 2,
+      "formal_passed": true,
+      "four_state_checks": 81922,
+      "formal_log_sha256": "d98508b2fe398901b34482423ec80e48f5f2d18a05c5d6216812e9b507d28d69",
+      "simulation_log_sha256": "522a1ee9a6bbf0eb5204e08ef3806d3e5674f00601439bc28dae5a682c6c0b94"
+    },
+    {
+      "id_width": 4,
+      "formal_passed": true,
+      "four_state_checks": 81922,
+      "formal_log_sha256": "d137b49b7622fcead730e6f49cfbcef57d40bab885ba0d3365fd3191a4d1d2a2",
+      "simulation_log_sha256": "885da76bf60dbdccf0452e1836231e79970c0207558b248f5e41dcb89bdccfff"
+    },
+    {
+      "id_width": 5,
+      "formal_passed": true,
+      "four_state_checks": 81922,
+      "formal_log_sha256": "1ab0ee2cf0bde76acfda298dc729ee73bc11f9d8ca3adf23b6d5d40a04b52602",
+      "simulation_log_sha256": "0e5bc5d8a6789e0272ec7f7e2c9ee7f9a33a0c3347a2d0353a893dac6e373c67"
+    },
+    {
+      "id_width": 8,
+      "formal_passed": true,
+      "four_state_checks": 81922,
+      "formal_log_sha256": "242618ea5692f845a36de6e7e22fcc2b0c9b2dfb925b3e037efbff53c91a4528",
+      "simulation_log_sha256": "2290006d2ef525089d3e30718a46b1cff73031df83fd19a48b27e0e51830ae3e"
+    }
+  ]
+}
